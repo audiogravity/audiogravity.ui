@@ -1,4 +1,1 @@
-# Guard: derived version files must match /VERSION (single source).
-# Bump with `release.sh prepare <version>`; never hand-edit derived files.
-node scripts/sync-version.mjs --check || exit 1
-cd frontend && npx lint-staged
+npx lint-staged

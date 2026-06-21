@@ -9,7 +9,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "prepare": "cd .. && git config core.hooksPath frontend/.husky",
+    "prepare": "git config core.hooksPath .husky || true",
     "sync-sw": "cp sw.js public/sw.js",
     "dev": "npm run sync-sw && vite",
     "build": "npm run sync-sw && vite build",

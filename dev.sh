@@ -36,7 +36,8 @@ _vite_start() {
     [ -f "$VITE_PID_FILE" ] && rm "$VITE_PID_FILE"
     info "Starting Vite → ${VITE_URL} (proxy → :${BACKEND_PORT})"
     cd "$SCRIPT_DIR"
-    BACKEND_PORT=$BACKEND_PORT VITE_HTTPS=$VITE_HTTPS nohup npm run dev > "$VITE_LOG_FILE" 2>&1 &
+    # setsid creates a new process group — allows killing the full tree (npm + node/vite) with kill -- -PGID
+    setsid bash -c "BACKEND_PORT=$BACKEND_PORT VITE_HTTPS=$VITE_HTTPS exec npm run dev" > "$VITE_LOG_FILE" 2>&1 &
     echo $! > "$VITE_PID_FILE"
     ok "Vite started (PID: $(cat $VITE_PID_FILE))"
 }
@@ -44,9 +45,11 @@ _vite_start() {
 _vite_stop() {
     local pid=$(_vite_pid)
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        kill "$pid" 2>/dev/null; rm -f "$VITE_PID_FILE"; ok "Vite stopped"
+        # Kill the entire process group (setsid makes the PID the group leader)
+        kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+        rm -f "$VITE_PID_FILE"; ok "Vite stopped"
     else
-        local stray; stray=$(pgrep -f "vite" | grep -v "$$" || true)
+        local stray; stray=$(pgrep -f "node.*vite" | grep -v "$$" || true)
         if [ -n "$stray" ]; then
             kill $stray 2>/dev/null || true; rm -f "$VITE_PID_FILE"; ok "Vite stopped (stray PID)"
         else
