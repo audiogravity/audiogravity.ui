@@ -35,7 +35,7 @@ npm install
 ./dev.sh start     # Vite at http://localhost:3000
 ```
 
-A running Audiogravi<sup>ty</sup> backend is required on port 8000. On first launch a
+A running Audiogravi<sup>ty</sup> backend is required on port 8001 (default). On first launch a
 prompt asks for the API key (visible in the backend `.env` file); it is
 stored in `localStorage` for subsequent sessions.
 
@@ -56,7 +56,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 ./dev.sh help          # full command list
 ```
 
-Override backend port: `BACKEND_PORT=8001 ./dev.sh start`
+Override backend port: `BACKEND_PORT=8002 ./dev.sh start`
 
 ---
 

@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VITE_PID_FILE="$SCRIPT_DIR/vite.pid"
 VITE_LOG_FILE="$SCRIPT_DIR/vite.log"
-BACKEND_PORT="${BACKEND_PORT:-8000}"
+BACKEND_PORT="${BACKEND_PORT:-8001}"
 VITE_HTTPS=false
 
 DEV_HOST="${AG_DEV_HOST:-$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+' || echo localhost)}"

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-const BACKEND_PORT = process.env.BACKEND_PORT || '8000';
+const BACKEND_PORT = process.env.BACKEND_PORT || '8001';
 // Bundle analysis is opt-in: `vite build --mode analyze`. Off by default so the
 // report is never produced during normal builds (and thus never deployed).
 const isAnalyze = process.argv.includes('analyze');
