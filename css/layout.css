@@ -1,0 +1,1019 @@
+/**
+ * @module Layout
+ * @description Core App Shell layout (Topbar, Navigation, Main, Footer).
+ */
+
+/* TOPBAR */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--topbar-height);
+    background: var(--topbar-bg);
+    backdrop-filter: var(--topbar-blur, none);
+    box-shadow: var(--topbar-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-lg);
+    z-index: var(--z-topbar);
+}
+
+/* Burger Menu & App Shell Actions */
+
+/* Settings button (right) — opens the config panel. Renders the Lucide settings
+   glyph; always visible. */
+.burger-menu {
+    width: var(--burger-menu-size);
+    height: var(--burger-menu-size);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+
+    /* 1em SVG sized to the burger button's *inner* box (token minus its 4px
+       padding each side) so the gear keeps the exact visual footprint the old
+       burger glyph had here, while the button keeps the shared --burger-menu-size. */
+    font-size: calc(var(--burger-menu-size) - 2 * var(--spacing-xs));
+    display: flex;
+}
+
+.burger-menu:hover {
+    color: var(--btn-primary);
+}
+
+/* Mobile navigation button (left) — opens the vertical tab sidebar. Renders a
+   hamburger glyph. Hidden on desktop where the tab bar is always visible; shown
+   only on mobile, where the tabs collapse to a vertical sidebar (.tabs--vertical). */
+.nav-menu {
+    width: var(--burger-menu-size);
+    height: var(--burger-menu-size);
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px;
+    display: none;
+}
+
+body:has(.tabs--vertical) .nav-menu {
+    display: flex;
+}
+
+.nav-menu span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+.nav-menu:hover span {
+    background: var(--btn-primary);
+}
+
+/* Connection Status indicator inside shell */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.status-indicator {
+    width: var(--status-indicator-size);
+    height: var(--status-indicator-size);
+    border-radius: 50%;
+    background: var(--color-error);
+    transition: background var(--transition-normal);
+}
+
+.status-indicator.connected {
+    background: var(--color-success);
+}
+
+/* Shell Metrics (Topbar) */
+.system-metrics {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+
+.metric {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+}
+
+.metric-value.topbar-value {
+    font-size: var(--font-size-xs);
+}
+
+/* Activity indicators (shared with components/metrics.css) */
+.topbar .metric-value.activity-low,
+.topbar .metric-value.activity-medium,
+.topbar .metric-value.activity-high {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+}
+
+.topbar .metric-value.activity-low {
+    background: var(--color-success-bg);
+}
+
+/* OFFLINE BANNER */
+.offline-banner {
+    position: fixed;
+
+    /* Fully off-screen when hidden — must be outside the viewport to avoid
+       bleeding through the topbar's backdrop-filter:blur() */
+    top: -40px;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: var(--color-warning);
+    color: #12141c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    z-index: calc(var(--z-topbar) - 1);
+    transition: top var(--transition-normal) ease;
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+}
+
+.offline-banner span[class^="icon-"] {
+    font-size: 1.2em;
+}
+
+.offline-banner .retry-link {
+    background: rgb(0 0 0 / 0.1);
+    border: 1px solid rgb(0 0 0 / 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+body.is-offline .offline-banner {
+    top: var(--topbar-height);
+    pointer-events: auto;
+}
+
+/* Adjusted layout when offline banner is displayed */
+@media (width > 768px) {
+    body.is-offline:has(.tabs--horizontal) .main-content {
+        margin-top: 32px;
+    }
+}
+
+.topbar .metric-value.activity-medium {
+    background: var(--color-warning-bg);
+}
+
+.topbar .metric-value.activity-high {
+    background: var(--color-error-bg);
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* APP TITLE BAR */
+.app-title-bar {
+    position: fixed;
+    top: var(--topbar-height);
+    left: 0;
+    right: 0;
+    height: var(--title-bar-height);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    z-index: calc(var(--z-tabs) + 1);
+}
+
+.app-title {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.logo-svg {
+    height: 32px;
+    width: auto;
+    transition: filter var(--transition-normal);
+}
+
+body.dark-mode .logo-svg {
+    filter: brightness(0) invert(1);
+}
+
+/* NAVIGATION TABS */
+.tabs {
+    position: fixed;
+    top: calc(var(--topbar-height) + var(--title-bar-height));
+    left: 0;
+    right: 0;
+    height: var(--tabs-height);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--spacing-lg);
+    z-index: var(--z-tabs);
+    overflow: auto hidden;
+    scrollbar-width: none;
+
+    /* Firefox */
+    -ms-overflow-style: none;
+
+    /* IE/Edge */
+    -webkit-overflow-scrolling: touch;
+    user-select: none;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
+
+    /* Chrome/Safari/Opera */
+}
+
+.tab-btn {
+    padding: 0 var(--spacing-lg);
+    height: 100%;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.tab-btn:hover {
+    background: var(--tab-hover);
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--text-primary);
+}
+
+.tab-btn--locked {
+    background: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+
+.tab-btn--locked:hover {
+    background: color-mix(in srgb, var(--color-error) 14%, transparent);
+}
+
+.action-btn.primary {
+    background: var(--btn-primary, var(--text-primary));
+    color: var(--bg-primary);
+    border-color: var(--btn-primary, var(--text-primary));
+}
+
+.action-btn.primary:hover {
+    background: transparent;
+    color: var(--btn-primary, var(--text-primary));
+}
+
+/* Toggle d'orientation de la barre d'onglets */
+.tab-orientation-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0 var(--spacing-sm);
+    height: 100%;
+    font-size: var(--font-size-md);
+    display: flex;
+    align-items: center;
+    transition: color var(--transition-fast);
+}
+
+.tab-orientation-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Stats link — admin only, horizontal mode: right side before orientation btn */
+.tabs-stats-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border-color);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0 var(--spacing-sm);
+    height: 100%;
+    font-size: var(--font-size-md);
+    display: flex;
+    align-items: center;
+    transition: color var(--transition-fast);
+}
+
+.tabs-stats-btn:hover {
+    color: var(--text-primary);
+}
+
+/* In vertical mode, push stats to bottom above orientation btn */
+.tabs--vertical .tabs-stats-btn {
+    margin-left: 0;
+    margin-top: auto;
+    height: auto;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    justify-content: flex-start;
+}
+
+/* When stats btn is present, orientation btn no longer needs to push itself down (vertical)
+   or push itself right (horizontal) — stats btn handles it */
+.tabs--vertical:has(.tabs-stats-btn) .tab-orientation-btn {
+    margin-top: 0;
+    width: 100%;
+    border-top: 1px solid var(--border-color);
+}
+
+.tabs:not(.tabs--vertical):has(.tabs-stats-btn) .tab-orientation-btn {
+    margin-left: 0;
+    border-left: 1px solid var(--border-color);
+}
+
+/* =====================
+   TABS — MODE VERTICAL (SIDEBAR) (GLOBAL)
+   ===================== */
+
+.tabs--vertical {
+    inset: calc(var(--topbar-height) + var(--title-bar-height)) auto var(--footer-height) 0;
+    width: var(--tabs-vertical-width, 140px);
+    height: auto;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    border-bottom: none;
+    border-right: 1px solid var(--border-color);
+    overflow: hidden auto;
+    transition: transform var(--transition-normal);
+    z-index: var(--z-modal-backdrop);
+    box-shadow: var(--shadow-xl);
+    background: var(--bg-secondary);
+    background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+    backdrop-filter: blur(10px);
+    /* stylelint-disable-next-line property-no-vendor-prefix */
+    -webkit-backdrop-filter: blur(10px);
+
+    /* Pré-promotion GPU : évite le coût de promotion au moment du premier geste */
+    will-change: transform;
+
+    /* Le sidebar gère tous les gestes touch en JS — le browser n'a pas à spéculer */
+    touch-action: none;
+}
+
+.tabs--vertical .tab-btn {
+    width: 100%;
+    height: auto;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    border-right: none;
+    justify-content: flex-start;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.tabs--vertical .tab-btn.active {
+    border-bottom-color: transparent;
+    border-left-color: var(--text-primary);
+}
+
+.tabs--vertical .tab-btn.preview {
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--text-primary);
+    border-left-color: var(--color-warning);
+}
+
+.tabs--vertical .tab-btn.preview .tab-icon {
+    opacity: 1;
+}
+
+.tab-icon {
+    margin-right: var(--spacing-sm);
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
+.tab-icon-svg {
+    display: inline-flex;
+    align-items: center;
+}
+
+.tab-icon-svg svg {
+    width: 1em;
+    height: 1em;
+    stroke: currentcolor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.tab-btn.active .tab-icon,
+.tab-btn:hover .tab-icon {
+    opacity: 1;
+}
+
+@keyframes streamingPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* Compteur de stats par onglet (actifs/total) — visible uniquement en mode vertical */
+.tab-stats {
+    display: none;
+}
+
+.tabs--vertical .tab-stats {
+    display: block;
+    margin-left: auto;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted, var(--text-secondary));
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.tabs--vertical .tab-btn.active .tab-stats,
+.tabs--vertical .tab-btn:hover .tab-stats {
+    opacity: 1;
+    color: var(--text-primary);
+}
+
+.tabs--vertical .tab-orientation-btn {
+    margin-left: 0;
+    margin-top: auto;
+    height: auto;
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Logo bar : logo gauche + indicateur connectivité droite */
+.tabs-logo-bar {
+    display: none;
+}
+
+.tabs--vertical .tabs-logo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Logo dans la sidebar */
+.tabs-logo {
+    display: none;
+}
+
+.tabs--vertical .tabs-logo {
+    display: block;
+    width: 80px;
+    height: auto;
+    opacity: 0.85;
+    margin: 0;
+}
+
+
+/* Barre user/role + indicateur de lecture */
+.tabs-user-bar {
+    display: none;
+}
+
+.tabs--vertical .tabs-user-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-xs);
+    box-sizing: border-box;
+    gap: var(--spacing-xs);
+    overflow-x: clip;
+}
+
+.tabs-user {
+    display: none;
+}
+
+.tabs--vertical .tabs-user {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+body.dark-mode .tabs-logo {
+    filter: brightness(0) invert(1);
+}
+
+/* Bouton masquer/afficher sidebar */
+.tab-sidebar-toggle {
+    display: none;
+}
+
+body:has(.tabs--vertical) .tab-sidebar-toggle {
+    position: fixed;
+    left: var(--tabs-vertical-width, 140px);
+    top: calc(var(--topbar-height) + var(--title-bar-height) + var(--spacing-lg));
+    z-index: calc(var(--z-tabs) + 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+    border: 1px solid #000000;
+    border-left: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--spacing-sm) 6px;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    transition: transform var(--transition-normal), color var(--transition-fast);
+}
+
+body:has(.tabs--vertical) .tab-sidebar-toggle:hover {
+    opacity: 0.8;
+}
+
+body.dark-mode:has(.tabs--vertical) .tab-sidebar-toggle {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #000000;
+}
+
+.tabs--vertical.tabs--sidebar-hidden {
+    left: 0;
+    transform: translateX(calc(-1 * var(--tabs-vertical-width, 140px)));
+    pointer-events: none;
+}
+
+body:has(.tabs--vertical.tabs--sidebar-hidden) .tab-sidebar-toggle {
+    transform: translateX(calc(-1 * var(--tabs-vertical-width, 140px)));
+}
+
+/* Desktop only: in vertical mode the horizontal tabs row disappears,
+   so remove the tabs-height offset from the main content top inset */
+@media (width > 768px) {
+    body:has(.tabs--vertical) .main-content {
+        inset: calc(var(--topbar-height) + var(--title-bar-height)) 0 calc(var(--footer-height) + var(--now-playing-height, 0px));
+    }
+}
+
+/* MAIN CONTENT */
+.main-content {
+    position: fixed;
+    inset: calc(var(--topbar-height) + var(--title-bar-height) + var(--tabs-height)) 0 calc(var(--footer-height) + var(--now-playing-height, 0px));
+    padding: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain; /* Stoppe le rubber-band iOS en fin de scroll */
+    scrollbar-gutter: stable;
+    background: var(--bg-primary);
+    width: 100%;
+    box-sizing: border-box;
+
+    /* Isole la zone de contenu pour les View Transitions — topbar/sidebar restent immobiles */
+    view-transition-name: main-content;
+}
+
+.tab-content {
+    display: none;
+
+    /* Saute le rendu des onglets inactifs — le browser recalcule uniquement quand visible */
+    content-visibility: auto;
+}
+
+.tab-content.active {
+    display: block;
+    content-visibility: visible;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+
+    /* Default to 1 column for mobile-first */
+    gap: var(--spacing-lg);
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: var(--spacing-lg);
+
+    /* Move padding from main-content to grid for better control */
+    box-sizing: border-box;
+}
+
+/* FOOTER */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--footer-height);
+    background: var(--topbar-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 var(--spacing-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    z-index: var(--z-tabs);
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+.footer-logo img {
+    height: 100%;
+    width: var(--footer-height);
+    object-fit: contain;
+}
+
+/* Theme-based logo visibility */
+.logo-dark {
+    display: none;
+}
+
+.logo-light {
+    display: block;
+}
+
+body.dark-mode .logo-light {
+    display: none;
+}
+
+body.dark-mode .logo-dark {
+    display: block;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+    height: var(--scrollbar-height);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* RESPONSIVE OVERRIDES */
+
+/* .content-grid media query moved to top as part of mobile-first strategy */
+
+@media (width <=1024px) {
+    .system-metrics {
+        gap: var(--spacing-sm);
+    }
+
+    .system-metrics .metric-label {
+        display: none;
+    }
+}
+
+@media (width <=768px) {
+    :root {
+        --footer-height: 0;
+        --title-bar-height: 0;
+        --topbar-height: 44px;
+        --tabs-height: 42px;
+    }
+
+    .system-metrics {
+        gap: var(--spacing-sm);
+    }
+
+    .app-title-bar,
+    .footer {
+        /* stylelint-disable-next-line declaration-no-important */
+        display: none !important;
+    }
+
+    .topbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        padding: env(safe-area-inset-top, 0) var(--spacing-md) 0;
+        height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
+        z-index: var(--z-topbar);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        
+        /*
+         * Stable iOS Notch strategy: we layer a solid strip over the 
+         * translucent blurred background for the safe-area (notch).
+         * This ensures the status bar area always matches the theme.
+         */
+        background:
+            linear-gradient(
+                var(--topbar-bg) env(safe-area-inset-top, 0),
+                transparent       env(safe-area-inset-top, 0)
+            ),
+            color-mix(in srgb, var(--topbar-bg) 70%, transparent);
+        backdrop-filter: blur(12px);
+        /* stylelint-disable-next-line property-no-vendor-prefix */
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: none;
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 10%, transparent);
+        overflow: hidden;
+    }
+
+    /* Mobile horizontal (sans .tabs--vertical) : barre classique en haut */
+    .tabs {
+        padding: 0 var(--spacing-sm);
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
+        background: var(--bg-secondary);
+        background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+        backdrop-filter: blur(12px);
+        /* stylelint-disable-next-line property-no-vendor-prefix */
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Mobile vertical : overrides pour l'inset et topbar */
+    .tabs--vertical {
+        inset: calc(var(--topbar-height) + env(safe-area-inset-top, 0px)) auto 0 0;
+        padding-left: env(safe-area-inset-left, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    body:has(.tabs--vertical) .tab-sidebar-toggle {
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-lg));
+    }
+
+    /* Contenu : barre horizontale par défaut, toujours pleine largeur sur mobile */
+    .main-content {
+        top: 0; /* Ensures content scrolls fully underneath topbar and tabs */
+        bottom: 0;
+        left: 0;
+        padding: 0;
+    }
+
+    /* Universal safe-area spacer: pseudo-element ensures iOS Safari always includes
+       the home-indicator clearance in the scroll range (padding-bottom alone is buggy
+       in WebKit overflow:auto containers) */
+    .tab-content::after {
+        content: '';
+        display: block;
+        height: env(safe-area-inset-bottom, 0);
+    }
+
+    /* Offline banner on mobile: account for the notch safe area (only when visible) */
+    body.is-offline .offline-banner {
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
+    }
+
+    .content-grid,
+    ag-mobile-pipeline {
+        padding: var(--spacing-md);
+        padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+    }
+
+    /* En mode vertical sur mobile, la sidebar superpose le contenu :
+       le contenu commence juste sous la topbar (pas de décalage tabs-height) */
+    body:has(.tabs--vertical) .content-grid,
+    body:has(.tabs--vertical) ag-mobile-pipeline {
+        padding: var(--spacing-md);
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+    }
+}
+
+/* Mobile landscape: phones have height ≤ 500px when rotated, tablets do not */
+@media (orientation: landscape) and (height <= 500px) {
+    :root {
+        --footer-height: 0;
+        --title-bar-height: 0;
+        --topbar-height: 44px;
+    }
+
+    .footer,
+    .app-title-bar {
+        /* stylelint-disable-next-line declaration-no-important */
+        display: none !important;
+    }
+
+    /* Mirror the portrait-mobile sidebar positioning so tabs-logo-bar stays visible */
+    .tabs--vertical {
+        inset: calc(var(--topbar-height) + env(safe-area-inset-top, 0px)) auto 0 0;
+    }
+
+    body:has(.tabs--vertical) .tab-sidebar-toggle {
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-lg));
+    }
+
+    /* Content starts at 0 like mobile portrait; padding-top compensates for topbar.
+       Specificity bump (body:has selector) needed to override
+       body:has(.tabs--vertical) .main-content from the desktop section. */
+    body:has(.tabs--vertical) .main-content,
+    .main-content {
+        top: 0;
+        bottom: 0;
+        left: 0;
+        padding: 0;
+    }
+
+    .content-grid,
+    ag-mobile-pipeline {
+        padding: var(--spacing-md);
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+        padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
+    }
+
+    body:has(.tabs--vertical) .content-grid,
+    body:has(.tabs--vertical) ag-mobile-pipeline {
+        padding: var(--spacing-md);
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+        padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
+    }
+}
+
+@media (width <=480px) {
+    .system-metrics {
+        gap: var(--spacing-xs);
+    }
+
+    .metric-value {
+        min-width: auto;
+        font-size: var(--font-size-xxs);
+    }
+
+    .metric {
+        gap: 2px;
+    }
+
+    .connection-status span {
+        display: none;
+    }
+
+    .content-grid {
+        padding: var(--spacing-sm);
+
+        /* All sides: 8px */
+        gap: var(--spacing-md);
+
+        /* 16px */
+    }
+}
+
+.logo-preview-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-xl);
+    overflow: auto;
+}
+
+.logo-preview-body img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* FOOTER VERSION Link Style */
+.version-link {
+    text-decoration: underline;
+    text-decoration-style: solid;
+    text-underline-offset: 2px;
+    font-weight: 600;
+}
+
+.version-link.clickable {
+    cursor: pointer;
+}
+
+.version-link:hover {
+    color: var(--text-primary);
+    text-decoration-thickness: 2px;
+}
+
+/* DESKTOP OVERRIDES (Moved to bottom for cascade) */
+@media (width >=1201px) {
+    .content-grid {
+        grid-template-columns: 1fr 350px;
+    }
+}
+
+/* =====================
+   VIEW TRANSITIONS — Navigation entre onglets
+   Seule .main-content anime ; topbar et sidebar restent immobiles.
+   Dégradé gracieux : sans support (iOS < 18, Firefox < 126) = switch instantané.
+   ===================== */
+
+@keyframes vtSlideOutLeft {
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+@keyframes vtSlideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+@keyframes vtSlideOutRight {
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+@keyframes vtSlideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+/* Navigation vers l'avant (index croissant) */
+:root.nav-forward::view-transition-old(main-content) {
+    animation: 220ms ease-out vtSlideOutLeft;
+}
+
+:root.nav-forward::view-transition-new(main-content) {
+    animation: 220ms ease-out vtSlideInRight;
+}
+
+/* Navigation vers l'arrière (index décroissant) */
+:root.nav-backward::view-transition-old(main-content) {
+    animation: 220ms ease-out vtSlideOutRight;
+}
+
+:root.nav-backward::view-transition-new(main-content) {
+    animation: 220ms ease-out vtSlideInLeft;
+}
+
+/* Bloque les taps accidentels pendant l'animation (220ms) */
+:root.vt-active {
+    pointer-events: none;
+}
+
+/* Respect de prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(main-content),
+    ::view-transition-new(main-content) {
+        animation: none;
+    }
+}

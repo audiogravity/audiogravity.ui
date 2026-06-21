@@ -1,0 +1,110 @@
+{
+    "id": "net.di-marco.audiogravity",
+    "name": "Audiogravity",
+    "short_name": "Audiogravity",
+    "description": "High-fidelity audio distribution and system management platform",
+    "lang": "en",
+    "dir": "ltr",
+    "categories": [
+        "utilities",
+        "music",
+        "productivity"
+    ],
+    "prefer_related_applications": false,
+    "launch_handler": {
+        "client_mode": "focus-existing"
+    },
+    "icons": [
+        {
+            "src": "pics/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pics/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pics/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "pics/audiogravity.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "pics/screenshot-mobile.png",
+            "sizes": "1125x2436",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Audiogravity Mobile View"
+        },
+        {
+            "src": "pics/screenshot-desktop.png",
+            "sizes": "2436x1125",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Audiogravity Dashboard"
+        }
+    ],
+    "theme_color": "#12141c",
+    "background_color": "#12141c",
+    "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "orientation": "any",
+    "start_url": "/",
+    "scope": "/",
+    "shortcuts": [
+        {
+            "name": "Audio Pipeline",
+            "short_name": "Pipeline",
+            "description": "Visualize the real-time audio signal chain",
+            "url": "/index.html#pipeline",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Audio Profiles",
+            "short_name": "Profiles",
+            "description": "Switch between audio configurations",
+            "url": "/index.html#profiles",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Audio Services",
+            "short_name": "Services",
+            "description": "Manage Roon, MPD, and AirPlay daemons",
+            "url": "/index.html#services",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Audio Software",
+            "short_name": "Software",
+            "description": "Configure audio players and outputs",
+            "url": "/index.html#audio-software",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "System Status",
+            "short_name": "System",
+            "description": "View system health and metrics",
+            "url": "/index.html#system",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Performance",
+            "short_name": "Tuning",
+            "description": "CPU affinity and latency tests",
+            "url": "/index.html#performance",
+            "icons": [{ "src": "pics/android-chrome-192x192.png", "sizes": "192x192" }]
+        }
+    ]
+}

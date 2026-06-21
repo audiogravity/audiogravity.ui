@@ -1,0 +1,63 @@
+/**
+ * @module PlaybackControls
+ * @description Styles for the ag-playback-controls molecule.
+ * Prefix: ag-pc-
+ */
+
+.ag-pc-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.ag-pc-ctrl {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 7px;
+    transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+@media (hover: hover) {
+    .ag-pc-ctrl:hover { background: var(--bg-tertiary); }
+}
+
+.ag-pc-ctrl:disabled {
+    opacity: .3;
+    cursor: default;
+}
+
+.ag-pc-ctrl.active {
+    color: var(--accent-primary);
+    background: var(--accent-primary-alpha);
+}
+
+.ag-pc-ctrl.play {
+    width: 54px;
+    height: 54px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-radius: 50%;
+    font-size: 24px;
+}
+
+@media (hover: hover) {
+    .ag-pc-ctrl.play:hover { opacity: .85; }
+}
+
+.ag-pc-ctrl.nav {
+    padding: 8px;
+    font-size: 22px;
+}
+
+.ag-pc-ctrl.small {
+    padding: 8px;
+    font-size: 18px;
+}

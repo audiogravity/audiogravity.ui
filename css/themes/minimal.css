@@ -1,0 +1,325 @@
+/* =====================
+   THEME: MINIMAL
+   ===================== */
+[data-theme="minimal"] {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F8F8F8;
+    --bg-tertiary: #F0F0F0;
+    --text-primary: #000000;
+    --text-secondary: #555555;
+    --text-tertiary: #888888;
+
+    /* Status Colors */
+    --color-success: #22c55e;
+    --color-error: #ef4444;
+    --color-warning: #f59e0b;
+    --color-info: #000000;
+
+    /* Alpha-based status backgrounds for highlights */
+    --color-success-bg: rgb(34 197 94 / 0.1);
+    --color-error-bg: rgb(239 68 68 / 0.1);
+    --color-warning-bg: rgb(245 158 11 / 0.1);
+    --color-info-bg: rgb(0 0 0 / 0.1);
+
+    /* Component: Charts */
+    --chart-bg: rgb(0 0 0 / 0.05);
+
+    /* Latency Histogram Colors */
+    --histogram-excellent: #22c55e;
+
+    /* green - < 50 µs */
+    --histogram-good: #3b82f6;
+
+    /* blue - 50-200 µs */
+    --histogram-average: #f59e0b;
+
+    /* orange - 200-500 µs */
+    --histogram-critical: #ef4444;
+
+    /* red - ≥ 500 µs */
+
+    /* Sparkline activity level colors (Services tab) — functional colors kept visible */
+    --activity-low: #22c55e;
+
+    /* green  — low activity  */
+    --activity-medium: #f59e0b;
+
+    /* amber  — medium activity */
+    --activity-high: #333333;
+
+    /* dark   — high activity (neutral, no red in minimal) */
+
+    /* Sparkline chart colors (System tab) — strictly monochrome greyscale */
+    --chart-cpu: #000000;
+    --chart-cpu-bg: rgb(85 85 85 / 0.12);
+    --chart-memory: #000000;
+    --chart-memory-bg: rgb(85 85 85 / 0.12);
+    --chart-temperature: #000000;
+    --chart-temperature-bg: rgb(85 85 85 / 0.12);
+    --chart-network: #000000;
+    --chart-network-bg: rgb(85 85 85 / 0.12);
+    --chart-disk: #000000;
+    --chart-disk-bg: rgb(85 85 85 / 0.12);
+
+    /* Component Specific: Toasts (Red/Blue despite theme defaults) */
+    --toast-success: #22c55e;
+    --toast-error: #ef4444;
+    --toast-warning: #f59e0b;
+    --toast-info: #3b82f6;
+
+    /* UI Colors */
+    --border-color: #D0D0D0;
+    --shadow-color: rgb(0 0 0 / 0.08);
+    --overlay-bg: rgb(0 0 0 / 0.6);
+
+    /* Component Colors */
+    --topbar-bg: #FFFFFF;
+    --topbar-shadow: 0 1px 0 #D0D0D0;
+    --tab-active: #000000;
+    --tab-hover: #F0F0F0;
+    --btn-primary: #000000;
+    --btn-secondary: #FFFFFF;
+    --switch-active-bg: var(--text-primary);
+    --switch-notification-bg: #f97316;
+    --font-family: -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+
+    /* Minimal Theme: Strictly Clean & Square */
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+
+    /* Accent Colors (for buttons, links, etc.) */
+    --accent-primary: #000000;
+    --accent-primary-alpha: rgb(0 0 0 / 0.1);
+    --accent-hover: #333333;
+
+    /* Accessibility: focus outline */
+    --focus-color: #000000;
+
+    /* Black — consistent with minimal light theme */
+    --focus-color-dark: #FFFFFF;
+
+    /* White  — consistent with minimal dark theme */
+
+    /* Login: error message component */
+    --status-error: #ef4444;
+
+    /* Keep explicit red for error (--color-error is #000 in minimal) */
+    --status-error-bg: rgb(239 68 68 / 0.1);
+
+    /* Sparkline: SVG grid line (subtle separator inside chart) */
+    --chart-grid: rgb(0 0 0 / 0.08);
+
+    /* Syntax Highlighting (JSON viewer) */
+    --syntax-key: #1D4ED8;
+
+    /* blue-700 — keys */
+    --syntax-string: #15803D;
+
+    /* green-700 — strings */
+    --syntax-number: #B45309;
+
+    /* amber-700 — numbers */
+    --syntax-boolean: #7E22CE;
+
+    /* purple-700 — booleans */
+    --syntax-null: #888888;
+
+    /* grey — null */
+    --syntax-selection: rgb(29 78 216 / 0.15);
+
+    /* blue-700 with alpha — CodeMirror selection */
+
+    /* Validation States - Borders */
+    --validation-success-border: rgb(21 128 61 / 0.3);
+
+    /* green-700 with alpha */
+    --validation-error-border: rgb(185 28 28 / 0.3);
+
+    /* red-700 with alpha */
+    --validation-warning-border: rgb(180 83 9 / 0.3);
+
+    /* amber-700 with alpha */
+    --validation-info-border: rgb(29 78 216 / 0.3);
+
+    /* blue-700 with alpha */
+
+    /* Button Hover States */
+    --btn-success-hover-bg: rgb(21 128 61 / 0.1);
+    --btn-success-hover-shadow: rgb(21 128 61 / 0.3);
+    --btn-error-hover-bg: rgb(185 28 28 / 0.1);
+    --btn-error-hover-shadow: rgb(185 28 28 / 0.3);
+    --btn-warning-hover-bg: rgb(180 83 9 / 0.1);
+    --btn-warning-hover-shadow: rgb(180 83 9 / 0.3);
+
+    /* Misc */
+    --bg-hover: var(--bg-tertiary);
+
+    /* Debug/Log Colors */
+    --color-debug: #888888;
+    --color-debug-bg: rgb(136 136 136 / 0.15);
+
+    /* Spinner */
+    --spinner-track: rgb(255 255 255 / 0.3);
+
+    /* Core Grouping */
+    --core-group-saturation: 0%;
+    --core-group-lightness: 40%;
+
+    /* Component Speficic: Audio Pipeline */
+    --pipeline-node-bg: #000000;
+    --pipeline-node-active: #F59E0B;
+    --pipeline-node-bitperfect: #22C55E;
+    --pipeline-node-text: #FFFFFF;
+    --pipeline-link: #888888;
+    --pipeline-link-active: #F59E0B;
+    --pipeline-link-bitperfect: #22C55E;
+}
+
+[data-theme="minimal"].dark-mode,
+[data-theme="minimal"] body.dark-mode {
+    --bg-primary: #000000;
+    --bg-secondary: #0A0A0A;
+    --bg-tertiary: #151515;
+    --text-primary: #FFFFFF;
+    --text-secondary: #AAAAAA;
+    --text-tertiary: #777777;
+    --border-color: #2A2A2A;
+    --shadow-color: rgb(255 255 255 / 0.08);
+    --topbar-bg: #000000;
+    --topbar-shadow: 0 1px 0 #2A2A2A;
+    --tab-hover: #151515;
+    --btn-primary: #FFFFFF;
+    --btn-secondary: #000000;
+    --switch-active-bg: var(--text-primary);
+    --switch-notification-bg: #ea580c;
+    --color-error: #f87171;
+    --color-info: #FFFFFF;
+
+    /* Alpha-based status backgrounds (Dark Mode) */
+    --color-success-bg: rgb(74 222 128 / 0.1);
+    --color-error-bg: rgb(248 113 113 / 0.1);
+    --color-warning-bg: rgb(251 191 36 / 0.1);
+    --color-info-bg: rgb(255 255 255 / 0.1);
+
+    /* Component: Charts (Dark Mode) */
+    --chart-bg: rgb(255 255 255 / 0.05);
+
+    /* Latency Histogram Colors (Dark Mode) */
+    --histogram-excellent: #4ade80;
+
+    /* green-400 - < 50 µs */
+    --histogram-good: #60a5fa;
+
+    /* blue-400 - 50-200 µs */
+    --histogram-average: #fbbf24;
+
+    /* amber-400 - 200-500 µs */
+    --histogram-critical: #f87171;
+
+    /* red-400 - ≥ 500 µs */
+
+    /* Sparkline activity level colors — Dark Mode */
+    --activity-low: #4ade80;
+
+    /* green-400 — low activity  */
+    --activity-medium: #fbbf24;
+
+    /* amber-400 — medium activity */
+    --activity-high: #CCCCCC;
+
+    /* light grey — high activity (no white in minimal dark) */
+
+    /* Sparkline chart colors — Dark Mode (strictly monochrome greyscale) */
+    --chart-cpu: #AAAAAA;
+    --chart-cpu-bg: rgb(170 170 170 / 0.12);
+    --chart-memory: #AAAAAA;
+    --chart-memory-bg: rgb(170 170 170 / 0.12);
+    --chart-temperature: #AAAAAA;
+    --chart-temperature-bg: rgb(170 170 170 / 0.12);
+    --chart-network: #AAAAAA;
+    --chart-network-bg: rgb(170 170 170 / 0.12);
+    --chart-disk: #AAAAAA;
+    --chart-disk-bg: rgb(170 170 170 / 0.12);
+
+    /* Component Specific: Toasts (Red/Blue despite theme defaults) */
+    --toast-success: #4ade80;
+    --toast-error: #f87171;
+    --toast-warning: #fbbf24;
+    --toast-info: #60a5fa;
+
+    /* Accent Colors (for buttons, links, etc.) */
+    --accent-primary: #FFFFFF;
+    --accent-primary-alpha: rgb(255 255 255 / 0.15);
+    --accent-hover: #CCCCCC;
+
+    /* Login: error message component — Dark Mode */
+    --status-error: #f87171;
+
+    /* Lighter red for dark backgrounds */
+    --status-error-bg: rgb(248 113 113 / 0.1);
+
+    /* Sparkline: SVG grid line — Dark Mode */
+    --chart-grid: rgb(255 255 255 / 0.06);
+
+    /* Syntax Highlighting — Dark Mode */
+    --syntax-key: #93C5FD;
+
+    /* blue-300 */
+    --syntax-string: #86EFAC;
+
+    /* green-300 */
+    --syntax-number: #FCD34D;
+
+    /* amber-300 */
+    --syntax-boolean: #D8B4FE;
+
+    /* purple-300 */
+    --syntax-null: #777777;
+
+    /* grey */
+    --syntax-selection: rgb(147 197 253 / 0.2);
+
+    /* blue-300 with alpha — CodeMirror selection (dark mode) */
+
+    /* Validation States - Borders — Dark Mode */
+    --validation-success-border: rgb(134 239 172 / 0.4);
+
+    /* green-300 with alpha (more visible) */
+    --validation-error-border: rgb(248 113 113 / 0.4);
+
+    /* red-400 with alpha */
+    --validation-warning-border: rgb(252 211 77 / 0.4);
+
+    /* amber-300 with alpha */
+    --validation-info-border: rgb(147 197 253 / 0.4);
+
+    /* blue-300 with alpha */
+
+    /* Button Hover States — Dark Mode */
+    --btn-success-hover-bg: rgb(134 239 172 / 0.15);
+    --btn-success-hover-shadow: rgb(134 239 172 / 0.4);
+    --btn-error-hover-bg: rgb(248 113 113 / 0.15);
+    --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
+    --btn-warning-hover-bg: rgb(252 211 77 / 0.15);
+    --btn-warning-hover-shadow: rgb(252 211 77 / 0.4);
+
+    /* Misc — Dark Mode */
+    --bg-hover: var(--bg-tertiary);
+
+    /* Debug/Log Colors — Dark Mode */
+    --color-debug: #777777;
+    --color-debug-bg: rgb(119 119 119 / 0.2);
+
+    /* Spinner — Dark Mode */
+    --spinner-track: rgb(255 255 255 / 0.3);
+
+    /* Component Speficic: Audio Pipeline (Dark Mode) */
+    --pipeline-node-bg: #FFFFFF;
+    --pipeline-node-active: #FBBF24;
+    --pipeline-node-bitperfect: #4ADE80;
+    --pipeline-node-text: #000000;
+    --pipeline-link: #777777;
+    --pipeline-link-active: #FBBF24;
+    --pipeline-link-bitperfect: #4ADE80;
+}

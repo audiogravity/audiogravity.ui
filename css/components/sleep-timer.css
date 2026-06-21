@@ -1,0 +1,46 @@
+/**
+ * @module SleepTimer
+ * @description Styles for the ag-sleep-timer molecule.
+ * Prefix: ag-st-
+ */
+
+.ag-st-wrap { position: relative; }
+
+.ag-st-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 10;
+    min-width: 110px;
+    box-shadow: var(--shadow-lg);
+}
+
+.ag-st-opt {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    text-align: left;
+    transition: background var(--transition-fast);
+}
+
+@media (hover: hover) {
+    .ag-st-opt:hover { background: var(--bg-tertiary); }
+}
+.ag-st-opt.cancel { color: var(--color-error, #ef4444); }
+
+.ag-st-countdown {
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

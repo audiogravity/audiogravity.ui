@@ -1,0 +1,327 @@
+/**
+ * @module Tile
+ * @description Reusable tile component for Services, Profiles, and Systemd items.
+ * Centralizes common styles to ensure layout consistency.
+ */
+
+/**
+ * @component .service-tile, .profile-tile, .systemd-tile
+ * @description Base tile components.
+ * @prop --bg-secondary - Background color
+ * @prop --border-color - Border color
+ * @prop --radius-sm - Corner radius
+ */
+.service-tile,
+.profile-tile,
+.systemd-tile,
+.system-tile,
+.governor-tile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-lg);
+    cursor: default;
+    transition: all var(--transition-fast), transform var(--transition-normal), box-shadow var(--transition-normal);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.config-tile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-lg);
+    cursor: default;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+/**
+ * @state :hover
+ * @description Highlights the tile border on hover with lift effect.
+ */
+
+/* Enhanced hover state for all tiles to ensure tooltips are above siblings */
+.services-grid .service-tile:hover,
+.profiles-grid .profile-tile:hover,
+.systemd-grid .systemd-tile:hover,
+.config-selector-grid .config-tile:hover,
+.software-grid .software-card:hover,
+.system-grid .system-tile:hover,
+.users-grid .system-tile:hover,
+.governor-grid .governor-tile:hover {
+    z-index: 100;
+    border-color: var(--text-primary);
+    opacity: 1;
+
+    /* Restore full opacity for stopped services on hover */
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px var(--shadow-color);
+}
+
+/**
+ * @state .running, .active
+ * @description State for currently active/running items.
+ * Uses a thicker border for emphasis.
+ */
+.service-tile.running,
+.service-tile.active,
+.profile-tile.active,
+.system-tile.active {
+    border-color: var(--text-primary);
+    border-width: 2px;
+    padding: calc(var(--spacing-lg) - 1px);
+}
+
+
+/**
+ * @state .pending
+ * @description Activating/deactivating in progress — orange border animation.
+ */
+.profile-tile.pending {
+    border-color: var(--color-warning, #f59e0b);
+    border-width: 2px;
+    padding: calc(var(--spacing-lg) - 1px);
+    opacity: 0.85;
+}
+
+/**
+ * @state .critical
+ * @description Alert state with a colored left border.
+ */
+.service-tile.critical,
+.profile-tile.critical,
+.systemd-tile.critical,
+.config-tile.critical {
+    border-left-width: 3px;
+    border-left-color: var(--color-warning);
+}
+
+/* Systemd: Has Override (bordure top) */
+.systemd-tile.has-override {
+    border-top-width: 3px;
+}
+
+/**
+ * @state .stopped
+ * @description State for stopped or inactive services.
+ */
+.service-tile.stopped {
+    opacity: 0.7;
+}
+
+/**
+ * @state .unavailable
+ * @description Package not installed — service/profile tiles are greyed out and non-interactive.
+ */
+.service-tile.unavailable,
+.profile-tile.unavailable {
+    opacity: 0.45;
+    filter: grayscale(60%);
+    border-style: dashed;
+}
+
+.services-grid .service-tile.unavailable:hover,
+.profiles-grid .profile-tile.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-color);
+    opacity: 0.45;
+}
+
+/**
+ * @state .unavailable (systemd)
+ * @description Package not installed — lighter opacity and dashed border, hover lift suppressed.
+ */
+.systemd-tile.unavailable {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.systemd-grid .systemd-tile.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-color);
+    opacity: 0.55;
+}
+
+/* Overflow visible pour profiles (tooltips) */
+.profile-tile {
+    overflow: visible;
+}
+
+/**
+ * @section Profile Services Summary
+ * @description Inline rows showing Starts / Stops / Output inside the profile tile.
+ */
+.profile-services-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--spacing-xs);
+}
+
+.profile-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+}
+
+.profile-info-row .info-label {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.profile-info-row .info-value {
+    text-align: right;
+    overflow-wrap: break-word;
+}
+
+.profile-info-row .info-value.starts {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.profile-info-row .info-value.stops {
+    color: var(--text-secondary);
+}
+
+.profile-info-row .info-value.output {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.profile-info-row .info-value.last-activated {
+    color: var(--text-secondary);
+}
+
+.profile-info-row .info-value.net-value {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: baseline;
+    gap: var(--spacing-xs);
+    justify-content: flex-end;
+}
+
+/**
+ * @section License Trial Progress Bar
+ */
+.license-trial-progress {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin: var(--spacing-sm) 0 var(--spacing-xs);
+}
+
+.license-trial-bar {
+    height: 100%;
+    background: var(--color-warning, #f59e0b);
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease;
+}
+
+.license-days {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin: 0 0 var(--spacing-sm);
+}
+
+/**
+ * @section Tile Compact Mode
+ */
+body.compact-mode .service-tile,
+body.compact-mode .profile-tile,
+body.compact-mode .systemd-tile,
+body.compact-mode .config-tile,
+body.compact-mode .system-tile {
+    padding: var(--spacing-sm);
+}
+
+
+body.compact-mode .service-tile {
+    min-height: 140px;
+}
+
+body.compact-mode .profile-tile {
+    min-height: 110px;
+}
+
+body.compact-mode .systemd-tile {
+    padding: var(--spacing-md);
+}
+
+/* Action Buttons in Tiles */
+.service-footer,
+.profile-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: var(--spacing-md);
+    gap: var(--spacing-md);
+}
+
+.service-actions,
+.profile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap; /* Prevent action buttons from overflowing tile on narrow screens */
+}
+
+/* Action buttons handled by components/button.css */
+
+/* Specific overrides for badges when used as buttons in tiles */
+.service-enabled-badge.clickable.success {
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+.service-enabled-badge.clickable.error {
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.service-enabled-badge.clickable.secondary {
+    border-color: var(--text-tertiary);
+    color: var(--text-secondary);
+}
+
+/* Service/Profile state indicator alignment */
+.service-state-indicator,
+.profile-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+@media (width <= 768px) {
+    .service-tile,
+    .profile-tile {
+        margin-bottom: var(--spacing-md);
+        padding: 12px; /* Reduced from 16px */
+    }
+
+    .service-footer,
+    .profile-footer {
+        gap: var(--spacing-sm); /* Tighter footer */
+    }
+}
+
+@media (width <= 480px) {
+    .service-tile {
+        min-height: 140px;
+    }
+
+    .profile-tile {
+        min-height: 120px;
+    }
+}

@@ -1,0 +1,104 @@
+/**
+ * @module LibraryCover
+ * @description Styles for the library cover + add-btn atoms.
+ * Light DOM, namespaced .ag-libcv-* and .ag-lib-add--*.
+ */
+
+ag-library-cover {
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.ag-libcv {
+    position: relative;
+    width: var(--ag-libcv-size, 40px);
+    height: var(--ag-libcv-size, 40px);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ag-libcv-icon {
+    width: 45%;
+    height: 45%;
+    flex-shrink: 0;
+}
+
+.ag-libcv-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ── Shared library button classes ──
+ * Used by the ag-library-add-btn atom AND directly by other library molecules
+ * (ag-upnp-item, ag-library-roon-browser) that need a button with the same
+ * shape but a custom icon (play, queue, …) inside.
+ */
+
+ag-library-add-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+/* Row variant: 30×30 bordered button next to a list row */
+.lib-lr-add {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.lib-lr-add:active {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.lib-lr-add svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Card overlay variant: 24×24 dark pill anchored bottom-right of a cover */
+.lib-ac-add {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgb(0 0 0 / 0.55);
+    border: 0;
+    color: #ffffff;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+.lib-ac-add svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.lib-ac-wrap:hover .lib-ac-add,
+.lib-ac-wrap:focus-within .lib-ac-add { opacity: 1; }
+
+@media (hover: none) { .lib-ac-add { opacity: 1; } }

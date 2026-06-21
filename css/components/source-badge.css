@@ -1,0 +1,47 @@
+/**
+ * @component .ag-source-badge
+ * @description Compact stream-origin badge (icon + label) used by the mini and
+ * fullscreen Now Playing players to show where the audio comes from
+ * (Tidal, Qobuz, a UPnP server, radio, a local file, Roon…).
+ * Rendered by <ag-source-badge>.
+ */
+
+.ag-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    max-width: 100%;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    line-height: 1;
+}
+
+.ag-source-badge__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Size every glyph variant (svg icon, qobuz <img>, masked roon/tidal logos)
+   relative to the label so the badge scales cleanly with the font token. */
+.ag-source-badge__icon > *,
+.ag-source-badge__icon img,
+.ag-source-badge__icon svg,
+.ag-source-badge__icon .lib-src-logo-roon,
+.ag-source-badge__icon .lib-src-logo-tidal {
+    width: 1.4em;
+    height: 1.4em;
+}
+
+.ag-source-badge__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}

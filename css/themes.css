@@ -1,0 +1,347 @@
+/**
+ * @module Themes
+ * @description Central theme coordination and shared design tokens.
+ * This file imports all theme definitions and component styles,
+ * and defines the global CSS variables for the application.
+ */
+
+/* =========================================
+   1. THEME IMPORTS
+   ========================================= */
+@import 'themes/slate.css';
+@import 'themes/gravity.css';
+@import 'themes/minimal.css';
+
+/* Components are now imported via main.css for better cascade control */
+
+/* =========================================
+   2. SHARED VARIABLES (Layout, Spacing, Typography)
+   ========================================= */
+
+/**
+ * @section Global Design Tokens
+ * @description Shared variables for spacing, typography, and layout.
+ */
+:root {
+   /**
+    * @group Spacing
+    * @description Modular spacing scale used throughout the app.
+    */
+   --spacing-xs: 4px;
+
+   /* @var --spacing-xs @description Extra small spacing (4px) */
+   --spacing-sm: 8px;
+
+   /* @var --spacing-sm @description Small spacing (8px) */
+   --spacing-md: 16px;
+
+   /* @var --spacing-md @description Medium spacing (16px) */
+   --spacing-lg: 24px;
+
+   /* @var --spacing-lg @description Large spacing (24px) */
+   --spacing-xl: 32px;
+
+   /* @var --spacing-xl @description Extra large spacing (32px) */
+
+   /**
+    * @group Typography
+    * @description Font family and size definitions.
+    */
+   --font-family: 'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+   --font-mono: 'Courier New', monospace;
+   --font-size-xs: 11px;
+   --font-size-sm: 13px;
+   --font-size-md: 14px;
+   --font-size-lg: 16px;
+   --font-size-xl: 20px;
+
+
+   /**
+    * @group Transitions & Animations
+    */
+   --transition-fast: 150ms ease;
+   --transition-normal: 250ms ease;
+   --animation-spin: 0.8s;
+   --animation-pulse: 2s;
+   --animation-fade: 300ms;
+   --animation-slide: 400ms;
+
+   /**
+    * @group Shapes & Shadows
+    */
+   --radius-none: 0;
+   --radius-sm: 2px;
+   --radius-md: 4px;
+   --radius-lg: 8px;
+   --radius-full: 9999px;
+   --radius-xs: 1px;
+
+   /* Shadows (Defaults) */
+   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+   --shadow-md: 0 1px 3px var(--shadow-color, rgb(0 0 0 / 0.1));
+   --shadow-lg: 0 4px 6px -1px var(--shadow-color, rgb(0 0 0 / 0.1));
+   --shadow-xl: 0 10px 15px -3px var(--shadow-color, rgb(0 0 0 / 0.1));
+
+   /**
+    * @group Layout Dimensions
+    */
+   --topbar-height: 50px;
+   --footer-height: 50px;
+   --title-bar-height: 55px;
+   --tabs-height: 50px;
+   --tabs-vertical-width: 225px;
+
+   /**
+    * @group Z-Index Layers
+    */
+   --z-base: 1;
+   --z-tabs: 100;
+   --z-tooltip: 500;
+   --z-modal-backdrop: 999;
+   --z-topbar: 1000;
+
+    /* Mobile/Tablet Density Adjustments */
+    @media (width <= 768px) {
+        --topbar-height: 46px;
+        --tabs-height: 44px;
+        --title-bar-height: 48px;
+        --font-size-xl: 18px;
+        --font-size-lg: 15px;
+    }
+
+   --z-modal: 10000;
+   --z-toast: 99999; /* Must always be above modals */
+
+   /**
+    * @group Misc
+    */
+   --scrollbar-width: 8px;
+   --scrollbar-height: 8px;
+
+   /* Component Elements */
+   --burger-menu-size: 32px;
+   --status-indicator-size: 12px;
+   --switch-width: 48px;
+   --switch-height: 24px;
+   --switch-slider-size: 16px;
+   --switch-slider-offset: 2px;
+
+   /**
+    * @group Component Sizes
+    * @description Common component dimensions used across the application
+    */
+   --size-xxs: 10px;
+
+   /* Status dots, very small elements */
+   --size-xs: 12px;
+
+   /* Small status indicators */
+   --size-sm: 18px;
+
+   /* Small buttons, checkboxes */
+   --size-md: 20px;
+
+   /* Sparklines, small charts */
+   --size-lg: 28px;
+
+   /* Burger menu mobile */
+   --size-xl: 40px;
+
+   /* Input heights, icon buttons */
+   --size-xxl: 60px;
+
+   /* Chart heights */
+
+   /**
+    * @group Font Sizes (Extended)
+    * @description Additional font sizes for edge cases
+    */
+   --font-size-xxs: 10px;
+
+   /* Very small text (badges, compact mode) */
+   --font-size-xxl: 20px;
+
+   /* Large headings */
+   --font-size-xxxl: 28px;
+
+   /* Extra large (modals, special headings) */
+
+   /* Breakpoints */
+   --breakpoint-sm: 480px;
+   --breakpoint-md: 768px;
+   --breakpoint-lg: 1200px;
+}
+
+
+/* =========================================
+   3. COMPACT MODE
+   ========================================= */
+body.compact-mode {
+   --spacing-sm: 6px;
+   --spacing-md: 12px;
+   --spacing-lg: 18px;
+   --spacing-xl: 24px;
+   --font-size-sm: 12px;
+   --font-size-md: 13px;
+   --font-size-lg: 14px;
+}
+
+/* =========================================
+   4. ACCESSIBILITY - REDUCED MOTION
+   ========================================= */
+
+/**
+ * @section Reduced Motion
+ * @description Respects user's motion preferences for accessibility.
+ * Disables animations for users who have enabled reduced motion in their OS.
+ */
+@media (prefers-reduced-motion: reduce) {
+   *,
+   *::before,
+   *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+   }
+
+   /* Preserve essential transforms but remove animations */
+   .toast.show,
+   .config-modal.active,
+   .tile:hover {
+      animation: none !important;
+   }
+
+   /* Preserve critical status animations for visibility */
+   .service-state-dot.up,
+   .profile-status-dot.up,
+   .profile-status.active,
+   .connection-dot-large.connected {
+      animation-duration: 3s !important;
+      animation-iteration-count: infinite !important;
+   }
+
+   /* Preserve reboot spinner — critical user feedback */
+   .system-reboot-spinner {
+      animation-duration: 1s !important;
+      animation-iteration-count: infinite !important;
+   }
+
+   /* Preserve skeleton loading animation */
+   .skeleton-text,
+   .skeleton-line,
+   .skeleton-title,
+   .skeleton-button,
+   .skeleton-tile,
+   .skeleton-metric {
+      animation-duration: 1.5s !important;
+      animation-iteration-count: infinite !important;
+   }
+}
+
+/* =========================================
+   5. NO ANIMATIONS MODE (User Toggle)
+   ========================================= */
+
+/**
+ * @section No Animations
+ * @description Disables animations when user toggles animations off.
+ * Applied via JavaScript when user unchecks the Animations toggle.
+ */
+body.no-animations *,
+body.no-animations *::before,
+body.no-animations *::after {
+   animation-duration: 0.01ms !important;
+   animation-iteration-count: 1 !important;
+   animation-delay: 0s !important;
+   transition-duration: 0.01ms !important;
+   transition-delay: 0s !important;
+}
+
+/* Preserve essential transforms but remove animations */
+body.no-animations .toast.show,
+body.no-animations .config-modal.active,
+body.no-animations .tile:hover {
+   animation: none !important;
+}
+
+/* CRITICAL: Override prefers-reduced-motion exceptions when user explicitly disables animations */
+@media (prefers-reduced-motion: reduce) {
+   body.no-animations .service-state-dot.up,
+   body.no-animations .profile-status-dot.up,
+   body.no-animations .profile-status.active,
+   body.no-animations .connection-dot-large.connected,
+   body.no-animations .skeleton-text,
+   body.no-animations .skeleton-line,
+   body.no-animations .skeleton-title,
+   body.no-animations .skeleton-button,
+   body.no-animations .skeleton-tile,
+   body.no-animations .skeleton-metric {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+   }
+}
+
+/* Disable tile hover transforms and animations */
+body.no-animations .service-tile:hover,
+body.no-animations .profile-tile:hover,
+body.no-animations .systemd-tile:hover,
+body.no-animations .config-tile:hover,
+body.no-animations .software-card:hover,
+body.no-animations .system-tile:hover,
+body.no-animations .governor-tile:hover,
+body.no-animations .icon-btn:hover [class^="icon-"],
+body.no-animations .version-icon:hover [class^="icon-"],
+body.no-animations .icon-btn:active {
+   transform: none !important;
+   box-shadow: none !important;
+   transition: none !important;
+}
+
+/* Remove glow on status bullets/dots and high activity metrics */
+body.no-animations .service-state-dot,
+body.no-animations .profile-status-dot,
+body.no-animations .profile-status,
+body.no-animations .connection-dot-large,
+body.no-animations .metric-value.activity-high {
+   box-shadow: none !important;
+   animation: none !important;
+}
+
+/* Global animation kill for specific utility classes */
+body.no-animations .animate-pulse,
+body.no-animations .animate-stagger,
+body.no-animations .animate-fade-in,
+body.no-animations .animate-glow,
+body.no-animations .animate-shimmer,
+body.no-animations .fade-in,
+body.no-animations .blink-slow {
+   animation: none !important;
+}
+
+
+/* Disable Audio Software animations */
+body.no-animations .software-action-btn:hover,
+body.no-animations .software-action-btn.install:hover,
+body.no-animations .software-action-btn.update:hover,
+body.no-animations .software-action-btn.uninstall:hover,
+body.no-animations .btn-link:active {
+   transform: none !important;
+}
+
+body.no-animations .install-progress-fill,
+body.no-animations .progress-fill,
+body.no-animations .premium-progress-fill,
+body.no-animations .premium-progress-fill::after {
+   animation: none !important;
+}
+
+body.no-animations .icon-spinner.pulse {
+   animation: none !important;
+}
+
+/* Ensure badges don't scale or pulse */
+body.no-animations .badge {
+   animation: none !important;
+   transform: none !important;
+}

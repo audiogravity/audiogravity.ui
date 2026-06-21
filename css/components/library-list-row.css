@@ -1,0 +1,41 @@
+/**
+ * @module LibraryListRow
+ * @description Styles for the ag-library-list-row molecule. The cover-cell
+ * (40×40) and the trailing "+ add" button (.lib-lr-add) live in
+ * library-cover.css; this file owns the row layout and the title/subtitle
+ * typography.
+ */
+
+.lib-list-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.lib-lr-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.lib-lr-t {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-lr-a {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

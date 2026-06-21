@@ -1,0 +1,187 @@
+/**
+ * @module Forms
+ * @description Shared form controls, inputs, and layout.
+ */
+
+.form-control {
+    width: 100%;
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    transition: border-color var(--transition-fast);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--text-primary);
+}
+
+.form-control:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--bg-secondary);
+}
+
+.form-control.dirty {
+    border-color: var(--color-warning);
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.form-section h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-field {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-field label, .form-label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.help-text, .form-help {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.checkbox-field {
+    background: var(--bg-tertiary);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Disabled state for checkbox field */
+.checkbox-field.disabled {
+    opacity: 0.5;
+}
+
+.checkbox-field.disabled label {
+    cursor: not-allowed;
+}
+
+.checkbox-field label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+/* Switch Toggle Component */
+ag-switch {
+    display: inline-block;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: var(--switch-width);
+    height: var(--switch-height);
+}
+
+/* Disabled state */
+.switch.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.switch.disabled .slider {
+    cursor: not-allowed;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full); /* NEW: Pills instead of boxes */
+    transition: var(--transition-fast);
+}
+
+.slider::before {
+    position: absolute;
+    content: "";
+    height: var(--switch-slider-size);
+    width: var(--switch-slider-size);
+    left: var(--switch-slider-offset);
+    bottom: var(--switch-slider-offset);
+    background-color: var(--text-tertiary);
+    border-radius: var(--radius-full);
+    transition: var(--transition-fast);
+}
+
+input:checked + .slider {
+    background-color: var(--switch-active-bg, var(--text-primary));
+    border-color: var(--switch-active-bg, var(--text-primary));
+}
+
+input:checked + .slider::before {
+    transform: translateX(24px);
+    background-color: var(--bg-primary);
+}
+
+/* Notification Variant (Orange) */
+.switch.notification input:checked + .slider {
+    background-color: var(--switch-notification-bg, var(--color-warning));
+    border-color: var(--switch-notification-bg, var(--color-warning));
+}
+
+/* Compact Switch Toggle */
+.switch.compact {
+    --switch-width: 32px;
+    --switch-height: 16px;
+    --switch-slider-size: 10px;
+    --switch-slider-offset: 2px;
+}
+
+.switch.compact input:checked + .slider::before {
+    transform: translateX(16px);
+}
+
+/* Premium Select */
+.theme-select {
+    width: 100%;
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M4 0l-4 4h8l-4-4zM0 5l4 4 4-4h-8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px;
+}

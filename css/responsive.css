@@ -1,0 +1,107 @@
+/**
+ * @module Responsive
+ * @description Centralized responsive breakpoints and mobile-first media queries.
+ * All breakpoint values are defined in themes.css as CSS custom properties.
+ */
+
+/* =====================
+   BREAKPOINT REFERENCE
+   ===================== 
+   
+   --breakpoint-sm:  480px  (Mobile)
+   --breakpoint-md:  768px  (Tablet)
+   --breakpoint-lg:  1200px (Desktop)
+   
+   Usage Pattern:
+   - Mobile-first: Start with base styles, then add @media for larger screens
+   - Desktop-first: Use max-width queries (current pattern)
+*/
+
+/* =====================
+   ACCESSIBILITY
+   ===================== */
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Dark mode support (system preference) */
+@media (prefers-color-scheme: dark) {
+    /* Note: Dark mode is handled by body.dark-mode class in themes.css */
+
+    /* This is just a fallback for system preference detection */
+}
+
+/* =====================
+   RESPONSIVE BREAKPOINTS
+   ===================== */
+
+/* Note: Specific responsive rules are co-located with their components
+   for better maintainability. This file documents the standard breakpoints
+   and provides shared responsive utilities.
+   
+   Example component-specific responsive:
+   - Layout: css/layout.css
+   - Buttons: css/components/button.css
+   - Grid: css/components/grid.css
+   - etc.
+*/
+
+/* =====================
+   SHARED RESPONSIVE UTILITIES
+   ===================== */
+
+/* Mobile-only utilities */
+@media (width <= 767px) {
+    .mobile-only { display: block !important; }
+    .desktop-only { display: none !important; }
+}
+
+/* Desktop-only utilities */
+@media (width >= 768px) {
+    .mobile-only { display: none !important; }
+    .desktop-only { display: block !important; }
+}
+
+/* Print styles */
+@media print {
+    .no-print { display: none !important; }
+    
+    body {
+        background: #ffffff;
+        color: #000000;
+    }
+    
+    .topbar,
+    .footer,
+    .tabs,
+    .action-btn {
+        display: none !important;
+    }
+}
+
+/* =====================
+   RESPONSIVE GUIDELINES
+   =====================
+   
+   When adding media queries:
+   1. Use the standard breakpoints (480px, 768px, 1200px)
+   2. Keep media queries close to their component styles
+   3. Use mobile-first approach when possible
+   4. Test on actual devices, not just browser DevTools
+   5. Consider touch targets (min 44x44px on mobile)
+   
+   Breakpoint Strategy:
+   - 480px and below: Mobile phones
+   - 481px - 768px: Tablets (portrait)
+   - 769px - 1200px: Tablets (landscape) / Small laptops
+   - 1200px+: Desktop
+*/

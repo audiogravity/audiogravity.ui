@@ -1,0 +1,578 @@
+/**
+ * @module LibrarySources
+ * @description Styles for ag-library-sources: source cards, Roon zones,
+ * and the UPnP discovery panel.
+ */
+
+.lib-src-list { padding: 14px 20px; }
+
+.lib-src-lbl {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    margin-top: 0;
+    display: block;
+}
+
+.lib-src-card {
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.lib-src-card.active {
+    border-color: var(--text-primary);
+    border-width: 1.5px;
+    background: var(--bg-secondary);
+}
+
+.lib-src-card-hd {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 32px 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.lib-src-chevron {
+    color: var(--text-tertiary);
+    transition: transform var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.lib-src-chevron.open { transform: rotate(180deg); }
+
+.lib-src-zones { border-top: 1px solid var(--border-color); }
+
+.lib-src-zone-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-sm);
+}
+
+.lib-src-zone-row:last-child  { border-bottom: 0; }
+.lib-src-zone-row:hover       { background: var(--bg-secondary); }
+.lib-src-zone-row.active      { background: var(--bg-tertiary); }
+
+.lib-src-zone-row.loading,
+.lib-src-zone-row.empty {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xxs);
+    cursor: default;
+}
+
+.lib-src-zone-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.lib-src-zone-state {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+}
+
+.lib-src-ic {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.lib-src-card.active .lib-src-ic {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* Monochrome source logos (Roon, Tidal) on a transparent background: render the
+   alpha as a currentColor mask (like the AG icons) so they follow the theme and the
+   active state, instead of an <img> that stays dark and vanishes on dark / active. */
+.lib-src-logo-roon,
+.lib-src-logo-tidal {
+    width: 24px;
+    height: 24px;
+    background-color: currentcolor;
+}
+
+.lib-src-logo-roon {
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/roon.webp") center / contain no-repeat;
+    mask: url("/pics/roon.webp") center / contain no-repeat;
+}
+
+.lib-src-logo-tidal {
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/tidal.webp") center / contain no-repeat;
+    mask: url("/pics/tidal.webp") center / contain no-repeat;
+}
+
+.lib-src-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.lib-src-name {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.lib-src-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.lib-src-status {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.lib-src-status.up   { color: var(--color-success); }
+.lib-src-status.down { color: var(--text-tertiary); }
+
+.lib-src-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.lib-src-status.up .lib-src-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 4px var(--color-success);
+}
+
+.lib-src-status.down .lib-src-dot { background: var(--text-tertiary); }
+
+/* UPnP server card — swipe-to-remove wrapper (mirrors .lib-radio-card-wrap pattern) */
+
+.lib-upnp-wrap {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.lib-upnp-wrap .lib-src-card {
+    border: none;
+    margin-bottom: 0;
+    background: var(--bg-primary);
+    position: relative;
+    touch-action: pan-y;
+    user-select: none;
+    cursor: grab;
+}
+
+.lib-upnp-wrap .lib-src-card.active {
+    border: none;
+}
+
+.lib-upnp-delete {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: var(--spacing-md);
+    background: var(--color-error);
+    color: #ffffff;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+}
+
+/* UPnP discovery panel */
+
+.lib-upnp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+}
+
+.lib-upnp-rescan {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 0;
+    transition: color var(--transition-fast);
+}
+
+.lib-upnp-rescan:hover { color: var(--text-primary); }
+
+.lib-upnp-discover {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lib-inline-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.lib-inline-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.lib-inline-input:focus { border-color: var(--text-primary); }
+.lib-inline-input::placeholder { color: var(--text-tertiary); }
+
+.lib-inline-help {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+.lib-inline-help code {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 2px 6px;
+    border: 1px solid var(--border-color);
+    word-break: break-all;
+}
+
+/* ── HQPlayer DSP section ─────────────────────────────────────────── */
+
+.lib-hqp-section { margin-top: 18px; }
+
+.lib-hqp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.lib-hqp-discover {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.lib-hqp-card {
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.lib-hqp-card.connected {
+    border-color: var(--border-color);
+}
+
+.lib-hqp-card-hd {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    cursor: default;
+}
+
+.lib-hqp-ic {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.lib-hqp-ic img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.lib-hqp-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.lib-hqp-name {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.lib-hqp-desc {
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+}
+
+/* HQPlayer connection status now uses the shared <ag-status-indicator> atom
+   (status-indicator.css), like the other sources — no bespoke badge/dot here. */
+
+.lib-hqp-output-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px 10px;
+}
+
+.lib-hqp-output-toggle .switch {
+    --switch-width: 38px;
+    --switch-height: 19px;
+    --switch-slider-size: 13px;
+    --switch-slider-offset: 2px;
+}
+
+.lib-hqp-output-toggle .switch input:checked + .slider::before {
+    transform: translateX(19px);
+}
+
+.lib-hqp-output-label {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.lib-hqp-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 14px 14px;
+}
+
+/* ── DSP panel (expanded) ── */
+
+.lib-hqp-dsp {
+    border-top: 1px solid var(--border-color);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lib-hqp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lib-hqp-label {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.lib-hqp-vol-val {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.lib-hqp-select {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+}
+
+.lib-hqp-select:focus {
+    outline: none;
+    border-color: var(--text-primary);
+}
+
+.lib-hqp-slider {
+    appearance: none;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+}
+
+.lib-hqp-slider::-webkit-slider-runnable-track {
+    height: 3px;
+    background: var(--border-color);
+    border-radius: var(--radius-full);
+}
+
+.lib-hqp-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+    margin-top: -4.5px;
+}
+
+.lib-hqp-slider::-moz-range-track {
+    height: 3px;
+    background: var(--border-color);
+    border-radius: var(--radius-full);
+}
+
+.lib-hqp-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: none;
+    background: var(--text-primary);
+    cursor: pointer;
+}
+
+.lib-hqp-chevron {
+    transition: transform var(--transition-fast);
+}
+
+.lib-hqp-reset {
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.lib-hqp-chevron.open { transform: rotate(180deg); }
+
+.lib-hqp-applied {
+    animation: hqpFlash 1.2s ease-out;
+}
+
+@keyframes hqpFlash {
+    0%   { background: color-mix(in srgb, var(--color-success) 25%, transparent); }
+    100% { background: transparent; }
+}
+
+/* ── Qobuz card ── */
+
+.lib-qb-card {
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.lib-qb-card.connected {
+    border-color: var(--border-color);
+}
+
+.lib-qb-card-hd {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    cursor: default;
+}
+
+.lib-qb-ic {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.lib-qb-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.lib-qb-name {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.lib-qb-desc {
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+}
+
+/* Qobuz/Tidal connection status now uses the shared <ag-status-indicator> atom
+   (status-indicator.css) — no bespoke badge/dot here. */
+
+.lib-qb-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 14px 14px;
+}
+
+/* Tidal PKCE paste flow (reuses the lib-qb card; only the paste block is new) */
+.lib-tidal-paste {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+    padding: 0 14px 14px;
+}
+
+.lib-tidal-hint {
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+}
+
+.lib-tidal-err {
+    font-size: var(--font-size-xxs);
+    color: var(--color-error);
+}

@@ -1,0 +1,338 @@
+/**
+ * @module Button
+ * @description Shared button styles and variants using BEM methodology.
+ */
+
+/* =====================
+   ACTION BUTTONS (BEM Base)
+   ===================== */
+
+/**
+ * @component .btn-action
+ * @description Base class for action buttons used in tiles and cards.
+ * Follows BEM naming: .btn-action--{modifier}
+ */
+.btn-action {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: var(--size-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    color: var(--text-primary);
+    padding: 0 var(--spacing-sm);
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    gap: var(--spacing-xs);
+}
+
+/* Legacy aliases for backward compatibility */
+.tile-action-btn {
+    /* Inherit all styles from .btn-action */
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: var(--size-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    color: var(--text-primary);
+    padding: 0 var(--spacing-sm);
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    gap: var(--spacing-xs);
+}
+
+.btn-action:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-tertiary);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Legacy hover states */
+.tile-action-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-tertiary);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: var(--shadow-sm);
+}
+
+
+
+.btn-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Legacy disabled states */
+.tile-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* =====================
+   VARIANTS (BEM Modifiers)
+   ===================== */
+
+/* Success variant */
+.btn-action.success,
+.tile-action-btn.start,
+.tile-action-btn.activate {
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+/* Error variant: .btn-action--error */
+.btn-action--error,
+.btn-action.error,
+.tile-action-btn.stop,
+.tile-action-btn.deactivate {
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.btn-action--error:hover,
+.btn-action.error:hover,
+.tile-action-btn.stop:hover,
+.tile-action-btn.deactivate:hover {
+    background: var(--color-error-bg, var(--btn-error-hover-bg));
+    border-color: var(--color-error);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 0 8px var(--color-error-bg, var(--btn-error-hover-shadow));
+}
+
+/* Warning variant */
+.btn-action.warning,
+.tile-action-btn.warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+}
+
+.btn-action.warning:hover,
+.tile-action-btn.warning:hover {
+    background: var(--color-warning-bg, var(--btn-warning-hover-bg));
+    border-color: var(--color-warning);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 0 8px var(--color-warning-bg, var(--btn-warning-hover-shadow));
+}
+
+/* Info variant */
+.btn-action.info {
+    border-color: var(--color-info);
+    color: var(--color-info);
+}
+
+.btn-action.info:hover {
+    background: var(--color-info-bg);
+    border-color: var(--color-info);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 0 8px var(--color-info-bg);
+}
+
+/* Ghost variant: .btn-action--ghost — neutral/secondary, transparent with dim border */
+.btn-action--ghost,
+.btn-action.ghost {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-action--ghost:hover,
+.btn-action.ghost:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+/* =====================
+   ACTION BUTTONS (Premium)
+   ===================== */
+
+.action-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-none);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+}
+
+.action-btn:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.action-btn.primary {
+    background: var(--btn-primary, var(--text-primary));
+    color: var(--bg-primary);
+    border-color: var(--btn-primary, var(--text-primary));
+}
+
+.action-btn.primary:hover { 
+    background: transparent; 
+    color: var(--btn-primary, var(--text-primary)); 
+}
+
+/* Secondary : bouton neutre/annulation */
+.action-btn.secondary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.action-btn.secondary:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+/* Success : bouton de confirmation/sauvegarde */
+.action-btn.success {
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+.action-btn.success:hover {
+    background: var(--color-success);
+    color: var(--bg-primary);
+}
+
+.action-btn.warning { border-color: var(--color-warning); }
+
+.action-btn.warning:hover {
+    background: var(--color-warning);
+    color: var(--bg-primary);
+}
+
+.action-btn.error { border-color: var(--color-error); }
+
+.action-btn.error:hover {
+    background: var(--color-error);
+    color: var(--bg-primary);
+}
+
+.action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+.action-btn:active:not(:disabled) { transform: scale(0.95); }
+
+.action-btn.compact {
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--font-size-xs);
+}
+
+.btn-action.compact {
+    height: unset;
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--font-size-xs);
+}
+
+/* =====================
+   ICON BUTTONS
+   ===================== */
+.icon-btn {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    border-radius: var(--radius-sm);
+}
+
+.icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+.icon-btn [class^="icon-"] {
+    transition: transform var(--transition-fast);
+}
+
+.icon-btn:hover [class^="icon-"] {
+    transform: scale(1.2); /* Basic hover animation */
+}
+
+/* Specific rotation for Documentation icon */
+.icon-btn:hover .icon-books {
+    transform: scale(1.2) rotate(-10deg);
+}
+
+/* Specific shift for Exit icon */
+.icon-btn:hover .icon-exit {
+    transform: translateX(2px) scale(1.1);
+}
+
+.icon-btn:active {
+    transform: scale(0.9);
+}
+
+/* =====================
+   CLEAR BUTTONS
+   ===================== */
+.clear-btn {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+}
+
+.clear-btn:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.clear-btn.compact {
+    padding: 2px var(--spacing-sm);
+    font-size: var(--font-size-xs);
+}
+
+/* =====================
+   TOUCH ACCESSIBILITY
+   ===================== */
+@media (width <= 768px) {
+    .action-btn, .tab-btn, .clear-btn, .icon-btn, .btn-action, .service-status-badge {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .action-btn.compact, .clear-btn.compact, .btn-action.compact, .service-status-badge {
+        min-height: unset; min-width: unset;
+    }
+}

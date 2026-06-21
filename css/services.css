@@ -1,0 +1,411 @@
+/**
+ * @module Services
+ * @description Layout and styles for the Services tab.
+ * Manages service monitoring tiles and control buttons.
+ */
+
+/* =====================
+   SERVICES GRID LAYOUT
+   ===================== */
+
+/* Grid styles moved to components/grid.css */
+
+/* =====================
+   SERVICES TITLE ACTIONS
+   ===================== */
+
+.services-zone {
+    position: relative;
+    overflow-x: hidden; /* Guard against iOS Safari grid overflow */
+}
+
+.toggle-metrics-icon {
+    margin-left: auto;
+    font-size: calc(var(--font-size-xl) * 0.75);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.toggle-metrics-icon:hover {
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.toggle-metrics-icon:active {
+    transform: scale(0.95);
+}
+
+/* =====================
+   SERVICE TILE - SPÉCIFICITÉS
+   ===================== */
+
+/* Les styles communs sont dans components/tile.css */
+
+.service-tile {
+    min-height: 160px;
+    padding: var(--spacing-md);
+    overflow: hidden; /* Prevent tile from expanding beyond grid cell on iOS Safari */
+    box-sizing: border-box;
+    width: 100%;
+
+    /* Reduced from var(--spacing-lg) to gain horizontal space */
+}
+
+/* Service Header */
+.service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.service-header > div:first-child {
+    min-width: 0; /* Allow flex item to shrink below content size on iOS */
+}
+
+.service-name {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.service-unit {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.service-uptime {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-left: var(--spacing-xs);
+}
+
+.service-boot-icon {
+    font-size: 11px;
+    margin-left: 6px;
+    vertical-align: middle;
+    transition: color var(--transition-fast);
+}
+
+.service-boot-icon.enabled  { color: var(--color-success); }
+.service-boot-icon.disabled { color: var(--text-tertiary); }
+
+.service-last-action {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-left: auto;
+}
+
+.service-name-clickable {
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+.service-name-clickable:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
+/* =====================
+   HEALTH BAR ROW
+   ===================== */
+
+
+.service-enabled-badge {
+    display: inline-block;
+}
+
+/* Service Metrics */
+.service-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+
+    /* minmax(0, 1fr) allows columns to shrink below content size to prevent overflow */
+
+    /* Reduced from var(--spacing-sm) to gain horizontal space */
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Metric styles moved to components/metrics.css */
+
+/* Service Footer */
+.service-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    margin-top: auto;
+}
+
+/* Status indicator styles → components/status-indicator.css */
+
+/* Empty State */
+.services-empty {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+}
+
+/* Loading State */
+.services-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+}
+
+/* Loading spinner moved to components/animations.css */
+
+/* Compact Mode Adjustments */
+body.compact-mode .service-name {
+    font-size: var(--font-size-md);
+}
+
+body.compact-mode .service-metrics {
+    gap: 4px;
+}
+
+/* Handled by components/metrics.css */
+
+/* Mobile-specific adjustments */
+@media (width <= 768px) {
+    .service-name {
+        font-size: var(--font-size-md);
+    }
+
+    .service-metrics {
+        gap: var(--spacing-xs);
+    }
+
+    /* .metric-box and .metric-value mobile overrides handled by metrics.css */
+}
+
+@media (width <= 480px) {
+    .services-zone {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+    }
+
+    .service-metrics {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+
+/* .metric-label and .metric-value handled by components/metrics.css */
+}
+
+/* =====================
+   METRIC TOOLTIPS
+   ===================== */
+
+/* Tooltip container */
+.services-zone .metric-value {
+    position: relative;
+    cursor: help;
+}
+
+/* Tooltip content */
+.metric-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    z-index: var(--z-tooltip);
+    box-shadow: 0 4px 12px var(--shadow-color);
+    line-height: 1.6;
+    pointer-events: none;
+
+    /* Don't block clicks */
+}
+
+/* Show tooltip on hover */
+.services-zone .metric-value:hover .metric-tooltip,
+.services-zone .metric-value:focus-within .metric-tooltip {
+    display: block;
+}
+
+/* Tooltip arrow */
+.metric-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary);
+}
+
+/* Activity level colors moved to components/metrics.css */
+
+/* Ensure tooltips don't overflow on small screens */
+@media (width <= 480px) {
+    .metric-tooltip {
+        font-size: var(--font-size-xxs);
+        padding: 4px 6px;
+    }
+
+    .metric-tooltip::after {
+        border-width: 4px;
+    }
+}
+
+/* =====================
+   SPARKLINE GRAPHS
+   ===================== */
+
+/* Sparkline styles moved to components/sparkline.css */
+
+/* Make metric boxes clickable for CPU and MEM */
+
+/* Clickable transition handled by components/metrics.css */
+
+/* =====================
+   EXPANDED METRICS
+   ===================== */
+
+/* Expanded metric section */
+.metric-expanded-section {
+    margin-top: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+    display: none;
+}
+
+.metric-expanded-section.expanded {
+    display: block;
+    padding: var(--spacing-md);
+}
+
+/* Ensure children in split grid don't overflow (fix for Ingress/Egress labels) */
+.expanded-metric-content.split > * {
+    min-width: 0;
+}
+
+/* Expanded metric header */
+.expanded-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--text-tertiary);
+}
+
+.expanded-metric-header h4 {
+    margin: 0;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+}
+
+.metric-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xxl);
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast);
+}
+
+.metric-close-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Expanded metric content */
+.expanded-metric-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.expanded-metric-content.split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+/* Detailed chart */
+.detailed-chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.detailed-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detailed-chart-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+.detailed-chart-value {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.detailed-chart-svg {
+    width: 100%;
+    height: var(--size-xxl);
+    display: block;
+    background: var(--bg-primary);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs);
+}
+
+/* Mobile adjustments for expanded metrics */
+@media (width <= 1200px) {
+    .expanded-metric-content.split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (width <= 768px) {
+    .expanded-metric-content.split {
+        grid-template-columns: 1fr;
+    }
+
+    .detailed-chart-svg {
+        height: var(--size-xxl);
+    }
+}
+
+@media (width <= 480px) {
+    .expanded-metric-header h4 {
+        font-size: var(--font-size-sm);
+    }
+
+    .detailed-chart-svg {
+        height: 50px;
+    }
+}

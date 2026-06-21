@@ -1,0 +1,190 @@
+/* Admin Tab Specific Styles */
+
+/* ===== LICENSE STATUS COMPONENT ===== */
+ag-license-status {
+    min-width: 0;
+}
+
+/* ===== PASSKEY PANEL ===== */
+
+.passkey-panel {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.passkey-panel-title {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.passkey-manager {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.passkey-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.passkey-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 6px var(--spacing-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+}
+
+.passkey-icon {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.passkey-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.passkey-name {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.passkey-date {
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+.passkey-empty,
+.passkey-loading {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    padding: var(--spacing-xs) 0;
+}
+
+.passkey-add-form {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.passkey-name-input {
+    flex: 1;
+    min-width: 120px;
+    padding: 4px var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: var(--font-size-xs);
+}
+
+.passkey-name-input:focus {
+    outline: none;
+    border-color: var(--color-info);
+}
+
+
+
+/* Style for deactivated users */
+.disabled-user {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+    border-color: var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.disabled-user h3 {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.disabled-user .metric-value-text {
+    color: var(--text-secondary);
+}
+
+/* Login Logs Zone (Admin Tab) */
+.login-logs-zone {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    grid-column: 1 / -1;
+
+    /* Placed at the bottom, spans all columns */
+}
+
+.login-logs-zone .tab-title-container {
+    margin-bottom: var(--spacing-md);
+}
+
+.login-logs-zone .log-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.login-logs-zone .log-container {
+    flex: 1;
+    min-height: 200px;
+    max-height: calc(100vh - 220px);
+}
+
+.users-grid-container {
+    display: grid;
+    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    margin-top: var(--spacing-md);
+}
+
+@media (width <= 768px) {
+    .users-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (width <= 480px) {
+    .admin-zone.tab-zone {
+        padding: var(--spacing-md);
+    }
+
+    .admin-zone .tab-title-container {
+        flex-wrap: wrap;
+    }
+
+    .login-logs-zone .tab-title-container {
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+    }
+
+    .login-logs-zone .log-controls {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+    }
+}

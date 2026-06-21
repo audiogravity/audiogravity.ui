@@ -1,0 +1,244 @@
+/**
+ * @module LibraryQueue
+ * @description Styles for ag-library-queue: context label, Now Playing block,
+ * queue list rows, action buttons and tooltips.
+ */
+
+.lib-queue-action {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+
+.lib-queue-action.disabled,
+.lib-queue-action:disabled {
+    cursor: not-allowed;
+    opacity: .6;
+    pointer-events: none;
+}
+
+.lib-queue-tip {
+    position: relative;
+    display: inline-block;
+}
+
+.lib-queue-tip:hover::after,
+.lib-queue-tip:focus-within::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: normal;
+    max-width: 240px;
+    line-height: 1.4;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
+    pointer-events: none;
+}
+
+.lib-queue-ctx {
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+}
+
+.lib-queue-ctx-lbl {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.lib-queue-ctx-val {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lib-queue-now {
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-queue-lbl {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.lib-queue-lbl::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-success);
+    box-shadow: 0 0 6px var(--color-success);
+}
+
+.lib-queue-now-row {
+    display: grid;
+    grid-template-columns: 54px 1fr auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.lib-queue-now-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.lib-queue-now-t {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-queue-now-a {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-queue-now-meta {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.lib-queue-now-play {
+    width: 36px;
+    height: 36px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.lib-queue-now-play svg {
+    width: 12px;
+    height: 12px;
+    fill: currentcolor;
+}
+
+.lib-queue-list-hd {
+    padding: 14px 20px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lib-queue-list-lbl {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.lib-queue-total {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+}
+
+.lib-queue-row {
+    display: grid;
+    grid-template-columns: auto 36px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-queue-grip {
+    color: var(--text-tertiary);
+    cursor: grab;
+}
+
+.lib-queue-grip svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentcolor;
+    fill: none;
+    stroke-width: 1.7;
+}
+
+.lib-queue-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.lib-queue-col-t {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-queue-col-a {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-queue-dur {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+}
+
+.lib-queue-more {
+    color: var(--text-tertiary);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
+.lib-queue-more svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentcolor;
+    fill: none;
+    stroke-width: 2;
+}

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="minimal">
+
+<head>
+    <script src="/ag-config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- CSP: enforced via HTTP headers in production (Nginx/Lighttpd via install.sh). -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        img-src 'self' data: blob: https://io.di-marco.net:65443;
+        font-src 'self' data:;
+        connect-src 'self' ws: wss: * http://*:* https://*:*;
+        frame-src 'self' * http://*:* https://*:*;
+        child-src 'self' * http://*:* https://*:*;
+        worker-src 'self';
+        base-uri 'self';
+        form-action 'self';
+    ">
+    <title>Login - Audiogravity</title>
+
+    <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
+    <!-- iPhone SE 1st gen (320×568 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-640-1136.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1136-640.png">
+    <!-- iPhone 6/7/8/SE 2nd-3rd gen (375×667 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-750-1334.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1334-750.png">
+    <!-- iPhone 6+/7+/8+ (414×736 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1242-2208.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2208-1242.png">
+    <!-- iPhone X/XS/11 Pro/12 mini/13 mini (375×812 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1125-2436.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2436-1125.png">
+    <!-- iPhone XR/11 (414×896 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-828-1792.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1792-828.png">
+    <!-- iPhone XS Max/11 Pro Max (414×896 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1242-2688.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2688-1242.png">
+    <!-- iPhone 12/12 Pro/13/13 Pro/14/16 (390×844 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1170-2532.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2532-1170.png">
+    <!-- iPhone 12 Pro Max/13 Pro Max/14 Plus (428×926 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1284-2778.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2778-1284.png">
+    <!-- iPhone 14 Pro/15/15 Pro (393×852 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1179-2556.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2556-1179.png">
+    <!-- iPhone 14 Pro Max/15 Plus/15 Pro Max/16 Plus (430×932 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1290-2796.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2796-1290.png">
+    <!-- iPhone 16 Pro (402×874 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1206-2622.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2622-1206.png">
+    <!-- iPhone 16 Pro Max (440×956 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1320-2868.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2868-1320.png">
+    <!-- iPhone (420×912 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1260-2736.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2736-1260.png">
+    <!-- iPad 9th gen / 10.2" (810×1080 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1620-2160.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2160-1620.png">
+    <!-- iPad mini 5th gen / iPad 9th gen 768pt (768×1024 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1536-2048.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2048-1536.png">
+    <!-- iPad mini 6th gen (744×1133 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1488-2266.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2266-1488.png">
+    <!-- iPad Pro 10.5" / Air 3rd gen (834×1112 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1668-2224.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2224-1668.png">
+    <!-- iPad Air 4th gen / Pro 11" (834×1194 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1668-2388.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2388-1668.png">
+    <!-- iPad Air 5th gen / iPad 10th gen (820×1180 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1640-2360.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2360-1640.png">
+    <!-- iPad Pro 12.9" (1024×1366 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-2048-2732.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2732-2048.png">
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="pics/apple-touch-icon.png">
+    <link rel="icon" href="pics/favicon.ico">
+    <link rel="manifest" href="site.webmanifest">
+
+    <!-- CSS MANIFEST -->
+    <link rel="stylesheet" href="css/main.css">
+
+</head>
+
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Logo/Header -->
+            <div class="login-header">
+                <img src="pics/audiogravity.svg" alt="Audiogravity" class="login-logo">
+                <p class="login-subtitle" id="loginMeta"></p>
+                <p class="auto-passkey-status" id="login-status"></p>
+                <p class="login-license-status" id="loginLicense"></p>
+            </div>
+
+            <!-- Auto passkey panel -->
+            <div id="autoPasskeyPanel" style="display:none" class="auto-passkey-panel">
+                <img src="pics/audiogravity.svg" alt="Audiogravity" class="login-logo">
+                <p class="auto-passkey-meta" id="autoPasskeyMeta"></p>
+
+                <button type="button" id="autoPasskeyTrigger" class="auto-passkey-key-box" title="Tap to authenticate">
+                    <div class="passkey"><svg viewBox="0 0 24 24">
+                            <circle cx="9" cy="9" r="4"></circle>
+                            <path d="M9 13 l0 8 l2 -2 l2 2 l0 -4"></path>
+                            <path d="M14 10 l7 0"></path>
+                            <path d="M18 10 l0 3"></path>
+                        </svg></div>
+                </button>
+
+                <div class="auto-passkey-info">
+                    <h2>Sign in with passkey</h2>
+                    <p>Tap the key above. WebAuthn will use the<br>biometric enrolled on this device.</p>
+                </div>
+
+                <p id="autoPasskeyError" class="auto-passkey-error" style="display:none"></p>
+                <p id="autoPasskeyStatus" class="auto-passkey-status"></p>
+                <p class="login-license-status" id="autoPasskeyLicense"></p>
+                <button type="button" id="autoPasskeyCancel" class="btn-link">Use password instead</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Username
+                    </label>
+                    <input type="text" id="username" name="username" required autocomplete="username"
+                        placeholder="Enter your username" minlength="3">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Password
+                    </label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password"
+                        placeholder="Enter your password" minlength="6">
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message" style="display: none;">
+                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <span id="errorText"></span>
+                </div>
+
+                <!-- Login Button -->
+                <button type="submit" id="loginBtn" class="action-btn primary">
+                    <span class="btn-text">Login</span>
+                    <span class="btn-loader">
+                        <span class="spinner"></span>
+                    </span>
+                </button>
+
+                <!-- Passkey Button (hidden until WebAuthn availability is confirmed) -->
+                <div id="passkeyDivider" class="passkey-divider" style="display:none;">
+                    <span>or</span>
+                </div>
+                <button type="button" id="passkeyBtn" class="action-btn secondary" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+                    <span class="btn-text">Sign in with Passkey</span>
+                    <span class="btn-loader">
+                        <span class="spinner"></span>
+                    </span>
+                </button>
+            </form>
+
+            <!-- Passkey setup offer (shown once after first password login) -->
+            <div id="passkeyOffer" class="passkey-offer" style="display:none;">
+                <p class="passkey-offer-text">
+                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+                    Enable Face ID / Touch ID for next time?
+                </p>
+                <div class="passkey-offer-actions">
+                    <button type="button" id="passkeyOfferYes" class="action-btn primary">
+                        <span class="btn-text">Enable</span>
+                        <span class="btn-loader"><span class="spinner"></span></span>
+                    </button>
+                    <button type="button" id="passkeyOfferSkip" class="action-btn">Skip</button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="login-footer">
+                <p class="version" id="versionInfo">Version ...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de gestion de la connexion -->
+    <script type="module" src="js/login.js"></script>
+</body>
+
+</html>

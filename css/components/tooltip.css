@@ -1,0 +1,91 @@
+/**
+ * @module Tooltip
+ * @description Reusable tooltip component for displaying additional info.
+ */
+
+/**
+ * @component .tooltip
+ * @description Custom tooltip container.
+ * @prop --bg-primary - Background color
+ * @prop --shadow-lg - Tooltip shadow
+ */
+.tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    min-width: 200px;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-tooltip);
+    display: none;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    text-transform: none;
+    white-space: normal;
+    line-height: 1.4;
+}
+
+/* Dark Mode Variant */
+body.dark-mode .tooltip {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+/* Show on Hover */
+.has-tooltip:hover .tooltip {
+    display: block;
+}
+
+/* Tooltip container position */
+.has-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Tooltip positioned above (for end of lists or footer) */
+.tooltip-top {
+    top: auto;
+    bottom: calc(100% + 12px);
+
+    /* Positioned above the icon */
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 0;
+}
+
+/* Arrow for top tooltip */
+.tooltip-top::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--border-color) transparent transparent transparent;
+}
+
+/* Tooltip positioned below and aligned right (for topbar elements) */
+.tooltip-bottom-right {
+    left: auto;
+    right: 0;
+}
+
+/* =====================
+   RESPONSIVE - MOBILE
+   ===================== */
+
+/* Repositionnement sur mobile */
+@media (width <= 768px) {
+    .tooltip {
+        right: auto;
+        left: 0;
+        max-width: calc(100vw - 2 * var(--spacing-lg));
+    }
+}

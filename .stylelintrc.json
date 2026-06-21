@@ -1,0 +1,135 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "plugins": ["stylelint-order"],
+  "rules": {
+    "order/properties-alphabetical-order": null,
+
+    "selector-class-pattern": [
+      "^([a-z][a-z0-9]*)(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+      {
+        "message": "Expected class selector to follow BEM naming convention (block__element--modifier)",
+        "resolveNestedSelectors": true
+      }
+    ],
+
+    "custom-property-pattern": [
+      "^([a-z][a-z0-9]*)(-[a-z0-9]+)*$",
+      {
+        "message": "Expected custom property to be kebab-case"
+      }
+    ],
+
+    "selector-max-id": [
+      1,
+      {
+        "message": "Avoid using ID selectors. Use classes instead for better reusability."
+      }
+    ],
+
+    "selector-max-type": [
+      3,
+      {
+        "ignore": ["child", "descendant", "compounded"],
+        "ignoreTypes": ["/^ag-/"]
+      }
+    ],
+
+    "selector-max-compound-selectors": 5,
+
+    "selector-max-specificity": "1,4,2",
+
+    "declaration-no-important": [
+      true,
+      {
+        "severity": "warning",
+        "message": "Avoid !important. Use higher specificity or restructure CSS instead."
+      }
+    ],
+
+    "color-hex-length": "long",
+
+    "color-named": "never",
+
+    "font-weight-notation": "numeric",
+
+    "length-zero-no-unit": true,
+
+    "shorthand-property-no-redundant-values": true,
+
+    "value-no-vendor-prefix": [
+      true,
+      {
+        "ignoreValues": ["box", "inline-box"]
+      }
+    ],
+
+    "property-no-vendor-prefix": true,
+
+    "at-rule-no-vendor-prefix": true,
+
+    "selector-no-vendor-prefix": true,
+
+    "media-feature-name-no-vendor-prefix": true,
+
+    "comment-empty-line-before": [
+      "always",
+      {
+        "except": ["first-nested"],
+        "ignore": ["stylelint-commands"]
+      }
+    ],
+
+    "max-nesting-depth": [
+      3,
+      {
+        "ignore": ["blockless-at-rules", "pseudo-classes"]
+      }
+    ],
+
+    "no-descending-specificity": null,
+
+    "no-duplicate-selectors": true,
+
+    "declaration-block-no-redundant-longhand-properties": true,
+
+    "keyframes-name-pattern": "^[a-z][a-zA-Z0-9]+$",
+
+    "at-rule-empty-line-before": [
+      "always",
+      {
+        "except": ["blockless-after-same-name-blockless", "first-nested"],
+        "ignore": ["after-comment"],
+        "ignoreAtRules": ["import"]
+      }
+    ],
+
+    "rule-empty-line-before": [
+      "always-multi-line",
+      {
+        "except": ["first-nested"],
+        "ignore": ["after-comment"]
+      }
+    ],
+
+    "alpha-value-notation": "number",
+
+    "color-function-notation": "modern",
+
+    "hue-degree-notation": "angle",
+
+    "import-notation": "string",
+
+    "selector-not-notation": "complex",
+
+    "font-family-name-quotes": "always-where-recommended",
+
+    "function-url-quotes": "always",
+
+    "selector-attribute-quotes": "always"
+  },
+  "ignoreFiles": [
+    "_site/**/*.css",
+    "node_modules/**/*.css",
+    "dist/**/*.css"
+  ]
+}

@@ -1,0 +1,12 @@
+/**
+ * @module DsdLock
+ * @description Styles for the ag-dsd-lock atom.
+ * Prefix: ag-dsd-lock
+ */
+
+ag-dsd-lock {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.45;
+    flex-shrink: 0;
+}

@@ -1,0 +1,21 @@
+/**
+ * @module ConnectorBadge
+ * @description Styles for the ag-connector-badge atom.
+ * Prefix: ag-connector-badge
+ */
+
+ag-connector-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--spacing-xs);
+    line-height: 1.6;
+    flex-shrink: 0;
+}

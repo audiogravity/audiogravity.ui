@@ -1,0 +1,15 @@
+# Build outputs
+_site/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Vendor files
+css/vendor/
+fonts/
+
+# Temporary files
+*.tmp
+*.temp

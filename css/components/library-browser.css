@@ -1,0 +1,146 @@
+/**
+ * @module LibraryBrowser
+ * @description Shared styles for hierarchical library browsers (Roon and UPnP).
+ * Consumed by:
+ *   - ag-library-browser-topbar (.lib-browser-topbar / -back-btn / -refresh-btn / -title)
+ *   - ag-library-breadcrumbs    (.lib-browser-crumbs / -crumb-root / -crumb-sep / -crumb / .current)
+ *   - ag-library-roon-browser   (.lib-browser-row + variants, .lib-browser-cv--act)
+ *   - ag-library-upnp-browser   (via ag-upnp-item — same .lib-browser-row pattern)
+ *
+ * Renamed from .lib-roon-* (the original prefix was misleading since UPnP uses
+ * the same classes).
+ */
+
+/* ── Browser topbar (back / title / refresh) ── */
+.lib-browser-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-browser-back-btn,
+.lib-browser-refresh-btn {
+    background: transparent;
+    border: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.lib-browser-back-btn:hover,
+.lib-browser-refresh-btn:hover { color: var(--text-primary); }
+
+.lib-browser-title {
+    flex: 1;
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Breadcrumb trail ── */
+.lib-browser-crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 6px 20px;
+    overflow-x: auto;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-browser-crumbs::-webkit-scrollbar { display: none; }
+
+.lib-browser-crumb-root {
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.lib-browser-crumb-root:hover { color: var(--text-primary); }
+
+.lib-browser-crumb-sep {
+    color: var(--text-primary);
+    opacity: 0.3;
+}
+
+.lib-browser-crumb {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.lib-browser-crumb:hover { color: var(--text-primary); }
+
+.lib-browser-crumb.current {
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: default;
+}
+
+/* ── Browser row (cover + meta + right action) ── */
+.lib-browser-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.lib-browser-row:hover { background: var(--bg-secondary); }
+
+.lib-browser-row.busy {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.lib-browser-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.lib-browser-t {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-browser-st {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-browser-right {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* ── Roon action-item tinted cover variant ── */
+ag-library-cover.lib-browser-cv--act { color: var(--accent-primary); }
+
+ag-library-cover.lib-browser-cv--act .ag-libcv {
+    background: var(--accent-primary-alpha);
+    border-radius: var(--radius-sm);
+}

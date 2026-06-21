@@ -1,0 +1,420 @@
+/**
+ * @module Login Page Styles
+ * @description Styles pour la page de connexion
+ */
+
+/* Container principal */
+.login-page {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    font-family: var(--font-family);
+}
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    padding: var(--spacing-md);
+}
+
+/* Card de connexion */
+.login-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-xl);
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Header */
+.login-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.login-logo {
+    height: 48px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.dark-mode .login-logo {
+    filter: invert(1);
+}
+
+.login-header h1 {
+    display: none;
+}
+
+.login-subtitle {
+    margin: var(--spacing-sm) 0 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+#login-status {
+    margin-top: var(--spacing-sm);
+}
+
+.login-license-status {
+    margin: var(--spacing-xs) 0 0;
+    display: flex;
+    justify-content: center;
+}
+
+
+
+/* Formulaire */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-group label [class^="icon-"] {
+    font-size: var(--font-size-md);
+    color: var(--text-tertiary);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    font-family: var(--font-family);
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--text-primary);
+    background: var(--bg-secondary);
+    box-shadow: 0 0 0 2px var(--border-color);
+}
+
+.form-group input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* Message d'erreur */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 12px 14px;
+    background: var(--status-error-bg, rgb(239 68 68 / 0.1));
+    border: 1px solid var(--status-error, #ef4444);
+    border-radius: var(--radius-md);
+    color: var(--status-error, #ef4444);
+    font-size: var(--font-size-sm);
+    animation: shake 0.4s ease-in-out;
+}
+
+.error-message [class^="icon-"] {
+    font-size: var(--font-size-lg);
+    flex-shrink: 0;
+}
+
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-4px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+/* Login Button - Uses application's action-btn.primary style with login-specific overrides */
+.login-form .action-btn {
+    width: 100%;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    position: relative;
+    min-height: 50px;
+    transition: all var(--transition-fast);
+}
+
+.login-form .action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 1; /* Override default disabled opacity to maintain high contrast */
+}
+
+/* Remove text opacity reduction so it stays perfectly readable */
+.login-form .action-btn.is-loading .btn-text {
+    opacity: 1;
+}
+
+.login-form .action-btn.is-loading .btn-loader {
+    display: inline-flex;
+    position: static;
+    transform: none;
+}
+
+/* Spinner dans le bouton */
+.btn-loader {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--spinner-track);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin var(--animation-spin) linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Auto passkey panel */
+.auto-passkey-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) 0;
+    text-align: center;
+}
+
+
+.auto-passkey-meta {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.auto-passkey-key-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 140px;
+    border: 1.5px solid var(--text-primary);
+    border-radius: var(--border-radius-md);
+    background: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background var(--transition-fast), color var(--transition-fast);
+    margin: var(--spacing-sm) 0;
+}
+
+.auto-passkey-key-box .passkey svg {
+    width: 64px;
+    height: 64px;
+    stroke: currentcolor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
+.auto-passkey-key-box:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.auto-passkey-key-box:active {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    opacity: 0.75;
+}
+
+.auto-passkey-key-box:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.auto-passkey-info h2 {
+    margin: 0 0 var(--spacing-xs);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.auto-passkey-info p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.auto-passkey-status {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.auto-passkey-status .status-label {
+    color: var(--text-secondary);
+}
+
+.auto-passkey-status .status-dot.connected {
+    color: var(--color-success, #38a169);
+}
+
+.auto-passkey-error {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--error-color, #e53e3e);
+    text-align: center;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.btn-link:hover {
+    color: var(--text-primary);
+}
+
+/* Footer */
+.login-footer {
+    margin-top: var(--spacing-xl);
+    text-align: center;
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+.login-footer .version {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.login-footer .version a.version-link {
+    color: var(--text-tertiary);
+}
+
+/* Passkey setup offer */
+.passkey-offer {
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    text-align: center;
+}
+
+.passkey-offer-text {
+    margin: 0 0 var(--spacing-md);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+}
+
+.passkey-offer-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+}
+
+.passkey-offer-actions .action-btn {
+    flex: 1;
+}
+
+/* Passkey divider */
+.passkey-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: var(--spacing-sm) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.passkey-divider::before,
+.passkey-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+/* Responsive */
+@media (width <= 480px) {
+    .login-container {
+        padding: var(--spacing-sm);
+    }
+
+    .login-card {
+        padding: var(--spacing-lg);
+    }
+
+    .login-logo {
+        height: 40px;
+    }
+}
+
+/* Animation d'entrée — ajout à la règle principale .login-card ci-dessus */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

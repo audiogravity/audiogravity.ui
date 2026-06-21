@@ -1,0 +1,55 @@
+/**
+ * @module HealthBar
+ * @description Segmented bar component for visualizing active / failed / idle counts.
+ * Used by ag-health-bar atom.
+ */
+
+/**
+ * @component .health-bar
+ * @description Container for the segmented health bar.
+ */
+.health-bar {
+    display: flex;
+    height: 3px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--border-color);
+}
+
+/**
+ * @component .health-segment
+ * @description Individual colored segment inside the health bar.
+ */
+.health-segment {
+    display: block;
+    height: 100%;
+    transition: width var(--transition-normal);
+}
+
+.health-segment.active { background: var(--color-success); }
+.health-segment.failed { background: var(--color-error); }
+.health-segment.idle   { background: var(--border-color); }
+
+/* Row variant — bar + counters side by side */
+.health-bar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.health-bar-row .health-bar {
+    flex: 1;
+}
+
+.health-bar-counters {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+}
+
+.health-count.running { color: var(--color-success); }
+.health-count.idle    { color: var(--text-secondary); }
+.health-count.failed  { color: var(--color-error); }
+.health-count-sep     { color: var(--text-tertiary); }

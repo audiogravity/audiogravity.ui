@@ -1,0 +1,178 @@
+/**
+ * @module Systemd
+ * @description Specialized styles for systemd service management.
+ */
+
+/* =====================
+   SYSTEMD GRID
+   ===================== */
+
+/* Grid styles moved to components/grid.css */
+
+/* =====================
+   SYSTEMD TILE - SPÉCIFICITÉS
+   ===================== */
+
+/* Les styles communs sont dans components/tile.css */
+
+.systemd-tile {
+    padding: var(--spacing-lg);
+}
+
+/* Header */
+.systemd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.systemd-title {
+    flex: 1;
+}
+
+.systemd-name {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.systemd-unit {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    font-family: monospace;
+}
+
+.systemd-badges {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 60%;
+}
+
+.systemd-badges .badge {
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    line-height: 1.2;
+}
+
+/* Properties */
+.systemd-properties {
+    margin-bottom: var(--spacing-md);
+}
+
+.property-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.property-group:last-child {
+    margin-bottom: 0;
+}
+
+.property-group-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.systemd-properties .property-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    padding: 1px 0;
+    font-size: var(--font-size-xs);
+    line-height: 1.6;
+}
+
+.systemd-properties .property-label {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.systemd-properties .property-value {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-family: monospace;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+/* Actions */
+.systemd-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: auto;
+    padding-top: var(--spacing-md);
+    gap: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.systemd-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    width: 100%;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-lg);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* =====================
+   RESPONSIVE
+   ===================== */
+
+@media (width <= 768px) {
+    .systemd-actions {
+        flex-direction: column;
+    }
+
+    .systemd-actions button {
+        width: 100%;
+    }
+}
+
+/* Compact Mode */
+body.compact-mode .systemd-properties .property-item {
+    font-size: var(--font-size-xs);
+}

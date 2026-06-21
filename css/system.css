@@ -1,0 +1,668 @@
+/**
+ * @module System
+ * @description Layout and styles for the System Data tab.
+ */
+
+/* ===== SYSTEM ACTIONS ZONE ===== */
+
+.system-actions-zone {
+    grid-column: 1 / -1;
+}
+
+.system-terminal-zone {
+    grid-column: 1 / -1;
+}
+
+
+.system-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.system-action-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.system-action-card--danger {
+    border-color: var(--color-error);
+    background: var(--color-error-bg);
+}
+
+.system-action-icon {
+    font-size: 1.4rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+
+.system-action-card--danger .system-action-icon {
+    color: var(--color-error);
+}
+
+.system-action-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.system-action-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.system-action-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* ===== REBOOT OVERLAY ===== */
+
+.system-reboot-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgb(0 0 0 / 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.system-reboot-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.system-reboot-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgb(255 255 255 / 0.2);
+    border-top-color: var(--color-warning);
+    border-radius: 50%;
+    animation: rebootSpin 1s linear infinite;
+    will-change: transform;
+}
+
+.system-reboot-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-warning);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.system-reboot-subtitle {
+    font-size: var(--font-size-sm);
+    color: rgb(255 255 255 / 0.6);
+}
+
+@keyframes rebootSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== BACKEND LOGS ZONE ===== */
+
+.backend-logs-zone {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+
+
+.backend-logs-zone .tab-title-container {
+    margin-bottom: var(--spacing-md);
+}
+
+.backend-logs-zone .log-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.backend-logs-zone .log-container {
+    flex: 1;
+    min-height: 200px;
+    max-height: calc(100vh - 220px);
+}
+
+/* Grid Layout */
+.system-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.system-tile {
+    padding: var(--spacing-md);
+}
+
+.system-tile.span-2 {
+    grid-column: span 2;
+}
+
+.system-tile.span-full {
+    grid-column: 1 / -1;
+}
+
+/* System Tile Content */
+.system-tile h3 {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.system-tile .metric-large {
+    font-size: 1.8rem;
+}
+
+/* Rest handled by components/metrics.css (.metric-large alias) */
+
+.system-tile .metric-detail {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* Sparkline styles moved to components/sparkline.css */
+
+/* Connection Tile Specifics */
+.connection-status-large {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.connection-dot-large {
+    width: var(--size-xs);
+    height: var(--size-xs);
+    border-radius: 50%;
+    background: var(--color-error);
+    transition: background var(--transition-normal);
+}
+
+.connection-dot-large.connected {
+    background: var(--color-success);
+    box-shadow: 0 0 10px var(--color-success);
+    animation: blinkSlow 3s infinite ease-in-out;
+}
+
+.connection-text-large {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Event Toggle Button */
+.event-toggle-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-toggle-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-tertiary);
+}
+
+.event-toggle-btn.started {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    background: var(--color-success-bg);
+}
+
+.event-toggle-btn.stopped {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: var(--color-error-bg);
+}
+
+/* Compact variant - smaller button */
+.event-toggle-btn.compact {
+    padding: 4px var(--spacing-xs);
+    font-size: 9px;
+    letter-spacing: 0.3px;
+    min-height: 22px;
+    min-width: 58px;
+    user-select: none;
+}
+
+/* History Items Clickable */
+.history-item.clickable {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.history-item.clickable:hover {
+    background: var(--bg-hover);
+}
+
+.json-viewer {
+    background: var(--bg-tertiary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    overflow: auto;
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    max-height: 70vh;
+    border: 1px solid var(--border-color);
+}
+
+/* JSON Syntax Highlighting */
+.json-viewer .json-key {
+    color: var(--syntax-key);
+}
+
+.json-viewer .json-string {
+    color: var(--syntax-string);
+}
+
+.json-viewer .json-number {
+    color: var(--syntax-number);
+}
+
+.json-viewer .json-boolean {
+    color: var(--syntax-boolean);
+}
+
+.json-viewer .json-null {
+    color: var(--syntax-null);
+    font-style: italic;
+}
+
+/* Properties Section (Integrated in Tile) */
+.property-grid.compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-sm) var(--spacing-md);
+    margin-top: var(--spacing-xs);
+}
+
+.property-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Handled by components/metrics.css (Aliases for .property-label and .property-value) */
+
+/* Network Interfaces Tile */
+.network-interfaces-grid,
+.audio-devices-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.network-interface {
+    background: var(--chart-bg);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.network-interface-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.network-interface-name {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.network-status-icon {
+    font-size: 8px;
+}
+
+.network-interface-name.network-up {
+    color: var(--color-success);
+}
+
+.network-interface-name.network-down {
+    color: var(--text-tertiary);
+}
+
+.network-mac {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-family: monospace;
+}
+
+.network-ip {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-family: monospace;
+}
+
+.network-ip.ipv4 {
+    color: var(--text-primary);
+}
+
+.network-ip.ipv6 {
+    color: var(--text-secondary);
+    font-size: 10px;
+}
+
+/* Remove scroll trap on System tab events list */
+/* stylelint-disable-next-line selector-id-pattern */
+#systemEventsList {
+    max-height: none;
+    overflow-y: visible;
+}
+
+/* Responsive adjustments */
+@media (width <= 768px) {
+    .system-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-tile.span-2 {
+        grid-column: span 1;
+    }
+
+    .property-grid.compact {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+}
+
+@media (width <= 480px) {
+    .property-grid.compact {
+        grid-template-columns: 1fr;
+    }
+
+    .backend-logs-zone .tab-title-container {
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+    }
+
+    .backend-logs-zone .log-controls {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+}
+
+/* Log Level Filter Buttons */
+.log-filter-group {
+    display: flex;
+    gap: 2px;
+}
+
+.log-filter-btn {
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    opacity: 0.35;
+    padding: 0;
+    line-height: 1;
+}
+
+.log-filter-btn.active {
+    opacity: 1;
+}
+
+.log-filter-debug {
+    color: var(--text-tertiary);
+}
+
+.log-filter-debug.active {
+    border-color: var(--text-tertiary);
+    background: var(--color-info-bg);
+}
+
+.log-filter-info {
+    color: var(--color-info);
+}
+
+.log-filter-info.active {
+    border-color: var(--color-info);
+    background: var(--color-info-bg);
+}
+
+.log-filter-warning {
+    color: var(--color-warning);
+}
+
+.log-filter-warning.active {
+    border-color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+
+.log-filter-error {
+    color: var(--color-error);
+}
+
+.log-filter-error.active {
+    border-color: var(--color-error);
+    background: var(--color-error-bg);
+}
+
+/* Log Tile Controls */
+.log-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-left: auto;
+}
+
+.log-select {
+    padding: 2px var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+}
+
+.log-btn {
+    padding: 2px var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.log-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+}
+
+.log-btn.log-btn-active {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    background: var(--color-success-bg);
+}
+
+/* Log Container */
+.log-container {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow-y: auto;
+    max-height: 300px;
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+}
+
+.log-entry {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-xs);
+    padding: 3px var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    line-height: 1.5;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry.log-level-error {
+    background: var(--color-error-bg);
+}
+
+.log-entry.log-level-warning {
+    background: var(--color-warning-bg);
+}
+
+.log-time {
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+/* Handled by components/badge.css (Aliases for .log-badge and its variants) */
+
+.log-msg {
+    flex: 1;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+.log-error {
+    padding: var(--spacing-md);
+    color: var(--color-error);
+    text-align: center;
+    font-size: var(--font-size-xs);
+}
+
+.log-empty {
+    padding: var(--spacing-md);
+    color: var(--text-tertiary);
+    text-align: center;
+    font-size: var(--font-size-xs);
+}
+
+/* ===== LICENSE ACTIVATION MOLECULE ===== */
+
+.lic-act__body {
+    padding: var(--spacing-sm) 0;
+}
+
+.lic-act__success-banner {
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+    border: 1px solid var(--color-success);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+}
+
+.lic-act__success-banner p {
+    margin: 4px 0 0;
+    color: var(--color-success);
+    opacity: 0.85;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+}
+
+.lic-act__cert {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.lic-act__cert-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lic-act__cert-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.lic-act__cert-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.lic-act__cert-value.mono {
+    font-family: var(--font-mono);
+}
+
+.lic-act__spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: 160px;
+}
+
+.lic-act__spinner-title {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+

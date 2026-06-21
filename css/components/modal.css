@@ -1,0 +1,234 @@
+/**
+ * @module Modal
+ * @description Generic modal overlay and dialog styles.
+ */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    background: var(--overlay-bg);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    z-index: var(--z-modal);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.modal-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-dialog {
+    background: var(--bg-primary);
+    border: 2px solid var(--text-primary);
+    border-radius: 0;
+    min-width: 400px;
+    max-width: 600px;
+    box-shadow: 0 10px 40px var(--shadow-color);
+    transform: scale(0.9);
+    transition: transform var(--transition-normal);
+    position: relative;
+    max-height: 90dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-overlay.show .modal-dialog {
+    transform: scale(1);
+}
+
+/* Modal Sizes */
+.modal-dialog.modal-large {
+    max-width: 900px;
+    width: 95%;
+}
+
+.modal-dialog.modal-full {
+    max-width: 98vw;
+    width: 98%;
+    height: 95dvh;
+}
+
+/* Premium Modal Style (Glass/Systemd-inspired) */
+.modal-dialog.modal-premium {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: var(--font-size-xxxl);
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+    padding: var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: var(--spacing-lg);
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-body p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.modal-footer {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+}
+
+/* Info mode - hides footer */
+.modal-overlay.modal-info .modal-footer {
+    display: none;
+}
+
+/* Docs modal — full-screen iframe viewer (Swagger API reference) */
+.docs-modal {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    z-index: calc(var(--z-modal) + 10);
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.docs-modal-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-top: max(var(--spacing-md), env(safe-area-inset-top));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.docs-modal-header h3 {
+    margin: 0;
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.docs-modal-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.docs-modal-content iframe {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+}
+
+.docs-modal.show {
+    display: flex;
+    opacity: 1;
+}
+
+@media (width <= 768px) {
+    .modal-dialog {
+        min-width: auto;
+        width: 95%;
+        max-height: 95dvh;
+    }
+}
+
+/* ========================================
+   INFO MODAL CONTENT STYLES
+   ======================================== */
+
+/* Info list styling */
+.info-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: var(--spacing-sm);
+}
+
+.info-list-item {
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.info-list-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Health/Activity badges in info modals */
+.info-badge {
+    font-size: 9px;
+    padding: 0 6px;
+    height: 18px;
+    line-height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Activity level badges (for Services tab) */
+.info-badge.activity-low {
+    color: var(--color-success);
+}
+
+.info-badge.activity-medium {
+    color: var(--color-warning);
+}
+
+.info-badge.activity-high {
+    color: var(--color-error);
+}
+
+/* Reference box for technical details */
+.info-reference-box {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: rgb(255 255 255 / 0.05);
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+}

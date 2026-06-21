@@ -1,0 +1,187 @@
+/* =====================
+   THEME: GRAVITY (MODERN & BOLD)
+   ===================== */
+[data-theme="gravity"] {
+    /* Sophisticated Light Theme - Gravity (Arctic Blue Palette) */
+    --bg-primary: #f0f4f8;   /* Distinct cool grey-blue */
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e2e8f0;
+
+    /* Overrides for more modern feel (Refined/Softer) */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -1px rgb(0 0 0 / 0.03);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -2px rgb(0 0 0 / 0.04);
+    --text-primary: #0f172a;
+    --text-secondary: #475569; /* Slate-600 */
+    --text-tertiary: #94a3b8;  /* Slate-400 */
+
+    /* Status Colors - Vibrant but balanced */
+    --color-success: #10b981;
+    --color-error: #f43f5e;
+    --color-warning: #f59e0b;
+    --color-info: #0ea5e9;
+
+    /* Alpha-based status backgrounds */
+    --color-success-bg: rgb(16 185 129 / 0.12);
+    --color-error-bg: rgb(244 63 94 / 0.12);
+    --color-warning-bg: rgb(245 158 11 / 0.12);
+    --color-info-bg: rgb(14 165 233 / 0.12);
+
+    /* Component: Charts */
+    --chart-bg: rgb(0 0 0 / 0.03);
+
+    /* Latency Histogram Colors */
+    --histogram-excellent: #10b981;
+    --histogram-good: #0ea5e9;
+    --histogram-average: #f59e0b;
+    --histogram-critical: #f43f5e;
+
+    /* Sparkline activity */
+    --activity-low: #10b981;
+    --activity-medium: #f59e0b;
+    --activity-high: #f43f5e;
+
+    /* Sparkline chart colors */
+    --chart-cpu: #6366f1;
+    --chart-cpu-bg: rgb(99 102 241 / 0.12);
+    --chart-memory: #a855f7;
+    --chart-memory-bg: rgb(168 85 247 / 0.12);
+    --chart-temperature: #f59e0b;
+    --chart-temperature-bg: rgb(245 158 11 / 0.12);
+    --chart-network: #10b981;
+    --chart-network-bg: rgb(16 185 129 / 0.12);
+    --chart-disk: #ec4899;
+    --chart-disk-bg: rgb(236 72 153 / 0.12);
+
+    /* UI Colors */
+    --border-color: #e2e8f0;
+    --shadow-color: rgb(15 23 42 / 0.06);
+    --overlay-bg: rgb(15 23 42 / 0.4);
+
+    /* Component Colors */
+    --topbar-bg: #ffffff;
+    --topbar-shadow: 0 4px 12px rgb(0 0 0 / 0.03);
+    --tab-active: #6366f1;
+    --tab-hover: #f1f5f9;
+    --btn-primary: #0f172a;
+    --btn-secondary: #ffffff;
+    --switch-active-bg: var(--accent-primary);
+    --switch-notification-bg: var(--color-warning);
+
+    /* Accent Colors - Gravity Blue/Indigo */
+    --accent-primary: #6366f1;
+    --accent-primary-alpha: rgb(99 102 241 / 0.1);
+    --accent-hover: #4f46e5;
+
+    /* Accessibility */
+    --focus-color: #6366f1;
+    --focus-color-dark: #818cf8;
+
+    /* Syntax Highlighting */
+    --syntax-key: #2563eb;
+    --syntax-string: #059669;
+    --syntax-number: #d97706;
+    --syntax-boolean: #7c3aed;
+    --syntax-null: #64748b;
+    --syntax-selection: rgb(99 102 241 / 0.15);
+
+    /* Misc */
+    --bg-hover: #f1f5f9;
+    --color-debug: #64748b;
+    --color-debug-bg: rgb(100 116 139 / 0.1);
+    --spinner-track: rgb(0 0 0 / 0.1);
+
+    /* Core Grouping */
+    --core-group-saturation: 70%;
+    --core-group-lightness: 55%;
+
+    /* Component Speficic: Audio Pipeline */
+    --pipeline-node-bg: #0F172A; /* Slate-900 */
+    --pipeline-node-active: #F59E0B; /* Amber-500 */
+    --pipeline-node-bitperfect: #10B981; /* Emerald-500 */
+    --pipeline-node-text: #FFFFFF;
+    --pipeline-link: #475569; /* Slate-600 */
+    --pipeline-link-active: #F59E0B; /* Amber-500 */
+    --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
+}
+
+/* DARK MODE */
+[data-theme="gravity"].dark-mode {
+    /* Deep Cosmic Dark - Gravity */
+    --bg-primary: #0a0b10;
+    --bg-secondary: #12141c;
+    --bg-tertiary: #1a1d28;
+
+    /* Overrides for more bold feel in Dark Mode (Refined/Softer) */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 8px 16px rgb(0 0 0 / 0.6);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --border-color: #21262d;
+    --shadow-color: rgb(0 0 0 / 0.5);
+    --topbar-bg: #12141c; /* Changed to solid color for iOS Notch perfection */
+    --topbar-blur: blur(12px);
+    --topbar-shadow: 0 4px 20px rgb(0 0 0 / 0.6);
+    --tab-active: #4facfe;
+    --tab-hover: #1a1d28;
+    --btn-primary: #f8fafc;
+    --btn-secondary: #0a0b10;
+    --switch-active-bg: var(--accent-primary);
+    --switch-notification-bg: var(--color-warning);
+
+    /* Status Colors - Neon Subtle */
+    --color-success: #00f5d4;
+    --color-error: #ff4d6d;
+    --color-warning: #ffb703;
+    --color-info: #00f2fe;
+    --color-success-bg: rgb(0 245 212 / 0.1);
+    --color-error-bg: rgb(255 77 109 / 0.1);
+    --color-warning-bg: rgb(255 183 3 / 0.1);
+    --color-info-bg: rgb(0 242 254 / 0.1);
+
+    /* Component specific overrides */
+    --chart-bg: rgb(255 255 255 / 0.03);
+
+    /* Latency Histogram */
+    --histogram-excellent: #00f5d4;
+    --histogram-good: #00f2fe;
+    --histogram-average: #ffb703;
+    --histogram-critical: #ff4d6d;
+
+    /* Activity */
+    --activity-low: #00f5d4;
+    --activity-medium: #ffb703;
+    --activity-high: #ff4d6d;
+
+    /* Accent - Neon Blue */
+    --accent-primary: #00f2fe;
+    --accent-primary-alpha: rgb(0 242 254 / 0.1);
+    --accent-hover: #4facfe;
+
+    /* Syntax Highlighting */
+    --syntax-key: #00f2fe;
+    --syntax-string: #00f5d4;
+    --syntax-number: #ffb703;
+    --syntax-boolean: #a855f7;
+    --syntax-null: #475569;
+    --syntax-selection: rgb(0 242 254 / 0.2);
+    --bg-hover: #1a1d28;
+    --color-debug: #475569;
+    --color-debug-bg: rgb(71 85 105 / 0.2);
+    --spinner-track: rgb(255 255 255 / 0.1);
+
+    /* Component Speficic: Audio Pipeline (Dark Mode) */
+    --pipeline-node-bg: #1A1D28;
+    --pipeline-node-active: #FFB703;
+    --pipeline-node-bitperfect: #00F5D4;
+    --pipeline-node-text: #F8FAFC;
+    --pipeline-link: #475569;
+    --pipeline-link-active: #FFB703;
+    --pipeline-link-bitperfect: #00F5D4;
+}

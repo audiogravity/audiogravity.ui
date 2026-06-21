@@ -1,0 +1,69 @@
+/**
+ * @component .tab-zone
+ * @description Standard container for tab content sections (main cards).
+ * Centralizes background, padding, shadows and corner radius for consistency.
+ */
+.tab-zone {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* Base gap for internal elements if any */
+.tab-zone>div+div,
+.tab-zone>div+p,
+.tab-zone>p+div {
+    margin-top: var(--spacing-lg);
+}
+
+.tab-title-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    width: 100%;
+}
+
+.tab-title-container h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.tab-zone .tab-title-container .badge {
+    margin-left: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--color-info);
+    border-color: var(--color-info);
+    color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: 2px 10px;
+    font-weight: 600;
+}
+
+/* Filter row below tab-title-container — shared across Profiles, Services, Audio Software */
+.tab-filter-row {
+    display: flex;
+    align-items: center;
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+}
+
+@media (width <= 768px) {
+    .tab-title-container {
+        flex-wrap: wrap;
+    }
+}
+
+@media (width <= 480px) {
+    .tab-zone {
+        padding: 8px;
+        border-radius: var(--radius-md);
+    }
+}

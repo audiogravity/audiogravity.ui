@@ -1,0 +1,44 @@
+/**
+ * @module FilterBar
+ * @description Styles for the ag-filter-bar atom.
+ * A row of compact toggle buttons where one option is active at a time.
+ */
+
+/**
+ * @component .filter-bar
+ * @description Flex container for filter buttons.
+ */
+.filter-bar {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+}
+
+/**
+ * @component .filter-btn
+ * @description Individual filter toggle button.
+ * @state .active - Currently selected option.
+ */
+.filter-btn {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 2px var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    letter-spacing: 0.05em;
+}
+
+.filter-btn:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.filter-btn.active {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}

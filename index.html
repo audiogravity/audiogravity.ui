@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script src="/ag-config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#12141c">
+    <!-- CSP: enforced via HTTP headers in production (Nginx/Lighttpd via install.sh).
+         This meta tag covers the Vite dev server only. 'unsafe-eval' is needed for Vite HMR.
+         In production, the Nginx CSP is applied instead (no unsafe-eval). -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+        img-src 'self' data: blob: https://io.di-marco.net:65443;
+        font-src 'self' data: https://fonts.gstatic.com;
+        connect-src 'self' ws: wss: * http://*:* https://*:*;
+        frame-src 'self' * http://*:* https://*:*;
+        child-src 'self' * http://*:* https://*:*;
+        worker-src 'self';
+        base-uri 'self';
+        form-action 'self';
+    ">
+    <title>Audiogravity - Audio Device Management</title>
+
+    <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
+    <!-- iPhone SE 1st gen (320×568 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-640-1136.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1136-640.png">
+    <!-- iPhone 6/7/8/SE 2nd-3rd gen (375×667 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-750-1334.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1334-750.png">
+    <!-- iPhone 6+/7+/8+ (414×736 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1242-2208.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2208-1242.png">
+    <!-- iPhone X/XS/11 Pro/12 mini/13 mini (375×812 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1125-2436.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2436-1125.png">
+    <!-- iPhone XR/11 (414×896 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-828-1792.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-1792-828.png">
+    <!-- iPhone XS Max/11 Pro Max (414×896 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1242-2688.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2688-1242.png">
+    <!-- iPhone 12/12 Pro/13/13 Pro/14/16 (390×844 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1170-2532.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2532-1170.png">
+    <!-- iPhone 12 Pro Max/13 Pro Max/14 Plus (428×926 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1284-2778.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2778-1284.png">
+    <!-- iPhone 14 Pro/15/15 Pro (393×852 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1179-2556.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2556-1179.png">
+    <!-- iPhone 14 Pro Max/15 Plus/15 Pro Max/16 Plus (430×932 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1290-2796.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2796-1290.png">
+    <!-- iPhone 16 Pro (402×874 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1206-2622.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2622-1206.png">
+    <!-- iPhone 16 Pro Max (440×956 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1320-2868.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2868-1320.png">
+    <!-- iPhone (420×912 @3x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1260-2736.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2736-1260.png">
+    <!-- iPad 9th gen / 10.2" (810×1080 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1620-2160.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2160-1620.png">
+    <!-- iPad mini 5th gen / iPad 9th gen 768pt (768×1024 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1536-2048.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2048-1536.png">
+    <!-- iPad mini 6th gen (744×1133 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1488-2266.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2266-1488.png">
+    <!-- iPad Pro 10.5" / Air 3rd gen (834×1112 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1668-2224.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2224-1668.png">
+    <!-- iPad Air 4th gen / Pro 11" (834×1194 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1668-2388.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2388-1668.png">
+    <!-- iPad Air 5th gen / iPad 10th gen (820×1180 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-1640-2360.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2360-1640.png">
+    <!-- iPad Pro 12.9" (1024×1366 @2x) -->
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+        href="pics/splash/apple-splash-2048-2732.png">
+    <link rel="apple-touch-startup-image"
+        media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+        href="pics/splash/apple-splash-2732-2048.png">
+
+    <!-- Performance Optimizations: Resource Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="pics/apple-touch-icon.png">
+    <link rel="icon" href="pics/favicon.ico">
+    <link rel="manifest" href="site.webmanifest">
+    <!-- CodeMirror 5 (syntax highlighting for Expert Mode) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.css">
+
+    <!-- Critical Inline CSS to prevent white flash during initial load on PWA -->
+    <style>
+        html, body {
+            background-color: #12141c !important; /* Force dark background immediately */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh; /* Use dynamic viewport height to fix the white bottom area */
+        }
+        #ag-splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            background-color: #12141c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+
+    <!-- CSS MANIFEST (All styles bundled here) -->
+    <link rel="stylesheet" href="css/main.css">
+    <!-- CSS BUNDLE END -->
+
+    <!-- Chart.js - Loaded with defer for non-blocking -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+        integrity="sha512-Z4RJa36Kl84unoevz3wyZ0uFDMj7lfaxAs+hiqXXeZcXg/rjdYTafAXxP/hKSqW8Wwo3vwfg2V/dkuH5fKO2bw=="
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <!-- PWA SPLASH SCREEN (in-app overlay for Android/Chrome/Desktop PWA)
+         The iOS native splash is handled by <link rel="apple-touch-startup-image"> in <head>.
+         This overlay provides an equivalent experience on all other platforms. -->
+    <div id="ag-splash-screen" role="status" aria-label="Loading Audiogravity" aria-live="polite">
+        <div class="splash-logo-wrapper">
+            <svg class="splash-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="9" r="4"></circle>
+                <path d="M9 13 l0 8 l2 -2 l2 2 l0 -4"></path>
+                <path d="M14 10 l7 0"></path>
+                <path d="M18 10 l0 3"></path>
+            </svg>
+            <span class="splash-wordmark">Audiogravi<sup>ty</sup></span>
+        </div>
+        <span class="splash-tagline">Audio Device Management</span>
+    </div>
+
+    <!-- Skip to main content link (for keyboard users) -->
+    <a href="#main-content" class="skip-link">
+        Skip to main content
+    </a>
+
+    <!-- TOPBAR -->
+    <ag-top-bar></ag-top-bar>
+
+    <!-- OFFLINE BANNER -->
+    <div class="offline-banner" id="offlineBanner" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span>OFFLINE MODE — VIEWING CACHED DATA</span>
+        <button onclick="window.location.reload()" class="retry-link">RETRY</button>
+    </div>
+
+    <!-- CONFIG MODAL -->
+    <ag-config-panel></ag-config-panel>
+
+    <!-- NAVIGATION TABS -->
+    <ag-tabs id="mainTabs" class="tabs">
+        <button class="tab-btn active" data-tab="profiles">Profiles</button>
+        <button class="tab-btn" data-tab="services">Services</button>
+        <button class="tab-btn" data-tab="audio-software">Audio Software</button>
+        <button class="tab-btn" data-tab="systemd">Systemd</button>
+        <button class="tab-btn" data-tab="performance">Performance</button>
+        <button class="tab-btn" data-tab="config">Config</button>
+        <button class="tab-btn" data-tab="system">System</button>
+        <button class="tab-btn" data-tab="pipeline">Pipeline</button>
+        <button class="tab-btn" data-tab="library">Library</button>
+        <button class="tab-btn" data-tab="admin" style="display: none;">Admin</button>
+    </ag-tabs>
+
+    <!-- APP TITLE -->
+    <div class="app-title-bar">
+        <h1 class="app-title"><img src="pics/audiogravity.svg" alt="Audiogravity" class="logo-svg"></h1>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="main-content" role="main" tabindex="-1">
+
+        <!-- PERFORMANCE OPTIMIZATION (Phase 0): Lazy-loaded page components -->
+        <!-- Only Profiles tab is loaded initially, others created on-demand -->
+
+        <!-- PROFILES TAB (always loaded) -->
+        <section class="tab-content active" id="profiles">
+            <div class="content-grid">
+                <ag-profiles-page id="agProfilesPage"></ag-profiles-page>
+                <ag-history-panel type="profile" title="HISTORY"></ag-history-panel>
+            </div>
+        </section>
+
+        <!-- SERVICES TAB (lazy-loaded) -->
+        <section class="tab-content" id="services">
+            <div class="content-grid" data-lazy-container="services">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- AUDIO SOFTWARE TAB (lazy-loaded) -->
+        <section class="tab-content" id="audio-software">
+            <div class="content-grid" data-lazy-container="audio-software">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- SYSTEMD TAB (lazy-loaded) -->
+        <section class="tab-content" id="systemd">
+            <div class="content-grid" data-lazy-container="systemd">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- PERFORMANCE TAB (lazy-loaded) -->
+        <section class="tab-content" id="performance">
+            <div class="content-grid" data-lazy-container="performance">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- CONFIG TAB (lazy-loaded) -->
+        <section class="tab-content" id="config">
+            <div class="content-grid" data-lazy-container="config">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- SYSTEM TAB (lazy-loaded) -->
+        <section class="tab-content" id="system" data-lazy-container="system">
+            <!-- Content will be injected on first visit -->
+        </section>
+
+        <!-- PIPELINE TAB (lazy-loaded) -->
+        <section class="tab-content" id="pipeline" data-lazy-container="pipeline">
+            <!-- Content will be injected on first visit -->
+        </section>
+
+        <!-- ADMIN TAB (lazy-loaded) -->
+        <section class="tab-content" id="admin">
+            <div class="content-grid" data-lazy-container="admin">
+                <!-- Content will be injected on first visit -->
+            </div>
+        </section>
+
+        <!-- LIBRARY TAB -->
+        <section class="tab-content" id="library">
+            <ag-library-page></ag-library-page>
+        </section>
+
+    </main>
+
+    <!-- CONFIRM MODAL -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirm Action</h3>
+                <button class="modal-close" id="confirmClose" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" id="confirmCancel">Cancel</button>
+                <button class="action-btn primary" id="confirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- INSTALLATION LOGS MODAL -->
+    <ag-logs-modal id="agLogsModal"></ag-logs-modal>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- HUD CONTAINER -->
+    <div id="hud-container">
+        <div class="tab-hud"></div>
+    </div>
+
+    <!-- DOCS FULLSCREEN MODAL (Swagger API reference) -->
+    <ag-docs-modal id="agDocsModal"></ag-docs-modal>
+
+
+    <!-- LOGO PREVIEW MODAL -->
+    <ag-modal id="logoModal" title="Logo Preview"></ag-modal>
+
+    <!-- USER MODAL (Admin) -->
+    <ag-user-modal id="agUserModal"></ag-user-modal>
+
+    <!-- EVENT DETAILS MODAL (System) -->
+    <ag-event-detail-modal id="agEventDetailModal"></ag-event-detail-modal>
+
+    <!-- SYSTEMD OVERRIDE EDITOR -->
+    <ag-systemd-override-editor id="agSystemdOverrideEditor"></ag-systemd-override-editor>
+
+    <!-- AUDIO PIPELINE TOPOLOGY CONFIG -->
+    <ag-json-config-modal id="agTopologyConfigModal"></ag-json-config-modal>
+
+    <!-- NOW PLAYING -->
+    <ag-now-playing></ag-now-playing>
+    <ag-now-playing-fullscreen></ag-now-playing-fullscreen>
+    <ag-pull-tab></ag-pull-tab>
+
+    <!-- FOOTER -->
+    <ag-footer></ag-footer>
+
+    <!-- CodeMirror 5 modes (properties=INI/conf, clike=libconfig, xml=XML) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/properties/properties.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/clike/clike.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldcode.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/brace-fold.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/comment-fold.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.js"></script>
+
+    <!-- JS BUNDLE START - Phase 2: ES6 Modules -->
+    <!-- Single entry point that loads all modules with proper dependency resolution -->
+    <!-- JS APP START -->
+    <script type="module" src="js/main.js"></script>
+    <!-- JS BUNDLE END -->
+</body>
+
+</html>

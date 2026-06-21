@@ -1,0 +1,186 @@
+/* =====================
+   GRID COMPONENT - VERSION RENFORCÉE
+   =====================
+   
+   Composant réutilisable pour les grids responsives.
+   Utilise des sélecteurs plus spécifiques pour éviter les conflits.
+*/
+
+/* =====================
+   BASE GRID STYLES
+   ===================== */
+
+/* Grids avec spécificité renforcée */
+.profiles-zone .profiles-grid,
+.profiles-zone .profiles-grid-container,
+.services-zone .services-grid,
+.services-zone .services-grid-container,
+.software-zone .software-grid,
+.software-zone .software-grid-container,
+.admin-zone .users-grid-container,
+.config-selector-grid-container,
+.systemd-grid,
+.systemd-grid-container,
+.governor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.governor-grid {
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Test metrics et result stats (Performance) */
+.test-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+}
+
+/* =====================
+   FORCE TILES BEHAVIOR
+   ===================== */
+
+/* Empêche les tuiles de forcer leur largeur */
+.profiles-grid>.profile-tile,
+.profiles-grid-container>ag-profile-card,
+.services-grid>.service-tile,
+.services-grid-container>ag-service-card,
+.systemd-grid>.systemd-tile,
+.systemd-grid-container>ag-systemd-card,
+.config-selector-grid-container>ag-config-card,
+.software-grid-container>ag-package-card,
+.users-grid-container>ag-user-card,
+.governor-grid>ag-governor-card,
+.system-grid>ag-system-info,
+.governor-grid>.governor-tile {
+    width: 100%; /* iOS Safari: explicit 100% keeps grid items inside their track */
+    max-width: 100%;
+    min-width: 0;
+    display: block;
+
+    /* Ensures custom elements render as block for height tracking */
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.systemd-grid-container>ag-systemd-card>.systemd-tile,
+.profiles-grid-container>ag-profile-card>.profile-tile,
+.services-grid-container>ag-service-card>.service-tile,
+.software-grid-container>ag-package-card>.package-tile,
+.users-grid-container>ag-user-card>.tile,
+.governor-grid>ag-governor-card>.governor-tile {
+    height: 100%;
+}
+
+/* =====================
+   UTILITY CLASSES (CSS Grid Modern)
+   ===================== */
+
+/**
+ * Grid with auto-fit: columns will take at least --min-width (default 250px)
+ * and then share remaining space.
+ */
+.grid-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-width, 250px), 1fr));
+    gap: var(--grid-gap, var(--spacing-md));
+}
+
+/* Column span utilities */
+.span-2 { grid-column: span 2; }
+
+/* Backward compatibility for previous utility names (aliased below) */
+
+.responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+}
+
+/* =====================
+   RESPONSIVE OVERRIDES
+   ===================== */
+
+/* Mobile: 1 colonne */
+@media (width <= 768px) {
+    .profiles-zone .profiles-grid,
+    .profiles-zone .profiles-grid-container,
+    .services-zone .services-grid,
+    .services-zone .services-grid-container,
+    .admin-zone .users-grid-container,
+    .config-selector-grid-container,
+    .systemd-grid,
+    .systemd-grid-container,
+    .governor-grid,
+    .responsive-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .result-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .profiles-zone .profiles-grid,
+    .services-zone .services-grid,
+    .systemd-grid {
+        gap: 12px; /* Tighter vertical space between cards */
+    }
+}
+
+/* Force 1-column on mobile for services and profiles (iOS Safari auto-fit bug) */
+@media (width <= 768px) {
+    .services-zone .services-grid,
+    .services-zone .services-grid-container,
+    .profiles-zone .profiles-grid,
+    .profiles-zone .profiles-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Audio Software cards are larger/denser, force 1-column below 950px */
+@media (width <= 949px) {
+    .software-zone .software-grid,
+    .software-zone .software-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tablet: 2 colonnes pour grids standard */
+@media (width >= 769px) and (width <= 1024px) {
+    .profiles-zone .profiles-grid,
+    .profiles-zone .profiles-grid-container,
+    .services-zone .services-grid,
+    .services-zone .services-grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Audio Software cards are larger/denser, force 1-column below 950px */
+@media (width >= 950px) and (width <= 1200px) {
+    .software-zone .software-grid,
+    .software-zone .software-grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* =====================
+   COMPACT MODE
+   ===================== */
+
+body.compact-mode .profiles-zone .profiles-grid,
+body.compact-mode .profiles-zone .profiles-grid-container,
+body.compact-mode .services-zone .services-grid,
+body.compact-mode .services-zone .services-grid-container,
+body.compact-mode .software-zone .software-grid,
+body.compact-mode .software-zone .software-grid-container,
+body.compact-mode .responsive-grid {
+    gap: var(--spacing-sm);
+}

@@ -1,0 +1,454 @@
+/**
+ * @module Animations
+ * @description Reusable keyframes and animation utility classes.
+ */
+
+/* =====================
+   KEYFRAMES
+   ===================== */
+
+/**
+ * @keyframes spin
+ * @description Continuous rotation for loading spinners.
+ */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Fade In Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Fade Out Animation */
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+/* Slide Down Animation */
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Slide Up Animation */
+@keyframes slideUp {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Pulse Animation - Pour indicateurs */
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Bounce Animation */
+@keyframes bounce {
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-10px);
+    }
+
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Shake Animation - Pour erreurs */
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+/* Slide In Left Animation */
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Slide In Right Animation */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Slide Out Left Animation */
+@keyframes slideOutLeft {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+/* Slide Out Right Animation */
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Scale Out Animation */
+@keyframes scaleOut {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* Glow Animation - For critical metrics */
+@keyframes glow {
+    0%,
+    100% {
+        box-shadow: 0 0 3px color-mix(in srgb, var(--color-error) 30%, transparent);
+    }
+
+    50% {
+        box-shadow: 0 0 10px color-mix(in srgb, var(--color-error) 50%, transparent);
+    }
+}
+
+/* Toast Slide In Animation */
+@keyframes toastSlideIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Progress Bar Animation */
+@keyframes progressBar {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+/* Modal Backdrop Fade In */
+@keyframes backdropFadeIn {
+    from {
+        background: rgb(0 0 0 / 0);
+    }
+
+    to {
+        background: rgb(0 0 0 / 0.5);
+    }
+}
+
+/* Modal Zoom In Animation */
+@keyframes modalZoomIn {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Ripple Effect Animation */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Heartbeat Animation - For active indicators */
+@keyframes heartbeat {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Enhanced Shimmer Animation */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* Wiggle Animation - For attention */
+@keyframes wiggle {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-5deg);
+    }
+
+    75% {
+        transform: rotate(5deg);
+    }
+}
+
+/* Rotate 360 Animation */
+@keyframes rotate360 {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Stagger Fade In - For tile grids */
+@keyframes staggerFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =====================
+   UTILITY CLASSES
+   ===================== */
+
+/* Spinner Loader */
+.spinner {
+    border: 3px solid var(--border-color);
+    border-top-color: var(--btn-primary);
+    border-radius: var(--radius-full);
+    width: 24px;
+    height: 24px;
+    animation: spin var(--animation-spin) linear infinite;
+}
+
+.spinner.large {
+    width: 48px;
+    height: 48px;
+    border-width: 4px;
+}
+
+.spinner.small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+/* SVG spinner — apply to <svg> elements using iconSpinner */
+.ag-spin {
+    animation: spin var(--animation-spin, 1s) linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Animated Classes */
+.animate-fade-in {
+    animation: fadeIn var(--animation-fade) ease;
+}
+
+.animate-pulse {
+    animation: pulse var(--animation-pulse) ease infinite;
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft var(--animation-slide) ease;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight var(--animation-slide) ease;
+}
+
+.animate-slide-out-left {
+    animation: slideOutLeft var(--animation-slide) ease;
+}
+
+.animate-slide-out-right {
+    animation: slideOutRight var(--animation-slide) ease;
+}
+
+.animate-scale-in {
+    animation: scaleIn var(--animation-fade) ease;
+}
+
+.animate-scale-out {
+    animation: scaleOut var(--animation-fade) ease;
+}
+
+.animate-glow {
+    animation: glow 2s ease-in-out infinite;
+}
+
+.animate-toast-slide-in {
+    animation: toastSlideIn var(--animation-slide) ease;
+}
+
+.animate-modal-zoom-in {
+    animation: modalZoomIn var(--animation-fade) ease;
+}
+
+.animate-heartbeat {
+    animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(90deg,
+            var(--bg-secondary) 0%,
+            var(--bg-tertiary) 50%,
+            var(--bg-secondary) 100%);
+    background-size: 2000px 100%;
+}
+
+.animate-wiggle {
+    animation: wiggle 0.5s ease;
+}
+
+.animate-rotate {
+    animation: rotate360 0.3s ease;
+}
+
+.animate-stagger {
+    animation: staggerFadeIn var(--animation-slide) ease;
+}
+
+/* =====================
+   LOADING STATES
+   ===================== */
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+}
+
+.loading .spinner {
+    margin-right: var(--spacing-sm);
+}

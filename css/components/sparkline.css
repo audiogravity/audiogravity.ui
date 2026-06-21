@@ -1,0 +1,168 @@
+/**
+ * @module Sparkline Component
+ * @description Shared styles for SVG sparkline charts used across SYSTEM and SERVICES tabs
+ */
+
+/* =====================
+   SPARKLINE WEB COMPONENT
+   ===================== */
+
+/* Default layout for ag-sparkline custom element */
+ag-sparkline {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* SVG inside ag-sparkline */
+ag-sparkline .sparkline-svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* =====================
+   SPARKLINE CONTAINER
+   ===================== */
+
+.sparkline-container {
+    width: 100%;
+    height: var(--size-md, 40px);
+    margin: var(--spacing-xs, 8px) 0;
+    position: relative;
+    background: transparent;
+    border-radius: var(--radius-xs, 4px);
+    overflow: hidden;
+}
+
+/* SERVICES tab specific height override */
+.services-zone .sparkline-container {
+    height: var(--size-md);
+    margin-top: 4px;
+    margin-bottom: 0;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+/* SYSTEM tab specific */
+.system-tile .sparkline-container {
+    height: 40px;
+    cursor: default;
+}
+
+/* =====================
+   SPARKLINE SVG
+   ===================== */
+
+.sparkline-container .sparkline-svg,
+.sparkline-container .sparkline {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Optimize SVG rendering */
+.sparkline-svg,
+.sparkline {
+    shape-rendering: geometricprecision;
+}
+
+/* =====================
+   SPARKLINE PATHS & LINES
+   ===================== */
+
+.sparkline-line {
+    transition: stroke 0.3s ease;
+}
+
+.sparkline-fill {
+    transition: fill 0.3s ease;
+}
+
+/* =====================
+   ACTIVITY LEVEL COLORS (SERVICES)
+   Colors defined per-theme via --activity-low/medium/high in css/themes/*.css
+   ===================== */
+
+.sparkline-line.activity-low {
+    stroke: var(--activity-low);
+}
+
+.sparkline-line.activity-medium {
+    stroke: var(--activity-medium);
+}
+
+.sparkline-line.activity-high {
+    stroke: var(--activity-high);
+}
+
+/* =====================
+   INTERACTIVITY
+   ===================== */
+
+/* Make sparklines clickable (SERVICES tab) */
+.services-zone .sparkline-container:hover {
+    opacity: 0.7;
+}
+
+/* SYSTEM tab - no click interaction (cursor set above) */
+
+/* =====================
+   DETAILED CHART (SERVICES EXPANDED VIEW)
+   ===================== */
+
+.detailed-chart {
+    width: 100%;
+    margin-top: var(--spacing-sm);
+}
+
+.detailed-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.detailed-chart-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.detailed-chart-value {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.detailed-chart-svg {
+    width: 100%;
+    height: 60px;
+    display: block;
+    background: var(--chart-bg);
+    border-radius: var(--radius-xs);
+}
+
+/* =====================
+   RESPONSIVE
+   ===================== */
+
+@media (width <= 768px) {
+    .sparkline-container {
+        height: 32px;
+    }
+
+    .detailed-chart-svg {
+        height: 50px;
+    }
+}
+
+@media (width <= 480px) {
+    .sparkline-container {
+        height: 28px;
+    }
+
+    .detailed-chart-svg {
+        height: 40px;
+    }
+}

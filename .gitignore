@@ -1,0 +1,35 @@
+# Node modules
+node_modules/
+
+# Build output
+_site/
+stats.html
+
+# Environment variables — never commit; use .env.example as template
+.env*
+
+# Logs
+*.log
+vite-dev.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+.vite/
+
+*storybook.log
+storybook-static
+
+# Docs files
+public/docs/*
+
+public/sw.js
+__pycache__/

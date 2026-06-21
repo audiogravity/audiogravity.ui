@@ -1,0 +1,116 @@
+/**
+ * @module StatusIndicator
+ * @description Unified status indicator component (UP/DOWN/ACTIVE).
+ */
+
+/**
+ * @component .service-state-indicator, .profile-status-indicator
+ * @description Layout for status dot and text.
+ */
+.service-state-indicator,
+.profile-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+}
+
+/**
+ * @component .status-dot
+ * @description The status indicator circle.
+ */
+.service-state-dot,
+.profile-status-dot,
+.profile-status {
+    display: inline-block;
+    width: var(--size-xxs);
+    height: var(--size-xxs);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+}
+
+
+/* Profile Status (alternative) */
+.profile-status {
+    width: var(--size-xs);
+    height: var(--size-xs);
+    background: var(--border-color);
+    transition: background var(--transition-fast);
+}
+
+/* UP State (Green with glow & slow blink) */
+.service-state-dot.up,
+.profile-status-dot.up,
+.profile-status.active {
+    background: var(--color-success);
+    box-shadow: 0 0 8px var(--color-success);
+    animation: blinkSlow 3s infinite ease-in-out;
+}
+
+@keyframes blinkSlow {
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 8px var(--color-success);
+    }
+
+    50% {
+        opacity: 0.4;
+        box-shadow: 0 0 2px var(--color-success);
+    }
+}
+
+/* DOWN State (Gray) */
+.service-state-dot.down,
+.profile-status-dot.down,
+.profile-status.inactive {
+    background: var(--text-tertiary);
+}
+
+/* PENDING State (Orange pulsing — activating/deactivating) */
+.service-state-dot.pending,
+.profile-status-dot.pending {
+    background: var(--color-warning, #f59e0b);
+    box-shadow: 0 0 8px var(--color-warning, #f59e0b);
+    animation: blinkFast 1s infinite ease-in-out;
+}
+
+@keyframes blinkFast {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* No-animations: remove glow, keep solid dot */
+body.no-animations .service-state-dot.up,
+body.no-animations .profile-status-dot.up,
+body.no-animations .profile-status.active,
+body.no-animations .service-state-dot.pending,
+body.no-animations .profile-status-dot.pending {
+    box-shadow: none;
+}
+
+/* Status Text */
+.service-state-text,
+.profile-status-text {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* UP Text (Green) */
+.service-state-text.up,
+.profile-status-text.up {
+    color: var(--color-success);
+}
+
+/* DOWN Text (Gray) */
+.service-state-text.down,
+.profile-status-text.down {
+    color: var(--text-tertiary);
+}
+
+/* PENDING Text (Orange) */
+.service-state-text.pending,
+.profile-status-text.pending {
+    color: var(--color-warning, #f59e0b);
+}

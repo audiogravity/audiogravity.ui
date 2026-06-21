@@ -1,0 +1,159 @@
+/**
+ * JSON Config Modal Styles
+ * Applied to <ag-json-config-modal> custom element
+ * Reuses CodeMirror styles from config.css (.config-raw-editor)
+ */
+
+/* Modal sizing - fixed width to prevent resizing */
+ag-json-config-modal .modal-dialog {
+    max-width: 900px;
+    width: 900px;
+    min-width: 900px;
+}
+
+ag-json-config-modal .modal-body {
+    max-height: 600px;
+    overflow: hidden auto;
+}
+
+/* Mobile / iOS : libérer les tailles fixes */
+@media (width <= 768px) {
+    ag-json-config-modal .modal-dialog {
+        width: 95%;
+        min-width: auto;
+        max-width: 100%;
+    }
+
+    ag-json-config-modal .modal-body {
+        max-height: calc(90dvh - 130px);
+    }
+
+    /* stylelint-disable selector-class-pattern */
+    ag-json-config-modal .config-raw-editor .CodeMirror,
+    ag-json-config-modal .config-raw-editor .CodeMirror-scroll {
+        height: calc(90dvh - 210px);
+        min-height: 180px;
+    }
+    /* stylelint-enable selector-class-pattern */
+}
+
+/* Override CodeMirror height specifically for JSON config modal */
+
+/* =====================
+   CODEMIRROR THEME - Reuse from config.css
+   ===================== */
+
+/* stylelint-disable selector-class-pattern */
+
+/* Intégration dans le thème Audiogravity — height override for this modal */
+ag-json-config-modal .config-raw-editor .CodeMirror {
+    height: 500px;
+    min-height: 500px;
+    font-family: 'Courier New', monospace;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast);
+}
+
+ag-json-config-modal .config-raw-editor .CodeMirror-scroll {
+    min-height: 500px;
+    height: 500px;
+}
+
+ag-json-config-modal .config-raw-editor .CodeMirror.dirty {
+    border-color: var(--color-warning);
+}
+
+ag-json-config-modal .config-raw-editor .CodeMirror.validation-error {
+    border-color: var(--color-error);
+}
+
+ag-json-config-modal .config-raw-editor .CodeMirror-focused {
+    border-color: var(--text-primary);
+    outline: none;
+}
+
+/* Gouttière (numéros de ligne) */
+ag-json-config-modal .config-raw-editor .CodeMirror-gutters {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+}
+
+ag-json-config-modal .config-raw-editor .CodeMirror-linenumber {
+    color: var(--text-tertiary);
+}
+
+/* Curseur */
+ag-json-config-modal .config-raw-editor .CodeMirror-cursor {
+    border-left-color: var(--text-primary);
+}
+
+/* Sélection */
+ag-json-config-modal .config-raw-editor .CodeMirror-selected {
+    background: var(--syntax-selection);
+}
+
+/* ---- Tokens de colorisation JSON ---- */
+
+/* Réutilise les variables --syntax-* déjà définies dans les thèmes */
+
+/* JSON mode (javascript with json: true) */
+ag-json-config-modal .config-raw-editor .cm-property {
+    color: var(--syntax-key);
+    font-weight: 600;
+}
+
+ag-json-config-modal .config-raw-editor .cm-string {
+    color: var(--syntax-string);
+}
+
+ag-json-config-modal .config-raw-editor .cm-number {
+    color: var(--syntax-number);
+}
+
+ag-json-config-modal .config-raw-editor .cm-keyword {
+    color: var(--syntax-boolean);
+    font-weight: 600;
+}
+
+ag-json-config-modal .config-raw-editor .cm-atom {
+    color: var(--syntax-null);
+}
+
+/* Commentaires — commun à tous les modes */
+ag-json-config-modal .config-raw-editor .cm-comment {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* stylelint-enable selector-class-pattern */
+
+/* Validation messages - reuse existing validation.css patterns */
+ag-json-config-modal .validation-message {
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    display: none;
+}
+
+ag-json-config-modal .validation-message.validation-error,
+ag-json-config-modal .validation-message.validation-success {
+    display: block;
+}
+
+ag-json-config-modal .validation-message.validation-error {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    border-left: 3px solid var(--color-error);
+}
+
+ag-json-config-modal .validation-message.validation-success {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border-left: 3px solid var(--color-success);
+}

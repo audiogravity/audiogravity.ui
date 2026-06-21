@@ -1,0 +1,392 @@
+/**
+ * Audio Software Tab Styles
+ */
+
+
+/* DRY-RUN toggle */
+.dry-run-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-left: auto;
+}
+
+@media (width <= 480px) {
+    .software-zone .tab-title-container {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        align-items: flex-start;
+    }
+    
+    .software-zone .tab-title-container h2 {
+        width: 100%;
+        margin-bottom: 0;
+        font-size: var(--font-size-lg);
+    }
+
+    .dry-run-toggle {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+        background: var(--bg-tertiary);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+    }
+}
+
+.dry-run-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Software grid */
+
+/* Software grid: Rely on components/grid.css for standard behavior */
+.software-zone .software-grid,
+.software-zone .software-grid-container {
+    gap: var(--spacing-md);
+}
+
+/* Mobile overrides for layout */
+@media (width <= 768px) {
+    .software-header {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .software-meta {
+        text-align: left;
+    }
+}
+
+/* Software card */
+.software-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    transition: all var(--transition-fast), transform var(--transition-normal), box-shadow var(--transition-normal);
+    position: relative;
+    text-align: left;
+}
+
+@media (width <= 768px) {
+    .software-card {
+        padding: var(--spacing-sm);
+    }
+}
+
+.software-card.installed {
+    border-left-width: 3px;
+    border-left-color: var(--color-success);
+}
+
+.software-card.not-installed {
+    border-left-color: var(--border-color);
+    opacity: 0.9;
+}
+
+.software-card.installing,
+.software-card.updating,
+.software-card.uninstalling {
+    border-left-color: var(--color-warning);
+    opacity: 0.95;
+}
+
+.software-card.error {
+    border-left-color: var(--color-error);
+}
+
+.software-card.not-supported {
+    opacity: 0.6;
+    border-left-color: var(--text-tertiary);
+}
+
+/* Card header */
+.software-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.software-name {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.software-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.software-status-indicator.installed {
+    color: var(--color-success);
+}
+
+.software-status-indicator.not-installed {
+    color: var(--text-tertiary);
+}
+
+.software-status-indicator.installing,
+.software-status-indicator.updating,
+.software-status-indicator.uninstalling {
+    color: var(--color-warning);
+}
+
+.software-status-indicator.error {
+    color: var(--color-error);
+}
+
+.software-status-indicator.not-supported {
+    color: var(--text-tertiary);
+}
+
+/* Description */
+.software-description {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+/* Version info */
+.software-version {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+@media (width <= 768px) {
+    .version-label {
+        font-size: var(--font-size-xxs);
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    .version-value {
+        font-size: var(--font-size-xs);
+        flex-wrap: nowrap;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .version-value > span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+}
+
+@media (width <= 480px) {
+    .software-header {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+}
+
+@media (width <= 1024px) {
+    .software-zone .dry-run-toggle {
+        margin-left: 0;
+        margin-top: var(--spacing-xs);
+    }
+}
+
+.version-info {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+.version-info:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+
+/* Handled by components/metrics.css (Aliases) */
+
+.version-value {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: monospace;
+}
+
+/* Actions */
+.software-actions {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.software-actions .tile-action-btn {
+    transform: none !important;
+}
+
+/* Action buttons Handled by components/button.css */
+
+/* Progress */
+.software-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* Progress bar styles moved to components/progress.css */
+
+.progress-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* Footer */
+.software-footer {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.software-meta {
+    display: flex;
+    width: 100%;
+    gap: var(--spacing-sm);
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* Restart required — clickable badge button */
+.restart-badge {
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.restart-badge:hover {
+    filter: brightness(1.15);
+}
+
+/* Documentation link in footer */
+.doc-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    font-size: var(--font-size-md);
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-xs);
+    transition: color var(--transition-fast), background var(--transition-fast);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.doc-link:hover {
+    color: var(--accent-primary);
+    background: var(--accent-primary-alpha);
+}
+
+.install-progress-container {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+/* Progress bar styles moved to components/progress.css */
+
+.install-progress-text {
+    font-weight: 600;
+    display: block;
+    text-align: center;
+}
+
+/* stylelint-disable-next-line selector-id-pattern */
+#installLogsContainerLit {
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Button link style for "Check for updates" */
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.btn-link:hover {
+    background: var(--accent-primary-alpha);
+    color: var(--accent-hover);
+}
+
+.btn-link:active {
+    transform: scale(0.95);
+}
+
+.btn-link .icon-spinner9.pulse {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Reuse log styles from system.css (.log-container, .log-entry, etc.) */

@@ -1,0 +1,8 @@
+/**
+ * @module TrackMeta
+ * @description Layout transparency for the ag-track-meta atom — typography
+ * is owned by parent organisms via descendant selectors on ``.ag-tm-title``,
+ * ``.ag-tm-artist`` and ``.ag-tm-album``.
+ */
+
+ag-track-meta { display: contents; }

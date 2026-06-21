@@ -1,0 +1,223 @@
+/**
+ * @module Profiles
+ * @description Layout and styles for the Profiles tab.
+ * Manages the grid of profile tiles and their interactive states.
+ */
+
+/* =====================
+   PROFILES GRID LAYOUT
+   ===================== */
+
+
+/* Grid styles moved to components/grid.css */
+
+/* =====================
+   PROFILE TILE - SPÉCIFICITÉS
+   ===================== */
+
+/* Les styles communs sont dans components/tile.css */
+
+.profile-tile {
+    min-height: 140px;
+}
+
+/* Profile Header */
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.profile-name {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+/* Profile Description */
+.profile-description {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    line-height: 1.4;
+}
+
+/* Profile Footer */
+.profile-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: var(--spacing-sm);
+}
+
+/* Status indicator styles → components/status-indicator.css */
+
+/* Compact Mode Adjustments */
+body.compact-mode .profile-name {
+    font-size: var(--font-size-md);
+}
+
+body.compact-mode .profile-description {
+    font-size: var(--font-size-xs);
+}
+
+/* Mobile-specific adjustments */
+@media (width <= 768px) {
+    .profile-name {
+        font-size: var(--font-size-md);
+    }
+
+    .profile-description {
+        font-size: var(--font-size-xs);
+    }
+}
+
+@media (width <= 480px) {
+    .profiles-zone {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+    }
+}
+
+
+/* Profile name — clickable to open detail modal */
+.profile-name-clickable {
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.profile-name-clickable:hover {
+    color: var(--color-accent, var(--text-secondary));
+    text-decoration: underline;
+}
+
+/* Profile Detail Modal */
+.detail-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.detail-section-title {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-services-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.detail-services-table th {
+    text-align: left;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-services-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.detail-services-table tr:last-child td {
+    border-bottom: none;
+}
+
+.detail-state {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.detail-state.up    { color: var(--color-success); }
+.detail-state.down  { color: var(--text-secondary); }
+.detail-state.error { color: var(--color-error); }
+
+.detail-unit {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono, monospace);
+}
+
+.detail-history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-history-item {
+    display: flex;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-history-item:last-child { border-bottom: none; }
+
+.detail-history-time {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    font-family: var(--font-mono, monospace);
+}
+
+.detail-history-action { color: var(--text-primary); }
+.detail-history-item.success .detail-history-action { color: var(--color-success); }
+.detail-history-item.error   .detail-history-action { color: var(--color-error); }
+
+.detail-empty {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Critical Services List */
+.profile-critical-services {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--spacing-xs);
+}
+
+.critical-service-item {
+    font-size: var(--font-size-xs);
+    padding: 2px 6px;
+    background: var(--color-warning-bg);
+    border-left: 3px solid var(--color-warning);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+
+/* Detail modal — mobile responsiveness */
+@media (width <= 600px) {
+    .detail-services-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (width <= 480px) {
+    .detail-services-table .col-unit {
+        display: none;
+    }
+}

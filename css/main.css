@@ -1,0 +1,73 @@
+/**
+ * @module Main
+ * @description Master CSS Manifest. Imports all styles in the correct cascade order.
+ */
+
+/* 1. ATOMS & BASE (Resets, HTML Base) */
+@import 'base.css';
+
+/* 2. DESIGN TOKENS (Variables, Themes) */
+@import 'themes.css';
+@import 'responsive.css';
+
+/* 3. SHARED COMPONENTS (Core UI Atoms) */
+@import 'components/grid.css';
+@import 'components/tile.css';
+@import 'components/button.css';
+@import 'components/metrics.css';
+@import 'components/tooltip.css';
+@import 'components/status-indicator.css';
+@import 'components/badge.css';
+@import 'components/source-badge.css';
+@import 'components/skeleton.css';
+@import 'components/tab-zone.css';
+@import 'components/animations.css';
+@import 'components/toast.css';
+@import 'components/sparkline.css';
+@import 'components/health-bar.css';
+@import 'components/filter-bar.css';
+@import 'components/forms.css';
+@import 'components/library-cover.css';
+@import 'components/library-list-row.css';
+@import 'components/library-browser.css';
+@import 'components/now-playing-fullscreen.css';
+@import 'components/progress-bar.css';
+@import 'components/playback-controls.css';
+@import 'components/sleep-timer.css';
+@import 'components/format-strip.css';
+@import 'components/connector-badge.css';
+@import 'components/dsd-lock.css';
+@import 'components/track-meta.css';
+@import 'components/library-search.css';
+@import 'components/library-queue.css';
+@import 'components/library-sources.css';
+@import 'components/library-outputs.css';
+@import 'components/library-album-card.css';
+@import 'components/library-radio.css';
+@import 'components/modal.css';
+@import 'components/config-sidebar.css';
+@import 'components/history-panel.css';
+@import 'components/progress.css';
+@import 'components/perf-monitor.css';
+@import 'components/now-playing.css';
+@import 'components/splash-screen.css';
+
+/* 4. LAYOUT (App Shell, Topbar, Tabs, Footer) */
+@import 'layout.css';
+
+/* 5. UTILITIES (Utility classes and helpers) */
+@import 'utilities.css';
+
+/* 6. PAGE MODULES (Specific Tab Logic) */
+@import 'profiles.css';
+@import 'services.css';
+@import 'admin.css';
+@import 'audio-software.css';
+@import 'config-editor.css';
+@import 'systemd.css';
+@import 'performance.css';
+@import 'system.css';
+@import 'config.css';
+@import 'validation.css';
+@import 'login.css';
+@import 'terminal.css';

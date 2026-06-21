@@ -1,0 +1,83 @@
+/**
+ * @module LibrarySearch
+ * @description Styles for ag-library-search: search bar, source-pill row, results label.
+ */
+
+.lib-search-bar {
+    margin: 6px 20px 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.lib-search-bar svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-tertiary);
+    fill: none;
+    stroke-width: 1.8;
+    flex-shrink: 0;
+}
+
+.lib-search-input {
+    flex: 1;
+    appearance: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+}
+
+.lib-search-input::placeholder { color: var(--text-tertiary); }
+
+.lib-search-cancel {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.lib-src-badges {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin: 0 20px 14px;
+}
+
+.lib-src-badge {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px var(--spacing-sm);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.lib-src-badge.active {
+    color: var(--bg-primary);
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+.lib-results-label {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin: 6px 20px 12px;
+    display: block;
+}

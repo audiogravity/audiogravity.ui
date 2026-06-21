@@ -1,0 +1,162 @@
+/**
+ * @module Metrics
+ * @description Shared styles for metric displays, statistics, and informational boxes.
+ * Used across Topbar, Services, Performance, and Audio Software tabs.
+ */
+
+/* =====================
+   METRIC BOX (Literal or Bordered)
+   ===================== */
+
+/**
+ * @component .metric-box
+ * @description A standard container for a label/value pair.
+ */
+.metric-box {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+    text-align: center;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.metric-box.secondary {
+    background: var(--bg-secondary);
+}
+
+.metric-box.clickable {
+    cursor: pointer;
+}
+
+.metric-box.clickable:hover {
+    background: var(--bg-secondary);
+    border-color: var(--text-primary);
+}
+
+/* =====================
+   DETAILED CHARTS (Expanded views)
+   ===================== */
+
+.detailed-chart {
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 0;
+}
+
+.detailed-chart-header {
+    display: flex;
+    flex-direction: column; /* Stacked to avoid overlap in narrow splits */
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.detailed-chart-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+
+    /* NO uppercase here: matches icon class cases and saves space */
+}
+
+.detailed-chart-value {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.detailed-chart-svg {
+    width: 100%;
+    height: 60px;
+    display: block;
+}
+
+/* =====================
+   METRIC LABEL / VALUE
+   ===================== */
+
+.metric-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.metric-value {
+    font-size: var(--font-size-lg); /* Slightly larger for premium feel */
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: normal;
+}
+
+.metric-value.monospace {
+    font-family: var(--font-mono, monospace);
+}
+
+/* Activity Indicators */
+.metric-value.activity-low { color: var(--color-success); }
+.metric-value.activity-medium { color: var(--color-warning); }
+.metric-value.activity-high { color: var(--color-error); }
+
+/* =====================
+   ALIASES & COMPATIBILITY
+   ===================== */
+
+.stat-label,
+.version-label,
+.property-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.stat-value,
+.version-value,
+.property-value {
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: normal;
+}
+
+.metric-large {
+    font-size: var(--font-size-xxxl);
+    font-weight: 700;
+}
+
+/* =====================
+   RESPONSIVE Adjustments
+   ===================== */
+
+body.compact-mode .metric-box {
+    padding: var(--spacing-xs);
+}
+
+body.compact-mode .metric-value {
+    font-size: var(--font-size-sm);
+}
+
+@media (width <= 768px) {
+    .metric-label, .stat-label {
+        font-size: 9px;
+    }
+
+    .metric-value, .stat-value {
+        font-size: var(--font-size-xs);
+    }
+}

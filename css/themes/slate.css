@@ -1,0 +1,371 @@
+/* =====================
+   THEME: SLATE (DEFAULT)
+   ===================== */
+:root,
+[data-theme="slate"] {
+    /* Soft Light Theme - Slate Based */
+    --bg-primary: #F8F9FA;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #F1F5F9;
+    --text-primary: #1E293B;
+
+    /* Slate-800 */
+    --text-secondary: #64748B;
+
+    /* Slate-500 */
+    --text-tertiary: #94A3B8;
+
+    /* Slate-400 */
+
+    /* Status Colors */
+    --color-success: #10B981;
+
+    /* Emerald-500 */
+    --color-error: #EF4444;
+
+    /* Red-500 */
+    --color-warning: #F59E0B;
+
+    /* Amber-500 */
+    --color-info: #3B82F6;
+
+    /* Blue-500 */
+
+    /* Alpha-based status backgrounds for highlights */
+    --color-success-bg: rgb(16 185 129 / 0.15);
+    --color-error-bg: rgb(239 68 68 / 0.15);
+    --color-warning-bg: rgb(245 158 11 / 0.15);
+    --color-info-bg: rgb(59 130 246 / 0.15);
+
+    /* Component: Charts */
+    --chart-bg: rgb(0 0 0 / 0.05);
+
+    /* Latency Histogram Colors */
+    --histogram-excellent: #10B981;
+
+    /* emerald-500 - < 50 µs */
+    --histogram-good: #3B82F6;
+
+    /* blue-500 - 50-200 µs */
+    --histogram-average: #F59E0B;
+
+    /* amber-500 - 200-500 µs */
+    --histogram-critical: #EF4444;
+
+    /* red-500 - ≥ 500 µs */
+
+    /* Sparkline activity level colors (Services tab) */
+    --activity-low: #10B981;
+
+    /* green  — low activity  */
+    --activity-medium: #F59E0B;
+
+    /* amber  — medium activity */
+    --activity-high: #EF4444;
+
+    /* red    — high activity  */
+
+    /* Sparkline chart colors (System tab) */
+    --chart-cpu: #3B82F6;
+    --chart-cpu-bg: rgb(59 130 246 / 0.15);
+    --chart-memory: #8B5CF6;
+    --chart-memory-bg: rgb(139 92 246 / 0.15);
+    --chart-temperature: #F59E0B;
+    --chart-temperature-bg: rgb(245 158 11 / 0.15);
+    --chart-network: #10B981;
+    --chart-network-bg: rgb(16 185 129 / 0.15);
+    --chart-disk: #EC4899;
+    --chart-disk-bg: rgb(236 72 153 / 0.15);
+
+    /* Component Specific: Toasts */
+    --toast-success: #10B981;
+    --toast-error: #EF4444;
+    --toast-warning: #F59E0B;
+    --toast-info: #3B82F6;
+
+    /* UI Colors */
+    --border-color: #E2E8F0;
+
+    /* Slate-200 */
+    --shadow-color: rgb(15 23 42 / 0.08);
+    --overlay-bg: rgb(15 23 42 / 0.6);
+
+    /* Component Colors */
+    --topbar-bg: #FFFFFF;
+    --topbar-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --tab-active: #0F172A;
+    --tab-hover: #F1F5F9;
+    --btn-primary: #0F172A;
+    --btn-secondary: #FFFFFF;
+    --switch-active-bg: var(--text-primary);
+    --switch-notification-bg: var(--color-warning);
+
+    /* Spinner */
+    --accent-primary: #6366F1;
+
+    /* Indigo-500 */
+    --accent-primary-alpha: rgb(99 102 241 / 0.1);
+    --accent-hover: #4F46E5;
+
+    /* Indigo-600 */
+
+    /* Accessibility: focus outline */
+    --focus-color: #0284C7;
+
+    /* Sky-600 — visible on light backgrounds */
+    --focus-color-dark: #38BDF8;
+
+    /* Sky-400 — visible on dark backgrounds  */
+
+    /* Login: error message component */
+    --status-error: var(--color-error);
+    --status-error-bg: var(--color-error-bg);
+
+    /* Sparkline: SVG grid line (subtle separator inside chart) */
+    --chart-grid: rgb(0 0 0 / 0.08);
+
+    /* Syntax Highlighting (JSON viewer) */
+    --syntax-key: #2563EB;
+
+    /* blue-600 — object keys */
+    --syntax-string: #16A34A;
+
+    /* green-600 — string values */
+    --syntax-number: #D97706;
+
+    /* amber-600 — numbers */
+    --syntax-boolean: #9333EA;
+
+    /* purple-600 — true / false */
+    --syntax-null: #94A3B8;
+
+    /* slate-400 — null (muted) */
+    --syntax-selection: rgb(99 102 241 / 0.15);
+
+    /* indigo with alpha — CodeMirror selection */
+
+    /* Validation States - Borders */
+    --validation-success-border: rgb(16 185 129 / 0.3);
+
+    /* emerald-500 with alpha */
+    --validation-error-border: rgb(239 68 68 / 0.3);
+
+    /* red-500 with alpha */
+    --validation-warning-border: rgb(245 158 11 / 0.3);
+
+    /* amber-500 with alpha */
+    --validation-info-border: rgb(59 130 246 / 0.3);
+
+    /* blue-500 with alpha */
+
+    /* Button Hover States */
+    --btn-success-hover-bg: rgb(16 185 129 / 0.1);
+    --btn-success-hover-shadow: rgb(16 185 129 / 0.3);
+    --btn-error-hover-bg: rgb(239 68 68 / 0.1);
+    --btn-error-hover-shadow: rgb(239 68 68 / 0.3);
+    --btn-warning-hover-bg: rgb(245 158 11 / 0.1);
+    --btn-warning-hover-shadow: rgb(245 158 11 / 0.3);
+
+    /* Misc */
+    --bg-hover: var(--bg-tertiary);
+
+    /* Debug/Log Colors */
+    --color-debug: #94A3B8;
+
+    /* slate-400 */
+    --color-debug-bg: rgb(148 163 184 / 0.15);
+
+    /* Spinner */
+    --spinner-track: rgb(255 255 255 / 0.3);
+
+    /* Core Grouping */
+    --core-group-saturation: 65%;
+    --core-group-lightness: 50%;
+
+    /* Component Speficic: Audio Pipeline */
+    --pipeline-node-bg: #1E293B; /* Slate-800 */
+    --pipeline-node-active: #F59E0B; /* Amber-500 */
+    --pipeline-node-bitperfect: #10B981; /* Emerald-500 */
+    --pipeline-node-text: #FFFFFF;
+    --pipeline-link: #94A3B8; /* Slate-400 */
+    --pipeline-link-active: #F59E0B; /* Amber-500 */
+    --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
+}
+
+body.dark-mode,
+[data-theme="slate"].dark-mode,
+[data-theme="slate"] body.dark-mode {
+    /* Soft Dark Theme - Slate Based */
+    --bg-primary: #0F172A;
+
+    /* Slate-950 */
+    --bg-secondary: #1E293B;
+
+    /* Slate-800 */
+    --bg-tertiary: #334155;
+
+    /* Slate-700 */
+
+    --text-primary: #F1F5F9;
+
+    /* Slate-100 */
+    --text-secondary: #94A3B8;
+
+    /* Slate-400 */
+    --text-tertiary: #64748B;
+
+    /* Slate-500 */
+
+    --border-color: #334155;
+
+    /* Slate-700 */
+    --shadow-color: rgb(0 0 0 / 0.3);
+    --topbar-bg: #1E293B;
+    --topbar-shadow: 0 1px 0 #334155;
+    --tab-hover: #334155;
+    --btn-primary: #F1F5F9;
+    --btn-secondary: #1E293B;
+    --switch-active-bg: var(--accent-primary);
+    --switch-notification-bg: var(--color-warning);
+
+    /* Status Colors (Adjusted for Dark Mode) */
+    --color-success: #34D399;
+
+    /* Emerald-400 */
+    --color-error: #F87171;
+
+    /* Red-400 */
+    --color-warning: #FBBF24;
+
+    /* Amber-400 */
+    --color-info: #60A5FA;
+
+    /* Blue-400 */
+
+    /* Alpha-based status backgrounds (Dark Mode) */
+    --color-success-bg: rgb(52 211 153 / 0.15);
+    --color-error-bg: rgb(248 113 113 / 0.15);
+    --color-warning-bg: rgb(251 191 36 / 0.15);
+    --color-info-bg: rgb(96 165 250 / 0.15);
+
+    /* Component: Charts (Dark Mode) */
+    --chart-bg: rgb(255 255 255 / 0.05);
+
+    /* Latency Histogram Colors (Dark Mode) */
+    --histogram-excellent: #34D399;
+
+    /* emerald-400 - < 50 µs */
+    --histogram-good: #60A5FA;
+
+    /* blue-400 - 50-200 µs */
+    --histogram-average: #FBBF24;
+
+    /* amber-400 - 200-500 µs */
+    --histogram-critical: #F87171;
+
+    /* red-400 - ≥ 500 µs */
+
+    /* Sparkline activity level colors — Dark Mode */
+    --activity-low: #34D399;
+
+    /* emerald-400 — low activity  */
+    --activity-medium: #FBBF24;
+
+    /* amber-400   — medium activity */
+    --activity-high: #F87171;
+
+    /* red-400     — high activity  */
+
+    /* Sparkline chart colors — Dark Mode (lighter shades for contrast) */
+    --chart-cpu: #60A5FA;
+    --chart-cpu-bg: rgb(96 165 250 / 0.15);
+    --chart-memory: #A78BFA;
+    --chart-memory-bg: rgb(167 139 250 / 0.15);
+    --chart-temperature: #FBBF24;
+    --chart-temperature-bg: rgb(251 191 36 / 0.15);
+    --chart-network: #34D399;
+    --chart-network-bg: rgb(52 211 153 / 0.15);
+    --chart-disk: #F472B6;
+    --chart-disk-bg: rgb(244 114 182 / 0.15);
+
+    /* Component Specific: Toasts */
+    --toast-success: #34D399;
+    --toast-error: #F87171;
+    --toast-warning: #FBBF24;
+    --toast-info: #60A5FA;
+
+    /* Accent Colors (for buttons, links, etc.) */
+    --accent-primary: #818CF8;
+
+    /* Indigo-400 (lighter for dark mode) */
+    --accent-primary-alpha: rgb(129 140 248 / 0.15);
+    --accent-hover: #A5B4FC;
+
+    /* Indigo-300 */
+
+    /* Sparkline: SVG grid line — Dark Mode */
+    --chart-grid: rgb(255 255 255 / 0.06);
+
+    /* Syntax Highlighting — Dark Mode */
+    --syntax-key: #60A5FA;
+
+    /* blue-400 */
+    --syntax-string: #4ADE80;
+
+    /* green-400 */
+    --syntax-number: #FBBF24;
+
+    /* amber-400 */
+    --syntax-boolean: #C084FC;
+
+    /* purple-400 */
+    --syntax-null: #64748B;
+
+    /* slate-500 */
+    --syntax-selection: rgb(129 140 248 / 0.2);
+
+    /* indigo-400 with alpha — CodeMirror selection (dark mode) */
+
+    /* Validation States - Borders — Dark Mode */
+    --validation-success-border: rgb(52 211 153 / 0.4);
+
+    /* emerald-400 with alpha (more visible) */
+    --validation-error-border: rgb(248 113 113 / 0.4);
+
+    /* red-400 with alpha */
+    --validation-warning-border: rgb(251 191 36 / 0.4);
+
+    /* amber-400 with alpha */
+    --validation-info-border: rgb(96 165 250 / 0.4);
+
+    /* blue-400 with alpha */
+
+    /* Button Hover States — Dark Mode */
+    --btn-success-hover-bg: rgb(52 211 153 / 0.15);
+    --btn-success-hover-shadow: rgb(52 211 153 / 0.4);
+    --btn-error-hover-bg: rgb(248 113 113 / 0.15);
+    --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
+    --btn-warning-hover-bg: rgb(251 191 36 / 0.15);
+    --btn-warning-hover-shadow: rgb(251 191 36 / 0.4);
+
+    /* Misc — Dark Mode */
+    --bg-hover: var(--bg-tertiary);
+
+    /* Debug/Log Colors — Dark Mode */
+    --color-debug: #64748B;
+
+    /* slate-500 */
+    --color-debug-bg: rgb(100 116 139 / 0.2);
+
+    /* Spinner — Dark Mode */
+    --spinner-track: rgb(255 255 255 / 0.3);
+
+    /* Component Speficic: Audio Pipeline (Dark Mode) */
+    --pipeline-node-bg: #334155; /* Slate-700 */
+    --pipeline-node-active: #FBBF24; /* Amber-400 */
+    --pipeline-node-bitperfect: #34D399; /* Emerald-400 */
+    --pipeline-node-text: #F1F5F9;
+    --pipeline-link: #64748B; /* Slate-500 */
+    --pipeline-link-active: #FBBF24; /* Amber-400 */
+    --pipeline-link-bitperfect: #34D399; /* Emerald-400 */
+}

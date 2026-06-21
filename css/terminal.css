@@ -1,0 +1,85 @@
+/**
+ * @module Terminal
+ * @description Styles for the ag-terminal molecule (admin PTY shell).
+ */
+
+.ag-terminal-shell {
+    display: flex;
+    flex-direction: column;
+    background: #0d1117;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    min-height: 420px;
+}
+
+/* ===== TOOLBAR ===== */
+
+.ag-terminal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.ag-terminal-title {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+}
+
+.ag-terminal-status {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+.ag-terminal-status.connecting { color: var(--color-warning); }
+.ag-terminal-status.connected  { color: var(--color-success); }
+.ag-terminal-status.closed     { color: var(--text-tertiary); }
+.ag-terminal-status.error      { color: var(--color-error); }
+
+/* ===== VIEWPORT ===== */
+
+.ag-terminal-viewport {
+    flex: 1;
+    padding: var(--spacing-xs);
+    min-height: 380px;
+}
+
+.ag-terminal-viewport--hidden {
+    display: none;
+}
+
+
+/* ===== PLACEHOLDER ===== */
+
+.ag-terminal-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    color: var(--text-tertiary);
+    padding: var(--spacing-xl);
+}
+
+.ag-terminal-placeholder-icon {
+    font-size: 2rem;
+    opacity: 0.4;
+}
+
+.ag-terminal-placeholder p {
+    font-size: var(--font-size-sm);
+    margin: 0;
+    text-align: center;
+}

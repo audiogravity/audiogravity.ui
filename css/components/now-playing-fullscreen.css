@@ -1,0 +1,542 @@
+/**
+ * @module NowPlayingFullscreen
+ * @description Styles for the ag-now-playing-fullscreen organism.
+ * Prefix: npfs-
+ */
+
+ag-now-playing-fullscreen { display: block; }
+
+/* Fullscreen panel */
+.npfs-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    touch-action: none;
+    will-change: transform;
+}
+
+/* Dominant-color tint — gradient from top 40% only, subtle overlay */
+.npfs-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--npfs-bg, transparent) 22%, transparent) 0%,
+        transparent 42%
+    );
+    pointer-events: none;
+    transition: background 0.6s ease;
+}
+
+/* Slide-up entry animation */
+@keyframes npfsSlideIn {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}
+
+.npfs-panel--enter {
+    animation: npfsSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Topbar slides out when fullscreen is open */
+body.npfs-open .topbar {
+    transform: translateY(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+body:not(.npfs-open) .topbar {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Header ── */
+.npfs-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    padding: 6px 16px 4px;
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
+    flex-shrink: 0;
+}
+
+.npfs-back {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 8px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+@media (hover: hover) {
+    .npfs-back:hover { background: var(--bg-tertiary); }
+}
+
+.npfs-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    flex: 1;
+    text-align: center;
+}
+
+/* ── Source-switcher dots ── */
+.npfs-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 0 0 8px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.npfs-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    transition: background var(--transition-fast), transform var(--transition-fast);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.npfs-dot--active {
+    background: var(--text-primary);
+    transform: scale(1.3);
+}
+
+/* ── Scrollable content ── */
+.npfs-scroll {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ── Cover ── */
+.npfs-cover-wrap {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+
+.npfs-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-lg);
+    background: var(--bg-tertiary);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+}
+
+.npfs-cover-placeholder {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-lg);
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.npfs-cover-placeholder svg {
+    width: 64px;
+    height: 64px;
+    opacity: 0.25;
+    color: var(--text-secondary);
+}
+
+.npfs-cover-corner {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgb(0 0 0 / 0.55);
+    color: #ffffff;
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.npfs-cover-corner.right {
+    left: auto;
+    right: 8px;
+}
+
+/* ── Radio dual-cover overlay ──
+   Square thumbnail layered on the bottom-right of the main cover. Reveals
+   the secondary cover (track when station is primary, station when swapped)
+   and acts as the swap button. Sized so badges in the bottom-right corner
+   (.npfs-cover-corner.right) stay readable above the overlay. */
+.npfs-cover-overlay {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 22%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    border: 2px solid rgb(255 255 255 / 0.85);
+    background-size: cover;
+    background-position: center;
+    background-color: var(--bg-tertiary);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
+    cursor: pointer;
+    padding: 0;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+@media (hover: hover) {
+    .npfs-cover-overlay:hover {
+        transform: scale(1.04);
+        box-shadow: 0 6px 22px rgb(0 0 0 / 0.55);
+    }
+}
+
+.npfs-cover-overlay:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* ── Source row (badge + signal path) ── */
+.npfs-source-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.npfs-source-row .npfs-signal-path {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+}
+
+/* ── Source badge ── */
+.npfs-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent-primary, #6366f1);
+    align-self: flex-start;
+}
+
+.npfs-source-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentcolor;
+}
+
+/* ── Metadata ── */
+.npfs-meta {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.npfs-meta .ag-tm-title {
+    font-size: clamp(18px, 5vw, 22px);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.npfs-meta .ag-tm-artist {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.npfs-meta .ag-tm-album {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+/* ── Signal path ── */
+.npfs-signal-path {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.npfs-sp-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.npfs-sp-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.npfs-sp-arrow {
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+/* ── Controls ── */
+.npfs-controls-row {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+}
+
+/* Scoped: the bare element selector would leak to the mini player which also uses ag-progress-bar. */
+.npfs-scroll > ag-progress-bar {
+    display: block;
+    width: 100%;
+    max-width: 340px;
+    margin-top: 4px;
+}
+
+.npfs-controls-vol {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.npfs-dsd-lock {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.npfs-controls-row ag-playback-controls {
+    display: block;
+    width: 100%;
+}
+
+/* ── Output bar ── */
+.npfs-output-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 7px 14px;
+    gap: 12px;
+}
+
+.npfs-out-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.npfs-out-icon {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    display: flex;
+}
+
+.npfs-out-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+}
+
+.npfs-out-label {
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.npfs-out-value {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.npfs-out-value-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.npfs-switch-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    transition: background .15s;
+}
+
+@media (hover: hover) {
+    .npfs-switch-btn:hover { background: var(--bg-primary); }
+}
+
+/* ── Header action buttons (right side) ── */
+.npfs-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+    width: 40px;
+    justify-content: flex-end;
+}
+
+.npfs-header-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 18px;
+    transition: color .15s, background .15s;
+}
+
+@media (hover: hover) {
+    .npfs-header-btn:hover {
+        color: var(--text-primary);
+        background: var(--bg-tertiary);
+    }
+}
+
+.npfs-header-btn.active { color: var(--accent-primary, #6366f1); }
+
+/* ── Hi-res badge on cover ── */
+.npfs-cover-hires {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgb(0 0 0 / 0.55);
+    color: #ffffff;
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgb(255 255 255 / 0.25);
+    backdrop-filter: blur(4px);
+}
+
+/* ── Up Next ── */
+.npfs-up-next {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.npfs-up-next-lbl {
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.npfs-up-next-cv {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-secondary, #e8e8e8);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.npfs-up-next-cv img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.npfs-up-next-cv-ph {
+    opacity: 0.35;
+    color: var(--text-secondary);
+}
+
+.npfs-up-next-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+    flex: 1;
+}
+
+.npfs-up-next-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.npfs-up-next-artist {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

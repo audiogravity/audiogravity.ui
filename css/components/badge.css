@@ -1,0 +1,265 @@
+/**
+ * @module Badge
+ * @description Reusable badge and label component.
+ * Centralizes all variants and states for status displays.
+ */
+
+/**
+ * @component .badge
+ * @description Base badge class.
+ * @prop --radius-sm - Corner radius
+ * @prop --font-size-xs - Font size
+ */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border: 1px solid;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+/**
+ * @variant .badge.success
+ * @description Green success badge, used for 'running' or 'enabled' states.
+ */
+.badge.success {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    background: transparent;
+}
+
+/**
+ * @variant .badge.error
+ * @description Red error badge, used for 'stopped' or 'failure' states.
+ */
+.badge.error {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: transparent;
+}
+
+/**
+ * @variant .badge.warning
+ * @description Orange warning badge, used for 'critical' or 'attention' states.
+ */
+.badge.warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: transparent;
+}
+
+/**
+ * @variant .badge.info
+ * @description Blue info badge, used for general information.
+ */
+.badge.info {
+    border-color: var(--color-info);
+    color: var(--color-info);
+    background: transparent;
+}
+
+/**
+ * @variant .badge.neutral
+ * @description Neutral gray badge.
+ */
+.badge.neutral {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+    background: transparent;
+}
+
+/**
+ * @variant .badge.critical
+ * @description Critical badge with pulse animation for attention.
+ */
+.badge.critical {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: transparent;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/**
+ * @variant .badge.success-pulse
+ * @description Green success badge with pulse animation.
+ */
+.badge.success-pulse {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    background: transparent;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/**
+ * @variant .badge.error-pulse
+ * @description Red error badge with pulse animation.
+ */
+.badge.error-pulse {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: transparent;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/**
+ * @variant .badge.filled
+ * @description Variation with solid background color.
+ */
+.badge.filled.success {
+    background: var(--color-success);
+    border-color: var(--color-success);
+    color: var(--bg-primary);
+}
+
+.badge.filled.error {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: var(--bg-primary);
+}
+
+.badge.filled.warning {
+    background: var(--color-warning);
+    border-color: var(--color-warning);
+    color: var(--bg-primary);
+}
+
+.badge.filled.info {
+    background: var(--color-info);
+    border-color: var(--color-info);
+    color: var(--bg-primary);
+}
+
+/**
+ * @variant .badge.subtle
+ * @description Variation with a light background color (alpha-based).
+ */
+.badge.subtle.success { background: var(--color-success-bg); }
+.badge.subtle.error   { background: var(--color-error-bg); }
+.badge.subtle.warning { background: var(--color-warning-bg); }
+.badge.subtle.info    { background: var(--color-info-bg); }
+.badge.subtle.neutral { background: var(--bg-tertiary); }
+
+/**
+ * @section Aliases (Backward Compatibility)
+ */
+
+/* log-badges are now mapped to subtle badges */
+.log-badge {
+    padding: 1px 4px; border-radius: var(--radius-xs);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+}
+
+.log-badge-info {
+    background: var(--color-info-bg);
+    color: var(--color-info);
+}
+
+.log-badge-warning {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+}
+
+.log-badge-error {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+.log-badge-debug {
+    background: var(--color-debug-bg);
+    color: var(--color-debug);
+}
+
+.health-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+}
+
+.health-badge.excellent {
+    background: var(--color-success);
+    color: var(--bg-primary);
+}
+
+.health-badge.good {
+    background: var(--color-info);
+    color: var(--bg-primary);
+}
+
+.health-badge.fair {
+    background: var(--color-warning);
+    color: var(--bg-primary);
+}
+
+.health-badge.critical {
+    background: var(--color-error);
+    color: var(--bg-primary);
+}
+
+/**
+ * @state .badge.clickable
+ * @description Adds hover effects and pointer cursor for interactive badges.
+ */
+.badge.clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.badge.clickable:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+
+.badge.clickable:active {
+    transform: scale(0.98);
+}
+
+/**
+ * @section Badge Sizes
+ */
+.badge.small {
+    padding: 1px 6px;
+    font-size: var(--font-size-xxs);
+}
+
+.badge.large {
+    padding: 4px 12px;
+    font-size: var(--font-size-sm);
+}
+
+/**
+ * @variant .badge.pill
+ * @description Pill-shaped badge with full border radius.
+ */
+.badge.pill {
+    border-radius: var(--radius-full);
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+
+/* =====================
+   DARK MODE ADJUSTMENTS
+   ===================== */
+
+body.dark-mode .badge.clickable:hover {
+    box-shadow: 0 2px 8px rgb(255 255 255 / 0.15);
+}
+
+/* =====================
+   COMPACT MODE
+   ===================== */
+
+body.compact-mode .badge {
+    padding: 1px 6px;
+    font-size: var(--font-size-xxs);
+}
