@@ -39,3 +39,6 @@ public/docs/*
 
 public/sw.js
 __pycache__/
+
+# ── Claude Code context (local only) ────────────────────────────────────────
+.claude/
