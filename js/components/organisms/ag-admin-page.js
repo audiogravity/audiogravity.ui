@@ -24,10 +24,11 @@ import {
     handleError,
     AppState,
     escapeHtml,
+    addToHistory,
 } from '../../common.js';
 import { getCurrentUser, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
-import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 
 export class AgAdminPage extends LitElement {

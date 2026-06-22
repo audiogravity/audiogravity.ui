@@ -6,7 +6,6 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { apiGet, apiCall } from '../../api.js';
 import { API_BASE_URL, API_KEY_HEADER, API_KEY } from '../../core/config.js';
 import { LICENSE_TERMS_TITLE, LICENSE_TERMS_HTML } from '../../core/license-docs.js';
@@ -279,17 +278,16 @@ export class AgLicenseStatus extends LitElement {
      * Build the ordered acquisition steps as an HTML string for the info modal.
      * @returns {string}
      */
-    _acquisitionStepsHtml() {
-        const paypalStep = this._paypalPaymentUrl
-            ? `<li>Click <strong>Pay with PayPal</strong> — one-time payment of ${this._priceDisplay}.</li>`
-            : '';
-        return [
-            '<ol style="margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:.4em">',
-            paypalStep,
-            '<li>You will receive your license key <strong>by email</strong> within seconds.</li>',
-            '<li>Click <strong>License Key</strong>, enter your key and click <strong>Activate this machine</strong> — no restart required.</li>',
-            '</ol>',
-        ].join('');
+    /** @returns {import('lit').TemplateResult} */
+    _renderAcquisitionSteps() {
+        return html`
+            <ol style="margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:.4em">
+                ${this._paypalPaymentUrl ? html`
+                    <li>Click <strong>Pay with PayPal</strong> — one-time payment of ${this._priceDisplay}.</li>
+                ` : ''}
+                <li>You will receive your license key <strong>by email</strong> within seconds.</li>
+                <li>Click <strong>License Key</strong>, enter your key and click <strong>Activate this machine</strong> — no restart required.</li>
+            </ol>`;
     }
 
     /** Show the combined license options + EULA modal. */
@@ -308,9 +306,11 @@ export class AgLicenseStatus extends LitElement {
 
     /** Show an informational modal about the license system. */
     _showInfo() {
-        const portalSection = this._portalUrl
+        // Validate portal URL before embedding in HTML string to prevent javascript: injection.
+        const safePortalUrl = /^https?:\/\//i.test(this._portalUrl || '') ? this._portalUrl : null;
+        const portalSection = safePortalUrl
             ? `<h4 style="margin:1em 0 .4em">Lost or re-installing?</h4>
-               <p style="margin:0">If you already purchased a license and need to download your <code>.lic</code> file (e.g. after an OS reinstall), use the self-service portal — no account required, just your purchase email and this Device ID: <a href="${this._portalUrl}" target="_blank" rel="noopener noreferrer">Download .lic →</a></p>`
+               <p style="margin:0">If you already purchased a license and need to download your <code>.lic</code> file (e.g. after an OS reinstall), use the self-service portal — no account required, just your purchase email and this Device ID: <a href="${safePortalUrl}" target="_blank" rel="noopener noreferrer">Download .lic →</a></p>`
             : '';
         const content = [
             '<p><strong>Trial license</strong> — 30 days of full access, automatically activated on first run. No action required.</p>',
@@ -394,7 +394,7 @@ export class AgLicenseStatus extends LitElement {
                         : `Lifetime license — one-time payment of ${this._priceDisplay}, no subscription.`}
                 </span>
                 <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: var(--spacing-xs) 0 0;">
-                    ${unsafeHTML(this._acquisitionStepsHtml())}
+                    ${this._renderAcquisitionSteps()}
                 </div>
                 <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap; align-items: flex-start;">
                     ${this._paypalPaymentUrl ? html`

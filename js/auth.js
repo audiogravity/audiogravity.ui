@@ -62,7 +62,7 @@ function initAuth() {
         // Vérifier si le token n'est pas expiré
         if (expiryDate > now) {
             AuthState.token = token;
-            AuthState.user = JSON.parse(userStr);
+            try { AuthState.user = JSON.parse(userStr); } catch { clearAuth(); return false; }
             AuthState.tokenExpiry = expiryDate;
             AuthState.isAuthenticated = true;
 

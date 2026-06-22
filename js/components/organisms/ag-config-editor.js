@@ -71,6 +71,14 @@ export class AgConfigEditor extends LitElement {
         return this; // Use Light DOM for CodeMirror & global CSS
     }
 
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._cmInstance) {
+            this._cmInstance.toTextArea();
+            this._cmInstance = null;
+        }
+    }
+
     willUpdate(changedProperties) {
         if (changedProperties.has('formData') || changedProperties.has('rawContent')) {
             if (!this._initialized) {
@@ -310,11 +318,11 @@ export class AgConfigEditor extends LitElement {
             ).then(confirmed => {
                 if (confirmed) {
                     this._revertChanges();
-                    showToast('info', 'Changes Discarded', 'Configuration reverted to original');
+                    window.showToast('info', 'Changes Discarded', 'Configuration reverted to original');
                 }
             });
         } else {
-            showToast('info', 'No Changes', 'There are no unsaved changes to cancel');
+            window.showToast('info', 'No Changes', 'There are no unsaved changes to cancel');
         }
     }
 

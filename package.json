@@ -1,7 +1,7 @@
 {
   "name": "audiogravity-ui",
   "version": "1.0.0",
-  "license": "MIT",
+  "license": "ISC",
   "description": "> Modern, high-performance web interface for managing audio services and system performance on Linux-based audio workstations.",
   "type": "module",
   "main": "sw.js",
@@ -26,7 +26,6 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@chromatic-com/storybook": "^5.0.1",
     "@storybook/addon-a11y": "^10.2.14",
@@ -52,6 +51,7 @@
     "css/**/*.css": "stylelint --fix"
   },
   "dependencies": {
+    "@lit/context": "^1.1.6",
     "cytoscape": "^3.33.1",
     "cytoscape-dagre": "^2.5.0",
     "lit": "^3.3.2"

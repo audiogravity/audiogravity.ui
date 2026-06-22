@@ -12,6 +12,9 @@ stats.html
 *.log
 vite-dev.log
 
+# PID files
+vite.pid
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -25,6 +28,9 @@ Thumbs.db
 *.temp
 .vite/
 
+# Test coverage reports
+coverage/
+
 *storybook.log
 storybook-static
 
@@ -33,3 +39,6 @@ public/docs/*
 
 public/sw.js
 __pycache__/
+
+# ── Claude Code context (local only) ────────────────────────────────────────
+.claude/
