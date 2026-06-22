@@ -28,6 +28,9 @@ Thumbs.db
 *.temp
 .vite/
 
+# Test coverage reports
+coverage/
+
 *storybook.log
 storybook-static
 
