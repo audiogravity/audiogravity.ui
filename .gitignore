@@ -12,6 +12,9 @@ stats.html
 *.log
 vite-dev.log
 
+# PID files
+vite.pid
+
 # OS files
 .DS_Store
 Thumbs.db

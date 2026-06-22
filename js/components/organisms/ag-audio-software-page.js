@@ -403,8 +403,8 @@ export class AgAudioSoftwarePage extends LitElement {
                 <div class="package-list-container">
                     ${updates.map(pkg => `
                         <div class="package-list-item">
-                            <span><strong>${pkg.label}</strong></span>
-                            <span class="package-version-info">${pkg.installed_version} → ${pkg.available_version}</span>
+                            <span><strong>${escapeHtml(pkg.label)}</strong></span>
+                            <span class="package-version-info">${escapeHtml(pkg.installed_version || '')} → ${escapeHtml(pkg.available_version || '')}</span>
                         </div>
                     `).join('')}
                 </div>

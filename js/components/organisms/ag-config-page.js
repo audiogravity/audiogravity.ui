@@ -37,7 +37,8 @@ export class AgConfigPage extends LitElement {
         formData: { type: Object },
         rawContent: { type: String },
         configFormat: { type: String },
-        backups: { type: Array }
+        backups: { type: Array },
+        loading: { type: Boolean },
     };
 
     constructor() {

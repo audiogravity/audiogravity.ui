@@ -131,6 +131,11 @@ export class AgLibraryRadio extends LitElement {
     }
 
     async _loadSearch() {
+        // Cancel any in-flight search so stale results cannot overwrite current ones.
+        if (this._searchAbort) this._searchAbort.abort();
+        this._searchAbort = new AbortController();
+        const { signal } = this._searchAbort;
+
         this._loading = true;
         this._error   = '';
         try {
@@ -141,12 +146,14 @@ export class AgLibraryRadio extends LitElement {
                 hi_res_only:  this._searchHiRes || undefined,
                 limit:        80,
             });
+            if (signal.aborted) return;
             this._stations = stations;
         } catch (e) {
+            if (signal.aborted) return;
             this._error    = 'Search failed';
             this._stations = [];
         } finally {
-            this._loading = false;
+            if (!signal.aborted) this._loading = false;
         }
     }
 
