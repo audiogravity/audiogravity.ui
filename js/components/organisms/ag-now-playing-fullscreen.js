@@ -79,6 +79,8 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._prevSourceId    = null;
         this._prevStationToken = null;
         this._targetSourceId  = null;
+        /** @type {boolean} True when the user manually picked a source — suspends auto-follow. */
+        this._userSourceOverride = false;
         this._touchStartY  = 0;
         this._touchStartX  = 0;
         /** 'dismiss' | 'switch' | null — locked after the dead-zone. */
@@ -169,6 +171,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             return;
         }
         this._targetSourceId = sourceId;
+        this._userSourceOverride = false;
         if (sourceId && this._state?.source_id !== sourceId) {
             // Different source — seed from the mini-player item or clear.
             if (item) this._seedStateFromItem(item);
@@ -241,6 +244,19 @@ export class AgNowPlayingFullscreen extends LitElement {
     }
 
     /**
+     * Auto-follow a newly active source without blanking the UI.
+     * Unlike _switchSource (user-initiated), this keeps _state intact so there
+     * is no loading flash — the displayed content stays visible while the SSE
+     * reconnects to the new source_id.
+     * @param {string} sourceId - Source that just became active.
+     */
+    _followSource(sourceId) {
+        if (sourceId === this._targetSourceId) return;
+        this._targetSourceId = sourceId;
+        this._connectSse();
+    }
+
+    /**
      * Switch the fullscreen player to a different active source.
      * Clears current state immediately so the UI shows a loading placeholder
      * while the new SSE delivers its first event.
@@ -248,6 +264,7 @@ export class AgNowPlayingFullscreen extends LitElement {
      */
     _switchSource(sourceId) {
         if (sourceId === this._targetSourceId) return;
+        this._userSourceOverride = true;
         this._targetSourceId   = sourceId;
         this._state            = null;
         this._nextTrack        = null;
@@ -279,6 +296,22 @@ export class AgNowPlayingFullscreen extends LitElement {
         // ticks where sources is omitted.
         const playing = state.sources?.filter(s => s.playing);
         if (playing?.length) this._sources = playing;
+        // If the user had overridden the source, lift the override when their
+        // chosen source stops playing so auto-follow resumes.
+        if (this._userSourceOverride && !this._sources.find(s => s.source_id === this._targetSourceId)) {
+            this._userSourceOverride = false;
+            // Immediately follow the new active source. The current SSE tick comes
+            // from the now-dead source (state.playing is false), so we cannot rely
+            // on the condition below — use _sources directly instead.
+            const next = this._sources.find(s => s.playing);
+            if (next) this._followSource(next.source_id);
+        }
+        // Auto-follow: when the backend switches its active source (e.g. Roon
+        // starts while MPD was displayed), update the dot and reconnect SSE
+        // without blanking the UI — unless the user has manually navigated.
+        if (!this._userSourceOverride && state.source_id && state.playing && state.source_id !== this._targetSourceId) {
+            this._followSource(state.source_id);
+        }
         // Preserve locally interpolated elapsed when the server reports 0
         // (AirPlay/shairport-sync never provides a real position).
         if (state.elapsed === 0 && this._state?.elapsed > 0

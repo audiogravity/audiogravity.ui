@@ -1,0 +1,189 @@
+/**
+ * Unit tests for ag-now-playing-fullscreen.js — auto-follow source logic.
+ *
+ * Tests the _applyState / _switchSource auto-follow state machine in isolation,
+ * without instantiating the full LitElement component (DOM side-effects in jsdom).
+ *
+ * Covers:
+ * - Default: _targetSourceId tracks the backend-active source automatically
+ * - _followSource is called (SSE reconnects) when auto-switching
+ * - User override: _switchSource suspends auto-follow
+ * - Override lifted: when user-chosen source stops playing, auto-follow resumes
+ * - _switchSource is a no-op when already on the target source
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// ---------------------------------------------------------------------------
+// Simulate the _applyState auto-follow logic from ag-now-playing-fullscreen.js
+// ---------------------------------------------------------------------------
+
+/**
+ * Replicate the exact auto-follow block from AgNowPlayingFullscreen._applyState
+ * and the _switchSource / _followSource helpers.
+ *
+ * @param {object} fs - Simulated component state (mutated in-place).
+ * @param {object} state - Incoming SSE state.
+ */
+function applyState(fs, state) {
+    const playing = state.sources?.filter(s => s.playing);
+    if (playing?.length) fs.sources = playing;
+
+    if (fs.userOverride && !fs.sources.find(s => s.source_id === fs.targetSourceId)) {
+        fs.userOverride = false;
+        // Immediately follow the new active source. The current SSE tick comes
+        // from the dead source (state.playing may be false), so we cannot rely
+        // on the condition below — use _sources directly instead.
+        const next = fs.sources.find(s => s.playing);
+        if (next) followSource(fs, next.source_id);
+    }
+
+    if (!fs.userOverride && state.source_id && state.playing && state.source_id !== fs.targetSourceId) {
+        followSource(fs, state.source_id);
+    }
+}
+
+/** Mirrors AgNowPlayingFullscreen._followSource (no state reset, SSE reconnects). */
+function followSource(fs, sourceId) {
+    if (sourceId === fs.targetSourceId) return;
+    fs.targetSourceId = sourceId;
+    fs.connectSseCalls++;
+}
+
+/** Mirrors AgNowPlayingFullscreen._switchSource (user-initiated, resets state). */
+function switchSource(fs, sourceId) {
+    if (sourceId === fs.targetSourceId) return;
+    fs.userOverride = true;
+    fs.targetSourceId = sourceId;
+    fs.connectSseCalls++;
+}
+
+/** Build a minimal playing SourceInfo entry. */
+const src = (id, playing = true) => ({ source_id: id, playing });
+
+/** Build a minimal SSE PlayerState. */
+const state = (sourceId, playing, sources = []) => ({
+    source_id: sourceId,
+    playing,
+    title: playing ? 'Track' : null,
+    sources,
+    elapsed: 0,
+});
+
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
+    let fs;
+
+    beforeEach(() => {
+        fs = { targetSourceId: 'src_mpd', sources: [], userOverride: false, connectSseCalls: 0 };
+    });
+
+    // --- default auto-follow ---
+
+    it('auto-follows when the backend switches to a new active source', () => {
+        applyState(fs, state('src_roon', true, [src('src_mpd'), src('src_roon')]));
+        expect(fs.targetSourceId).toBe('src_roon');
+        expect(fs.connectSseCalls).toBe(1);
+    });
+
+    it('does not reconnect SSE when source_id already matches targetSourceId', () => {
+        applyState(fs, state('src_mpd', true, [src('src_mpd')]));
+        expect(fs.connectSseCalls).toBe(0);
+    });
+
+    it('does not auto-follow when playing is false', () => {
+        applyState(fs, state('src_roon', false, [src('src_roon')]));
+        expect(fs.targetSourceId).toBe('src_mpd');
+        expect(fs.connectSseCalls).toBe(0);
+    });
+
+    it('auto-follows across multiple source changes', () => {
+        applyState(fs, state('src_roon', true,      [src('src_roon')]));
+        expect(fs.targetSourceId).toBe('src_roon');
+        applyState(fs, state('src_librespot', true, [src('src_librespot')]));
+        expect(fs.targetSourceId).toBe('src_librespot');
+        expect(fs.connectSseCalls).toBe(2);
+    });
+
+    // --- user override (_switchSource) ---
+
+    it('_switchSource sets userOverride and updates targetSourceId', () => {
+        switchSource(fs, 'src_roon');
+        expect(fs.userOverride).toBe(true);
+        expect(fs.targetSourceId).toBe('src_roon');
+        expect(fs.connectSseCalls).toBe(1);
+    });
+
+    it('_switchSource is a no-op when already on the target source', () => {
+        switchSource(fs, 'src_mpd');
+        expect(fs.connectSseCalls).toBe(0);
+        expect(fs.userOverride).toBe(false);  // unchanged
+    });
+
+    it('respects override — does not auto-follow after manual navigation', () => {
+        switchSource(fs, 'src_roon');          // user navigates to Roon
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        // Backend reports MPD as active
+        applyState(fs, state('src_mpd', true, [src('src_mpd'), src('src_roon')]));
+        expect(fs.targetSourceId).toBe('src_roon');  // stays on user's choice
+        expect(fs.connectSseCalls).toBe(1);          // no extra reconnect
+    });
+
+    it('override is not lifted while user-chosen source is still playing', () => {
+        switchSource(fs, 'src_roon');
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        applyState(fs, state('src_mpd', true, [src('src_mpd'), src('src_roon')]));
+        expect(fs.userOverride).toBe(true);
+    });
+
+    // --- override lifted ---
+
+    it('lifts override and auto-follows when user-chosen source stops playing', () => {
+        switchSource(fs, 'src_roon');
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        // Roon stops — only MPD in sources
+        applyState(fs, state('src_mpd', true, [src('src_mpd')]));
+        expect(fs.userOverride).toBe(false);
+        expect(fs.targetSourceId).toBe('src_mpd');
+    });
+
+    it('lifts override and follows new active after chosen source stops', () => {
+        switchSource(fs, 'src_roon');
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        // Roon stops; Spotify becomes active
+        applyState(fs, state('src_librespot', true, [src('src_mpd'), src('src_librespot')]));
+        expect(fs.userOverride).toBe(false);
+        expect(fs.targetSourceId).toBe('src_librespot');
+    });
+
+    it('SSE reconnects once when override is lifted and source switches', () => {
+        switchSource(fs, 'src_roon');    // 1 reconnect (manual switch)
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        applyState(fs, state('src_mpd', true, [src('src_mpd')]));  // override lifted + auto-follow
+        expect(fs.connectSseCalls).toBe(2);
+    });
+
+    // --- regression: override lifted on playing:false tick must still auto-follow ---
+    // Bug: when the dead source's final tick has state.playing=false, the condition
+    // "state.playing && ..." never fires → fullscreen stuck on dead source forever.
+    // Fix: immediately follow _sources.find(s => s.playing) inside the override-lift block.
+
+    it('immediately follows new source when override is lifted on a playing:false tick', () => {
+        switchSource(fs, 'src_roon');
+        fs.sources = [src('src_mpd'), src('src_roon')];
+        // Final tick from dead Roon source: playing=false, but MPD is in sources
+        applyState(fs, state('src_roon', false, [src('src_mpd')]));
+        expect(fs.userOverride).toBe(false);
+        expect(fs.targetSourceId).toBe('src_mpd');  // must have followed MPD
+        expect(fs.connectSseCalls).toBe(2);         // 1 manual + 1 auto
+    });
+
+    it('does not crash when override lifts and no source is playing', () => {
+        switchSource(fs, 'src_roon');
+        // Roon stops, nothing else playing
+        applyState(fs, state('src_roon', false, []));
+        expect(fs.userOverride).toBe(false);
+        expect(fs.targetSourceId).toBe('src_roon'); // no source to follow, stays
+        expect(fs.connectSseCalls).toBe(1);         // only the manual switch
+    });
+});

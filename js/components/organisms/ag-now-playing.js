@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'lit';
-import { apiPost } from '../../api.js';
+import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
@@ -58,6 +58,8 @@ export class AgNowPlaying extends LitElement {
         this._detailOpenId = null;
         this._albumTracks = new Map();
         this._activeSourceIdx = 0;
+        /** @type {boolean} True when the user manually navigated sources — suspends auto-follow. */
+        this._userSourceOverride = false;
         this._bgColors = new Map();
         this._licenseStatus = 'no_license';
         this._unsubscribeState = null;
@@ -182,6 +184,13 @@ export class AgNowPlaying extends LitElement {
 
         const wasEmpty = !this._hasItems;
 
+        // Capture the user's chosen source BEFORE replacing _items so the
+        // override-lift check below identifies the right source_id even after
+        // the index is clamped to fit the shorter new list.
+        const prevShownId = this._userSourceOverride
+            ? this._items[this._activeSourceIdx]?.source_id
+            : null;
+
         this._items = items;
         this._hasItems = items.length > 0;
 
@@ -198,6 +207,23 @@ export class AgNowPlaying extends LitElement {
         }
 
         if (this._activeSourceIdx >= items.length) this._activeSourceIdx = 0;
+
+        // If the user had overridden the source, check if their chosen source
+        // is still playing. If not, lift the override so auto-follow resumes.
+        if (this._userSourceOverride) {
+            if (!prevShownId || !items.find(s => s.source_id === prevShownId)) {
+                this._userSourceOverride = false;
+            }
+        }
+
+        // Auto-follow: switch to the backend-active source unless the user
+        // has manually navigated to a different source.
+        if (!this._userSourceOverride) {
+            const activeIdx = items.findIndex(s => s.active);
+            if (activeIdx !== -1 && activeIdx !== this._activeSourceIdx) {
+                this._activeSourceIdx = activeIdx;
+            }
+        }
     }
 
     /**
@@ -447,6 +473,7 @@ export class AgNowPlaying extends LitElement {
                 ? (this._activeSourceIdx + 1) % this._items.length
                 : (this._activeSourceIdx - 1 + this._items.length) % this._items.length;
             this._activeSourceIdx = newIdx;
+            this._userSourceOverride = true;
             if (barEl) {
                 barEl.style.willChange = '';
                 barEl.style.transition = 'transform 0.2s ease';
@@ -676,7 +703,7 @@ export class AgNowPlaying extends LitElement {
                                     role="button"
                                     tabindex="0"
                                     aria-label="Source ${idx + 1}"
-                                    @click="${() => { this._activeSourceIdx = idx; }}"
+                                    @click="${() => { this._activeSourceIdx = idx; this._userSourceOverride = true; }}"
                                 ></div>
                             `)}
                         </div>
