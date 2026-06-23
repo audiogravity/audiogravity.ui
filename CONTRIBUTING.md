@@ -1,5 +1,15 @@
 # Contributing to Audiogravi<sup>ty</sup> UI
 
+> **Note — source-available, early access**
+>
+> Audiogravity UI is published under the MIT licence and you are free to read,
+> fork, and adapt the code. However, **we are not accepting pull requests at
+> this stage** of the project. If you find a bug or have a suggestion, please
+> open an [issue](https://github.com/audiogravity/audiogravity.ui/issues) — we
+> read everything.
+>
+> This policy will be revisited when the project reaches v1.0.
+
 ## Prerequisites
 
 - **Node.js** 18+ and **npm**
@@ -89,7 +99,12 @@ scheme.
 ## Code style
 
 - **No comments** unless the *why* is non-obvious
-- **No new inline SVGs** — add icons to `js/ag-icons.js` (rule 15)
+- **No new inline SVGs** — add icons to `js/ag-icons.js` (rule 15). All icons
+  are sourced from [Lucide](https://lucide.dev) (ISC licence, listed in
+  `../audiogravity.app/THIRD_PARTY_NOTICES.md`). To add a new icon: copy the
+  SVG paths from lucide.dev, export a tagged-template constant from `ag-icons.js`
+  with a JSDoc comment (`/** Description. (Lucide: icon-name) */`), and import
+  it by name where needed.
 - CSS changes must pass `npm run lint:css`
 - One Lit component per file, Light DOM only
 

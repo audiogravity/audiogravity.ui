@@ -30,6 +30,7 @@ import { getCurrentUser, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
+import '../molecules/ag-announcement-banner.js';
 
 export class AgAdminPage extends LitElement {
     static properties = {
@@ -312,6 +313,7 @@ export class AgAdminPage extends LitElement {
 
         return html`
             <div class="admin-zone tab-zone">
+                <ag-announcement-banner></ag-announcement-banner>
                 <ag-license-status
                     @license-key-click=${() => { this._licenseModalOpen = true; }}
                 ></ag-license-status>
