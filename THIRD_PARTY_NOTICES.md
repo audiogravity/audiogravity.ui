@@ -35,7 +35,7 @@ Same BSD-3-Clause terms as above.
 ---
 
 ### Cytoscape.js
-**Copyright** © 2016–2025 The Cytoscape Consortium  
+**Copyright** © 2016–2026 The Cytoscape Consortium  
 **License** MIT  
 **Source** https://js.cytoscape.org  
 
