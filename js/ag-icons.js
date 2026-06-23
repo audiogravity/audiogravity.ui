@@ -6,7 +6,7 @@
  * Scope: inline SVG only. Icomoon / font-icon glyphs (`<span class="icon-…">`)
  * are a separate system and not concerned by this module.
  *
- * Icons sourced from Lucide (https://lucide.dev) — MIT licence.
+ * Icons sourced from Lucide (https://lucide.dev) — ISC licence.
  * Custom icons (connectors, output, queue variants) are hand-crafted at 24×24.
  *
  * Each export is the INNER content of an `<svg viewBox="0 0 24 24">`. The
