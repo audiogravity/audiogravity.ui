@@ -148,6 +148,38 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET/POST/PUT/DELETE | `/license/*` | License management |
 | GET/POST/PUT/DELETE | `/steering/*` | Output steering |
 
+### `GET /license/online-status` — remote license verification cache
+
+Returns the cached result of the last `POST /ls/portal/verify` call against the
+remote license server (refreshed every 24 h, or immediately after activation).
+
+```json
+{
+  "checked": true,
+  "valid": true,
+  "status": "valid",
+  "order_id": "AG-XXXX-XXXX-XXXX-XXXX",
+  "type": "lifetime",
+  "expires_at": null,
+  "issued": "2026-01-01T00:00:00Z",
+  "checked_at": "2026-06-23T08:00:00Z",
+  "announcements": [
+    {
+      "id": "uuid",
+      "type": "version | promo | alert | info",
+      "title": "Short display title",
+      "body": "Optional longer description (nullable)",
+      "url": "Optional call-to-action URL (nullable)"
+    }
+  ]
+}
+```
+
+`announcements` — broadcast messages from the license server, delivered via the
+24 h check-in. Displayed in the AG Admin tab as dismissable banners
+(`ag-announcement-banner`). Empty array when no active announcements exist or
+when the license server is unconfigured.
+
 ---
 
 ## SSE events

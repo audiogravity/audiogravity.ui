@@ -14,7 +14,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock } from '../../ag-icons.js';
+import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -53,7 +53,8 @@ export class AgTabs extends LitElement {
         _licenseDaysRemaining: { type: Number, state: true },
         _tabStats: { type: Object, state: true },
         _previewTab: { type: String, state: true }, // Tab highlighted during swipe gesture
-        _isMobile: { type: Boolean, state: true }
+        _isMobile: { type: Boolean, state: true },
+        _announcementCount: { type: Number, state: true },
     };
 
     constructor() {
@@ -79,6 +80,7 @@ export class AgTabs extends LitElement {
         this._licenseStatus = 'no_license';
         this._licenseDaysRemaining = null;
         this._tabStats = {};
+        this._announcementCount = 0;
 
         // Touch gesture state
         this._touchStartX = 0;
@@ -216,6 +218,12 @@ export class AgTabs extends LitElement {
             window.EventEmitter.on('users-stats', this._handleUsersStats);
         }
 
+        // Announcement badge — updated by ag-announcement-banner after each load/dismiss
+        this._handleAnnouncementBadge = ({ detail }) => {
+            this._announcementCount = detail?.count || 0;
+        };
+        window.addEventListener('announcement-badge', this._handleAnnouncementBadge);
+
         // Fetch initial counts so all tabs show stats immediately (before pages load)
         this._fetchInitialStats();
         this._fetchLicenseStatus();
@@ -298,6 +306,8 @@ export class AgTabs extends LitElement {
         document.removeEventListener('config-panel-opened', this._handleConfigPanelOpened);
         document.removeEventListener('nav-click', this._handleNavClick);
         document.removeEventListener('library-click', this._handleLibraryClick);
+        if (this._handleAnnouncementBadge)
+            window.removeEventListener('announcement-badge', this._handleAnnouncementBadge);
         if (window.EventEmitter) {
             if (this._handleAuthChanged) window.EventEmitter.off('auth-changed', this._handleAuthChanged);
             if (this._handleConnectionStatus) window.EventEmitter.off('connection-status', this._handleConnectionStatus);
@@ -716,7 +726,14 @@ export class AgTabs extends LitElement {
                         ${tab.label}
                         ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
-                        ${this._tabStats[tab.id] ? html`<span class="tab-stats">${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}</span>` : ''}
+                        ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
+                            <svg class="tab-bell-anim" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning);flex-shrink:0" viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg>
+                        ` : ''}
+                        ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
+                            tab.id === 'admin'
+                                ? this._tabStats[tab.id].den
+                                : `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`
+                        }</span>` : ''}
                     </button>
                 `;
         })}

@@ -1017,3 +1017,20 @@ body.dark-mode .logo-dark {
         animation: none;
     }
 }
+
+/* ── Announcement bell animation ─────────────────────────────────────────── */
+@keyframes bellRing {
+    0%,  55%, 100% { transform: rotate(0deg);    }
+    5%             { transform: rotate(-18deg);  }
+    15%            { transform: rotate(18deg);   }
+    25%            { transform: rotate(-12deg);  }
+    35%            { transform: rotate(12deg);   }
+    45%            { transform: rotate(-6deg);   }
+    50%            { transform: rotate(6deg);    }
+}
+
+.tab-bell-anim {
+    display: inline-block;
+    transform-origin: 50% 0%;
+    animation: bellRing 3s ease-in-out infinite;
+}

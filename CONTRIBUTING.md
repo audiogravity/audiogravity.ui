@@ -89,7 +89,12 @@ scheme.
 ## Code style
 
 - **No comments** unless the *why* is non-obvious
-- **No new inline SVGs** — add icons to `js/ag-icons.js` (rule 15)
+- **No new inline SVGs** — add icons to `js/ag-icons.js` (rule 15). All icons
+  are sourced from [Lucide](https://lucide.dev) (ISC licence, listed in
+  `../audiogravity.app/THIRD_PARTY_NOTICES.md`). To add a new icon: copy the
+  SVG paths from lucide.dev, export a tagged-template constant from `ag-icons.js`
+  with a JSDoc comment (`/** Description. (Lucide: icon-name) */`), and import
+  it by name where needed.
 - CSS changes must pass `npm run lint:css`
 - One Lit component per file, Light DOM only
 
