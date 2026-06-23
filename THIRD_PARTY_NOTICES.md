@@ -102,7 +102,7 @@ Same MIT terms as above.
 ## Fonts loaded via Google Fonts CDN
 
 ### Inter
-**Copyright** © 2020 The Inter Project Authors  
+**Copyright** © 2016 The Inter Project Authors  
 **License** SIL Open Font License 1.1  
 **Source** https://rsms.me/inter  
 
