@@ -34,6 +34,10 @@ _vite_running() { local pid=$(_vite_pid); [ -n "$pid" ] && kill -0 "$pid" 2>/dev
 _vite_start() {
     if _vite_running; then warn "Vite already running (PID: $(_vite_pid))"; return; fi
     [ -f "$VITE_PID_FILE" ] && rm "$VITE_PID_FILE"
+    if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
+        warn "node_modules not found — running npm install…"
+        ( cd "$SCRIPT_DIR" && { npm ci || npm install; } )
+    fi
     info "Starting Vite → ${VITE_URL} (proxy → :${BACKEND_PORT})"
     cd "$SCRIPT_DIR"
     # setsid creates a new process group — allows killing the full tree (npm + node/vite) with kill -- -PGID
