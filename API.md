@@ -67,8 +67,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/hqplayer/connection` | Connection state |
-| PUT | `/hqplayer/connection` | Connect to HQPlayer instance |
+| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable) + `naa_available` (networkaudiod active) |
+| PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available` |
 | DELETE | `/hqplayer/connection` | Disconnect |
 | GET | `/hqplayer/discover` | Scan local subnet |
 | GET/PUT | `/hqplayer/filter` | Active filter |
