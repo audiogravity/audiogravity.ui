@@ -253,7 +253,7 @@ export class AgLibrarySources extends LitElement {
                                         @pointercancel=${this._onUpnpPointerEnd}>
                                         <div class="lib-src-card-hd">
                                             <div class="lib-src-ic">${srv.manufacturer?.toLowerCase().includes('minimserver')
-                                                ? html`<img src="/pics/minimserver.webp" alt="MinimServer" width="28" height="28" style="object-fit:contain">`
+                                                ? html`<img src="./pics/minimserver.webp" alt="MinimServer" width="28" height="28" style="object-fit:contain">`
                                                 : 'UP'
                                             }</div>
                                             <div class="lib-src-col">

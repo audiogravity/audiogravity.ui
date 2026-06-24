@@ -20,7 +20,7 @@ export const SOURCE_ICONS = {
     'src_mono-sgen': html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
     src_roon: html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
     src_mpd: 'MPD',
-    src_qobuz: html`<img src="/pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
+    src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
     default: '♪',
 };

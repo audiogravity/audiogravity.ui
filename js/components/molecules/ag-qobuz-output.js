@@ -162,7 +162,7 @@ class AgQobuzOutput extends LitElement {
         return html`
             <div class="lib-qb-card connected">
                 <div class="lib-qb-card-hd">
-                    <div class="lib-qb-ic"><img src="/pics/qobuz.webp" alt="Qobuz" width="24" height="24" /></div>
+                    <div class="lib-qb-ic"><img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" /></div>
                     <div class="lib-qb-col">
                         <div class="lib-qb-name">Qobuz</div>
                         <div class="lib-qb-desc">${sub} · ${fmt}</div>
@@ -183,7 +183,7 @@ class AgQobuzOutput extends LitElement {
         return html`
             <div class="lib-qb-card">
                 <div class="lib-qb-card-hd">
-                    <div class="lib-qb-ic"><img src="/pics/qobuz.webp" alt="Qobuz" width="24" height="24" /></div>
+                    <div class="lib-qb-ic"><img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" /></div>
                     <div class="lib-qb-col">
                         <div class="lib-qb-name">Qobuz</div>
                         <div class="lib-qb-desc">Hi-Res streaming</div>

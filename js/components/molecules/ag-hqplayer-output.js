@@ -319,7 +319,7 @@ class AgHqplayerOutput extends LitElement {
                     <div class="lib-hqp-card" @click=${() => this._connect(inst)} style="cursor:pointer">
                         <div class="lib-hqp-card-hd">
                             <div class="lib-hqp-ic">
-                                <img src="/pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
+                                <img src="./pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
                             </div>
                             <div class="lib-hqp-col">
                                 <div class="lib-hqp-name">HQPlayer</div>
@@ -372,7 +372,7 @@ class AgHqplayerOutput extends LitElement {
             <div class="lib-hqp-card ${fullyConnected ? 'connected' : ''}">
                 <div class="lib-hqp-card-hd">
                     <div class="lib-hqp-ic">
-                        <img src="/pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
+                        <img src="./pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
                     </div>
                     <div class="lib-hqp-col">
                         <div class="lib-hqp-name">HQPlayer</div>
