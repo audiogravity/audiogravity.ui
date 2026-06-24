@@ -1,5 +1,9 @@
 # Audiogravi<sup>ty</sup> UI
 
+![Version](https://img.shields.io/badge/version-1.0.0-informational)
+![Tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 Web frontend for [Audiogravi<sup>ty</sup>](https://audiogravity.app) — an audiophile
 audio management application. Built with **Lit 3 Web Components**, **Vite**
 and **Vitest**.
@@ -14,6 +18,7 @@ The backend is required at runtime — see [API.md](API.md) for the contract.
 
 | Role | Technology |
 |---|---|
+| Language | Vanilla JS (ES modules, no framework, no TypeScript) |
 | Components | [Lit 3](https://lit.dev/) — Web Components, Light DOM |
 | Build | [Vite 7](https://vitejs.dev/) |
 | Graph | [Cytoscape.js](https://js.cytoscape.org/) + dagre (npm) |
@@ -56,7 +61,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 ./dev.sh help          # full command list
 ```
 
-Override backend port: `BACKEND_PORT=8002 ./dev.sh start`
+> **Note** — The default backend port is 8001. Override if needed: `BACKEND_PORT=8002 ./dev.sh start`
 
 ---
 
@@ -76,7 +81,7 @@ Override backend port: `BACKEND_PORT=8002 ./dev.sh start`
 
 ## Architecture
 
-104 Lit Web Components organised by Atomic Design:
+101 Lit Web Components organised by Atomic Design:
 
 ```
 js/components/
@@ -98,7 +103,7 @@ fully compatible with global CSS and screen readers.
 ## Testing
 
 ```bash
-npm test              # 108 unit tests, single run
+npm test              # 188 unit tests, single run
 npm run test:watch    # watch mode
 ```
 
