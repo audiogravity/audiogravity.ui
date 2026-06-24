@@ -1,6 +1,6 @@
 {
   "name": "audiogravity-ui",
-  "version": "1.0.0",
+  "version": "0.9.5",
   "license": "MIT",
   "description": "> Modern, high-performance web interface for managing audio services and system performance on Linux-based audio workstations.",
   "type": "module",
