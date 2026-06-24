@@ -80,7 +80,7 @@ class AgHqplayerOutput extends LitElement {
      * @param {{ serviceId: string, metrics: { state: string } }} param
      */
     _handleNaaMetrics({ serviceId, metrics }) {
-        if (serviceId !== 'networkaudiod' || !this._connection) return;
+        if (serviceId !== 'hqplayer' || !this._connection) return;
         const naaActive = metrics?.state === 'active';
         if (this._connection.naa_available !== naaActive) {
             this._connection = { ...this._connection, naa_available: naaActive };
