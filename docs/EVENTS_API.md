@@ -1,6 +1,6 @@
 # Events API — Audiogravity Lit Components
 
-**Last updated**: 2026-06-21  
+**Last updated**: 2026-06-24  
 **Architecture**: Event-driven with CustomEvents
 
 > **Source of truth**: the `@fires` JSDoc annotations on each component. This
@@ -72,13 +72,13 @@ button.addEventListener('btn-click', () => {
 ---
 
 ### `<ag-switch>`
-#### `change`
+#### `ag-change`
 **Fired when**: The switch is toggled  
 **Payload**: `{ checked: boolean }`  
-**Source**: [ag-switch.js:47](js/components/atoms/ag-switch.js#L47)
+**Source**: [ag-switch.js:53](js/components/atoms/ag-switch.js#L53)
 
 ```javascript
-switchEl.addEventListener('change', (e) => {
+switchEl.addEventListener('ag-change', (e) => {
     console.log('Switch state:', e.detail.checked);
 });
 ```
@@ -245,6 +245,19 @@ configCard.addEventListener('edit-config', (e) => {
 **Fired when**: The user enables or disables a user account  
 **Payload**: `{ username: string, active: boolean }`  
 **Source**: [ag-user-card.js:71](js/components/molecules/ag-user-card.js#L71)
+
+---
+
+### `<ag-hqplayer-output>`
+#### `hqp-connected`
+**Fired when**: A HQPlayer instance is successfully connected  
+**Payload**: `{}`  
+**Source**: [ag-hqplayer-output.js](js/components/molecules/ag-hqplayer-output.js)
+
+#### `hqp-disconnected`
+**Fired when**: The HQPlayer connection is removed  
+**Payload**: `{}`  
+**Source**: [ag-hqplayer-output.js](js/components/molecules/ag-hqplayer-output.js)
 
 ---
 
@@ -440,8 +453,7 @@ topBar.addEventListener('burger-click', () => toggleSidebar());
 
 ## Summary
 
-This file documents the most stable events. The codebase has 104 components —
-for a complete list run:
+This file documents the most stable events. For a complete list run:
 
 ```bash
 grep -r "@fires" js/components/ | sed 's/.*@fires //'
@@ -499,4 +511,4 @@ this.dispatchEvent(new CustomEvent('my-event', {
 
 ---
 
-**Last updated**: 2026-06-21
+**Last updated**: 2026-06-24

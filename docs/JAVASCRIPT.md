@@ -27,9 +27,9 @@ js/
 │   ├── event-bus.js            # EventEmitter pub/sub (SSE data relay)
 │   └── FetchController.js      # Lit Reactive Controller for API fetches
 ├── components/
-│   ├── atoms/                  # 20 base components (stateless)
-│   ├── molecules/              # 42 composite components
-│   └── organisms/              # 42 page-level components
+│   ├── atoms/                  # Base components (stateless)
+│   ├── molecules/              # Composite components
+│   └── organisms/              # Page-level components
 ├── api.js                      # Centralized fetch wrapper (auth headers, error mapping)
 ├── auth.js                     # JWT session & role management
 ├── common.js                   # Shared logic & EventEmitter instance

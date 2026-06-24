@@ -81,7 +81,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 
 ## Architecture
 
-101 Lit Web Components organised by Atomic Design:
+Lit Web Components organised by Atomic Design:
 
 ```
 js/components/

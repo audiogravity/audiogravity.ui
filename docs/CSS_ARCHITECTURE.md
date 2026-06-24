@@ -1,10 +1,6 @@
 # CSS Architecture Guide
 ## Audiogravity Frontend — CSS Design System
 
-**Version**: 3.1  
-**Date**: 2026-06-16  
-**Status**: Production-Ready — Stylelint Phase 3 ✅
-
 ---
 
 ## Table of Contents
@@ -47,7 +43,6 @@ Linting:              Stylelint — pre-commit hook (Husky 9)
 css/
 ├── main.css                    # SINGLE ENTRY POINT (Master Manifest)
 │
-├── icon.css                    # Icons (icomoon font)
 ├── base.css                    # CSS reset + base typography
 ├── layout.css                  # App shell (topbar, vertical sidebar, footer)
 ├── responsive.css              # Global breakpoints and responsive helpers
@@ -64,20 +59,42 @@ css/
 │   ├── badge.css              # Status badges (success-pulse, error-pulse…)
 │   ├── button.css             # btn-action (compact) + action-btn (full height)
 │   ├── config-sidebar.css     # Configuration side panel
+│   ├── connector-badge.css    # Source connector badges
+│   ├── dsd-lock.css           # DSD lock indicator
+│   ├── filter-bar.css         # Library filter bar
+│   ├── format-strip.css       # Audio format strip (bitrate, sample rate)
 │   ├── forms.css              # Form inputs and fields
 │   ├── grid.css               # Responsive grids (grid-fit, grid-auto)
+│   ├── health-bar.css         # System health bar
 │   ├── history-panel.css      # Action history panel
+│   ├── library-album-card.css # Library album card
+│   ├── library-browser.css    # Library browser layout
+│   ├── library-cover.css      # Album cover display
+│   ├── library-list-row.css   # Library list row
+│   ├── library-outputs.css    # Library output selector
+│   ├── library-queue.css      # Playback queue
+│   ├── library-radio.css      # Radio browser
+│   ├── library-search.css     # Library search
+│   ├── library-sources.css    # Library source cards (HQPlayer, Tidal…)
 │   ├── metrics.css            # Unified metric displays
 │   ├── modal.css              # Modal system (dvh, safe-area, backdrop)
+│   ├── now-playing.css        # Mini now-playing player
+│   ├── now-playing-fullscreen.css  # Fullscreen now-playing player
 │   ├── perf-monitor.css       # ag-perf-monitor styles (SSE traffic, timers, heap)
-│   ├── progress.css           # Progress bars
+│   ├── playback-controls.css  # Playback control bar
+│   ├── progress.css           # Generic progress bars
+│   ├── progress-bar.css       # Playback progress bar (seekable)
 │   ├── skeleton.css           # Animated loading skeletons
+│   ├── sleep-timer.css        # Sleep timer widget
+│   ├── source-badge.css       # Audio source badges
 │   ├── sparkline.css          # SVG sparkline charts
+│   ├── splash-screen.css      # App splash screen
 │   ├── status-indicator.css   # Status indicators (LED dots, blinkSlow)
 │   ├── tab-zone.css           # Inner tab zones
 │   ├── tile.css               # Cards / Tiles
 │   ├── toast.css              # Toast notifications
-│   └── tooltip.css            # Tooltips
+│   ├── tooltip.css            # Tooltips
+│   └── track-meta.css         # Track metadata display
 │
 └── (page stylesheets)          # PAGE-SPECIFIC STYLES
     ├── admin.css              # Admin page
@@ -88,8 +105,9 @@ css/
     ├── performance.css        # Performance page
     ├── profiles.css           # Profiles page
     ├── services.css           # Services page
-    ├── system.css             # System page (connection-dot-large…)
+    ├── system.css             # System page
     ├── systemd.css            # Systemd page
+    ├── terminal.css           # Terminal page
     └── validation.css         # Validation UI
 ```
 
@@ -100,15 +118,14 @@ css/
 > **Do not change the order in `main.css`.** CSS variables must be defined before they are used.
 
 ```css
-/* 1. ATOMS & BASE (Resets, Icons, HTML Base) */
-@import 'icon.css';
+/* 1. BASE (Reset, HTML base) */
 @import 'base.css';
 
 /* 2. DESIGN TOKENS (Variables, Themes) */
 @import 'themes.css';
 @import 'responsive.css';
 
-/* 3. SHARED COMPONENTS (Core UI Atoms) */
+/* 3. SHARED COMPONENTS */
 @import 'components/grid.css';
 @import 'components/tile.css';
 @import 'components/button.css';
@@ -116,17 +133,39 @@ css/
 @import 'components/tooltip.css';
 @import 'components/status-indicator.css';
 @import 'components/badge.css';
+@import 'components/source-badge.css';
 @import 'components/skeleton.css';
 @import 'components/tab-zone.css';
 @import 'components/animations.css';
 @import 'components/toast.css';
 @import 'components/sparkline.css';
+@import 'components/health-bar.css';
+@import 'components/filter-bar.css';
 @import 'components/forms.css';
+@import 'components/library-cover.css';
+@import 'components/library-list-row.css';
+@import 'components/library-browser.css';
+@import 'components/now-playing-fullscreen.css';
+@import 'components/progress-bar.css';
+@import 'components/playback-controls.css';
+@import 'components/sleep-timer.css';
+@import 'components/format-strip.css';
+@import 'components/connector-badge.css';
+@import 'components/dsd-lock.css';
+@import 'components/track-meta.css';
+@import 'components/library-search.css';
+@import 'components/library-queue.css';
+@import 'components/library-sources.css';
+@import 'components/library-outputs.css';
+@import 'components/library-album-card.css';
+@import 'components/library-radio.css';
 @import 'components/modal.css';
 @import 'components/config-sidebar.css';
 @import 'components/history-panel.css';
 @import 'components/progress.css';
 @import 'components/perf-monitor.css';
+@import 'components/now-playing.css';
+@import 'components/splash-screen.css';
 
 /* 4. LAYOUT (App Shell, Topbar, Tabs, Footer) */
 @import 'layout.css';
@@ -146,6 +185,7 @@ css/
 @import 'config.css';
 @import 'validation.css';
 @import 'login.css';
+@import 'terminal.css';
 ```
 
 ### Cascade levels
@@ -280,12 +320,34 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
   --spacing-xl: 32px;
 
   /* Typography */
+  --font-family: 'Inter', -apple-system, sans-serif;
+  --font-mono:   'Courier New', monospace;
+  --font-size-xxs:  10px;
   --font-size-xs:   11px;
   --font-size-sm:   13px;
   --font-size-md:   14px;
   --font-size-lg:   16px;
   --font-size-xl:   20px;
+  --font-size-xxl:  20px;
   --font-size-xxxl: 28px;
+
+  /* Border radius */
+  --radius-none: 0;
+  --radius-xs:   1px;
+  --radius-sm:   2px;
+  --radius-md:   4px;
+  --radius-lg:   8px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 1px 3px var(--shadow-color, rgb(0 0 0 / 0.1));
+  --shadow-lg: 0 4px 6px -1px var(--shadow-color, rgb(0 0 0 / 0.1));
+  --shadow-xl: 0 10px 15px -3px var(--shadow-color, rgb(0 0 0 / 0.1));
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
 
   /* Component sizes */
   --size-xxs: 10px;  /* Status dots */
@@ -297,10 +359,11 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
   --size-xxl: 60px;  /* Chart heights */
 
   /* Layout */
-  --topbar-height:    50px;
-  --footer-height:    50px;
-  --tabs-height:      50px;
-  --title-bar-height: 55px;
+  --topbar-height:       50px;
+  --footer-height:       50px;
+  --tabs-height:         50px;
+  --title-bar-height:    55px;
+  --tabs-vertical-width: 225px;
 
   /* Z-index layers */
   --z-base:           1;
@@ -331,6 +394,10 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
   --color-warning: #F59E0B;
   --color-info:    #3B82F6;
 
+  --accent-primary:       #6366F1;
+  --accent-primary-alpha: rgb(99 102 241 / 0.1);
+  --accent-hover:         #4F46E5;
+
   --border-color: #E2E8F0;
 }
 
@@ -355,8 +422,15 @@ body.dark-mode {
 | Backgrounds | `var(--bg-primary)` | `#F8F9FA` |
 | Primary text | `var(--text-primary)` | `#000` / `black` |
 | Spacing | `var(--spacing-md)` | `16px` |
+| Border radius | `var(--radius-md)` | `4px` |
+| Shadows | `var(--shadow-md)` | `0 1px 3px rgba(…)` |
+| Transitions | `var(--transition-fast)` | `150ms ease` |
+| Accent / interactive | `var(--accent-primary)` | `#6366F1` |
 | Success state | `var(--color-success)` | `green` / `#10B981` |
+| Border | `var(--border-color)` | `#E2E8F0` |
 | Compact button height | `var(--size-sm)` | `18px` |
+| Font family | `var(--font-family)` | `'Inter', sans-serif` |
+| Monospace | `var(--font-mono)` | `'Courier New'` |
 
 ---
 
@@ -648,26 +722,3 @@ Before committing:
 - [ ] No duplication with existing components
 - [ ] Stylelint passes (`npm run lint:css`)
 
----
-
-**Last updated**: 2026-06-16
-
-**v3.1 (June 2026)**:
-- Dropped hardcoded file/component/token counts (drift-prone) — Storybook + `css/` are the live source of truth.
-- Removed references to the deleted `MODULES.md` inventory.
-
-**v3.0 (April 2026)**:
-- Stylelint Phase 3: all CSS files lint-clean, Husky 9 pre-commit hook active.
-- Keyframes renamed to camelCase (`blinkSlow`, `blinkInfo`) for Stylelint compliance.
-- `backdrop-filter` removed from `.tabs--vertical` (Safari compositing conflict).
-- `common.css` removed — styles migrated to `base.css` and scoped component files.
-- Added `responsive.css`, `components/perf-monitor.css`.
-- Added `gravity.css` theme (3 themes total).
-- Modals: `vh` → `dvh`, `env(safe-area-inset-*)` for iOS.
-- Media queries modernized: `@media (width <= 768px)` syntax.
-- Buttons standardized: `btn-action` (compact, `--size-sm`) in all modals.
-
-**v2.2 (March 2026)**:
-- Mobile-first layout harmonization (1 column default, `min-width` breakpoints).
-- Removed ID-specificity overrides to respect the responsive cascade.
-- `utilities.css`: 60+ utility classes, 63% reduction in inline styles.
