@@ -3,6 +3,7 @@
 ![Version](https://img.shields.io/badge/version-0.9.5--beta-orange)
 ![Tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+[![Storybook](https://img.shields.io/badge/Storybook-component%20docs-FF4785?logo=storybook&logoColor=white)](https://audiogravity.github.io/audiogravity.ui/)
 
 Web frontend for [Audiogravi<sup>ty</sup>](https://audiogravity.app) — an audiophile
 audio management application. Built with **Lit 3 Web Components**, **Vite**
