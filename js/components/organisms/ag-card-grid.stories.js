@@ -1,6 +1,5 @@
 import { html } from 'lit';
 import './ag-card-grid.js';
-import '../molecules/ag-tile.js';
 
 export default {
     title: 'Organisms/CardGrid',
