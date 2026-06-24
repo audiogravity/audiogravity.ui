@@ -240,6 +240,23 @@ class AgHqplayerOutput extends LitElement {
         }
     }
 
+    /**
+     * Clear the output flag whenever the connection transitions to NAA-offline.
+     * Uses Lit's updated() lifecycle so it fires on every _connection change
+     * regardless of the source (connectedCallback, _refresh, _connect, SSE).
+     * Uses === false (not falsy) to avoid clearing on a transient null connection
+     * (fetch failure) where naa_available is undefined, not confirmed false.
+     * @param {Map} changedProps
+     */
+    updated(changedProps) {
+        if (changedProps.has('_connection') &&
+            this._useAsOutput &&
+            this._connection?.naa_available === false) {
+            this._useAsOutput = false;
+            localStorage.removeItem('hqplayer_output');
+        }
+    }
+
     async _toggleDsp() {
         this._dspExpanded = !this._dspExpanded;
         if (this._dspExpanded && this._filters.length === 0) {
@@ -323,10 +340,12 @@ class AgHqplayerOutput extends LitElement {
 
     /** Render the connected/offline HQPlayer card with optional DSP panel. */
     _renderCard() {
-        const available = this._connection.available;
+        const available     = this._connection.available;
+        const naaAvailable  = this._connection.naa_available;
+        const fullyConnected = available && naaAvailable;
 
         return html`
-            <div class="lib-hqp-card ${available ? 'connected' : ''}">
+            <div class="lib-hqp-card ${fullyConnected ? 'connected' : ''}">
                 <div class="lib-hqp-card-hd">
                     <div class="lib-hqp-ic">
                         <img src="/pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
@@ -341,13 +360,15 @@ class AgHqplayerOutput extends LitElement {
                     </div>
                     ${this._applying
                         ? html`<ag-status-indicator state="pending" label="Applying"></ag-status-indicator>`
-                        : available
+                        : fullyConnected
                             ? html`<ag-status-indicator state="up" label="Connected"></ag-status-indicator>`
-                            : html`<ag-status-indicator state="down" label="Offline"></ag-status-indicator>`
+                            : available
+                                ? html`<ag-status-indicator state="down" label="NAA offline"></ag-status-indicator>`
+                                : html`<ag-status-indicator state="down" label="Offline"></ag-status-indicator>`
                     }
                 </div>
 
-                ${available ? html`
+                ${fullyConnected ? html`
                     <div class="lib-hqp-output-toggle">
                         <span class="lib-hqp-output-label">Use as output</span>
                         <ag-switch .checked=${this._useAsOutput} @ag-change=${this._toggleOutput}></ag-switch>
@@ -447,3 +468,5 @@ class AgHqplayerOutput extends LitElement {
 }
 
 customElements.define('ag-hqplayer-output', AgHqplayerOutput);
+
+export { AgHqplayerOutput };
