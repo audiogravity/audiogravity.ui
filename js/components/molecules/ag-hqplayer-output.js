@@ -61,6 +61,30 @@ class AgHqplayerOutput extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this._loadConnection();
+        this._boundHandleNaaMetrics = this._handleNaaMetrics.bind(this);
+        if (window.EventEmitter) {
+            window.EventEmitter.on('service-metrics-sse', this._boundHandleNaaMetrics);
+        }
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (window.EventEmitter && this._boundHandleNaaMetrics) {
+            window.EventEmitter.off('service-metrics-sse', this._boundHandleNaaMetrics);
+        }
+    }
+
+    /**
+     * Update naa_available in-place when a services_metrics SSE event arrives
+     * for the networkaudiod service — no round-trip to /hqplayer/connection.
+     * @param {{ serviceId: string, metrics: { state: string } }} param
+     */
+    _handleNaaMetrics({ serviceId, metrics }) {
+        if (serviceId !== 'networkaudiod' || !this._connection) return;
+        const naaActive = metrics?.state === 'active';
+        if (this._connection.naa_available !== naaActive) {
+            this._connection = { ...this._connection, naa_available: naaActive };
+        }
     }
 
     // ── Data fetching ──────────────────────────────────────────────────────
