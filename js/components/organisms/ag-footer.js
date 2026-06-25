@@ -108,7 +108,7 @@ export class AgFooter extends LitElement {
                 </div>
                 
                 <span><a href="https://audiogravity.app" target="_blank" rel="noopener">Audiogravi<sup>ty</sup></a> © 2026 — <a
-                        href="https://github.com/audiogravity/audiogravity.app/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a></span>
+                        href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a></span>
 
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
                     <span id="footerApiUrl">API: ${this.apiUrl}</span>
