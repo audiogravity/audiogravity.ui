@@ -7,15 +7,15 @@
 > this stage** of the project.
 >
 > To report a bug or suggest a feature, please open an issue on the main
-> project repository: **[audiogravity/audiogravity.app](https://github.com/audiogravity/audiogravity.app/issues)**
+> project repository: **[audiogravity/audiogravity.site](https://github.com/audiogravity/audiogravity.site/issues)**
 >
 > This policy will be revisited when the project reaches v1.0.
 
 ## Prerequisites
 
 - **Node.js** 18+ and **npm**
-- A running **Audiogravity backend** (`audiogravity.core`) on port 8000
-  — see the backend repo for setup instructions
+- A running **Audiogravity core** (`audiogravity.core`) on port 8000
+  — see the core repo for setup instructions
 
 ## Development setup
 
@@ -36,7 +36,7 @@ Vite starts at **http://localhost:3000** and proxies API calls transparently:
 
 ### API key
 
-On first launch, a prompt asks for your `API_KEY` (visible in the backend's
+On first launch, a prompt asks for your `API_KEY` (visible in the core's
 `.env` file). The key is stored in `localStorage` — subsequent launches skip
 the prompt.
 
@@ -95,14 +95,14 @@ scheme.
 | [docs/JAVASCRIPT.md](docs/JAVASCRIPT.md) | Component architecture, data flow, communication patterns |
 | [docs/EVENTS_API.md](docs/EVENTS_API.md) | CustomEvent inventory (stable events) |
 | [docs/CSS_ARCHITECTURE.md](docs/CSS_ARCHITECTURE.md) | CSS design system, tokens, naming conventions |
-| [API.md](API.md) | Backend API contract (endpoints + SSE events) |
+| [API.md](API.md) | Core API contract (endpoints + SSE events) |
 
 ## Code style
 
 - **No comments** unless the *why* is non-obvious
 - **No new inline SVGs** — add icons to `js/ag-icons.js` (rule 15). All icons
   are sourced from [Lucide](https://lucide.dev) (ISC licence, listed in
-  `../audiogravity.app/THIRD_PARTY_NOTICES.md`). To add a new icon: copy the
+  `../audiogravity.site/THIRD_PARTY_NOTICES.md`). To add a new icon: copy the
   SVG paths from lucide.dev, export a tagged-template constant from `ag-icons.js`
   with a JSDoc comment (`/** Description. (Lucide: icon-name) */`), and import
   it by name where needed.

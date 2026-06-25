@@ -1,12 +1,12 @@
-# Audiogravity UI — Backend API Contract
+# Audiogravity UI — Core API Contract
 
-The frontend communicates with the backend exclusively via:
+The UI communicates with the core exclusively via:
 - **REST** (JSON over HTTPS) — all endpoints under the base URL
 - **SSE** — real-time event stream at `/sse`
 - **WebSocket** — PTY terminal at `/sysinfo/terminal/ws`
 
 Full interactive documentation is available at **`/docs`** (Swagger UI) on a
-running Audiogravity backend.
+running Audiogravity core.
 
 ---
 

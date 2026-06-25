@@ -5,7 +5,7 @@ This doc covers (1) where deployment lives and (2) local development.
 
 ## Deployment
 
-The frontend ships as a versioned tarball built and published by the release
+The UI ships as a versioned tarball built and published by the release
 tooling — there is **no interactive installer in the repo**.
 
 - **Build & publish:** managed by `audiogravity.ops` via `./release.sh frontend`.
@@ -19,15 +19,15 @@ tooling — there is **no interactive installer in the repo**.
 
 ## Development (Vite dev server)
 
-Hot-module reload + a built-in proxy to the backend.
+Hot-module reload + a built-in proxy to the core.
 
 ```
 Browser ──► Vite dev server (:3000)
-              ├── /api/* ─► backend (:8000)
-              └── /sse/* ─► backend (:8000, SSE)
+              ├── /api/* ─► core (:8000)
+              └── /sse/* ─► core (:8000, SSE)
 ```
 
-**Prerequisites:** Node.js 18+, `npm install`, and the backend running on `:8000`.
+**Prerequisites:** Node.js 18+, `npm install`, and the core running on `:8000`.
 
 **Start:**
 ```bash
@@ -36,7 +36,7 @@ Browser ──► Vite dev server (:3000)
 npm run dev
 ```
 Serves on **:3000**, bound to `0.0.0.0` (reachable on the LAN). `/api` and `/sse`
-are proxied to the backend (`BACKEND_PORT`, default 8000) — see `vite.config.js`.
+are proxied to the core (`BACKEND_PORT`, default 8000) — see `vite.config.js`.
 
 > **AG_CONFIG in dev:** `window.AG_CONFIG` comes from `public/ag-config.js` (a dev
 > key). In production it is injected by the package installer. Never commit a

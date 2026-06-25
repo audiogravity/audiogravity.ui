@@ -5,13 +5,13 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 [![Storybook](https://img.shields.io/badge/Storybook-component%20docs-FF4785?logo=storybook&logoColor=white)](https://audiogravity.github.io/audiogravity.ui/)
 
-Web frontend for [Audiogravi<sup>ty</sup>](https://audiogravity.app) — an audiophile
+Web UI for [Audiogravi<sup>ty</sup>](https://audiogravity.app) — an audiophile
 audio management application. Built with **Lit 3 Web Components**, **Vite**
 and **Vitest**.
 
 Audiogravi<sup>ty</sup> orchestrates MPD, Roon, HQPlayer, AirPlay, UPnP, Tidal and
-Qobuz from a single PWA interface. This repo contains the frontend only.
-The backend is required at runtime — see [API.md](API.md) for the contract.
+Qobuz from a single PWA interface. This repo contains the UI only.
+The core is required at runtime — see [API.md](API.md) for the contract.
 
 ---
 
@@ -41,12 +41,12 @@ npm install
 ./dev.sh start     # Vite at http://localhost:3000
 ```
 
-A running Audiogravi<sup>ty</sup> backend is required on port 8001 (default). On first launch a
-prompt asks for the API key (visible in the backend `.env` file); it is
+A running Audiogravi<sup>ty</sup> core is required on port 8001 (default). On first launch a
+prompt asks for the API key (visible in the core `.env` file); it is
 stored in `localStorage` for subsequent sessions.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
-[API.md](API.md) for the backend API contract.
+[API.md](API.md) for the core API contract.
 
 ---
 
@@ -62,7 +62,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 ./dev.sh help          # full command list
 ```
 
-> **Note** — The default backend port is 8001. Override if needed: `BACKEND_PORT=8002 ./dev.sh start`
+> **Note** — The default core port is 8001. Override if needed: `BACKEND_PORT=8002 ./dev.sh start`
 
 ---
 
@@ -90,8 +90,8 @@ js/components/
   molecules/   Composite elements (cards, tiles, modals)
   organisms/   Feature sections (pipeline, library, profiles)
 js/core/       Config, event bus, app context, fetch controller
-js/api.js      REST client — all backend calls go through here
-js/sse.js      SSE client — real-time updates from the backend
+js/api.js      REST client — all core calls go through here
+js/sse.js      SSE client — real-time updates from the core
 css/           Modular stylesheets with CSS custom property tokens
 public/        Static assets, icons, PWA manifest
 ```
