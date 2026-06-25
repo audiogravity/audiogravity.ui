@@ -1033,4 +1033,14 @@ body.dark-mode .logo-dark {
     display: inline-block;
     transform-origin: 50% 0%;
     animation: bellRing 3s ease-in-out infinite;
+    will-change: transform;
+}
+
+/* Restore bell animation when user explicitly enables animations,
+   even if the OS prefers-reduced-motion is active. */
+@media (prefers-reduced-motion: reduce) {
+    body:not(.no-animations) .tab-bell-anim {
+        animation-duration: 3s !important;
+        animation-iteration-count: infinite !important;
+    }
 }
