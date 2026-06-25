@@ -55,6 +55,7 @@ export class AgTabs extends LitElement {
         _previewTab: { type: String, state: true }, // Tab highlighted during swipe gesture
         _isMobile: { type: Boolean, state: true },
         _announcementCount: { type: Number, state: true },
+        _animationsEnabled: { type: Boolean, state: true },
     };
 
     constructor() {
@@ -81,6 +82,7 @@ export class AgTabs extends LitElement {
         this._licenseDaysRemaining = null;
         this._tabStats = {};
         this._announcementCount = 0;
+        this._animationsEnabled = window.AppState?.animationsEnabled ?? true;
 
         // Touch gesture state
         this._touchStartX = 0;
@@ -224,6 +226,11 @@ export class AgTabs extends LitElement {
         };
         window.addEventListener('announcement-badge', this._handleAnnouncementBadge);
 
+        this._handleAnimationsChanged = ({ detail }) => {
+            this._animationsEnabled = detail?.enabled ?? true;
+        };
+        window.addEventListener('animations-changed', this._handleAnimationsChanged);
+
         // Fetch initial counts so all tabs show stats immediately (before pages load)
         this._fetchInitialStats();
         this._fetchLicenseStatus();
@@ -308,6 +315,8 @@ export class AgTabs extends LitElement {
         document.removeEventListener('library-click', this._handleLibraryClick);
         if (this._handleAnnouncementBadge)
             window.removeEventListener('announcement-badge', this._handleAnnouncementBadge);
+        if (this._handleAnimationsChanged)
+            window.removeEventListener('animations-changed', this._handleAnimationsChanged);
         if (window.EventEmitter) {
             if (this._handleAuthChanged) window.EventEmitter.off('auth-changed', this._handleAuthChanged);
             if (this._handleConnectionStatus) window.EventEmitter.off('connection-status', this._handleConnectionStatus);
@@ -727,7 +736,7 @@ export class AgTabs extends LitElement {
                         ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
                         ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
-                            <span class="tab-bell-anim" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning);flex-shrink:0;display:inline-flex"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
+                            <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
                         ` : ''}
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`
