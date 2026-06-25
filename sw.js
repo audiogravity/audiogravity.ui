@@ -1,8 +1,8 @@
 // =====================
-// SERVICE WORKER - AUDIOGRAVITY v0.9.5
+// SERVICE WORKER - AUDIOGRAVITY v0.9.6
 // =====================
 
-const CACHE_NAME = 'audiogravity-v0.9.5';
+const CACHE_NAME = 'audiogravity-v0.9.6';
 
 // Fichiers critiques à mettre en cache IMMÉDIATEMENT à l'installation
 const CACHE_URLS = [
