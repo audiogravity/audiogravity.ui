@@ -35,7 +35,7 @@
 .config-service-path {
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 
 .config-file-mtime {
@@ -131,7 +131,7 @@
 .config-file-path {
     font-size: var(--font-size-sm);
     color: var(--text-tertiary);
-    font-family: monospace;
+    font-family: var(--font-mono);
     display: block;
     margin-top: var(--spacing-xs);
 }
@@ -249,7 +249,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: var(--font-size-sm);
     line-height: 1.5;
     resize: vertical;
@@ -274,7 +274,7 @@
 .config-raw-editor .CodeMirror {
     height: 600px;
     min-height: 400px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: var(--font-size-sm);
     line-height: 1.5;
     border: 1px solid var(--border-color);
@@ -429,7 +429,7 @@
 }
 
 .config-backup-filename {
-    font-family: monospace;
+    font-family: var(--font-mono);
     color: var(--text-primary);
 }
 
@@ -467,7 +467,7 @@
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     white-space: nowrap;
@@ -532,7 +532,7 @@
     display: flex;
     gap: var(--spacing-sm);
     font-size: var(--font-size-xs);
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-weight: 700;
 }
 
@@ -553,7 +553,7 @@
 }
 
 .diff-line-prefix {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-weight: 700;
     font-size: var(--font-size-xs);
     width: 12px;
@@ -562,7 +562,7 @@
 }
 
 .diff-line-code {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     white-space: pre;
     color: var(--text-primary);
@@ -571,7 +571,7 @@
 .diff-hunk-sep {
     padding: 2px var(--spacing-md);
     font-size: var(--font-size-xxs);
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     color: var(--text-tertiary);
     background: var(--bg-tertiary);
     border-top: 1px solid var(--border-color);
@@ -617,7 +617,7 @@
 }
 
 .diff-old {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     color: var(--color-error);
     background: var(--color-error-bg);
     border-radius: var(--radius-xs);
@@ -625,7 +625,7 @@
 }
 
 .diff-new {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     color: var(--color-success);
     background: var(--color-success-bg);
     border-radius: var(--radius-xs);

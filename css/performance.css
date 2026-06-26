@@ -139,7 +139,7 @@
     font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--text-primary);
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
 }
 
 .cpu-temp {
@@ -147,7 +147,7 @@
     font-weight: 600;
     padding: 1px 4px;
     border-radius: var(--radius-xs);
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
 }
 
 .cpu-temp.cool {
@@ -202,7 +202,7 @@
     border: 1px solid var(--color-warning);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     animation: blinkWarning 1s ease-in-out 3;
@@ -514,7 +514,7 @@ body.no-animations .animate-stagger {
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
     min-width: 85px;
     text-align: center;
@@ -601,7 +601,7 @@ body.no-animations .animate-stagger {
     width: 100%;
     border-collapse: collapse;
     font-size: var(--font-size-xs);
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
 }
 
 /* Latency table: hide Std (col 5) and Thr/Pri (col 6) on mobile */
@@ -713,13 +713,13 @@ body.no-animations .animate-stagger {
 }
 
 .rt-monitor-name {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .rt-monitor-meta {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     color: var(--text-secondary);
     font-size: var(--font-size-xs);
 }
@@ -731,7 +731,7 @@ body.no-animations .animate-stagger {
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     white-space: nowrap;
@@ -763,7 +763,7 @@ body.no-animations .animate-stagger {
 }
 
 .rt-monitor-hint code {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     background: var(--bg-tertiary);
     padding: 1px 4px;
     border-radius: var(--radius-xs);

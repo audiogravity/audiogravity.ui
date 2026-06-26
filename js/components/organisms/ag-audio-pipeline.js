@@ -433,7 +433,7 @@ export class AgAudioPipeline extends LitElement {
             border-radius: var(--radius-md);
             box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.2);
             overflow: hidden;
-            font-family: var(--font-sans, sans-serif);
+            font-family: var(--font-family);
         }
 
         .steering-popover-header {

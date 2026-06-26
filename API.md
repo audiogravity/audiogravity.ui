@@ -106,6 +106,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/tidal/connection` | Start PKCE login flow |
 | POST | `/tidal/connection/submit` | Complete login (paste redirect URL) |
 | DELETE | `/tidal/connection` | Disconnect |
+| GET | `/tidal/stream/{track_id}` | DASH→FLAC proxy stream — **public (no auth)**, used by UPnP renderers on the LAN |
 
 ### Qobuz — `/qobuz/*`
 | Method | Path | Description |
@@ -207,12 +208,11 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | Event type | Payload |
 |---|---|
 | `now_playing` | Current track, source, format |
-| `pipeline_state` | Full pipeline topology update |
-| `service_state` | Service status change |
-| `service_metrics` | CPU/memory/IO per service |
-| `profile_state` | Profile activation result |
-| `connection_status` | Backend connectivity |
-| `system_metrics` | CPU, memory, disk, network |
+| `audio_pipeline` | Full pipeline topology update |
+| `services_metrics` | CPU/memory/IO per service |
+| `profile_metrics` | Profile activation result |
+| `sysinfo` | CPU, memory, disk, network |
+| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn` |
 
 ---
 

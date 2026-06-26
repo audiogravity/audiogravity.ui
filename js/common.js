@@ -695,7 +695,7 @@ if (import.meta.env.DEV) {
             padding: '4px 10px',
             background: '#f59e0b',
             color: '#000',
-            fontFamily: 'JetBrains Mono, monospace',
+            fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || 'monospace',
             fontSize: '10px',
             fontWeight: '700',
             letterSpacing: '0.14em',
