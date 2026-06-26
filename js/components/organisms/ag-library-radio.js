@@ -496,7 +496,8 @@ export class AgLibraryRadio extends LitElement {
                 />
                 <input
                     class="lib-radio-search-input"
-                    type="url"
+                    type="text"
+                    inputmode="url"
                     placeholder="Stream URL (https://…)"
                     required
                     pattern="https?://.+"
@@ -505,8 +506,10 @@ export class AgLibraryRadio extends LitElement {
                 />
                 <input
                     class="lib-radio-search-input"
-                    type="url"
+                    type="text"
+                    inputmode="url"
                     placeholder="Image URL (optional)"
+                    pattern="https?://.+"
                     .value=${f.image_url}
                     @input=${e => this._updateCustomField('image_url', e.target.value)}
                 />

@@ -303,17 +303,11 @@ export class AgLibrarySources extends LitElement {
                         </div>
                     `
                 }
-                <div class="lib-qb-section">
+                <div class="lib-settings-section">
                     <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">Qobuz</span>
+                        <span class="lib-src-lbl">Streaming Services</span>
                     </div>
                     <ag-qobuz-output></ag-qobuz-output>
-                </div>
-
-                <div class="lib-qb-section">
-                    <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">Tidal</span>
-                    </div>
                     <ag-tidal-output></ag-tidal-output>
                 </div>
 

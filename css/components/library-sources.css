@@ -287,6 +287,10 @@
 
 .lib-hqp-section { margin-top: 18px; }
 
+/* Generic settings section — same layout as lib-hqp-section but decoupled
+   so HQPlayer-specific style changes don't bleed into other sections. */
+.lib-settings-section { margin-top: 18px; }
+
 .lib-hqp-header {
     display: flex;
     align-items: center;
