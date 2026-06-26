@@ -245,3 +245,111 @@ def test_websocket_is_tunneled(ws_proxy_port):
         assert echoed == b"ping-through-tunnel"
     finally:
         s.close()
+
+
+# ── _extract_preload_links unit tests ─────────────────────────────────────────
+
+def _write_html(tmp_path, content):
+    """Write content to a temporary index.html and return the path."""
+    p = tmp_path / "index.html"
+    p.write_text(content, encoding="utf-8")
+    return str(p)
+
+
+class TestExtractPreloadLinks:
+    """Unit tests for _extract_preload_links().
+
+    Covers nominal cases (hashed assets extracted correctly) and edge cases
+    (non-hashed assets excluded, attribute order independent, missing file).
+    """
+
+    def test_extracts_module_script(self, tmp_path):
+        """Hashed <script type="module" src="…"> yields rel=preload as=script."""
+        html = '<script type="module" crossorigin src="/assets/main-ABC12345.js"></script>'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert len(links) == 1
+        assert '</assets/main-ABC12345.js>; rel=preload; as=script' in links[0]
+        assert 'crossorigin=anonymous' in links[0]
+
+    def test_src_before_type_attribute_order(self, tmp_path):
+        """Attribute order src= before type= must still match (order-independent)."""
+        html = '<script src="/assets/main-ABC12345.js" type="module" crossorigin></script>'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert len(links) == 1
+        assert '/assets/main-ABC12345.js' in links[0]
+
+    def test_extracts_modulepreload_link(self, tmp_path):
+        """Hashed <link rel="modulepreload" href="…"> yields rel=modulepreload."""
+        html = '<link rel="modulepreload" crossorigin href="/assets/lit-XY789012.js">'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert len(links) == 1
+        assert 'rel=modulepreload' in links[0]
+        assert '/assets/lit-XY789012.js' in links[0]
+
+    def test_extracts_stylesheet_link(self, tmp_path):
+        """Hashed <link rel="stylesheet" href="…"> yields rel=preload as=style."""
+        html = '<link rel="stylesheet" href="/assets/main-ABCD1234.css">'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert len(links) == 1
+        assert 'rel=preload; as=style' in links[0]
+
+    def test_excludes_non_hashed_script(self, tmp_path):
+        """<script src="/sw.js"> (no hash) must NOT produce a preload hint."""
+        html = '<script type="module" src="/sw.js"></script>'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert links == []
+
+    def test_excludes_non_hashed_link(self, tmp_path):
+        """<link rel="stylesheet" href="/css/main.css"> (no hash) excluded."""
+        html = '<link rel="stylesheet" href="/css/main.css">'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert links == []
+
+    def test_excludes_non_module_script(self, tmp_path):
+        """<script src="…"> without type=module must NOT be preloaded."""
+        html = '<script src="/assets/legacy-ABCD1234.js"></script>'
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert links == []
+
+    def test_multiple_assets_all_extracted(self, tmp_path):
+        """All hashed assets in a realistic HTML snippet are extracted."""
+        html = (
+            '<script type="module" crossorigin src="/assets/main-A1B2C3D4.js"></script>\n'
+            '<link rel="modulepreload" crossorigin href="/assets/lit-E5F6G7H8.js">\n'
+            '<link rel="stylesheet" crossorigin href="/assets/style-I9J0K1L2.css">\n'
+            '<link rel="stylesheet" href="/css/global.css">\n'  # non-hashed — excluded
+        )
+        links = serve_https._extract_preload_links(_write_html(tmp_path, html))
+        assert len(links) == 3
+        urls = [l.split('>')[0].lstrip('<') for l in links]
+        assert '/assets/main-A1B2C3D4.js' in urls
+        assert '/assets/lit-E5F6G7H8.js' in urls
+        assert '/assets/style-I9J0K1L2.css' in urls
+
+    def test_missing_file_returns_empty(self, tmp_path):
+        """Non-existent file path returns [] without raising."""
+        links = serve_https._extract_preload_links(str(tmp_path / "nonexistent.html"))
+        assert links == []
+
+    def test_mtime_cache_invalidation(self, tmp_path):
+        """_preload_cache is invalidated when the file's mtime changes."""
+        html_v1 = '<script type="module" src="/assets/main-AAAAAAAA.js"></script>'
+        html_v2 = '<script type="module" src="/assets/main-BBBBBBBB.js"></script>'
+        p = tmp_path / "index.html"
+        p.write_text(html_v1, encoding="utf-8")
+        path = str(p)
+
+        # Warm the cache
+        links_v1 = serve_https._extract_preload_links(path)
+        mtime_v1 = p.stat().st_mtime
+        serve_https._preload_cache[path] = (mtime_v1, links_v1)
+
+        # Overwrite with new content and bump mtime
+        p.write_text(html_v2, encoding="utf-8")
+        import time as _time; _time.sleep(0.01)
+        p.touch()
+
+        # Cache should be bypassed because mtime changed
+        links_v2 = serve_https._extract_preload_links(path)
+        assert '/assets/main-BBBBBBBB.js' in links_v2[0]
+        assert '/assets/main-AAAAAAAA.js' not in links_v2[0]

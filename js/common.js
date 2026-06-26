@@ -649,6 +649,10 @@ if ('serviceWorker' in navigator) {
         });
     } else {
         window.addEventListener('load', () => {
+            // Clear the reload guard set by the controllerchange handler so future
+            // SW updates can also trigger a clean reload.
+            sessionStorage.removeItem('sw-reloading');
+
             navigator.serviceWorker.register('/sw.js')
                 .then((registration) => {
                     AgTimerManager.setInterval('service-worker-update', () => {
@@ -659,8 +663,11 @@ if ('serviceWorker' in navigator) {
                         const newWorker = registration.installing;
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Inform the user before the automatic reload triggered by
+                                // the controllerchange listener below. The toast is intentionally
+                                // brief — the page will reload within ~200 ms.
                                 if (window.showToast) {
-                                    window.showToast('info', 'Update Available', 'A new version is available. Refresh to update.', 10000);
+                                    window.showToast('info', 'Updating…', 'A new version is being applied.', 3000);
                                 }
                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
                             }
@@ -671,8 +678,12 @@ if ('serviceWorker' in navigator) {
                     console.error('[Service Worker] Registration failed:', error);
                 });
 
+            // Reload once after SW takes control so the page uses the new chunk
+            // hashes. Guard with sessionStorage to prevent reload loops.
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                // reload removed to avoid loops
+                if (sessionStorage.getItem('sw-reloading')) return;
+                sessionStorage.setItem('sw-reloading', '1');
+                window.location.reload();
             });
         });
     }

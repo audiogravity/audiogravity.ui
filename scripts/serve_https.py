@@ -23,6 +23,62 @@ _GZIP_TYPES = {
 # Cache gzip en mémoire : {path: (mtime, compressed_bytes)}
 _gzip_cache: dict = {}
 
+# Preload hints cache: {html_path: (mtime, [link_header_values])}
+# Populated by _extract_preload_links() on first HTML serve and invalidated on mtime change.
+_preload_cache: dict = {}
+
+_RE_HASHED = re.compile(r'-[A-Za-z0-9_]{8,}\.(js|css)$')
+
+# Tag-level patterns — capture the whole opening tag so attribute order is irrelevant.
+_RE_SCRIPT_TAG  = re.compile(r'<script\b[^>]+>', re.I)
+_RE_LINK_TAG    = re.compile(r'<link\b[^>]+>', re.I)
+# Attribute-level patterns — applied to the matched tag string.
+_RE_ATTR_TYPE   = re.compile(r'\btype=["\']module["\']', re.I)
+_RE_ATTR_REL_SS = re.compile(r'\brel=["\']stylesheet["\']', re.I)
+_RE_ATTR_REL_MP = re.compile(r'\brel=["\']modulepreload["\']', re.I)
+_RE_ATTR_SRC    = re.compile(r'\bsrc=["\'](/[^"\']+)["\']', re.I)
+_RE_ATTR_HREF   = re.compile(r'\bhref=["\'](/[^"\']+)["\']', re.I)
+
+
+def _extract_preload_links(html_path: str) -> list[str]:
+    """Parse an HTML file and return Link header values for its critical assets.
+
+    Uses a two-pass approach (find tag, then extract attribute) so attribute
+    order within the tag is irrelevant.  Extracts hashed Vite assets from:
+    ``<script type="module" src="…">``, ``<link rel="modulepreload" href="…">``,
+    and ``<link rel="stylesheet" href="…">``.  Non-hashed assets are excluded.
+
+    Args:
+        html_path: Absolute path to the HTML file to parse.
+
+    Returns:
+        List of ``Link:`` header value strings ready to pass to send_header().
+    """
+    try:
+        with open(html_path, 'r', encoding='utf-8', errors='ignore') as f:
+            html = f.read()
+    except OSError:
+        return []
+
+    links = []
+    for tag in _RE_SCRIPT_TAG.findall(html):
+        if not _RE_ATTR_TYPE.search(tag):
+            continue
+        m = _RE_ATTR_SRC.search(tag)
+        if m and _RE_HASHED.search(m.group(1)):
+            links.append(f'<{m.group(1)}>; rel=preload; as=script; crossorigin=anonymous')
+
+    for tag in _RE_LINK_TAG.findall(html):
+        m_href = _RE_ATTR_HREF.search(tag)
+        if not m_href or not _RE_HASHED.search(m_href.group(1)):
+            continue
+        if _RE_ATTR_REL_MP.search(tag):
+            links.append(f'<{m_href.group(1)}>; rel=modulepreload; as=script; crossorigin=anonymous')
+        elif _RE_ATTR_REL_SS.search(tag):
+            links.append(f'<{m_href.group(1)}>; rel=preload; as=style')
+
+    return links
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -99,7 +155,7 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         # Assets avec hash Vite dans le nom → immuables, cache 1 an
         # Autres fichiers (index.html, sw.js, manifest) → revalidation obligatoire
         filename = os.path.basename(path)
-        is_hashed = bool(re.search(r'-[A-Za-z0-9_]{8,}\.(js|css)$', filename))
+        is_hashed = bool(_RE_HASHED.search(filename))
         cache_control = 'public, max-age=31536000, immutable' if is_hashed else 'no-cache'
 
         self.send_response(200)
@@ -108,6 +164,20 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         self.send_header('Vary', 'Accept-Encoding')
         self.send_header('Content-Length', str(len(compressed)))
         self.send_header('Cache-Control', cache_control)
+
+        # Link: rel=preload hints for HTML pages — browser fetches critical JS/CSS
+        # immediately without waiting for the HTML parser to discover the tags.
+        # Modern alternative to HTTP/2 Server Push (deprecated in Chrome 2022).
+        if ctype_base == 'text/html' and not is_hashed:
+            cached_preload = _preload_cache.get(path)
+            if cached_preload and cached_preload[0] == mtime:
+                preload_links = cached_preload[1]
+            else:
+                preload_links = _extract_preload_links(path)
+                _preload_cache[path] = (mtime, preload_links)
+            for link in preload_links:
+                self.send_header('Link', link)
+
         self.end_headers()
         self.wfile.write(compressed)
 

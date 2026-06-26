@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
@@ -65,9 +66,21 @@ export default defineConfig({
         login: './login.html'
       },
       output: {
-        // Regroupe les dépendances Lit dans un chunk séparé et stable
-        manualChunks: {
-          lit: ['lit', 'lit-html', 'lit-element']
+        // Granular chunk splitting for better caching and parallel loading.
+        // Each group below is a stable unit that rarely changes independently:
+        //   lit         — framework core (never changes within a Lit major)
+        //   icons       — all SVG paths; updated only when new icons are added
+        //   atoms       — primitive UI elements; stable between feature releases
+        //   nowplaying  — mini + fullscreen player; changes with player features
+        //   streaming   — service auth cards (HQP, Qobuz, Tidal, UPnP renderer)
+        //   library     — library store, api, constants; isolated from UI atoms
+        manualChunks(id) {
+          if (id.includes('lit-html') || id.includes('lit-element') || id.includes('/lit/') || id.includes('@lit/')) return 'lit';
+          if (id.includes('ag-icons.js')) return 'icons';
+          if (id.includes('/atoms/')) return 'atoms';
+          if (id.includes('ag-now-playing')) return 'nowplaying';
+          if (id.includes('ag-hqplayer') || id.includes('ag-qobuz-output') || id.includes('ag-tidal-output') || id.includes('ag-upnp-renderer-card')) return 'streaming';
+          if (id.includes('library-store') || id.includes('library-api') || id.includes('library-constants')) return 'library-core';
         },
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]'
@@ -92,16 +105,37 @@ export default defineConfig({
   },
   // Plugin configuration
   plugins: [
-  // Bundle analyzer — opt-in only (`vite build --mode analyze`). Written to
-  // frontend/stats.html (gitignored, OUTSIDE the _site/ build output) so the
-  // report is never bundled into a release and never deployed.
+  // Bundle analyzer — opt-in only (`vite build --mode analyze`).
   ...(isAnalyze ? [visualizer({
     filename: 'stats.html',
     open: false,
     gzipSize: true,
     brotliSize: true,
-    template: 'treemap' // 'sunburst', 'treemap', 'network'
-  })] : [])],
+    template: 'treemap'
+  })] : []),
+
+  // PWA — injectManifest mode: uses our hand-written sw.js as the base and
+  // injects the Workbox precache manifest (all hashed Vite assets) at the
+  // self.__WB_MANIFEST injection point. The SW handles all cache logic itself.
+  VitePWA({
+    strategies: 'injectManifest',
+    srcDir: '.',
+    filename: 'sw.js',
+    injectRegister: null,           // we register manually in common.js
+    manifest: false,                // we have our own site.webmanifest in public/
+    injectManifest: {
+      // Precache all JS/CSS/image assets produced by Vite (hashed filenames).
+      // HTML entry points and sw.js itself are excluded automatically.
+      globPatterns: ['assets/**/*.{js,css,png,webp,svg,woff,woff2}'],
+      globIgnores: ['stats.html'],
+      // Raise limit for large Nuitka-generated chunks (main bundle ~570 KB).
+      maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+    },
+    devOptions: {
+      enabled: false,               // SW off in dev (common.js guards this too)
+    },
+  }),
+  ],
   test: {
     projects: [
       // Unit tests (Node.js, no browser)

@@ -1,9 +1,10 @@
 /**
- * Unit tests for the escapeHtml function (P1 fix).
- * common.js runs auth at module-level so we test the function
- * logic directly via jsdom — same implementation as common.js:169-172.
+ * Unit tests for common.js utilities.
+ *
+ * common.js runs auth at module-level so helpers are tested by replicating
+ * their logic directly in jsdom — avoids the module-load side-effects.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 /** Replicate escapeHtml from common.js without the auth side effects. */
 function escapeHtml(text) {
@@ -44,5 +45,72 @@ describe('escapeHtml (P1 — XSS prevention)', () => {
 
     it('empty string returns empty string', () => {
         expect(escapeHtml('')).toBe('');
+    });
+});
+
+// ── SW reload guard (sessionStorage anti-loop) ────────────────────────────────
+// Replicates the logic from common.js controllerchange handler and load preamble.
+
+/** Replicate the guard logic from common.js without SW registration side-effects. */
+function makeSwReloadGuard(storage, reloadFn) {
+    return {
+        /** Called at window load — clears the guard so future updates can reload. */
+        clearGuard() {
+            storage.removeItem('sw-reloading');
+        },
+        /** Called in the controllerchange listener. */
+        onControllerChange() {
+            if (storage.getItem('sw-reloading')) return false;
+            storage.setItem('sw-reloading', '1');
+            reloadFn();
+            return true;
+        },
+    };
+}
+
+describe('SW reload guard (sw-reloading sessionStorage key)', () => {
+    let storage;
+    let reloadSpy;
+    let guard;
+
+    beforeEach(() => {
+        storage = { _data: {}, getItem: (k) => storage._data[k] ?? null, setItem: (k, v) => { storage._data[k] = v; }, removeItem: (k) => { delete storage._data[k]; } };
+        reloadSpy = vi.fn();
+        guard = makeSwReloadGuard(storage, reloadSpy);
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it('reloads on first controllerchange and sets guard key', () => {
+        const didReload = guard.onControllerChange();
+        expect(didReload).toBe(true);
+        expect(reloadSpy).toHaveBeenCalledOnce();
+        expect(storage.getItem('sw-reloading')).toBe('1');
+    });
+
+    it('does NOT reload if guard key is already set (loop prevention)', () => {
+        storage.setItem('sw-reloading', '1');
+        const didReload = guard.onControllerChange();
+        expect(didReload).toBe(false);
+        expect(reloadSpy).not.toHaveBeenCalled();
+    });
+
+    it('clearGuard removes the key so the next update can reload', () => {
+        guard.onControllerChange();           // sets guard, reloads
+        guard.clearGuard();                   // simulates next page load
+        const didReload = guard.onControllerChange(); // should reload again
+        expect(didReload).toBe(true);
+        expect(reloadSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('clearGuard is idempotent when key is absent', () => {
+        expect(() => guard.clearGuard()).not.toThrow();
+        expect(storage.getItem('sw-reloading')).toBeNull();
+    });
+
+    it('two rapid controllerchange events only reload once', () => {
+        guard.onControllerChange();
+        guard.onControllerChange();
+        expect(reloadSpy).toHaveBeenCalledOnce();
     });
 });
