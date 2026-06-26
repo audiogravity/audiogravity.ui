@@ -119,6 +119,9 @@ export const iconPause = svg`
     <rect x="14" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>
     <rect x="5" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>`;
 
+/** Stop button — filled square. (Lucide: square) */
+export const iconStop = svg`<rect width="18" height="18" x="3" y="3" rx="2" fill="currentColor" stroke="none"/>`;
+
 /** USB-A pictogram — outer rect + three pin dots. (custom) */
 export const iconConnectorUsbA = svg`
     <rect x="3.5" y="7" width="17" height="10" rx="1.2"/>
@@ -484,6 +487,12 @@ export const iconHardDrive = svg`
     <path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
     <path d="M21.946 12.013H2.054"/>
     <path d="M6 16h.01"/>`;
+
+/** Cast / broadcast to a screen or speaker. (Lucide: cast) */
+export const iconCast = svg`
+    <path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+    <path d="M2 12a9 9 0 0 1 8 8"/>
+    <path d="M2 16a5 5 0 0 1 4 4"/>`;
 
 /** Plug — network connection / I/O. (Lucide: plug) */
 export const iconConnection = svg`

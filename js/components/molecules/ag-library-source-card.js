@@ -83,18 +83,22 @@ export class AgLibrarySourceCard extends LitElement {
 
         const icon     = SOURCE_ICONS[node.id] ?? SOURCE_ICONS.default;
         const name     = SOURCE_LABELS[node.id] ?? node.name;
-        const desc     = node.id === 'src_mpd' ? 'Music Player Daemon' : name;
+        // Only show a description when it adds information beyond the name.
+        // For MPD the full name differs from the label; for others (Roon, Tidal,
+        // Qobuz) the desc would just repeat the name — omit it.
+        const desc     = node.id === 'src_mpd' ? 'Music Player Daemon' : null;
         const isRoon   = this._isRoon();
         const expanded = isRoon && this._expanded;
         const stCls    = node.status === 'active' ? 'up' : 'down';
         const stLbl    = node.status === 'active' ? 'Active' : 'Idle';
 
         // For Roon active source, prefer the backend-provided display name.
-        // Fall back to the picker's cached zones, then to the generic source label.
+        // Fall back to the picker's cached zones, then to the source name so the
+        // description row never disappears during the async zones-load window.
         const displayDesc = active && isRoon
             ? (zoneDisplayName
                 || this._roonZones.find(z => z.zone_id === zoneId)?.display_name
-                || desc)
+                || name)
             : desc;
 
         return html`
@@ -103,7 +107,7 @@ export class AgLibrarySourceCard extends LitElement {
                     <div class="lib-src-ic">${icon}</div>
                     <div class="lib-src-col">
                         <span class="lib-src-name">${name}</span>
-                        <span class="lib-src-desc">${displayDesc}</span>
+                        ${displayDesc ? html`<span class="lib-src-desc">${displayDesc}</span>` : nothing}
                     </div>
                     <ag-status-indicator state="${stCls}" label="${stLbl}"></ag-status-indicator>
                     ${isRoon ? html`

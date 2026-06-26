@@ -8,10 +8,10 @@
  *
  * @attr  {string} source-id - Active library source ID
  * @attr  {string} zone-id   - Roon zone ID (required for Roon sources)
- * @prop  {Array}  sources   - Available sources: [{id, label, group, controlUrl}]
+ * @prop  {Array}  sources   - Available sources: [{id, label, group, location}]
  *
  * @fires lib-open-np       - Bubbles. No detail — navigate to Now Playing after play
- * @fires lib-source-change - Bubbles. detail: { sourceId, zoneId, controlUrl, serverName }
+ * @fires lib-source-change - Bubbles. detail: { sourceId, zoneId, location, serverName }
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
@@ -71,14 +71,14 @@ export class AgLibrarySearch extends LitElement {
         this._query   = '';
         this._results = null;
         this.dispatchEvent(new CustomEvent('lib-source-change', {
-            detail: { sourceId: src.id, zoneId: '', controlUrl: src.controlUrl ?? '', serverName: src.label },
+            detail: { sourceId: src.id, zoneId: '', location: src.location ?? '', serverName: src.label },
             bubbles: true,
         }));
     }
 
-    /** Find the control URL for the current source (UPnP only). */
-    _controlUrl() {
-        return this.sources.find(s => s.id === this.sourceId)?.controlUrl ?? '';
+    /** Find the device description URL for the current source (UPnP only). */
+    _location() {
+        return this.sources.find(s => s.id === this.sourceId)?.location ?? '';
     }
 
     async _search() {
@@ -90,8 +90,8 @@ export class AgLibrarySearch extends LitElement {
                 limit:     '50',
             });
             if (this.zoneId) params.set('zone_id', this.zoneId);
-            const ctrl = this._controlUrl();
-            if (ctrl) params.set('control_url', ctrl);
+            const loc = this._location();
+            if (loc) params.set('location', loc);
             this._results = await apiGet(`/library/search?${params}`);
         });
     }

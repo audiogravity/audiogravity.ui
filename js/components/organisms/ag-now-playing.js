@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { subscribePlayerState } from '../../library-store.js';
+import { subscribePlayerState, subscribeRendererStatus } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
@@ -48,6 +48,8 @@ export class AgNowPlaying extends LitElement {
         _bgColors: { state: true },
         /** @type {string} License status for gating controls */
         _licenseStatus: { state: true },
+        /** @type {object|null} Latest renderer_status SSE payload (null if no renderer) */
+        _rendererStatus: { state: true },
     };
 
     constructor() {
@@ -62,6 +64,7 @@ export class AgNowPlaying extends LitElement {
         this._userSourceOverride = false;
         this._bgColors = new Map();
         this._licenseStatus = 'no_license';
+        this._rendererStatus = null;
         this._unsubscribeState = null;
         this._resizeObserver = null;
         /** @type {Set<string>} Tokens for which the dominant-color extraction has been run. */
@@ -88,8 +91,9 @@ export class AgNowPlaying extends LitElement {
         this._boundTouchMove = this._handleTouchMove.bind(this);
         this._boundTouchEnd = this._handleTouchEnd.bind(this);
 
-        this._boundRestore     = () => { this._dismissed = false; this._reportHeight(); };
-        this._boundLicStatus   = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
+        this._boundRestore   = () => { this._dismissed = false; this._reportHeight(); };
+        this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
+        this._unsubscribeRenderer = null;
     }
 
     createRenderRoot() {
@@ -107,6 +111,10 @@ export class AgNowPlaying extends LitElement {
 
         document.addEventListener('ag-np-restore', this._boundRestore);
         window.addEventListener('license-status', this._boundLicStatus);
+        this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
+        // Fetch initial renderer status so the badge is correct on load,
+        // without waiting for the next SSE heartbeat (up to 30s delay).
+        apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
     }
 
     disconnectedCallback() {
@@ -119,6 +127,7 @@ export class AgNowPlaying extends LitElement {
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         document.removeEventListener('click', this._boundCloseDetail);
         window.removeEventListener('license-status', this._boundLicStatus);
+        this._unsubscribeRenderer?.();
 
         // Options must match the addEventListener call to remove correctly
         this.removeEventListener('touchstart', this._boundTouchStart, { passive: false });
@@ -583,6 +592,9 @@ export class AgNowPlaying extends LitElement {
                             : html`<span class="np-service-badge">${item.display_name}</span>`}
                         ${item.output_connector
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
+                            : nothing}
+                        ${this._rendererStatus?.connected
+                            ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
                             : nothing}
                     </div>
                     <div class="np-track">

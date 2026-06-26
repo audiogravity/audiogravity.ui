@@ -287,6 +287,10 @@
 
 .lib-hqp-section { margin-top: 18px; }
 
+/* Generic settings section — same layout as lib-hqp-section but decoupled
+   so HQPlayer-specific style changes don't bleed into other sections. */
+.lib-settings-section { margin-top: 18px; }
+
 .lib-hqp-header {
     display: flex;
     align-items: center;
@@ -495,6 +499,79 @@
     100% { background: transparent; }
 }
 
+/* ── UPnP Renderer card ── */
+
+.lib-rdr-ic {
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lib-rdr-track {
+    padding: 10px 0 6px;
+    border-top: 1px solid var(--border-color);
+}
+
+.lib-rdr-title {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-rdr-artist {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-rdr-progress {
+    height: 3px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.lib-rdr-bar {
+    height: 100%;
+    background: var(--accent-primary);
+    border-radius: var(--radius-full);
+    transition: width 0.5s linear;
+}
+
+.lib-rdr-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.lib-rdr-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.lib-rdr-volume {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 120px;
+    color: var(--text-secondary);
+}
+
+.lib-rdr-vol-slider {
+    flex: 1;
+}
+
 /* ── Qobuz card ── */
 
 .lib-qb-card {
@@ -575,4 +652,17 @@
 .lib-tidal-err {
     font-size: var(--font-size-xxs);
     color: var(--color-error);
+}
+
+/* ── UPnP Renderer — volume popover aligned with action buttons ── */
+.lib-hqp-actions ag-volume-popover .avp-btn {
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    background: transparent;
+    color: var(--text-primary);
 }

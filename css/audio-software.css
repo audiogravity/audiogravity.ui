@@ -234,7 +234,7 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 
 /* Actions */

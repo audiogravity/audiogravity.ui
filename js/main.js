@@ -96,6 +96,7 @@ import './components/molecules/ag-library-source-card.js';
 import './components/molecules/ag-upnp-item.js';
 import './components/molecules/ag-radio-card.js';
 import './components/molecules/ag-hqplayer-output.js';
+import './components/molecules/ag-upnp-renderer-card.js';
 import './components/molecules/ag-qobuz-output.js';
 import './components/molecules/ag-tidal-output.js';
 // Organisms

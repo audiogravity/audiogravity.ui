@@ -59,10 +59,28 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/library/queue` | Add item to MPD queue |
-| POST | `/library/upnp-play` | Play UPnP item |
-| GET | `/library/upnp-known-servers` | List discovered UPnP servers |
+| POST | `/library/queue` | Add/play item — routes to UPnP renderer when connected and action='play' |
+| POST | `/library/upnp-play` | Play UPnP item — routes to renderer or MPD |
+| GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |
+| GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — **`location` param (was `control_url`)** |
+| GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
+| GET | `/library/upnp-servers` | Scan for new UPnP servers |
 | GET | `/library/roon-zones` | List Roon zones |
+
+### UPnP Renderer — `/upnp-renderer/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices |
+| GET | `/upnp-renderer/connection` | Current renderer connection + capabilities |
+| PUT | `/upnp-renderer/connection` | Connect to a renderer (persisted) |
+| DELETE | `/upnp-renderer/connection` | Disconnect |
+| GET | `/upnp-renderer/status` | Live playback state (transport_state, title, position, volume, renderer_name) |
+| POST | `/upnp-renderer/play` | Load URI and start playback |
+| POST | `/upnp-renderer/stop` | Stop |
+| POST | `/upnp-renderer/pause` | Pause |
+| POST | `/upnp-renderer/seek` | Seek to position |
+| PUT | `/upnp-renderer/volume` | Set volume 0–100 |
+| POST | `/upnp-renderer/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
 
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
@@ -88,6 +106,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/tidal/connection` | Start PKCE login flow |
 | POST | `/tidal/connection/submit` | Complete login (paste redirect URL) |
 | DELETE | `/tidal/connection` | Disconnect |
+| GET | `/tidal/stream/{track_id}` | DASH→FLAC proxy stream — **public (no auth)**, used by UPnP renderers on the LAN |
 
 ### Qobuz — `/qobuz/*`
 | Method | Path | Description |
@@ -189,12 +208,11 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | Event type | Payload |
 |---|---|
 | `now_playing` | Current track, source, format |
-| `pipeline_state` | Full pipeline topology update |
-| `service_state` | Service status change |
-| `service_metrics` | CPU/memory/IO per service |
-| `profile_state` | Profile activation result |
-| `connection_status` | Backend connectivity |
-| `system_metrics` | CPU, memory, disk, network |
+| `audio_pipeline` | Full pipeline topology update |
+| `services_metrics` | CPU/memory/IO per service |
+| `profile_metrics` | Profile activation result |
+| `sysinfo` | CPU, memory, disk, network |
+| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn` |
 
 ---
 

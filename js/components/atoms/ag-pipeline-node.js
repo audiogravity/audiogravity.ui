@@ -151,7 +151,7 @@ export const renderPipelineNode = (node) => {
 
                     <!-- Port main label -->
                     <text x="${textX}" y="${portY - 2}"
-                        style="fill: ${portActive ? 'var(--pipeline-node-text)' : 'var(--text-secondary)'}; font-size: 10px; font-weight: ${portActive ? 'bold' : 'normal'}; text-anchor: ${textAnchor}; font-family: var(--font-sans, sans-serif);">
+                        style="fill: ${portActive ? 'var(--pipeline-node-text)' : 'var(--text-secondary)'}; font-size: 10px; font-weight: ${portActive ? 'bold' : 'normal'}; text-anchor: ${textAnchor}; font-family: var(--font-family);">
                         ${port.label || port.id}
                     </text>
 
@@ -268,7 +268,7 @@ export const renderPipelineNode = (node) => {
                                     stroke="${dotColor}"
                                     stroke-width="1" />
                                 <text x="28" y="${svcY + 4}"
-                                    style="fill: ${isActiveSvc ? 'var(--pipeline-node-text)' : 'var(--text-tertiary)'}; font-size: 9px; font-weight: ${isActiveSvc ? '700' : '400'}; font-family: var(--font-sans, sans-serif);">
+                                    style="fill: ${isActiveSvc ? 'var(--pipeline-node-text)' : 'var(--text-tertiary)'}; font-size: 9px; font-weight: ${isActiveSvc ? '700' : '400'}; font-family: var(--font-family);">
                                     ${svc.label}
                                 </text>
                                 ${svc.protocol || snpVol ? svg`
@@ -369,7 +369,7 @@ export const renderPipelineNode = (node) => {
                                         <path d="${niIcon}" fill="${niColor}" opacity="${isActiveNi ? '1' : '0.45'}" />
                                     </g>
                                     <text x="14" y="9"
-                                        style="fill: ${niColor}; font-size: 7.5px; font-weight: ${isActiveNi ? '700' : '400'}; font-family: var(--font-sans, sans-serif); opacity: ${isActiveNi ? '1' : '0.6'};">
+                                        style="fill: ${niColor}; font-size: 7.5px; font-weight: ${isActiveNi ? '700' : '400'}; font-family: var(--font-family); opacity: ${isActiveNi ? '1' : '0.6'};">
                                         ${ni.label}
                                     </text>
                                 </g>

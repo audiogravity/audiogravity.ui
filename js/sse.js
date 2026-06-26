@@ -112,6 +112,9 @@ function handleWorkerMessage(e) {
         case 'audio_pipeline':
             window.dispatchEvent(new CustomEvent('audio-pipeline-update', { detail: data }));
             break;
+        case 'renderer_status':
+            window.dispatchEvent(new CustomEvent('renderer-status-update', { detail: data }));
+            break;
     }
 }
 

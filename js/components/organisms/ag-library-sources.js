@@ -21,6 +21,7 @@ import { getSnapshot } from '../../library-store.js';
 import { iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
+import '../molecules/ag-upnp-renderer-card.js';
 
 // Distance (px) past which a left-swipe commits as "remove".
 const _SWIPE_COMMIT_PX = 140;
@@ -180,7 +181,7 @@ export class AgLibrarySources extends LitElement {
             detail: {
                 sourceId:   srv.id,
                 zoneId:     '',
-                controlUrl: srv.control_url,
+                location: srv.location,
                 serverName: srv.friendly_name,
             },
             bubbles: true,
@@ -302,17 +303,11 @@ export class AgLibrarySources extends LitElement {
                         </div>
                     `
                 }
-                <div class="lib-qb-section">
+                <div class="lib-settings-section">
                     <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">Qobuz</span>
+                        <span class="lib-src-lbl">Streaming Services</span>
                     </div>
                     <ag-qobuz-output></ag-qobuz-output>
-                </div>
-
-                <div class="lib-qb-section">
-                    <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">Tidal</span>
-                    </div>
                     <ag-tidal-output></ag-tidal-output>
                 </div>
 
@@ -324,6 +319,16 @@ export class AgLibrarySources extends LitElement {
                         </button>
                     </div>
                     <ag-hqplayer-output></ag-hqplayer-output>
+                </div>
+
+                <div class="lib-hqp-section">
+                    <div class="lib-hqp-header">
+                        <span class="lib-src-lbl">UPnP Renderer</span>
+                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-upnp-renderer-card')?._loadConnection()} title="Refresh renderer state">
+                            Refresh
+                        </button>
+                    </div>
+                    <ag-upnp-renderer-card></ag-upnp-renderer-card>
                 </div>
 
                 <div style="height:12px"></div>

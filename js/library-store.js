@@ -166,3 +166,33 @@ export async function getRoonZones({ force = false } = {}) {
 }
 
 /** Drop the cached snapshot so the next call re-fetches. */
+
+// ── Renderer status subscription ─────────────────────────────────────────────
+//
+// Single window listener registered once here; components call
+// subscribeRendererStatus(cb) instead of managing the window event themselves.
+// This eliminates the triple-duplication of add/remove window.addEventListener
+// across ag-upnp-renderer-card, ag-now-playing, and ag-now-playing-fullscreen.
+
+const _rendererCallbacks = new Set();
+
+window.addEventListener('renderer-status-update', (e) => {
+    const data = e.detail;
+    if (!data) return;
+    _rendererCallbacks.forEach((cb) => {
+        try { cb(data); } catch (_) { /* never propagate into the dispatch loop */ }
+    });
+});
+
+/**
+ * Subscribe to renderer_status SSE events dispatched by sse.js.
+ * The callback receives the raw payload object.
+ * Returns an unsubscribe function.
+ *
+ * @param {(data: object) => void} cb - Called on every renderer_status event.
+ * @returns {() => void} Unsubscribe function.
+ */
+export function subscribeRendererStatus(cb) {
+    _rendererCallbacks.add(cb);
+    return () => _rendererCallbacks.delete(cb);
+}

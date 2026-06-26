@@ -65,8 +65,17 @@
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-primary);
+
+    /* Force consistent typography for all input types including type="url"
+       which some browsers render in monospace by default */
     font-family: var(--font-family);
     font-size: var(--font-size-sm);
+    font-weight: 400;
+    appearance: none;
+}
+
+.lib-radio-search-input::placeholder {
+    color: var(--text-tertiary);
 }
 
 .lib-radio-search-input:focus {
@@ -88,7 +97,7 @@
     background: var(--bg-secondary);
     color: var(--text-primary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
 }
 
 .lib-radio-hires-toggle {
@@ -115,7 +124,7 @@
 .lib-radio-add-btn {
     width: 100%;
     padding: var(--spacing-sm) 14px;
-    border: 1px dashed var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);

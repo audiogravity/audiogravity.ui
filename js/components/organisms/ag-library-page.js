@@ -192,7 +192,7 @@ export class AgLibraryPage extends LitElement {
         _sourceId:      { state: true },
         _zoneId:        { state: true },
         _zoneDisplayName: { state: true },
-        _upnpControlUrl:  { state: true },
+        _upnpLocation:    { state: true },
         _upnpName:        { state: true },
         _sources:         { state: true },
         _upnpServers:     { state: true },
@@ -208,7 +208,7 @@ export class AgLibraryPage extends LitElement {
         this._sourceId        = '';
         this._zoneId          = '';
         this._zoneDisplayName = '';
-        this._upnpControlUrl  = '';
+        this._upnpLocation    = '';
         this._upnpName        = '';
         this._sources         = [];
         this._upnpServers     = [];
@@ -384,11 +384,11 @@ export class AgLibraryPage extends LitElement {
 
     _onSourceChange(e) {
         this._pendingSource = null;
-        const { sourceId, zoneId = '', zoneDisplayName = '', controlUrl = '', serverName = '' } = e.detail;
+        const { sourceId, zoneId = '', zoneDisplayName = '', location = '', serverName = '' } = e.detail;
         if (this._isRoon(sourceId) && !zoneId) {
             this._fetchRoonZoneAndSwitch(sourceId);
         } else if (this._isUpnp(sourceId)) {
-            this._upnpControlUrl = controlUrl;
+            this._upnpLocation   = location;
             this._upnpName       = serverName;
             this._sourceId       = sourceId;
             this._zoneId         = '';
@@ -397,7 +397,7 @@ export class AgLibraryPage extends LitElement {
             if (!this._sources.some(s => s.id === sourceId)) {
                 this._sources = [...this._sources, {
                     id: sourceId, label: serverName || 'UPnP',
-                    group: sourceId, controlUrl,
+                    group: sourceId, location,
                 }];
             }
         } else {
@@ -619,7 +619,7 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-body">
                         <div class="lib-scroll">
                             <ag-library-upnp-browser
-                                control-url=${this._upnpControlUrl}
+                                location=${this._upnpLocation}
                                 server-name=${this._upnpName}
                                 source-id=${_sourceId}
                                 @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
