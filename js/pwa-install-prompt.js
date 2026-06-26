@@ -1,306 +1,129 @@
 /**
- * PWA Install Prompt Manager
- * @module PWAInstallPrompt
- * @description Gère l'invitation à installer l'application en mode PWA
+ * @module pwa-install-prompt
+ * @description PWA install prompt manager.
  *
- * Fonctionnalités :
- * - Capture l'événement beforeinstallprompt
- * - Affiche un bouton d'installation personnalisé
- * - Détecte si l'app est déjà installée
- * - Gère les notifications de mise à jour
+ * Intercepts the browser's `beforeinstallprompt` event and shows a compact
+ * in-app install banner. The banner is dismissed via localStorage so it does
+ * not reappear for 30 days after the user explicitly declines.
+ *
+ * Only active on Android/Chrome — iOS does not fire `beforeinstallprompt`
+ * (users install via the Safari share sheet instead).
+ *
+ * Does NOT handle SW update notifications — that is done in common.js via the
+ * `controllerchange` listener to avoid a duplicate handler.
  */
 
-let deferredPrompt = null;
-let isInstalled = false;
+const DISMISS_KEY = 'ag_pwa_install_dismissed';
+const DISMISS_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+const BANNER_ID   = 'ag-pwa-install-banner';
 
-/**
- * Initialisation du gestionnaire PWA
- */
-function initPWAInstallPrompt() {
-    console.log('[PWA] Install prompt manager initialized');
+/** @type {BeforeInstallPromptEvent|null} */
+let _deferredPrompt = null;
 
-    // Capturer l'événement beforeinstallprompt
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Détecter l'installation réussie
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    // Vérifier si déjà installé/lancé en standalone
-    checkIfAlreadyInstalled();
-
-    // Gérer les mises à jour du Service Worker
-    handleServiceWorkerUpdates();
+/** Whether the app is running in standalone mode (already installed). */
+function _isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
 }
 
-/**
- * Gère l'événement beforeinstallprompt
- * @param {Event} e - L'événement beforeinstallprompt
- */
-function handleBeforeInstallPrompt(e) {
-    console.log('[PWA] Install prompt available');
-
-    // Empêcher le prompt automatique du navigateur
-    e.preventDefault();
-
-    // Stocker l'événement pour l'utiliser plus tard
-    deferredPrompt = e;
-
-    // Afficher un bouton d'installation personnalisé
-    showInstallButton();
-}
-
-/**
- * Affiche le bouton d'installation dans la topbar
- */
-function showInstallButton() {
-    // Vérifier si le bouton n'existe pas déjà
-    if (document.getElementById('pwa-install-btn')) {
-        return;
-    }
-
-    // Créer le bouton
-    const installBtn = document.createElement('button');
-    installBtn.id = 'pwa-install-btn';
-    installBtn.className = 'btn-icon';
-    installBtn.innerHTML = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg> Install App';
-    installBtn.title = 'Install Audiogravity as a standalone application';
-    installBtn.setAttribute('aria-label', 'Install application');
-
-    // Style inline pour assurer la visibilité
-    installBtn.style.cssText = `
-        margin-left: 8px;
-        background: var(--color-primary, #4CAF50);
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.875rem;
-        transition: background 0.2s ease;
-    `;
-
-    installBtn.addEventListener('mouseenter', () => {
-        installBtn.style.background = 'var(--color-primary-hover, #45a049)';
-    });
-
-    installBtn.addEventListener('mouseleave', () => {
-        installBtn.style.background = 'var(--color-primary, #4CAF50)';
-    });
-
-    // Gestionnaire de clic
-    installBtn.addEventListener('click', handleInstallClick);
-
-    // Insérer dans la topbar
-    // Stratégie : essayer plusieurs emplacements possibles
-    const topBar = document.querySelector('ag-top-bar');
-    if (topBar) {
-        // Essayer d'accéder au shadow DOM
-        const shadowRoot = topBar.shadowRoot;
-        if (shadowRoot) {
-            const actionsContainer = shadowRoot.querySelector('.topbar-actions') ||
-                                    shadowRoot.querySelector('.topbar-right') ||
-                                    shadowRoot.querySelector('.topbar');
-            if (actionsContainer) {
-                actionsContainer.appendChild(installBtn);
-                console.log('[PWA] Install button added to topbar');
-                return;
-            }
-        }
-    }
-
-    // Fallback : ajouter dans le body en position fixe
-    installBtn.style.cssText += `
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        z-index: 9999;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    `;
-    document.body.appendChild(installBtn);
-    console.log('[PWA] Install button added to body (fallback)');
-}
-
-/**
- * Gère le clic sur le bouton d'installation
- */
-async function handleInstallClick() {
-    if (!deferredPrompt) {
-        console.warn('[PWA] No deferred prompt available');
-        return;
-    }
-
-    console.log('[PWA] Showing install prompt');
-
-    // Afficher le prompt natif
-    deferredPrompt.prompt();
-
-    // Attendre le choix de l'utilisateur
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`[PWA] User response to install prompt: ${outcome}`);
-
-    // Nettoyer
-    deferredPrompt = null;
-
-    // Masquer le bouton
-    const installBtn = document.getElementById('pwa-install-btn');
-    if (installBtn) {
-        installBtn.remove();
+/** Whether the user dismissed the banner recently. */
+function _isDismissed() {
+    try {
+        const ts = localStorage.getItem(DISMISS_KEY);
+        return ts && (Date.now() - parseInt(ts, 10)) < DISMISS_TTL;
+    } catch {
+        return false;
     }
 }
 
-/**
- * Gère l'événement d'installation réussie
- */
-function handleAppInstalled() {
-    console.log('[PWA] Application installed successfully! 🎉');
-    isInstalled = true;
-
-    // Masquer le bouton d'installation
-    const installBtn = document.getElementById('pwa-install-btn');
-    if (installBtn) {
-        installBtn.remove();
-    }
-
-    // Afficher une notification de succès
-    showToast('Application installed successfully! You can now launch it from your home screen.', 'success');
-
-    // Nettoyer la référence au prompt
-    deferredPrompt = null;
+function _markDismissed() {
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* storage quota */ }
 }
 
-/**
- * Vérifie si l'application est déjà installée
- */
-function checkIfAlreadyInstalled() {
-    // Méthode 1 : display-mode standalone
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        isInstalled = true;
-        console.log('[PWA] Running in standalone mode (installed)');
-        document.body.classList.add('pwa-standalone');
-        return;
-    }
-
-    // Méthode 2 : iOS standalone
-    if (window.navigator.standalone === true) {
-        isInstalled = true;
-        console.log('[PWA] Running in iOS standalone mode (installed)');
-        document.body.classList.add('pwa-standalone');
-        return;
-    }
-
-    console.log('[PWA] Running in browser mode (not installed)');
+function _removeBanner() {
+    document.getElementById(BANNER_ID)?.remove();
 }
 
-/**
- * Gère les mises à jour du Service Worker
- */
-function handleServiceWorkerUpdates() {
-    if (!('serviceWorker' in navigator)) {
-        return;
-    }
+/** Build and append the install banner to the document body. */
+function _showBanner() {
+    if (document.getElementById(BANNER_ID)) return;
 
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[PWA] New Service Worker activated');
+    const banner = document.createElement('div');
+    banner.id = BANNER_ID;
+    banner.className = 'pwa-install-banner';
+    banner.setAttribute('role', 'banner');
+    banner.setAttribute('aria-label', 'Install Audiogravity');
 
-        // Afficher une notification de mise à jour
-        showUpdateNotification();
-    });
-}
-
-/**
- * Affiche une notification de mise à jour disponible
- */
-function showUpdateNotification() {
-    // Créer une notification toast
-    const toast = document.createElement('div');
-    toast.id = 'pwa-update-toast';
-    toast.className = 'toast toast-info';
-    toast.innerHTML = `
-        <div class="toast-content">
-            <strong>Update Available</strong>
-            <p>A new version of Audiogravity is available.</p>
+    banner.innerHTML = `
+        <div class="pwa-install-banner__body">
+            <svg class="pwa-install-banner__icon" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15V3"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <path d="m7 10 5 5 5-5"/>
+            </svg>
+            <span class="pwa-install-banner__text">Add Audiogravity to your home screen</span>
         </div>
-        <div class="toast-actions">
-            <button id="pwa-update-btn" class="btn-sm btn-primary">Reload</button>
-            <button id="pwa-dismiss-btn" class="btn-sm btn-secondary">Later</button>
+        <div class="pwa-install-banner__actions">
+            <button class="action-btn compact primary pwa-install-banner__btn-install">Install</button>
+            <button class="pwa-install-banner__btn-dismiss" aria-label="Dismiss">✕</button>
         </div>
     `;
 
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: var(--surface-bg, #fff);
-        border: 1px solid var(--border-color, #ddd);
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        z-index: 10000;
-        max-width: 320px;
-        animation: slideIn 0.3s ease;
-    `;
+    banner.querySelector('.pwa-install-banner__btn-install')
+          .addEventListener('click', _handleInstall);
+    banner.querySelector('.pwa-install-banner__btn-dismiss')
+          .addEventListener('click', _handleDismiss);
 
-    document.body.appendChild(toast);
-
-    // Bouton de rechargement
-    document.getElementById('pwa-update-btn').addEventListener('click', () => {
-        window.location.reload();
-    });
-
-    // Bouton de fermeture
-    document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
-        toast.remove();
-    });
-
-    // Auto-dismiss après 10 secondes
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.remove();
-        }
-    }, 10000);
+    document.body.appendChild(banner);
 }
 
-/**
- * Affiche un toast (utilise le système existant si disponible)
- * @param {string} message - Message à afficher
- * @param {string} type - Type de toast (success, error, info)
- */
-function showToast(message, type = 'info') {
-    // Essayer d'utiliser le système de toast existant
-    if (window.showToast && typeof window.showToast === 'function') {
-        window.showToast(message, type);
+async function _handleInstall() {
+    if (!_deferredPrompt) return;
+    const prompt = _deferredPrompt;
+    _deferredPrompt = null;
+    _removeBanner();
+    try {
+        prompt.prompt();
+        const { outcome } = await prompt.userChoice;
+        if (outcome === 'accepted' && window.showToast) {
+            window.showToast('success', 'Installed', 'Audiogravity added to your home screen.', 4000);
+        }
+    } catch (err) {
+        console.warn('[pwa] Install prompt failed:', err);
+    }
+}
+
+function _handleDismiss() {
+    _markDismissed();
+    _removeBanner();
+}
+
+function _init() {
+    // Mark standalone class immediately on startup so CSS rules that depend on
+    // body.pwa-standalone apply from the very first render (not only on install).
+    if (_isStandalone()) {
+        document.body.classList.add('pwa-standalone');
         return;
     }
+    if (_isDismissed()) return;
 
-    // Fallback : toast simple
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: var(--color-${type}, #333);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        z-index: 10000;
-        animation: fadeIn 0.3s ease;
-    `;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        _deferredPrompt = e;
+        _showBanner();
+    });
 
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    window.addEventListener('appinstalled', () => {
+        _deferredPrompt = null;
+        _removeBanner();
+        document.body.classList.add('pwa-standalone');
+    });
 }
 
-// Initialisation automatique
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPWAInstallPrompt);
+    document.addEventListener('DOMContentLoaded', _init);
 } else {
-    initPWAInstallPrompt();
+    _init();
 }
-

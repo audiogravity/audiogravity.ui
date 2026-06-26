@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { subscribePlayerState, subscribeRendererStatus } from '../../library-store.js';
+import { subscribePlayerState, subscribeRendererStatus, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
@@ -52,6 +52,8 @@ export class AgNowPlaying extends LitElement {
         _licenseStatus: { state: true },
         /** @type {object|null} Latest renderer_status SSE payload (null if no renderer) */
         _rendererStatus: { state: true },
+        /** @type {boolean} True when the browser has no network connectivity. */
+        _offline: { state: true },
     };
 
     constructor() {
@@ -67,6 +69,7 @@ export class AgNowPlaying extends LitElement {
         this._bgColors = new Map();
         this._licenseStatus = 'no_license';
         this._rendererStatus = null;
+        this._offline = !navigator.onLine;
         this._unsubscribeState = null;
         this._resizeObserver = null;
         /** @type {Set<string>} Tokens for which the dominant-color extraction has been run. */
@@ -97,6 +100,8 @@ export class AgNowPlaying extends LitElement {
         this._boundRestore   = () => { this._dismissed = false; this._reportHeight(); };
         this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
         this._unsubscribeRenderer = null;
+        this._boundOnline  = () => { this._offline = false; };
+        this._boundOffline = () => { this._offline = true; };
     }
 
     createRenderRoot() {
@@ -118,11 +123,24 @@ export class AgNowPlaying extends LitElement {
         // Fetch initial renderer status so the badge is correct on load,
         // without waiting for the next SSE heartbeat (up to 30s delay).
         apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
+
+        // Online/offline connectivity listeners — drive the offline indicator.
+        window.addEventListener('online',  this._boundOnline);
+        window.addEventListener('offline', this._boundOffline);
+
+        // Restore last known state from localStorage when starting offline so
+        // the player is not empty on a cold load without network.
+        if (!navigator.onLine && this._items.length === 0) {
+            const saved = getOfflinePlayerSnapshot();
+            if (saved) this._onState(saved);
+        }
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         if (this._unsubscribeState) { this._unsubscribeState(); this._unsubscribeState = null; }
+        window.removeEventListener('online',  this._boundOnline);
+        window.removeEventListener('offline', this._boundOffline);
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
             this._resizeObserver = null;
@@ -599,6 +617,9 @@ export class AgNowPlaying extends LitElement {
                             : nothing}
                         ${this._rendererStatus?.connected && !this._rendererStatus?.bypassed
                             ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
+                            : nothing}
+                        ${this._offline
+                            ? html`<span class="np-offline-badge" title="No network — showing last known state">Offline</span>`
                             : nothing}
                     </div>
                     <div class="np-track">

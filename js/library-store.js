@@ -27,6 +27,16 @@ import { apiGet, buildAuthedUrl } from './api.js';
 const TTL_SNAPSHOT   = 30_000;
 const TTL_ROON_ZONES = 60_000;
 
+// Offline snapshot — last known player state persisted to localStorage so the
+// player is not empty when the page is loaded without a network connection.
+const OFFLINE_SNAPSHOT_KEY  = 'ag_snapshot_player_state';
+// Debounce the localStorage write: player state events can fire every second
+// (position ticks) — writing on every event would add synchronous I/O to the
+// main thread hot path (CLAUDE.md §12). 5 s is short enough to keep the
+// snapshot fresh without burdening the CPU.
+const OFFLINE_SNAPSHOT_DEBOUNCE_MS = 5_000;
+let _offlineSnapshotTimer = null;
+
 const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
 
@@ -56,10 +66,21 @@ function _openSse(key) {
         }
         // First successful event resets the reconnect backoff.
         _backoff.delete(key);
-        // Unfiltered stream (active source) feeds the shared snapshot cache.
+        // Unfiltered stream (active source) feeds the shared snapshot cache
+        // and the offline localStorage snapshot.
         if (key === null) {
             snapshot.value     = state;
             snapshot.fetchedAt = Date.now();
+            // Debounced write — position ticks fire every second; writing on
+            // every event would add synchronous localStorage I/O to the hot
+            // path (CLAUDE.md §12). We coalesce into one write per 5 s.
+            if (_offlineSnapshotTimer) clearTimeout(_offlineSnapshotTimer);
+            _offlineSnapshotTimer = setTimeout(() => {
+                _offlineSnapshotTimer = null;
+                try {
+                    localStorage.setItem(OFFLINE_SNAPSHOT_KEY, JSON.stringify(state));
+                } catch { /* storage quota — non-blocking */ }
+            }, OFFLINE_SNAPSHOT_DEBOUNCE_MS);
         }
         const subs = _subscribers.get(key);
         if (subs) for (const cb of subs) {
@@ -166,6 +187,23 @@ export async function getRoonZones({ force = false } = {}) {
 }
 
 /** Drop the cached snapshot so the next call re-fetches. */
+
+/**
+ * Return the last offline player-state snapshot from localStorage, or null.
+ *
+ * Called by ag-now-playing on startup when the network is unavailable so
+ * the player shows the last known state instead of an empty screen.
+ *
+ * @returns {object|null}
+ */
+export function getOfflinePlayerSnapshot() {
+    try {
+        const raw = localStorage.getItem(OFFLINE_SNAPSHOT_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
 
 // ── Renderer status subscription ─────────────────────────────────────────────
 //

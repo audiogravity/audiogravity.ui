@@ -323,6 +323,15 @@ ag-now-playing {
     font-size: var(--font-size-sm);
 }
 
+.np-offline-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-warning);
+    opacity: 0.8;
+}
+
 
 .np-track {
     display: flex;

@@ -1,0 +1,77 @@
+/* ── PWA install banner ────────────────────────────────────────────────────
+ * Shown by pwa-install-prompt.js when beforeinstallprompt fires (Android/Chrome).
+ * Fixed at the bottom of the viewport, above the mini-player (z-index lower than
+ * the player overlay but above page content).
+ */
+
+.pwa-install-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    animation: pwaBannerSlideUp var(--transition-normal) ease-out;
+}
+
+@keyframes pwaBannerSlideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}
+
+/* Push the banner up when the now-playing mini-player is visible.
+ * ag-now-playing sets --np-height on :root via JS (_reportHeight).
+ * Fall back to 64px if the custom property is not yet set. */
+body:has(ag-now-playing) .pwa-install-banner {
+    bottom: var(--np-height, 64px);
+}
+
+.pwa-install-banner__body {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.pwa-install-banner__icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    color: var(--accent-primary);
+}
+
+.pwa-install-banner__text {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pwa-install-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.pwa-install-banner__btn-dismiss {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    line-height: 1;
+    padding: var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.pwa-install-banner__btn-dismiss:hover {
+    color: var(--text-primary);
+}
