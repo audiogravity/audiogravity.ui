@@ -702,7 +702,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 </div>
                             ` : nothing}
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
-                        ${this._rendererStatus?.connected
+                        ${this._rendererStatus?.connected && !this._rendererStatus?.bypassed
                             ? html`<span class="np-renderer-badge npfs-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
                             : nothing}
                     </div>

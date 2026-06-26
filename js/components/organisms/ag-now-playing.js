@@ -597,7 +597,7 @@ export class AgNowPlaying extends LitElement {
                         ${item.output_connector
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
                             : nothing}
-                        ${this._rendererStatus?.connected
+                        ${this._rendererStatus?.connected && !this._rendererStatus?.bypassed
                             ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
                             : nothing}
                     </div>

@@ -23,6 +23,7 @@ import { loadConnection } from '../utils-lit.js';
 import { subscribeRendererStatus } from '../../library-store.js';
 import { iconWifi, iconCast } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
+import '../atoms/ag-switch.js';
 import './ag-volume-popover.js';
 
 class AgUpnpRendererCard extends LitElement {
@@ -129,6 +130,21 @@ class AgUpnpRendererCard extends LitElement {
         this.dispatchEvent(new CustomEvent('renderer-disconnected', { bubbles: true }));
     }
 
+    /**
+     * Toggle bypass mode — keeps the renderer connected but suspends routing.
+     * @param {boolean} bypassed
+     */
+    async _setBypass(bypassed) {
+        try {
+            await apiPut('/upnp-renderer/bypass', { bypassed });
+        } catch (e) {
+            console.warn('[renderer] Bypass toggle failed:', e.message);
+            // Force re-render so the toggle snaps back to its actual state
+            // (_status?.bypassed has not changed, so Lit would not re-render otherwise).
+            this.requestUpdate();
+        }
+    }
+
     // ── SSE ──────────────────────────────────────────────────────────────────
 
     /**
@@ -212,18 +228,19 @@ class AgUpnpRendererCard extends LitElement {
 
     _renderCard() {
         const available = this._connection?.available ?? false;
+        const bypassed  = this._status?.bypassed ?? false;
         const state     = this._status?.transport_state ?? null;
         const vol       = this._volume ?? this._status?.volume ?? null;
 
         return html`
             <div class="lib-hqp-card ${available ? 'connected' : ''}">
                 <div class="lib-hqp-card-hd">
-                    <div class="lib-hqp-ic lib-rdr-ic">
+                    <div class="lib-hqp-ic lib-rdr-ic ${bypassed ? 'bypassed' : ''}">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">${iconCast}</svg>
                     </div>
                     <div class="lib-hqp-col">
                         <div class="lib-hqp-name">${this._connection?.friendly_name || 'UPnP Renderer'}</div>
-                        <div class="lib-hqp-desc">${state ? state.replace(/_/g, ' ').toLowerCase() : 'idle'}</div>
+                        <div class="lib-hqp-desc">${bypassed ? 'bypassed — routing to local' : state ? state.replace(/_/g, ' ').toLowerCase() : 'idle'}</div>
                     </div>
                     ${available
                         ? html`<ag-status-indicator state="up" label="Connected"></ag-status-indicator>`
@@ -235,6 +252,15 @@ class AgUpnpRendererCard extends LitElement {
                     <button class="action-btn compact secondary" @click=${this._disconnect}>
                         Disconnect
                     </button>
+                    ${available ? html`
+                        <ag-switch
+                            .checked=${bypassed}
+                            variant="notification"
+                            title="${bypassed ? 'Enable renderer routing' : 'Bypass renderer — play locally'}"
+                            @ag-change=${(e) => this._setBypass(e.detail.checked)}
+                        ></ag-switch>
+                        <span class="lib-rdr-bypass-label">Bypass</span>
+                    ` : nothing}
                     ${available && vol !== null ? html`
                         <ag-volume-popover
                             style="margin-left:auto"

@@ -666,3 +666,21 @@
     background: transparent;
     color: var(--text-primary);
 }
+
+/* ── UPnP Renderer bypass ─────────────────────────────────────────────────── */
+
+.lib-rdr-ic.bypassed {
+    color: var(--text-tertiary);
+    opacity: 0.5;
+}
+
+/* ag-switch handles the toggle styling via forms.css / variant="notification" */
+
+.lib-rdr-bypass-label {
+    font-size: var(--font-size-xs);
+    font-family: var(--font-family);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
