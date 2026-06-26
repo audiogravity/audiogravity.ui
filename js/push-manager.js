@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from './common.js';
-import { apiDelete } from './api.js';
+import { apiGet, apiPost, apiDelete } from './api.js';
 
 let swRegistration = null;
 let isSubscribed = false;
@@ -49,12 +49,12 @@ export async function initPushManager() {
 }
 
 /**
- * Get public VAPID key from backend
+ * Get the VAPID public key from the backend.
+ * @returns {Promise<string>} Base64URL-encoded VAPID public key.
  */
 async function getPublicKey() {
-    const response = await fetch('/api/push/vapid-public-key');
-    if (!response.ok) throw new Error('Failed to fetch public key');
-    const data = await response.json();
+    const data = await apiGet('/push/vapid-public-key');
+    if (!data?.public_key) throw new Error('VAPID public key missing in response');
     return data.public_key;
 }
 
@@ -73,14 +73,11 @@ async function subscribeUser() {
 
         console.log('[Push] Browser subscribed:', subscription);
 
-        // Send to backend
-        const response = await fetch('/api/push/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(subscription)
-        });
-
-        if (!response.ok) throw new Error('Failed to store subscription on server');
+        // Destructure explicitly rather than passing the PushSubscription browser
+        // object directly — PushSubscription.toJSON() is stable today but the
+        // browser interface could change, and plain objects are easier to test.
+        const sub = subscription.toJSON();
+        await apiPost('/push/subscribe', { endpoint: sub.endpoint, keys: sub.keys });
         
         isSubscribed = true;
         EventEmitter.emit('push-status-changed', { isSubscribed });
