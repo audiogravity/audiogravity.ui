@@ -649,3 +649,16 @@
     font-size: var(--font-size-xxs);
     color: var(--color-error);
 }
+
+/* ── UPnP Renderer — volume popover aligned with action buttons ── */
+.lib-hqp-actions ag-volume-popover .avp-btn {
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    background: transparent;
+    color: var(--text-primary);
+}

@@ -488,6 +488,12 @@ export const iconHardDrive = svg`
     <path d="M21.946 12.013H2.054"/>
     <path d="M6 16h.01"/>`;
 
+/** Cast / broadcast to a screen or speaker. (Lucide: cast) */
+export const iconCast = svg`
+    <path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+    <path d="M2 12a9 9 0 0 1 8 8"/>
+    <path d="M2 16a5 5 0 0 1 4 4"/>`;
+
 /** Plug — network connection / I/O. (Lucide: plug) */
 export const iconConnection = svg`
     <path d="M12 22v-5"/>
