@@ -495,6 +495,79 @@
     100% { background: transparent; }
 }
 
+/* ── UPnP Renderer card ── */
+
+.lib-rdr-ic {
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lib-rdr-track {
+    padding: 10px 0 6px;
+    border-top: 1px solid var(--border-color);
+}
+
+.lib-rdr-title {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-rdr-artist {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-rdr-progress {
+    height: 3px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.lib-rdr-bar {
+    height: 100%;
+    background: var(--accent-primary);
+    border-radius: var(--radius-full);
+    transition: width 0.5s linear;
+}
+
+.lib-rdr-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.lib-rdr-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.lib-rdr-volume {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 120px;
+    color: var(--text-secondary);
+}
+
+.lib-rdr-vol-slider {
+    flex: 1;
+}
+
 /* ── Qobuz card ── */
 
 .lib-qb-card {

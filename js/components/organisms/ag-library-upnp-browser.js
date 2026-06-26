@@ -5,14 +5,14 @@
  * Navigation stack is kept client-side — the backend is fully stateless.
  *
  * Flow:
- *   1. On connect, call GET /library/upnp-browse?control_url=…&object_id=0 (root)
+ *   1. On connect, call GET /library/upnp-browse?location=…&object_id=0 (root)
  *   2. Tap a container → push to stack, browse its ObjectID
  *   3. Tap an item (track) → POST /library/upnp-play with action play|add
  *   4. Back button → pop stack, browse parent ObjectID
  *
  * @element ag-library-upnp-browser
  *
- * @attr {string} control-url  - SOAP endpoint for the selected UPnP server
+ * @attr {string} location     - Device description URL for the selected UPnP server
  * @attr {string} server-name  - Display name of the server (shown in topbar)
  * @attr {string} source-id    - MPD source ID used for playback (e.g. 'src_mpd')
  *
@@ -29,7 +29,7 @@ import '../molecules/ag-library-breadcrumbs.js';
 
 export class AgLibraryUpnpBrowser extends LitElement {
     static properties = {
-        controlUrl:  { type: String, attribute: 'control-url' },
+        location:    { type: String, attribute: 'location' },
         serverName:  { type: String, attribute: 'server-name' },
         sourceId:    { type: String, attribute: 'source-id' },
         _stack:      { state: true },  // [{objectId, title}]
@@ -45,7 +45,7 @@ export class AgLibraryUpnpBrowser extends LitElement {
 
     constructor() {
         super();
-        this.controlUrl  = '';
+        this.location    = '';
         this.serverName  = '';
         this.sourceId    = '';
         this._stack      = [];
@@ -58,7 +58,7 @@ export class AgLibraryUpnpBrowser extends LitElement {
     }
 
     updated(changed) {
-        if (changed.has('controlUrl') && this.controlUrl) {
+        if (changed.has('location') && this.location) {
             this._stack = [];
             Promise.resolve().then(() => this._browse('0', this.serverName || 'Browse'));
         }
@@ -66,10 +66,10 @@ export class AgLibraryUpnpBrowser extends LitElement {
 
     /** @param {string} objectId @param {string} title */
     async _browse(objectId, title) {
-        if (!this.controlUrl) return;
+        if (!this.location) return;
         await loadWithState(this, async () => {
             const params = new URLSearchParams({
-                control_url: this.controlUrl,
+                location: this.location,
                 object_id:   objectId,
                 title,
                 limit: '200',
@@ -144,7 +144,7 @@ export class AgLibraryUpnpBrowser extends LitElement {
     render() {
         const { _loading, _error, _items, _levelTitle } = this;
 
-        if (!this.controlUrl) {
+        if (!this.location) {
             return html`<div class="lib-empty">Select a UPnP server first</div>`;
         }
         if (_loading) return html`<div class="lib-loading">Loading…</div>`;

@@ -310,6 +310,19 @@ ag-now-playing {
     line-height: 1.2;
 }
 
+.np-renderer-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+.npfs-renderer-badge {
+    font-size: var(--font-size-sm);
+}
+
 .np-track {
     display: flex;
     align-items: baseline;

@@ -42,9 +42,9 @@ describe('normalizeSearchSources', () => {
     const sgen = { source_id: 'src_mono-sgen', protocol: 'roon' };
     const airplay = { source_id: 'src_shairport', protocol: 'mpris' };
 
-    it('maps a pipeline source to {id,label,group,controlUrl}', () => {
+    it('maps a pipeline source to {id,label,group,location}', () => {
         expect(normalizeSearchSources([mpd])).toEqual([
-            { id: 'src_mpd', label: 'MPD', group: 'mpd', controlUrl: '' },
+            { id: 'src_mpd', label: 'MPD', group: 'mpd', location: '' },
         ]);
     });
 
@@ -58,25 +58,27 @@ describe('normalizeSearchSources', () => {
         expect(normalizeSearchSources([airplay])).toEqual([]);
     });
 
-    it('appends known UPnP servers with their control URL', () => {
+    it('appends known UPnP servers with their location URL', () => {
         const out = normalizeSearchSources([mpd], [
-            { id: 'upnp:abc', friendly_name: 'MinimServer', control_url: 'http://srv/ctrl' },
+            { id: 'upnp:abc', friendly_name: 'MinimServer', location: 'http://srv/device.xml' },
         ]);
         expect(out).toHaveLength(2);
         expect(out[1]).toEqual({
-            id: 'upnp:abc', label: 'MinimServer', group: 'upnp:abc', controlUrl: 'http://srv/ctrl',
+            id: 'upnp:abc', label: 'MinimServer', group: 'upnp:abc', location: 'http://srv/device.xml',
         });
     });
 
-    it('falls back to "UPnP" label and empty controlUrl when missing', () => {
+    it('falls back to "UPnP" label and empty location when missing', () => {
         const [srv] = normalizeSearchSources([], [{ id: 'upnp:x' }]);
         expect(srv.label).toBe('UPnP');
-        expect(srv.controlUrl).toBe('');
+        expect(srv.location).toBe('');
     });
 
     it('does not add the same UPnP server twice', () => {
-        const dup = { id: 'upnp:x', friendly_name: 'S', control_url: 'u' };
-        expect(normalizeSearchSources([], [dup, dup])).toHaveLength(1);
+        const dup = { id: 'upnp:x', friendly_name: 'S', location: 'http://srv/device.xml' };
+        const out = normalizeSearchSources([], [dup, dup]);
+        expect(out).toHaveLength(1);
+        expect(out[0].location).toBe('http://srv/device.xml');
     });
 
     it('tolerates null/undefined inputs', () => {

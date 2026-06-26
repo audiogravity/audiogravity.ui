@@ -119,6 +119,9 @@ export const iconPause = svg`
     <rect x="14" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>
     <rect x="5" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>`;
 
+/** Stop button — filled square. (Lucide: square) */
+export const iconStop = svg`<rect width="18" height="18" x="3" y="3" rx="2" fill="currentColor" stroke="none"/>`;
+
 /** USB-A pictogram — outer rect + three pin dots. (custom) */
 export const iconConnectorUsbA = svg`
     <rect x="3.5" y="7" width="17" height="10" rx="1.2"/>

@@ -24,7 +24,7 @@ import '../molecules/ag-format-strip.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
-import { subscribePlayerState } from '../../library-store.js';
+import { subscribePlayerState, subscribeRendererStatus } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
@@ -56,7 +56,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         _sleepEnd:     { state: true },
         _coverSwapped: { state: true },
         /** All concurrently active sources — drives the dots source-switcher. */
-        _sources:      { state: true },
+        _sources:          { state: true },
+        /** Latest renderer_status SSE payload — drives the renderer routing badge. */
+        _rendererStatus:   { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -90,10 +92,12 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._panelEl      = null;
         this._prevCoverToken  = null;
         this._pendingColorUrl = null;
-        this._licenseStatus   = 'no_license';
+        this._licenseStatus     = 'no_license';
+        this._rendererStatus    = null;
         this._controlRecentTime = null;
-        this._boundOpen       = (e) => this._openPlayer(e.detail?.source_id ?? null, e.detail?.item ?? null);
-        this._boundLicStatus  = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
+        this._unsubscribeRenderer = null;
+        this._boundOpen      = (e) => this._openPlayer(e.detail?.source_id ?? null, e.detail?.item ?? null);
+        this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
         this._boundTouchStart = this._onTouchStart.bind(this);
         this._boundTouchMove  = this._onTouchMove.bind(this);
         this._boundTouchEnd   = this._onTouchEnd.bind(this);
@@ -103,6 +107,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         super.connectedCallback();
         window.addEventListener('np-expand', this._boundOpen);
         window.addEventListener('license-status', this._boundLicStatus);
+        this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
+        // Fetch initial renderer status so the badge shows immediately on open.
+        apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
         // Restore any backend-armed sleep timer (e.g. set before the app
         // was reloaded / closed). The backend is authoritative.
         this._syncSleepTimer();
@@ -112,6 +119,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         super.disconnectedCallback();
         window.removeEventListener('np-expand', this._boundOpen);
         window.removeEventListener('license-status', this._boundLicStatus);
+        this._unsubscribeRenderer?.();
         this._closeSse();
         // Only clear the local UI timeout — the backend timer must keep running.
         this._clearLocalSleepTimeout();
@@ -682,6 +690,9 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 </div>
                             ` : nothing}
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
+                        ${this._rendererStatus?.connected
+                            ? html`<span class="np-renderer-badge npfs-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
+                            : nothing}
                     </div>
                 ` : nothing}
                 <ag-track-meta show-album

@@ -94,8 +94,8 @@ export const SOURCE_META = {
  * bridge) are dropped — they expose no library API.
  *
  * @param {Array<{source_id:string, name?:string, protocol?:string}>} rawSources - pipeline sources
- * @param {Array<{id:string, friendly_name?:string, control_url?:string}>} [upnpServers] - known UPnP servers
- * @returns {Array<{id:string, label:string, group:string, controlUrl:string}>}
+ * @param {Array<{id:string, friendly_name?:string, location?:string}>} [upnpServers] - known UPnP servers
+ * @returns {Array<{id:string, label:string, group:string, location:string}>}
  */
 export function normalizeSearchSources(rawSources, upnpServers = []) {
     const seen = new Set();
@@ -104,13 +104,13 @@ export function normalizeSearchSources(rawSources, upnpServers = []) {
         const meta = SOURCE_META[s.source_id] ?? { label: s.name ?? s.source_id, group: s.source_id };
         if (seen.has(meta.group)) return acc;
         seen.add(meta.group);
-        acc.push({ id: s.source_id, label: meta.label, group: meta.group, controlUrl: '' });
+        acc.push({ id: s.source_id, label: meta.label, group: meta.group, location: '' });
         return acc;
     }, []);
     for (const srv of upnpServers ?? []) {
         if (seen.has(srv.id)) continue;
         seen.add(srv.id);
-        sources.push({ id: srv.id, label: srv.friendly_name || 'UPnP', group: srv.id, controlUrl: srv.control_url || '' });
+        sources.push({ id: srv.id, label: srv.friendly_name || 'UPnP', group: srv.id, location: srv.location || '' });
     }
     return sources;
 }
