@@ -46,6 +46,8 @@ export class AgNowPlaying extends LitElement {
         _activeSourceIdx: { state: true },
         /** @type {Map<string, string>} Dominant color per cover_token */
         _bgColors: { state: true },
+        /** @type {Set<string>} Cover tokens whose image URL failed to load (404/network). */
+        _brokenCovers: { state: true },
         /** @type {string} License status for gating controls */
         _licenseStatus: { state: true },
         /** @type {object|null} Latest renderer_status SSE payload (null if no renderer) */
@@ -69,6 +71,7 @@ export class AgNowPlaying extends LitElement {
         this._resizeObserver = null;
         /** @type {Set<string>} Tokens for which the dominant-color extraction has been run. */
         this._extractedColors = new Set();
+        this._brokenCovers = new Set();
         // Touch state — dismiss / switch gestures
         this._touchStartX = 0;
         this._touchStartY = 0;
@@ -546,8 +549,9 @@ export class AgNowPlaying extends LitElement {
                     title="Album details"
                     @click="${(e) => this._toggleDetailPopover(item.source_id, e)}"
                 >
-                    ${coverSrc
-                        ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy">`
+                    ${coverSrc && !this._brokenCovers.has(primaryToken)
+                        ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy"
+                              @error=${() => { this._brokenCovers = new Set([...this._brokenCovers, primaryToken]); }}>`
                         : html`<div class="np-cover np-cover--placeholder"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconMusicNote}</svg></div>`
                     }
                     ${this._detailOpenId === item.source_id ? html`

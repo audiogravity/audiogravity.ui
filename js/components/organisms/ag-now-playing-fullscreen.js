@@ -59,6 +59,8 @@ export class AgNowPlayingFullscreen extends LitElement {
         _sources:          { state: true },
         /** Latest renderer_status SSE payload — drives the renderer routing badge. */
         _rendererStatus:   { state: true },
+        /** Cover token that failed to load — triggers placeholder fallback. */
+        _coverErrorToken:  { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -70,6 +72,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._bgColor      = '';
         this._nextTrack    = null;
         this._sleepEnd     = null;
+        this._coverErrorToken = null;
         // Reset on track / source / station change so a fresh listen always
         // starts in the canonical "station identity first" layout.
         this._coverSwapped = false;
@@ -652,10 +655,19 @@ export class AgNowPlayingFullscreen extends LitElement {
             ? `A${Math.ceil(parseInt(tn) / 10)} · TRACK ${tn.toString().padStart(2, '0')}`
             : null;
 
+        // A hidden probe <img> detects 404s on the CSS background-image URL (CSS
+        // background-image errors are silent — there is no onerror event on the div).
+        const coverFailed = primary && this._coverErrorToken === primaryToken;
+        const showCover   = primary && !coverFailed;
+
         return html`
             <div class="npfs-cover-wrap">
-                <div class="npfs-cover" style=${primary ? `background-image:url('${primary}')` : ''}>
-                    ${!primary ? html`
+                <div class="npfs-cover" style=${showCover ? `background-image:url('${primary}')` : ''}>
+                    ${showCover ? html`
+                        <img src="${primary}" style="display:none" alt=""
+                             @error=${() => { this._coverErrorToken = primaryToken; }}>
+                    ` : nothing}
+                    ${!showCover ? html`
                         <div class="npfs-cover-placeholder">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconMusicNote}</svg>
                         </div>
