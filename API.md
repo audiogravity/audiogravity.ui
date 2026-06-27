@@ -75,7 +75,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | PUT | `/upnp-renderer/connection` | Connect to a renderer (persisted) |
 | DELETE | `/upnp-renderer/connection` | Disconnect |
 | PUT | `/upnp-renderer/bypass` | Enable/disable bypass mode — body `{bypassed: bool}`. Keeps connection alive but routes play commands to MPD. Enabling stops the renderer immediately. |
-| GET | `/upnp-renderer/status` | Live playback state (transport_state, title, position, volume, renderer_name, **bypassed**) |
+| GET | `/upnp-renderer/status` | Live playback state (transport_state, title, position, volume, renderer_name, **bypassed**, **reachable**, **queue_position**, **queue_total**, **queue_next_title**, **queue_next_artist**, **queue_next_album**, **queue_next_cover_token**) |
 | POST | `/upnp-renderer/play` | Load URI and start playback |
 | POST | `/upnp-renderer/stop` | Stop |
 | POST | `/upnp-renderer/pause` | Pause |
@@ -213,7 +213,7 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | `services_metrics` | CPU/memory/IO per service |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |
-| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn` |
+| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token` |
 
 ---
 

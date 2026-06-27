@@ -110,7 +110,17 @@ export class AgNowPlayingFullscreen extends LitElement {
         super.connectedCallback();
         window.addEventListener('np-expand', this._boundOpen);
         window.addEventListener('license-status', this._boundLicStatus);
-        this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
+        this._unsubscribeRenderer = subscribeRendererStatus((data) => {
+            this._rendererStatus = data;
+            // Keep "Up next" in sync with the renderer queue whenever the status
+            // changes — avoids the timing race between the renderer_status SSE and
+            // the player_state SSE that triggers _fetchNextTrack.
+            if (data?.connected && !data.bypassed && data.queue_total != null) {
+                this._nextTrack = data.queue_next_title != null
+                    ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null, album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
+                    : null;
+            }
+        });
         // Fetch initial renderer status so the badge shows immediately on open.
         apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
         // Restore any backend-armed sleep timer (e.g. set before the app
@@ -442,6 +452,26 @@ export class AgNowPlayingFullscreen extends LitElement {
     async _fetchNextTrack(state) {
         const s = state ?? this._state;
         if (!s?.source_id || s.source_id === 'src_hqplayer') return;
+
+        // When the UPnP renderer is active and routing, use the queue info the
+        // backend exposes in renderer_status (updated live via SSE) instead of the
+        // MPD queue — which is always empty when tracks are sent via AVTransport.
+        const rs = this._rendererStatus;
+        if (rs?.connected && !rs.bypassed && rs.queue_next_title != null) {
+            this._nextTrack = {
+                title:       rs.queue_next_title,
+                artist:      rs.queue_next_artist      ?? null,
+                album:       rs.queue_next_album       ?? null,
+                cover_token: rs.queue_next_cover_token ?? null,
+            };
+            return;
+        }
+        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+            // Renderer queue active but no next track (end of queue).
+            this._nextTrack = null;
+            return;
+        }
+
         try {
             const params = new URLSearchParams({ source_id: s.source_id });
             if (s.zone_id) params.set('zone_id', s.zone_id);
