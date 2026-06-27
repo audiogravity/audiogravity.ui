@@ -511,6 +511,19 @@ export class AgNowPlayingFullscreen extends LitElement {
                 playback_status: !this._state.playing ? 'Playing' : 'Paused',
             };
         }
+        // When the renderer has an active queue, route next/prev directly to the
+        // renderer instead of MPD — MPD only holds one track and would stop.
+        const rs = this._rendererStatus;
+        const rendererQueueActive = rs?.connected && !rs.bypassed && rs.queue_total != null;
+        if (rendererQueueActive && (action === 'next' || action === 'prev')) {
+            try {
+                this._controlRecentTime = Date.now();
+                await apiPost(`/upnp-renderer/${action}`);
+            } catch (e) {
+                console.error('[npfs] renderer queue control failed:', e);
+            }
+            return;
+        }
         try {
             const body = { action };
             if (value !== undefined) body.value = value;
@@ -901,8 +914,18 @@ export class AgNowPlayingFullscreen extends LitElement {
                     <div class="npfs-controls-row">
                         <ag-playback-controls
                             ?playing=${s?.playing ?? false}
-                            ?can-next=${s?.can_next ?? false}
-                            ?can-prev=${s?.can_prev ?? false}
+                            ?can-next=${(() => {
+                                const rs = this._rendererStatus;
+                                return rs?.connected && !rs.bypassed && rs.queue_total != null
+                                    ? rs.queue_next_title != null
+                                    : (s?.can_next ?? false);
+                            })()}
+                            ?can-prev=${(() => {
+                                const rs = this._rendererStatus;
+                                return rs?.connected && !rs.bypassed && rs.queue_total != null
+                                    ? (rs.queue_position ?? 0) > 0
+                                    : (s?.can_prev ?? false);
+                            })()}
                             ?repeat=${s?.repeat ?? false}
                             ?shuffle=${s?.shuffle ?? false}
                             @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}

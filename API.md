@@ -81,6 +81,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/upnp-renderer/pause` | Pause |
 | POST | `/upnp-renderer/seek` | Seek to position |
 | PUT | `/upnp-renderer/volume` | Set volume 0–100 |
+| POST | `/upnp-renderer/next` | Skip to next track in the active renderer queue — 409 if no queue, at last track, or transition in progress |
+| POST | `/upnp-renderer/prev` | Go back to previous track in the active renderer queue — 409 if no queue, at first track, or transition in progress |
 | POST | `/upnp-renderer/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
 
 ### HQPlayer — `/hqplayer/*`
