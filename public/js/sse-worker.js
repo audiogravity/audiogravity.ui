@@ -49,6 +49,7 @@ function connect(url) {
         eventSource.addEventListener('latency_test_progress', parseAndForward('latency_test_progress'));
         eventSource.addEventListener('network_test_progress', parseAndForward('network_test_progress'));
         eventSource.addEventListener('audio_pipeline', parseAndForward('audio_pipeline'));
+        eventSource.addEventListener('renderer_status', parseAndForward('renderer_status'));
         eventSource.addEventListener('disconnected', () => forward('disconnected'));
 
         // Throttled events

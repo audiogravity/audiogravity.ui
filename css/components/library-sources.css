@@ -674,13 +674,4 @@
     opacity: 0.5;
 }
 
-/* ag-switch handles the toggle styling via forms.css / variant="notification" */
-
-.lib-rdr-bypass-label {
-    font-size: var(--font-size-xs);
-    font-family: var(--font-family);
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
+/* Bypass toggle row reuses .lib-hqp-output-toggle / .lib-hqp-output-label from HQPlayer. */

@@ -67,7 +67,10 @@ class AgUpnpRendererCard extends LitElement {
     async _loadConnection() {
         await loadConnection(this, async () => {
             const conn = await apiGet('/upnp-renderer/connection');
-            if (conn?.available) {
+            // Fetch status whenever a renderer is configured (udn set), not only
+            // when the DMR is active — so reachable/bypassed state is accurate
+            // on hard refresh even before the first SSE heartbeat (up to 30 s).
+            if (conn?.udn) {
                 try {
                     this._status  = await apiGet('/upnp-renderer/status');
                     this._volume  = this._status?.volume ?? null;
@@ -227,10 +230,27 @@ class AgUpnpRendererCard extends LitElement {
     }
 
     _renderCard() {
-        const available = this._connection?.available ?? false;
-        const bypassed  = this._status?.bypassed ?? false;
-        const state     = this._status?.transport_state ?? null;
-        const vol       = this._volume ?? this._status?.volume ?? null;
+        const available  = this._connection?.available ?? false;
+        const reachable  = this._status?.reachable ?? true;
+        const bypassed   = this._status?.bypassed ?? false;
+        const state      = this._status?.transport_state ?? null;
+        const vol        = this._volume ?? this._status?.volume ?? null;
+
+        // Three distinct states for the status indicator:
+        //   connected + reachable  → "Connected" (green)
+        //   connected + unreachable → "Unreachable" (warning/orange)
+        //   not connected           → "Offline" (red)
+        const statusState = !available ? 'down'
+            : reachable ? 'up'
+            : 'pending';
+        const statusLabel = !available ? 'Offline'
+            : reachable ? 'Connected'
+            : 'Unreachable';
+
+        const desc = bypassed ? 'bypassed — routing to local'
+            : !reachable ? 'unreachable — check device'
+            : state ? state.replace(/_/g, ' ').toLowerCase()
+            : 'idle';
 
         return html`
             <div class="lib-hqp-card ${available ? 'connected' : ''}">
@@ -240,27 +260,27 @@ class AgUpnpRendererCard extends LitElement {
                     </div>
                     <div class="lib-hqp-col">
                         <div class="lib-hqp-name">${this._connection?.friendly_name || 'UPnP Renderer'}</div>
-                        <div class="lib-hqp-desc">${bypassed ? 'bypassed — routing to local' : state ? state.replace(/_/g, ' ').toLowerCase() : 'idle'}</div>
+                        <div class="lib-hqp-desc">${desc}</div>
                     </div>
-                    ${available
-                        ? html`<ag-status-indicator state="up" label="Connected"></ag-status-indicator>`
-                        : html`<ag-status-indicator state="down" label="Offline"></ag-status-indicator>`
-                    }
+                    <ag-status-indicator .state=${statusState} .label=${statusLabel}></ag-status-indicator>
                 </div>
 
-                <div class="lib-hqp-actions">
-                    <button class="action-btn compact secondary" @click=${this._disconnect}>
-                        Disconnect
-                    </button>
-                    ${available ? html`
+                ${available ? html`
+                    <div class="lib-hqp-output-toggle">
+                        <span class="lib-hqp-output-label">Bypass</span>
                         <ag-switch
                             .checked=${bypassed}
                             variant="notification"
                             title="${bypassed ? 'Enable renderer routing' : 'Bypass renderer — play locally'}"
                             @ag-change=${(e) => this._setBypass(e.detail.checked)}
                         ></ag-switch>
-                        <span class="lib-rdr-bypass-label">Bypass</span>
-                    ` : nothing}
+                    </div>
+                ` : nothing}
+
+                <div class="lib-hqp-actions">
+                    <button class="action-btn compact secondary" @click=${this._disconnect}>
+                        Disconnect
+                    </button>
                     ${available && vol !== null ? html`
                         <ag-volume-popover
                             style="margin-left:auto"
