@@ -324,7 +324,7 @@ export class AgLibrarySources extends LitElement {
                 <div class="lib-hqp-section">
                     <div class="lib-hqp-header">
                         <span class="lib-src-lbl">UPnP Renderer</span>
-                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-upnp-renderer-card')?._loadConnection()} title="Refresh renderer state">
+                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-upnp-renderer-card')?._load()} title="Refresh renderer state">
                             Refresh
                         </button>
                     </div>

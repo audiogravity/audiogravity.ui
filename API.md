@@ -68,22 +68,25 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/roon-zones` | List Roon zones |
 
 ### UPnP Renderer — `/upnp-renderer/*`
+
+Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:…`).
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices |
-| GET | `/upnp-renderer/connection` | Current renderer connection + capabilities |
-| PUT | `/upnp-renderer/connection` | Connect to a renderer (persisted) |
-| DELETE | `/upnp-renderer/connection` | Disconnect |
-| PUT | `/upnp-renderer/bypass` | Enable/disable bypass mode — body `{bypassed: bool}`. Keeps connection alive but routes play commands to MPD. Enabling stops the renderer immediately. |
-| GET | `/upnp-renderer/status` | Live playback state (transport_state, title, position, volume, renderer_name, **bypassed**, **reachable**, **queue_position**, **queue_total**, **queue_next_title**, **queue_next_artist**, **queue_next_album**, **queue_next_cover_token**) |
-| POST | `/upnp-renderer/play` | Load URI and start playback |
-| POST | `/upnp-renderer/stop` | Stop |
-| POST | `/upnp-renderer/pause` | Pause |
-| POST | `/upnp-renderer/seek` | Seek to position |
-| PUT | `/upnp-renderer/volume` | Set volume 0–100 |
-| POST | `/upnp-renderer/next` | Skip to next track in the active renderer queue — 409 if no queue, at last track, or transition in progress |
-| POST | `/upnp-renderer/prev` | Go back to previous track in the active renderer queue — 409 if no queue, at first track, or transition in progress |
-| POST | `/upnp-renderer/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
+| GET | `/upnp-renderer/known` | All known renderers with live `active`, `reachable` fields |
+| GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
+| PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output) |
+| DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
+| GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`uses_local_mpd`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
+| POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
+| POST | `/upnp-renderer/{udn}/stop` | Stop |
+| POST | `/upnp-renderer/{udn}/pause` | Pause |
+| POST | `/upnp-renderer/{udn}/seek` | Seek to position |
+| PUT | `/upnp-renderer/{udn}/volume` | Set volume 0–100 |
+| POST | `/upnp-renderer/{udn}/next` | Skip to next track in the renderer queue — 409 if no queue, at last track, or transition in progress |
+| POST | `/upnp-renderer/{udn}/prev` | Go back to previous track in the renderer queue — 409 if no queue, at first track, or transition in progress |
+| POST | `/upnp-renderer/{udn}/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
 
 ### Player — `/player/*`
 | Method | Path | Description |
@@ -96,6 +99,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/player/sleep-timer` | Arm sleep timer (pause after N minutes) |
 | DELETE | `/player/sleep-timer` | Cancel active sleep timer |
 | GET | `/player/origins` | Canonical `origin → label` map (e.g. `"qobuz" → "Qobuz"`). Clients merge this into their static fallback at startup. |
+| GET | `/player/outputs` | All selectable audio outputs: Local DAC + known UPnP renderers. Each entry: `{id, type, name, reachable, active}`. `type` is `"mpd"` or `"upnp_renderer"`. |
 
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |

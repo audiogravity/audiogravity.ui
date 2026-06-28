@@ -119,14 +119,20 @@ export class AgNowPlayingFullscreen extends LitElement {
                 this._nextTrack = data.queue_next_title != null
                     ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null, album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
                     : null;
-            } else if (!data?.connected || data?.bypassed) {
-                // Renderer went offline or was bypassed — clear stale "Up next" entry
+            } else if (!data?.connected) {
+                // Renderer went offline — clear stale "Up next" entry
                 // so the strip does not show a track from a queue that no longer exists.
                 this._nextTrack = null;
             }
         });
         // Fetch initial renderer status so the badge shows immediately on open.
-        apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
+        apiGet('/upnp-renderer/known')
+            .then(known => {
+                const active = known?.find(r => r.active);
+                return active?.udn ? apiGet(`/upnp-renderer/${active.udn}/status`) : null;
+            })
+            .then(d => { if (d) this._rendererStatus = d; })
+            .catch(() => {});
         // Restore any backend-armed sleep timer (e.g. set before the app
         // was reloaded / closed). The backend is authoritative.
         this._syncSleepTimer();
@@ -521,15 +527,18 @@ export class AgNowPlayingFullscreen extends LitElement {
         // When the renderer has an active queue, route next/prev directly to the
         // renderer instead of MPD — MPD only holds one track and would stop.
         const rs = this._rendererStatus;
-        const rendererQueueActive = rs?.connected && !rs.bypassed && rs.queue_total != null;
+        const rendererQueueActive = rs?.connected && rs?.queue_total != null;
         if (rendererQueueActive && (action === 'next' || action === 'prev')) {
-            try {
-                this._controlRecentTime = Date.now();
-                await apiPost(`/upnp-renderer/${action}`);
-            } catch (e) {
-                console.error('[npfs] renderer queue control failed:', e);
+            const udn = rs.renderer_udn;
+            if (udn) {
+                try {
+                    this._controlRecentTime = Date.now();
+                    await apiPost(`/upnp-renderer/${udn}/${action}`);
+                } catch (e) {
+                    console.error('[npfs] renderer queue control failed:', e);
+                }
+                return;
             }
-            return;
         }
         try {
             const body = { action };

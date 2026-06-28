@@ -122,7 +122,13 @@ export class AgNowPlaying extends LitElement {
         this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
         // Fetch initial renderer status so the badge is correct on load,
         // without waiting for the next SSE heartbeat (up to 30s delay).
-        apiGet('/upnp-renderer/status').then(d => { this._rendererStatus = d; }).catch(() => {});
+        apiGet('/upnp-renderer/known')
+            .then(known => {
+                const active = known?.find(r => r.active);
+                return active?.udn ? apiGet(`/upnp-renderer/${active.udn}/status`) : null;
+            })
+            .then(d => { if (d) this._rendererStatus = d; })
+            .catch(() => {});
 
         // Online/offline connectivity listeners — drive the offline indicator.
         window.addEventListener('online',  this._boundOnline);
