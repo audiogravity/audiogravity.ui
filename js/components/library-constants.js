@@ -5,6 +5,7 @@
 
 import { html } from 'lit';
 import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones } from '../ag-icons.js';
+import { apiGet } from '../api.js';
 
 export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
 
@@ -61,6 +62,22 @@ export const ORIGIN_ICONS = {
     hqplayer: originSvg(iconHeadphones, 'HQPlayer'),
     mpris: originSvg(iconMusicNote, 'Stream'),
 };
+
+/**
+ * Fetch origin labels from the backend and merge into ORIGIN_LABELS.
+ * Only text labels are updated — icons remain JS-rendered.
+ * Idempotent and safe to call multiple times. Call once at app startup
+ * (fire-and-forget); static fallbacks remain in effect until resolved.
+ * @returns {Promise<void>}
+ */
+export async function initOriginLabels() {
+    try {
+        const labels = await apiGet('/player/origins');
+        Object.assign(ORIGIN_LABELS, labels);
+    } catch {
+        // Backend unreachable — static fallbacks remain in effect.
+    }
+}
 
 /**
  * Resolve the display badge for a now-playing origin.

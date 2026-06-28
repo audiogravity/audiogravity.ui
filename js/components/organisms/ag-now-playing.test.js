@@ -186,12 +186,16 @@ function rendererActive(rendererStatus) {
 
 /**
  * Simulate the connector badge visibility condition.
+ * Badge is visible when there is a connector AND either no active renderer OR
+ * the active renderer uses local MPD (upmpdcli), which means the physical
+ * connector IS still in the audio chain.
  * @param {string|null} outputConnector
  * @param {object|null} rendererStatus
  * @returns {boolean}
  */
 function connectorVisible(outputConnector, rendererStatus) {
-    return !!(outputConnector && !rendererActive(rendererStatus));
+    const active = rendererActive(rendererStatus);
+    return !!(outputConnector && (!active || rendererStatus?.uses_local_mpd));
 }
 
 describe('AgNowPlaying — _rendererActive + connector badge', () => {
@@ -212,8 +216,13 @@ describe('AgNowPlaying — _rendererActive + connector badge', () => {
         expect(rendererActive(undefined)).toBe(false);
     });
 
-    it('connector badge hidden when renderer active', () => {
-        expect(connectorVisible('usb', { connected: true, bypassed: false })).toBe(false);
+    it('connector badge hidden when native renderer active (uses_local_mpd=false)', () => {
+        expect(connectorVisible('usb', { connected: true, bypassed: false, uses_local_mpd: false })).toBe(false);
+    });
+
+    it('connector badge VISIBLE when local-MPD renderer active (upmpdcli, uses_local_mpd=true)', () => {
+        // upmpdcli routes audio through local MPD → the physical connector is still in the chain
+        expect(connectorVisible('usb', { connected: true, bypassed: false, uses_local_mpd: true })).toBe(true);
     });
 
     it('connector badge visible when renderer bypassed', () => {

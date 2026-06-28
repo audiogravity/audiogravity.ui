@@ -1,8 +1,11 @@
 /**
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
-import { describe, it, expect } from 'vitest';
-import { originBadge, ORIGIN_LABELS, normalizeSearchSources } from './library-constants.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources } from './library-constants.js';
+
+vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
+const { apiGet } = await import('../api.js');
 
 describe('originBadge', () => {
     it('returns null for empty/unknown origin', () => {
@@ -33,6 +36,44 @@ describe('originBadge', () => {
         for (const origin of Object.keys(ORIGIN_LABELS)) {
             expect(originBadge(origin).label).toBe(ORIGIN_LABELS[origin]);
         }
+    });
+});
+
+describe('initOriginLabels', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    afterEach(() => {
+        // Clean up any keys added by tests so they don't leak into other tests.
+        delete ORIGIN_LABELS.__test_bluetooth;
+    });
+
+    it('merges new origin keys from the backend into ORIGIN_LABELS', async () => {
+        apiGet.mockResolvedValue({ __test_bluetooth: 'Bluetooth' });
+        await initOriginLabels();
+        expect(ORIGIN_LABELS.__test_bluetooth).toBe('Bluetooth');
+    });
+
+    it('overwrites existing labels with backend values', async () => {
+        const original = ORIGIN_LABELS.mpris;
+        apiGet.mockResolvedValue({ mpris: 'Streaming' });
+        await initOriginLabels();
+        expect(ORIGIN_LABELS.mpris).toBe('Streaming');
+        ORIGIN_LABELS.mpris = original; // restore
+    });
+
+    it('keeps static fallbacks intact when the backend is unreachable', async () => {
+        apiGet.mockRejectedValue(new Error('network error'));
+        const snapshot = { ...ORIGIN_LABELS };
+        await initOriginLabels();
+        for (const [key, val] of Object.entries(snapshot)) {
+            expect(ORIGIN_LABELS[key]).toBe(val);
+        }
+    });
+
+    it('calls GET /player/origins', async () => {
+        apiGet.mockResolvedValue({});
+        await initOriginLabels();
+        expect(apiGet).toHaveBeenCalledWith('/player/origins');
     });
 });
 

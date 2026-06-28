@@ -32,6 +32,10 @@ import './pwa-install-prompt.js';
 // Push Notification Manager
 import { initPushManager } from './push-manager.js';
 
+// Sync origin labels from backend (fire-and-forget; static fallbacks used until resolved)
+import { initOriginLabels } from './components/library-constants.js';
+initOriginLabels();
+
 // Gesture Manager (Swipe)
 import { gestures } from './gestures.js';
 

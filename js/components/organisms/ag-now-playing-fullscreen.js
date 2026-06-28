@@ -119,6 +119,10 @@ export class AgNowPlayingFullscreen extends LitElement {
                 this._nextTrack = data.queue_next_title != null
                     ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null, album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
                     : null;
+            } else if (!data?.connected || data?.bypassed) {
+                // Renderer went offline or was bypassed — clear stale "Up next" entry
+                // so the strip does not show a track from a queue that no longer exists.
+                this._nextTrack = null;
             }
         });
         // Fetch initial renderer status so the badge shows immediately on open.
@@ -308,6 +312,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         const stationChanged = state.station_logo_token !== this._prevStationToken;
         if (trackChanged && this._open) this._fetchNextTrack(state);
         if (trackChanged || sourceChanged || stationChanged) this._coverSwapped = false;
+        // Reset the cover-error token on track change so a new cover is always
+        // attempted, even if a previous track with the same token had a 404.
+        if (trackChanged || sourceChanged) this._coverErrorToken = null;
         this._prevTitle         = state.title;
         this._prevSourceId      = state.source_id;
         this._prevStationToken  = state.station_logo_token;
@@ -743,7 +750,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         const hasSignal = s?.signal_path?.length || s?.output_label;
         return html`
             <div class="npfs-meta">
-                ${s?.origin || s?.source_name || hasSignal ? html`
+                ${s?.origin || s?.source_name || hasSignal || this._rendererActive ? html`
                     <div class="npfs-source-row">
                         ${s?.origin
                             ? html`<ag-source-badge .origin=${s.origin} .name=${s.origin_name ?? ''}></ag-source-badge>`
@@ -754,6 +761,12 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 </div>
                             ` : nothing}
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
+                        ${!hasSignal && this._rendererActive ? html`
+                            <span class="np-renderer-badge npfs-renderer-badge"
+                                  title="Routed to UPnP renderer">
+                                → ${this._rendererStatus?.renderer_name ?? 'Renderer'}
+                            </span>
+                        ` : nothing}
                     </div>
                 ` : nothing}
                 <ag-track-meta show-album

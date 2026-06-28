@@ -267,4 +267,116 @@ describe('AgNowPlayingFullscreen — _rendererActive + signal path', () => {
         expect(sp[0].label).toBe('Qobuz');
         expect(sp[1].label).toBe('music.#1');
     });
+
+    it('idle renderer badge shown when renderer active but signal_path is empty', () => {
+        // When active is None on the backend, signal_path is empty — the renderer
+        // badge must still appear so the user can see the renderer is routed.
+        const rs = { connected: true, bypassed: false, renderer_name: 'music.#1' };
+        expect(rendererActive(rs)).toBe(true);
+        expect(hasSignal(null, null)).toBe(false);
+        // The source row condition: hasSignal || rendererActive → must be shown
+        expect(hasSignal(null, null) || rendererActive(rs)).toBe(true);
+    });
+
+    it('idle renderer badge NOT shown when renderer disconnected and no signal', () => {
+        const rs = { connected: false, bypassed: false };
+        expect(rendererActive(rs)).toBe(false);
+        expect(hasSignal(null, null) || rendererActive(rs)).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// AgNowPlayingFullscreen — _nextTrack cleared on renderer disconnect
+// ---------------------------------------------------------------------------
+
+/**
+ * Simulate the renderer_status SSE callback logic.
+ * @param {object} fs - Component state with _nextTrack property (mutated in-place).
+ * @param {object|null} data - renderer_status SSE payload.
+ */
+function applyRendererStatus(fs, data) {
+    fs.rendererStatus = data;
+    if (data?.connected && !data.bypassed && data.queue_total != null) {
+        fs.nextTrack = data.queue_next_title != null
+            ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null,
+                album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
+            : null;
+    } else if (!data?.connected || data?.bypassed) {
+        fs.nextTrack = null;
+    }
+}
+
+describe('AgNowPlayingFullscreen — _nextTrack cleared on renderer disconnect', () => {
+    it('_nextTrack set from renderer queue when connected', () => {
+        const fs = { nextTrack: null, rendererStatus: null };
+        applyRendererStatus(fs, {
+            connected: true, bypassed: false, queue_total: 5,
+            queue_next_title: 'Track 2', queue_next_artist: 'Artist', queue_next_album: 'Album', queue_next_cover_token: 'tok',
+        });
+        expect(fs.nextTrack).toEqual({ title: 'Track 2', artist: 'Artist', album: 'Album', cover_token: 'tok' });
+    });
+
+    it('_nextTrack set to null when queue_next_title is null', () => {
+        const fs = { nextTrack: { title: 'Old' }, rendererStatus: null };
+        applyRendererStatus(fs, { connected: true, bypassed: false, queue_total: 3, queue_next_title: null });
+        expect(fs.nextTrack).toBeNull();
+    });
+
+    it('_nextTrack cleared when renderer disconnects', () => {
+        const fs = { nextTrack: { title: 'Stale Track' }, rendererStatus: null };
+        applyRendererStatus(fs, { connected: false, bypassed: false, queue_total: null });
+        expect(fs.nextTrack).toBeNull();
+    });
+
+    it('_nextTrack cleared when renderer is bypassed', () => {
+        const fs = { nextTrack: { title: 'Stale Track' }, rendererStatus: null };
+        applyRendererStatus(fs, { connected: true, bypassed: true, queue_total: null });
+        expect(fs.nextTrack).toBeNull();
+    });
+
+    it('_nextTrack not touched when renderer is connected but queue_total is null', () => {
+        // queue_total=null means no queue — we don't enter either branch.
+        const fs = { nextTrack: { title: 'Some Track' }, rendererStatus: null };
+        applyRendererStatus(fs, { connected: true, bypassed: false, queue_total: null });
+        // Neither branch fires — _nextTrack unchanged.
+        expect(fs.nextTrack).toEqual({ title: 'Some Track' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// AgNowPlayingFullscreen — _coverErrorToken cleared on track change
+// ---------------------------------------------------------------------------
+
+/**
+ * Simulate the _applyState cover-error reset logic.
+ * Returns the new coverErrorToken after applying the state change.
+ */
+function applyCoverReset(prevTitle, prevSourceId, newTitle, newSourceId, prevErrorToken) {
+    const trackChanged  = newTitle     !== prevTitle;
+    const sourceChanged = newSourceId  !== prevSourceId;
+    let coverErrorToken = prevErrorToken;
+    if (trackChanged || sourceChanged) coverErrorToken = null;
+    return coverErrorToken;
+}
+
+describe('AgNowPlayingFullscreen — _coverErrorToken reset on track/source change', () => {
+    it('cover error token cleared when track title changes', () => {
+        expect(applyCoverReset('Track A', 'src_mpd', 'Track B', 'src_mpd', 'tok-123')).toBeNull();
+    });
+
+    it('cover error token cleared when source changes', () => {
+        expect(applyCoverReset('Track A', 'src_mpd', 'Track A', 'src_qobuz', 'tok-123')).toBeNull();
+    });
+
+    it('cover error token preserved when same track and source', () => {
+        expect(applyCoverReset('Track A', 'src_mpd', 'Track A', 'src_mpd', 'tok-123')).toBe('tok-123');
+    });
+
+    it('cover error token null when no error was set', () => {
+        expect(applyCoverReset('Track A', 'src_mpd', 'Track B', 'src_mpd', null)).toBeNull();
+    });
+
+    it('cover error token cleared when title changes to null (track ends)', () => {
+        expect(applyCoverReset('Track A', 'src_mpd', null, 'src_mpd', 'tok-abc')).toBeNull();
+    });
 });

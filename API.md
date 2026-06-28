@@ -85,6 +85,18 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/upnp-renderer/prev` | Go back to previous track in the active renderer queue — 409 if no queue, at first track, or transition in progress |
 | POST | `/upnp-renderer/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
 
+### Player — `/player/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/player/state` | SSE stream — live `PlayerState` events |
+| GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
+| POST | `/player/control` | Transport command (`toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`, `set_shuffle`) |
+| POST | `/player/source` | Select active source |
+| GET | `/player/sleep-timer` | Current sleep timer state |
+| POST | `/player/sleep-timer` | Arm sleep timer (pause after N minutes) |
+| DELETE | `/player/sleep-timer` | Cancel active sleep timer |
+| GET | `/player/origins` | Canonical `origin → label` map (e.g. `"qobuz" → "Qobuz"`). Clients merge this into their static fallback at startup. |
+
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
