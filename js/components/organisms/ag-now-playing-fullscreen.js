@@ -653,6 +653,15 @@ export class AgNowPlayingFullscreen extends LitElement {
     }
 
     // ------------------------------------------------------------------
+    // Computed state
+    // ------------------------------------------------------------------
+
+    /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
+    get _rendererActive() {
+        return !!(this._rendererStatus?.connected && !this._rendererStatus?.bypassed);
+    }
+
+    // ------------------------------------------------------------------
     // Render helpers
     // ------------------------------------------------------------------
 
@@ -745,9 +754,6 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 </div>
                             ` : nothing}
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
-                        ${this._rendererStatus?.connected && !this._rendererStatus?.bypassed
-                            ? html`<span class="np-renderer-badge npfs-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
-                            : nothing}
                     </div>
                 ` : nothing}
                 <ag-track-meta show-album

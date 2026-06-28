@@ -188,6 +188,11 @@ export class AgNowPlaying extends LitElement {
         return inTransition(this._controlRecentTime);
     }
 
+    /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
+    get _rendererActive() {
+        return !!(this._rendererStatus?.connected && !this._rendererStatus?.bypassed);
+    }
+
     /**
      * Handle a PlayerState event from the SSE stream.
      * Maps state.sources (enriched SourceInfo) to the _items array
@@ -612,10 +617,10 @@ export class AgNowPlaying extends LitElement {
                         ${item.origin
                             ? html`<ag-source-badge .origin=${item.origin} .name=${item.origin_name ?? ''}></ag-source-badge>`
                             : html`<span class="np-service-badge">${item.display_name}</span>`}
-                        ${item.output_connector
+                        ${item.output_connector && !this._rendererActive
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
                             : nothing}
-                        ${this._rendererStatus?.connected && !this._rendererStatus?.bypassed
+                        ${this._rendererActive
                             ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
                             : nothing}
                         ${this._offline

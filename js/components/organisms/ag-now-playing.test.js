@@ -170,3 +170,73 @@ describe('AgNowPlaying — auto-follow (_onState)', () => {
         expect(s.userOverride).toBe(true);
     });
 });
+
+// ---------------------------------------------------------------------------
+// AgNowPlaying — _rendererActive predicate + connector badge visibility
+// ---------------------------------------------------------------------------
+
+/**
+ * Simulate the _rendererActive getter.
+ * @param {object|null} rendererStatus
+ * @returns {boolean}
+ */
+function rendererActive(rendererStatus) {
+    return !!(rendererStatus?.connected && !rendererStatus?.bypassed);
+}
+
+/**
+ * Simulate the connector badge visibility condition.
+ * @param {string|null} outputConnector
+ * @param {object|null} rendererStatus
+ * @returns {boolean}
+ */
+function connectorVisible(outputConnector, rendererStatus) {
+    return !!(outputConnector && !rendererActive(rendererStatus));
+}
+
+describe('AgNowPlaying — _rendererActive + connector badge', () => {
+    it('rendererActive: true when connected and not bypassed', () => {
+        expect(rendererActive({ connected: true, bypassed: false })).toBe(true);
+    });
+
+    it('rendererActive: false when bypassed', () => {
+        expect(rendererActive({ connected: true, bypassed: true })).toBe(false);
+    });
+
+    it('rendererActive: false when disconnected', () => {
+        expect(rendererActive({ connected: false, bypassed: false })).toBe(false);
+    });
+
+    it('rendererActive: false when no renderer status', () => {
+        expect(rendererActive(null)).toBe(false);
+        expect(rendererActive(undefined)).toBe(false);
+    });
+
+    it('connector badge hidden when renderer active', () => {
+        expect(connectorVisible('usb', { connected: true, bypassed: false })).toBe(false);
+    });
+
+    it('connector badge visible when renderer bypassed', () => {
+        expect(connectorVisible('usb', { connected: true, bypassed: true })).toBe(true);
+    });
+
+    it('connector badge visible when no renderer', () => {
+        expect(connectorVisible('usb', null)).toBe(true);
+    });
+
+    it('connector badge hidden when output_connector absent (no renderer)', () => {
+        expect(connectorVisible(null, null)).toBe(false);
+    });
+
+    it('connector badge hidden when output_connector absent (renderer active)', () => {
+        expect(connectorVisible(null, { connected: true, bypassed: false })).toBe(false);
+    });
+
+    it('connector badge visible with TOSLINK when bypassed', () => {
+        expect(connectorVisible('toslink', { connected: true, bypassed: true })).toBe(true);
+    });
+
+    it('connector badge visible with TOSLINK when renderer disconnected', () => {
+        expect(connectorVisible('toslink', { connected: false, bypassed: false })).toBe(true);
+    });
+});

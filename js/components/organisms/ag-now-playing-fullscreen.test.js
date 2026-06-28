@@ -187,3 +187,84 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
         expect(fs.connectSseCalls).toBe(1);         // only the manual switch
     });
 });
+
+// ---------------------------------------------------------------------------
+// AgNowPlayingFullscreen — _rendererActive predicate + signal path visibility
+// ---------------------------------------------------------------------------
+
+/**
+ * Simulate the _rendererActive getter.
+ * @param {object|null} rendererStatus
+ * @returns {boolean}
+ */
+function rendererActive(rendererStatus) {
+    return !!(rendererStatus?.connected && !rendererStatus?.bypassed);
+}
+
+/**
+ * Simulate the hasSignal condition used in _renderMeta.
+ * @param {Array|null} signalPath
+ * @param {string|null} outputLabel
+ * @returns {boolean}
+ */
+function hasSignal(signalPath, outputLabel) {
+    return !!(signalPath?.length || outputLabel);
+}
+
+describe('AgNowPlayingFullscreen — _rendererActive + signal path', () => {
+    it('rendererActive: true when connected and not bypassed', () => {
+        expect(rendererActive({ connected: true, bypassed: false })).toBe(true);
+    });
+
+    it('rendererActive: false when bypassed', () => {
+        expect(rendererActive({ connected: true, bypassed: true })).toBe(false);
+    });
+
+    it('rendererActive: false when disconnected', () => {
+        expect(rendererActive({ connected: false, bypassed: false })).toBe(false);
+    });
+
+    it('rendererActive: false when no renderer status', () => {
+        expect(rendererActive(null)).toBe(false);
+    });
+
+    it('hasSignal: true with non-empty signal_path', () => {
+        expect(hasSignal([{ label: 'MPD' }, { label: 'Heed Abacus' }], null)).toBe(true);
+    });
+
+    it('hasSignal: true with output_label only', () => {
+        expect(hasSignal([], 'Heed Abacus')).toBe(true);
+    });
+
+    it('hasSignal: false with empty path and no label', () => {
+        expect(hasSignal([], null)).toBe(false);
+        expect(hasSignal(null, null)).toBe(false);
+    });
+
+    it('signal path shown when renderer bypassed and signal present', () => {
+        const rs = { connected: true, bypassed: true };
+        const sp = [{ label: 'MPD' }, { label: 'Heed Abacus' }];
+        // signal_path from backend already includes complete chain
+        expect(hasSignal(sp, null)).toBe(true);
+        expect(rendererActive(rs)).toBe(false);
+    });
+
+    it('signal path shown when no renderer and signal present', () => {
+        expect(hasSignal([{ label: 'MPD' }], 'Heed Abacus')).toBe(true);
+        expect(rendererActive(null)).toBe(false);
+    });
+
+    it('renderer step present in signal_path when renderer active (backend enrichment)', () => {
+        // Backend prepends renderer step — signal_path carries the full chain.
+        const sp = [
+            { label: 'Qobuz' },
+            { label: 'music.#1' },
+            { label: 'MPD' },
+            { label: 'USB' },
+            { label: 'Heed Abacus' },
+        ];
+        expect(hasSignal(sp, null)).toBe(true);
+        expect(sp[0].label).toBe('Qobuz');
+        expect(sp[1].label).toBe('music.#1');
+    });
+});

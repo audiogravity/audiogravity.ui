@@ -299,6 +299,15 @@ ag-now-playing {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Allow the source badge to shrink below its natural content width when a
+   renderer badge is present, so the renderer name is never truncated. */
+.np-source-row .ag-source-badge {
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 .np-service-badge {
@@ -316,6 +325,10 @@ ag-now-playing {
     letter-spacing: 0.03em;
     color: var(--text-secondary);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
     opacity: 0.85;
 }
 
