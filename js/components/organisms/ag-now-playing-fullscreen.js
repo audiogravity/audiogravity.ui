@@ -24,7 +24,7 @@ import '../molecules/ag-format-strip.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
-import { subscribePlayerState, subscribeRendererStatus } from '../../library-store.js';
+import { subscribePlayerState, subscribeRendererStatus, fetchActiveRendererStatus } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
@@ -126,13 +126,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             }
         });
         // Fetch initial renderer status so the badge shows immediately on open.
-        apiGet('/upnp-renderer/known')
-            .then(known => {
-                const active = known?.find(r => r.active);
-                return active?.udn ? apiGet(`/upnp-renderer/${active.udn}/status`) : null;
-            })
-            .then(d => { if (d) this._rendererStatus = d; })
-            .catch(() => {});
+        fetchActiveRendererStatus().then(d => { if (d) this._rendererStatus = d; });
         // Restore any backend-armed sleep timer (e.g. set before the app
         // was reloaded / closed). The backend is authoritative.
         this._syncSleepTimer();
@@ -523,22 +517,6 @@ export class AgNowPlayingFullscreen extends LitElement {
                 playing: !this._state.playing,
                 playback_status: !this._state.playing ? 'Playing' : 'Paused',
             };
-        }
-        // When the renderer has an active queue, route next/prev directly to the
-        // renderer instead of MPD — MPD only holds one track and would stop.
-        const rs = this._rendererStatus;
-        const rendererQueueActive = rs?.connected && rs?.queue_total != null;
-        if (rendererQueueActive && (action === 'next' || action === 'prev')) {
-            const udn = rs.renderer_udn;
-            if (udn) {
-                try {
-                    this._controlRecentTime = Date.now();
-                    await apiPost(`/upnp-renderer/${udn}/${action}`);
-                } catch (e) {
-                    console.error('[npfs] renderer queue control failed:', e);
-                }
-                return;
-            }
         }
         try {
             const body = { action };

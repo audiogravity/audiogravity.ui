@@ -234,3 +234,22 @@ export function subscribeRendererStatus(cb) {
     _rendererCallbacks.add(cb);
     return () => _rendererCallbacks.delete(cb);
 }
+
+/**
+ * Fetch the active renderer status in one call.
+ * Resolves GET /upnp-renderer/known to find the active UDN, then fetches its
+ * status. Returns the status object, or null when no renderer is active or on
+ * any network error.
+ *
+ * @returns {Promise<object|null>}
+ */
+export async function fetchActiveRendererStatus() {
+    try {
+        const known = await apiGet('/upnp-renderer/known');
+        const active = known?.find(r => r.active);
+        if (!active?.udn) return null;
+        return await apiGet(`/upnp-renderer/${active.udn}/status`);
+    } catch {
+        return null;
+    }
+}

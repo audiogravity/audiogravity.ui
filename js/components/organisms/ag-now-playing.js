@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { subscribePlayerState, subscribeRendererStatus, getOfflinePlayerSnapshot } from '../../library-store.js';
+import { subscribePlayerState, subscribeRendererStatus, fetchActiveRendererStatus, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
@@ -122,13 +122,7 @@ export class AgNowPlaying extends LitElement {
         this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
         // Fetch initial renderer status so the badge is correct on load,
         // without waiting for the next SSE heartbeat (up to 30s delay).
-        apiGet('/upnp-renderer/known')
-            .then(known => {
-                const active = known?.find(r => r.active);
-                return active?.udn ? apiGet(`/upnp-renderer/${active.udn}/status`) : null;
-            })
-            .then(d => { if (d) this._rendererStatus = d; })
-            .catch(() => {});
+        fetchActiveRendererStatus().then(d => { if (d) this._rendererStatus = d; });
 
         // Online/offline connectivity listeners — drive the offline indicator.
         window.addEventListener('online',  this._boundOnline);
@@ -587,7 +581,10 @@ export class AgNowPlaying extends LitElement {
                         <div class="np-detail-popover" @click="${(e) => e.stopPropagation()}">
                             <!-- Left: cover + metadata -->
                             <div class="np-detail-left">
-                                ${coverSrc ? html`<img class="np-detail-cover" src="${coverSrc}" alt="Album cover">` : nothing}
+                                ${coverSrc && !this._brokenCovers.has(primaryToken)
+                                    ? html`<img class="np-detail-cover" src="${coverSrc}" alt="Album cover"
+                                          @error=${() => { this._brokenCovers = new Set([...this._brokenCovers, primaryToken]); }}>`
+                                    : nothing}
                                 <div class="np-detail-meta">
                                     ${item.album       ? html`<div class="np-detail-row"><span class="np-detail-label">Album</span><span class="np-detail-value">${item.album}</span></div>` : nothing}
                                     ${item.artist      ? html`<div class="np-detail-row"><span class="np-detail-label">Artist</span><span class="np-detail-value">${item.artist}</span></div>` : nothing}
