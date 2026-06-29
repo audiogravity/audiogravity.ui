@@ -677,6 +677,32 @@ export class AgNowPlayingFullscreen extends LitElement {
         return !!(this._rendererStatus?.connected && !this._rendererStatus?.bypassed);
     }
 
+    /**
+     * Whether the renderer queue can advance to the next track.
+     * Returns null when no renderer queue is active (caller falls back to player state).
+     * @returns {boolean|null}
+     */
+    get _rendererCanNext() {
+        const rs = this._rendererStatus;
+        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+            return rs.queue_next_title != null;
+        }
+        return null;
+    }
+
+    /**
+     * Whether the renderer queue can go back to the previous track.
+     * Returns null when no renderer queue is active (caller falls back to player state).
+     * @returns {boolean|null}
+     */
+    get _rendererCanPrev() {
+        const rs = this._rendererStatus;
+        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+            return (rs.queue_position ?? 0) > 0;
+        }
+        return null;
+    }
+
     // ------------------------------------------------------------------
     // Render helpers
     // ------------------------------------------------------------------
@@ -942,18 +968,8 @@ export class AgNowPlayingFullscreen extends LitElement {
                     <div class="npfs-controls-row">
                         <ag-playback-controls
                             ?playing=${s?.playing ?? false}
-                            ?can-next=${(() => {
-                                const rs = this._rendererStatus;
-                                return rs?.connected && !rs.bypassed && rs.queue_total != null
-                                    ? rs.queue_next_title != null
-                                    : (s?.can_next ?? false);
-                            })()}
-                            ?can-prev=${(() => {
-                                const rs = this._rendererStatus;
-                                return rs?.connected && !rs.bypassed && rs.queue_total != null
-                                    ? (rs.queue_position ?? 0) > 0
-                                    : (s?.can_prev ?? false);
-                            })()}
+                            ?can-next=${this._rendererCanNext ?? (s?.can_next ?? false)}
+                            ?can-prev=${this._rendererCanPrev ?? (s?.can_prev ?? false)}
                             ?repeat=${s?.repeat ?? false}
                             ?shuffle=${s?.shuffle ?? false}
                             @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
