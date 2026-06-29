@@ -2,13 +2,13 @@
  * @module AgUpnpRendererCard
  * @description Audio output selector card for the Sources page.
  *
- * Shows all known audio outputs:
- *   - Local DAC (always first)
- *   - Known UPnP renderers (from GET /upnp-renderer/known)
+ * Shows all known audio outputs (from GET /player/outputs):
+ *   - Physical MPD outputs (type='mpd_output') — one per MPD audio_output block
+ *   - Known UPnP renderers (type='upnp_renderer')
  *
  * Clicking an output switches to it:
- *   - Local DAC → DELETE /upnp-renderer/{udn}/connection (disconnect active renderer)
- *   - Renderer   → PUT  /upnp-renderer/{udn}/connection
+ *   - MPD output  → PUT  /player/mpd-output/{output_id} (enables exclusively, disconnects renderer)
+ *   - Renderer    → PUT  /upnp-renderer/{udn}/connection
  *
  * "Scan network" discovers new renderers via GET /upnp-renderer/discover.
  * Volume control is shown for the active renderer when reachable.
@@ -25,19 +25,27 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPut, apiDelete } from '../../api.js';
 import { subscribeRendererStatus } from '../../library-store.js';
 import { iconWifi, iconCast, iconOutput } from '../../ag-icons.js';
+
+// Distance (px) at which a horizontal pointer move commits the swipe-to-delete.
+const _SWIPE_COMMIT_PX = 140;
+// Minimum movement before we classify the gesture as a swipe (not a tap).
+const _SWIPE_SLOP_PX   = 8;
 import '../atoms/ag-status-indicator.js';
 import './ag-volume-popover.js';
 
 class AgUpnpRendererCard extends LitElement {
 
     static properties = {
-        _known:      { state: true },   // List<RendererEntry> from GET /upnp-renderer/known
-        _status:     { state: true },   // RendererStatus from SSE (active renderer)
-        _volume:     { state: true },   // optimistic volume for responsive slider
-        _loading:    { state: true },
-        _scanning:   { state: true },
-        _discovered: { state: true },   // List<DiscoveredRenderer> | null (after scan)
-        _switching:  { state: true },   // UDN (or 'local') being switched to
+        _mpd_outputs: { state: true },  // List<MpdOutput> from GET /player/outputs (type=mpd_output)
+        _known:       { state: true },  // List<RendererEntry> from GET /player/outputs (type=upnp_renderer)
+        _status:      { state: true },  // RendererStatus from SSE (active renderer)
+        _volume:      { state: true },  // optimistic volume for responsive slider
+        _loading:     { state: true },
+        _scanning:    { state: true },
+        _discovered:  { state: true },  // List<DiscoveredRenderer> | null (after scan)
+        _switching:   { state: true },  // id being switched to
+        _swipingUdn:  { state: true },  // UDN of the row currently being dragged
+        _swipeDx:     { state: true },  // live horizontal offset of the dragged card (px, ≤ 0)
     };
 
     /** @override Light DOM — inherits global CSS. */
@@ -45,13 +53,19 @@ class AgUpnpRendererCard extends LitElement {
 
     constructor() {
         super();
-        this._known      = [];
-        this._status     = null;
-        this._volume     = null;
-        this._loading    = true;
-        this._scanning   = false;
-        this._discovered = null;
-        this._switching  = null;
+        this._mpd_outputs   = [];
+        this._known         = [];
+        this._status        = null;
+        this._volume        = null;
+        this._loading       = true;
+        this._scanning      = false;
+        this._discovered    = null;
+        this._switching     = null;
+        this._swipingUdn    = null;
+        this._swipeDx       = 0;
+        /** @private Non-reactive swipe tracking — does not trigger re-render. */
+        this._swipeStart    = null;   // { x: number, udn: string } | null
+        this._swipeWasActive = false; // true once movement exceeds SLOP — suppresses click
     }
 
     connectedCallback() {
@@ -86,11 +100,13 @@ class AgUpnpRendererCard extends LitElement {
 
     // ── Data fetching ─────────────────────────────────────────────────────────
 
-    /** Load known renderers and the active renderer status. */
+    /** Load all audio outputs (MPD physical + UPnP renderers) and the active renderer status. */
     async _load() {
         this._loading = true;
         try {
-            this._known = await apiGet('/upnp-renderer/known') ?? [];
+            const outputs = await apiGet('/player/outputs') ?? [];
+            this._mpd_outputs = outputs.filter(o => o.type === 'mpd_output');
+            this._known       = outputs.filter(o => o.type === 'upnp_renderer');
             const activeUdn = this._activeUdn;
             if (activeUdn) {
                 try {
@@ -100,7 +116,8 @@ class AgUpnpRendererCard extends LitElement {
             }
         } catch (e) {
             console.warn('[renderer] Load failed:', e.message);
-            this._known = [];
+            this._mpd_outputs = [];
+            this._known       = [];
         } finally {
             this._loading = false;
         }
@@ -122,13 +139,32 @@ class AgUpnpRendererCard extends LitElement {
     // ── Output selection ──────────────────────────────────────────────────────
 
     /**
-     * Switch to Local DAC: disconnect the currently active renderer.
-     * No-op if Local DAC is already active.
+     * Switch to a physical MPD audio output.
+     * Enables the output exclusively; the backend disconnects any active renderer.
+     * @param {{id:string, output_id:number, name:string}} output
      */
-    async _selectLocal() {
-        const udn = this._activeUdn;
-        if (!udn) return;
-        this._switching = 'local';
+    async _selectMpdOutput(output) {
+        this._switching = output.id;
+        try {
+            await apiPut(`/player/mpd-output/${output.output_id}`, {});
+            this._status = null;
+            this._volume = null;
+            await this._load();
+            this.dispatchEvent(new CustomEvent('renderer-disconnected', { bubbles: true }));
+        } catch (e) {
+            console.warn('[renderer] MPD output switch failed:', e.message);
+        } finally {
+            this._switching = null;
+        }
+    }
+
+    /**
+     * Disconnect the active renderer without switching to a specific MPD output.
+     * Fallback when no MPD output is available.
+     * @param {string} udn - UDN of the renderer to disconnect.
+     */
+    async _disconnectRenderer(udn) {
+        this._switching = 'disconnect';
         try {
             await apiDelete(`/upnp-renderer/${udn}/connection`);
             this._status = null;
@@ -190,6 +226,76 @@ class AgUpnpRendererCard extends LitElement {
         }
     }
 
+    // ── Swipe-to-delete ───────────────────────────────────────────────────────
+
+    /**
+     * Permanently remove a renderer from the known list via DELETE /upnp-renderer/{udn}.
+     * Optimistic: removes from local list immediately; re-fetches on error.
+     * @param {string} udn
+     */
+    async _removeRenderer(udn) {
+        this._known = this._known.filter(r => r.udn !== udn);
+        try {
+            await apiDelete(`/upnp-renderer/${udn}`);
+        } catch (e) {
+            console.warn('[renderer] Remove failed:', e.message);
+            await this._load();
+        }
+    }
+
+    /**
+     * Pointer down — starts tracking a swipe gesture on an inactive renderer row.
+     * @param {PointerEvent} e
+     * @param {string} udn
+     */
+    _onPointerDown(e, udn) {
+        if (e.button !== undefined && e.button !== 0) return;
+        this._swipeStart     = { x: e.clientX, udn };
+        this._swipingUdn     = udn;
+        this._swipeDx        = 0;
+        this._swipeWasActive = false;
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+
+    /**
+     * Pointer move — updates the live translation of the dragged card.
+     * @param {PointerEvent} e
+     * @param {string} udn
+     */
+    _onPointerMove(e, udn) {
+        if (!this._swipeStart || this._swipeStart.udn !== udn) return;
+        const dx = e.clientX - this._swipeStart.x;
+        if (!this._swipeWasActive && Math.abs(dx) > _SWIPE_SLOP_PX) {
+            this._swipeWasActive = true;
+        }
+        if (this._swipeWasActive) {
+            // Left-swipe only — clamp positive (rightward) to zero.
+            this._swipeDx = Math.min(0, dx);
+        }
+    }
+
+    /**
+     * Pointer up / cancel — commits the remove if past threshold, otherwise snaps back.
+     * @param {PointerEvent} e
+     * @param {string} udn
+     */
+    _onPointerEnd(e, udn) {
+        if (!this._swipeStart || this._swipeStart.udn !== udn) return;
+        const committed = this._swipeWasActive
+            && e.type !== 'pointercancel'
+            && this._swipeDx <= -_SWIPE_COMMIT_PX;
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+        this._swipeStart = null;
+        this._swipingUdn = null;
+        this._swipeDx    = 0;
+        // Delay clearing so the trailing click fired by some browsers after pointerup
+        // is still suppressed by _swipeWasActive.
+        setTimeout(() => { this._swipeWasActive = false; }, 0);
+        if (committed) {
+            this._removeRenderer(udn);
+        }
+    }
+
     // ── SSE ───────────────────────────────────────────────────────────────────
 
     /**
@@ -234,35 +340,38 @@ class AgUpnpRendererCard extends LitElement {
             return html`<div class="lib-empty" style="padding:12px 0">Loading…</div>`;
         }
         return html`
-            ${this._renderLocalRow()}
+            ${this._mpd_outputs.map(o => this._renderMpdRow(o))}
             ${this._known.map(r => this._renderRendererRow(r))}
             ${this._renderScanSection()}
         `;
     }
 
-    /** Local DAC row — always first. */
-    _renderLocalRow() {
-        const isActive    = this._activeUdn === null;
-        const isSwitching = this._switching === 'local';
+    /**
+     * Row for a physical MPD audio output (USB, TOSLINK, etc.).
+     * @param {{id:string, type:string, name:string, reachable:boolean, active:boolean, output_id:number}} output
+     */
+    _renderMpdRow(output) {
+        const { id, name, reachable, active, output_id } = output;
+        const isSwitching = this._switching === id;
 
         return html`
-            <div class="lib-hqp-card ${isActive ? 'connected' : ''}"
-                 style="${!isActive ? 'cursor:pointer' : ''}"
-                 @click=${!isActive ? this._selectLocal : undefined}>
+            <div class="lib-hqp-card ${active ? 'connected' : ''}"
+                 style="${!active ? 'cursor:pointer' : ''}"
+                 @click=${!active && !isSwitching ? () => this._selectMpdOutput(output) : undefined}>
                 <div class="lib-hqp-card-hd">
                     <div class="lib-hqp-ic lib-rdr-ic">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
                              stroke="currentColor" stroke-width="1.5">${iconOutput}</svg>
                     </div>
                     <div class="lib-hqp-col">
-                        <div class="lib-hqp-name">Local DAC</div>
-                        <div class="lib-hqp-desc">${isActive ? 'active output' : 'direct to DAC'}</div>
+                        <div class="lib-hqp-name">${name}</div>
+                        <div class="lib-hqp-desc">${active ? 'active output' : reachable ? 'available' : 'offline'}</div>
                     </div>
                     ${isSwitching
                         ? html`<span class="lib-hqp-desc">Switching…</span>`
                         : html`<ag-status-indicator
-                                .state=${isActive ? 'up' : 'down'}
-                                .label=${isActive ? 'Active' : 'Idle'}>
+                                .state=${active ? 'up' : reachable ? 'down' : 'pending'}
+                                .label=${active ? 'Active' : 'Idle'}>
                            </ag-status-indicator>`
                     }
                 </div>
@@ -272,6 +381,14 @@ class AgUpnpRendererCard extends LitElement {
 
     /**
      * Row for a known renderer.
+     *
+     * Inactive renderers are wrapped in a swipe-to-delete container that follows
+     * the same Pointer Events pattern as ag-radio-card: drag left past
+     * _SWIPE_COMMIT_PX to commit the deletion.
+     *
+     * Active renderers are rendered without the swipe wrapper — they show
+     * Disconnect + Volume controls instead.
+     *
      * @param {{udn:string, friendly_name:string, reachable:boolean, active:boolean}} renderer
      */
     _renderRendererRow(renderer) {
@@ -288,32 +405,40 @@ class AgUpnpRendererCard extends LitElement {
 
         const vol = active ? (this._volume ?? this._status?.volume ?? null) : null;
 
-        return html`
-            <div class="lib-hqp-card ${active ? 'connected' : ''}"
-                 style="${!active ? 'cursor:pointer' : ''}"
-                 @click=${!active && !isSwitching ? () => this._selectRenderer(renderer) : undefined}>
-                <div class="lib-hqp-card-hd">
-                    <div class="lib-hqp-ic lib-rdr-ic">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-                             stroke="currentColor" stroke-width="1.5">${iconCast}</svg>
-                    </div>
-                    <div class="lib-hqp-col">
-                        <div class="lib-hqp-name">${friendly_name || udn}</div>
-                        <div class="lib-hqp-desc">${desc}</div>
-                    </div>
-                    ${isSwitching
-                        ? html`<span class="lib-hqp-desc">Switching…</span>`
-                        : html`<ag-status-indicator
-                                .state=${statusState}
-                                .label=${statusLabel}>
-                           </ag-status-indicator>`
-                    }
+        // Shared header grid used by both active and inactive rows.
+        const header = html`
+            <div class="lib-hqp-card-hd">
+                <div class="lib-hqp-ic lib-rdr-ic">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                         stroke="currentColor" stroke-width="1.5">${iconCast}</svg>
                 </div>
+                <div class="lib-hqp-col">
+                    <div class="lib-hqp-name">${friendly_name || udn}</div>
+                    <div class="lib-hqp-desc">${desc}</div>
+                </div>
+                ${isSwitching
+                    ? html`<span class="lib-hqp-desc">Switching…</span>`
+                    : html`<ag-status-indicator
+                            .state=${statusState}
+                            .label=${statusLabel}>
+                       </ag-status-indicator>`
+                }
+            </div>
+        `;
 
-                ${active ? html`
+        if (active) {
+            // Active renderer — no swipe, just the card with Disconnect + Volume.
+            return html`
+                <div class="lib-hqp-card connected">
+                    ${header}
                     <div class="lib-hqp-actions">
                         <button class="action-btn compact secondary"
-                                @click=${e => { e.stopPropagation(); this._selectLocal(); }}>
+                                @click=${e => {
+                                    e.stopPropagation();
+                                    const first = this._mpd_outputs[0];
+                                    if (first) this._selectMpdOutput(first);
+                                    else this._disconnectRenderer(udn);
+                                }}>
                             Disconnect
                         </button>
                         ${reachable && vol !== null ? html`
@@ -324,7 +449,29 @@ class AgUpnpRendererCard extends LitElement {
                             </ag-volume-popover>
                         ` : nothing}
                     </div>
-                ` : nothing}
+                </div>
+            `;
+        }
+
+        // Inactive renderer — swipeable.
+        const isDragging = this._swipingUdn === udn;
+        const dx         = isDragging ? this._swipeDx : 0;
+        const cardStyle  = `transform: translateX(${dx}px); transition: ${isDragging ? 'none' : 'transform 180ms ease-out'};`;
+
+        return html`
+            <div class="lib-rdr-swipe-wrap">
+                <div class="lib-rdr-delete-zone" aria-hidden="true">Remove</div>
+                <div class="lib-hqp-card"
+                     style="${!isSwitching ? 'cursor:pointer;' : ''}${cardStyle}"
+                     @pointerdown=${(e) => this._onPointerDown(e, udn)}
+                     @pointermove=${(e) => this._onPointerMove(e, udn)}
+                     @pointerup=${(e) => this._onPointerEnd(e, udn)}
+                     @pointercancel=${(e) => this._onPointerEnd(e, udn)}
+                     @click=${!isSwitching ? () => {
+                         if (!this._swipeWasActive) this._selectRenderer(renderer);
+                     } : undefined}>
+                    ${header}
+                </div>
             </div>
         `;
     }

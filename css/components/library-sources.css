@@ -675,3 +675,44 @@
 }
 
 /* Bypass toggle row reuses .lib-hqp-output-toggle / .lib-hqp-output-label from HQPlayer. */
+
+/* ── UPnP Renderer — swipe-to-delete ─────────────────────────────────────── */
+
+/* Wrapper clips the sliding card and layers the delete zone behind it. */
+.lib-rdr-swipe-wrap {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+/* Card inside the wrapper: explicit background so it covers the delete zone
+   at rest; margin goes to the wrapper so no gap between wrapper and card. */
+.lib-rdr-swipe-wrap .lib-hqp-card {
+    margin-bottom: 0;
+    background: var(--bg-primary);
+    position: relative;
+
+    /* Allow vertical scroll to pass through while we capture horizontal pan. */
+    touch-action: pan-y;
+    user-select: none;
+    user-select: none;
+}
+
+/* Red delete backdrop fills the entire wrapper — revealed as the card slides left.
+   pointer-events: none so the commit is triggered by the swipe threshold, not a tap. */
+.lib-rdr-delete-zone {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: var(--spacing-md);
+    background: var(--color-error);
+    color: #ffffff;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+}

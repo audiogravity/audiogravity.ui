@@ -75,6 +75,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices |
 | GET | `/upnp-renderer/known` | All known renderers with live `active`, `reachable` fields |
+| DELETE | `/upnp-renderer/{udn}` | Permanently remove renderer from known list (disconnects if active) |
 | GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
 | PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output) |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
@@ -99,7 +100,8 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | POST | `/player/sleep-timer` | Arm sleep timer (pause after N minutes) |
 | DELETE | `/player/sleep-timer` | Cancel active sleep timer |
 | GET | `/player/origins` | Canonical `origin → label` map (e.g. `"qobuz" → "Qobuz"`). Clients merge this into their static fallback at startup. |
-| GET | `/player/outputs` | All selectable audio outputs: Local DAC + known UPnP renderers. Each entry: `{id, type, name, reachable, active}`. `type` is `"mpd"` or `"upnp_renderer"`. |
+| GET | `/player/outputs` | All selectable audio outputs: one entry per MPD audio_output block (`type: "mpd_output"`, `output_id: int`) + known UPnP renderers (`type: "upnp_renderer"`). Each entry: `{id, type, name, reachable, active[, output_id]}`. Falls back to a single "Local DAC" entry when MPD is unreachable. |
+| PUT | `/player/mpd-output/{output_id}` | Enable one MPD audio output exclusively (all others disabled) and disconnect any active UPnP renderer. `output_id` is the MPD `outputid` integer. Returns 503 when MPD is unreachable. |
 
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
