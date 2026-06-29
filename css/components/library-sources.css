@@ -202,6 +202,7 @@
     justify-content: flex-end;
     padding-right: var(--spacing-md);
     background: var(--color-error);
+    /* stylelint-disable-next-line color-no-invalid-hex -- no --on-error token; white on error-red is intentional regardless of theme */
     color: #ffffff;
     font-family: var(--font-family);
     font-size: var(--font-size-xxs);
@@ -682,7 +683,7 @@
 .lib-rdr-swipe-wrap {
     position: relative;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: var(--spacing-xs);
 }
 
 /* Card inside the wrapper: explicit background so it covers the delete zone
@@ -694,7 +695,6 @@
 
     /* Allow vertical scroll to pass through while we capture horizontal pan. */
     touch-action: pan-y;
-    user-select: none;
     user-select: none;
 }
 
@@ -708,6 +708,7 @@
     justify-content: flex-end;
     padding-right: var(--spacing-md);
     background: var(--color-error);
+    /* stylelint-disable-next-line color-no-invalid-hex -- no --on-error token; white on error-red is intentional regardless of theme */
     color: #ffffff;
     font-family: var(--font-family);
     font-size: var(--font-size-xxs);

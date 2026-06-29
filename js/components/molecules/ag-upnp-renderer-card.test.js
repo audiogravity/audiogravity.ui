@@ -129,28 +129,30 @@ describe('AgUpnpRendererCard._onStatusEvent()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// _renderLocalRow
+// _renderMpdRow
 // ---------------------------------------------------------------------------
 
-describe('AgUpnpRendererCard._renderLocalRow()', () => {
-    it('shows Active indicator when Local DAC is the output', () => {
-        const el = makeEl({ _known: [] }); // _activeUdn = null → local is active
-        expect(str(el._renderLocalRow())).toContain('Active');
-    });
+describe('AgUpnpRendererCard._renderMpdRow()', () => {
+    const baseOutput = { id: 'mpd:0', type: 'mpd_output', name: 'Local DAC', reachable: true, active: false, output_id: 0 };
 
-    it('shows Idle indicator when a renderer is active', () => {
-        const el = makeEl({ _known: [{ udn: 'uuid:r1', active: true, reachable: true }] });
-        expect(str(el._renderLocalRow())).toContain('Idle');
-    });
-
-    it('shows Switching label while switching to local', () => {
-        const el = makeEl({ _switching: 'local' });
-        expect(str(el._renderLocalRow())).toContain('Switching');
-    });
-
-    it('shows Local DAC label', () => {
+    it('shows Active indicator when MPD output is the active output', () => {
         const el = makeEl();
-        expect(str(el._renderLocalRow())).toContain('Local DAC');
+        expect(str(el._renderMpdRow({ ...baseOutput, active: true }))).toContain('Active');
+    });
+
+    it('shows Idle indicator when MPD output is not active', () => {
+        const el = makeEl();
+        expect(str(el._renderMpdRow({ ...baseOutput, active: false }))).toContain('Idle');
+    });
+
+    it('shows Switching label while switching to this output', () => {
+        const el = makeEl({ _switching: 'mpd:0' });
+        expect(str(el._renderMpdRow(baseOutput))).toContain('Switching');
+    });
+
+    it('shows the output name', () => {
+        const el = makeEl();
+        expect(str(el._renderMpdRow(baseOutput))).toContain('Local DAC');
     });
 });
 

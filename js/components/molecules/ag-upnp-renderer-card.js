@@ -311,6 +311,12 @@ class AgUpnpRendererCard extends LitElement {
         // Sync reachable/active in the known list without a full reload.
         // When a renderer becomes connected, clear active on all others to avoid stale "double active".
         if (data.renderer_udn !== undefined) {
+            // If the renderer is not yet in _known (SSE arrived before _load() completed),
+            // trigger a reload instead of silently dropping the active/reachable update.
+            if (!this._known.some(r => r.udn === data.renderer_udn)) {
+                this._load();
+                return;
+            }
             const isNowActive = !!data.connected;
             this._known = this._known.map(r => ({
                 ...r,
