@@ -10,7 +10,7 @@
  *   - MPD output  → PUT  /player/mpd-output/{output_id} (enables exclusively, disconnects renderer)
  *   - Renderer    → PUT  /upnp-renderer/{udn}/connection
  *
- * "Scan network" discovers new renderers via GET /upnp-renderer/discover.
+ * "Scan renderers" discovers new UPnP renderers via GET /upnp-renderer/discover.
  * Volume control is shown for the active renderer when reachable.
  *
  * @element ag-upnp-renderer-card
@@ -497,7 +497,7 @@ class AgUpnpRendererCard extends LitElement {
                         ? 'Scanning…'
                         : html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none"
                                     stroke="currentColor" stroke-width="2">${iconWifi}</svg>
-                               Scan network`
+                               Scan renderers`
                     }
                 </button>
 

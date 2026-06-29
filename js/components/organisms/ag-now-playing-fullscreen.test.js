@@ -380,3 +380,45 @@ describe('AgNowPlayingFullscreen — _coverErrorToken reset on track/source chan
         expect(applyCoverReset('Track A', 'src_mpd', null, 'src_mpd', 'tok-abc')).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// Track number badge — tnLabel computation
+// Mirrors the exact expression in AgNowPlayingFullscreen._renderCoverArt.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {object|null} s - NowPlayingItem state (or null when nothing is playing).
+ * @returns {string|null} formatted badge label or null.
+ */
+function computeTnLabel(s) {
+    const tn = s?.track_number;
+    return tn
+        ? `A${Math.ceil(parseInt(tn) / 10)} · TRACK ${tn.toString().padStart(2, '0')}`
+        : null;
+}
+
+describe('AgNowPlayingFullscreen — track number badge (tnLabel)', () => {
+    it('formats track 5 as A1 · TRACK 05', () => {
+        expect(computeTnLabel({ track_number: '5' })).toBe('A1 · TRACK 05');
+    });
+
+    it('formats track 10 as A1 · TRACK 10 (ceiling boundary: last track of side A)', () => {
+        expect(computeTnLabel({ track_number: '10' })).toBe('A1 · TRACK 10');
+    });
+
+    it('formats track 11 as A2 · TRACK 11 (next vinyl side)', () => {
+        expect(computeTnLabel({ track_number: '11' })).toBe('A2 · TRACK 11');
+    });
+
+    it('returns null when track_number is null (backend did not populate it)', () => {
+        expect(computeTnLabel({ track_number: null })).toBeNull();
+    });
+
+    it('returns null when track_number is absent from the state object', () => {
+        expect(computeTnLabel({})).toBeNull();
+    });
+
+    it('returns null when state is null (nothing playing)', () => {
+        expect(computeTnLabel(null)).toBeNull();
+    });
+});
