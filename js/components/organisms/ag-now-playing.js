@@ -196,7 +196,7 @@ export class AgNowPlaying extends LitElement {
 
     /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
     get _rendererActive() {
-        return !!(this._rendererStatus?.connected && !this._rendererStatus?.bypassed);
+        return !!(this._rendererStatus?.connected);
     }
 
     /**

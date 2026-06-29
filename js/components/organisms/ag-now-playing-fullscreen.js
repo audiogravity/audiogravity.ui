@@ -115,7 +115,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             // Keep "Up next" in sync with the renderer queue whenever the status
             // changes — avoids the timing race between the renderer_status SSE and
             // the player_state SSE that triggers _fetchNextTrack.
-            if (data?.connected && !data.bypassed && data.queue_total != null) {
+            if (data?.connected && data.queue_total != null) {
                 this._nextTrack = data.queue_next_title != null
                     ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null, album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
                     : null;
@@ -470,7 +470,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         // backend exposes in renderer_status (updated live via SSE) instead of the
         // MPD queue — which is always empty when tracks are sent via AVTransport.
         const rs = this._rendererStatus;
-        if (rs?.connected && !rs.bypassed && rs.queue_next_title != null) {
+        if (rs?.connected && rs.queue_next_title != null) {
             this._nextTrack = {
                 title:       rs.queue_next_title,
                 artist:      rs.queue_next_artist      ?? null,
@@ -479,7 +479,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             };
             return;
         }
-        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+        if (rs?.connected && rs.queue_total != null) {
             // Renderer queue active but no next track (end of queue).
             this._nextTrack = null;
             return;
@@ -674,7 +674,7 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
     get _rendererActive() {
-        return !!(this._rendererStatus?.connected && !this._rendererStatus?.bypassed);
+        return !!(this._rendererStatus?.connected);
     }
 
     /**
@@ -684,7 +684,7 @@ export class AgNowPlayingFullscreen extends LitElement {
      */
     get _rendererCanNext() {
         const rs = this._rendererStatus;
-        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+        if (rs?.connected && rs.queue_total != null) {
             return rs.queue_next_title != null;
         }
         return null;
@@ -697,7 +697,7 @@ export class AgNowPlayingFullscreen extends LitElement {
      */
     get _rendererCanPrev() {
         const rs = this._rendererStatus;
-        if (rs?.connected && !rs.bypassed && rs.queue_total != null) {
+        if (rs?.connected && rs.queue_total != null) {
             return (rs.queue_position ?? 0) > 0;
         }
         return null;
