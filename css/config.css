@@ -632,6 +632,14 @@
     padding: 0 4px;
 }
 
+/* Inner card grid: let tiles shrink instead of forcing the grid wider than the
+   page column. The page-level grid-item fix lives in layout.css
+   (.content-grid > *), which covers the .config-zone wrapper. */
+.config-selector-grid > *,
+.config-selector-grid-container > * {
+    min-width: 0;
+}
+
 /* =====================
    RESPONSIVE
    ===================== */

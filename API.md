@@ -177,6 +177,21 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/sysinfo/logs` | Journalctl logs for a unit |
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
 
+### Audio Stack — `/audio-stack/*`
+Guided minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
+Consumed by the "Initialize audio stack" panel + per-tile "regenerate" in AUDIO
+SERVICES CONFIGURATION. **Admin-only** — both endpoints require an administrator
+(`require_admin`) on top of a full license.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/audio-stack/status` | Detected outputs, library sources, pinned output, per-service config state |
+| POST | `/audio-stack/provision` | Generate minimal configs for the chosen output + library (only-if-absent, or `regenerate`) |
+
+`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, configured }] }`
+
+`POST /audio-stack/provision` body: `{ card_name, usb_id?, device_id?, (music_directory | library_usb_uuid + library_fstype), regenerate?, services?, password? }` → `{ device, selected_output, music_directory, results: [{ service_id, status: "generated"|"skipped_exists"|"regenerated"|"error", config_path?, backup_path?, restarted?, error? }] }`. The **initial provision** (`regenerate` omitted/false) re-authenticates the admin: `password` is required and verified — a wrong/missing password returns **401**. Per-service regeneration (`regenerate: true`) only requires the admin role, no password. Returns **400** if `mpd` is targeted without a library (unless `regenerate` reuses mpd's existing one). The output is wired into mpd + shairport; the library is used by mpd only.
+
 ### Other
 | Method | Path | Description |
 |---|---|---|

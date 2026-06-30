@@ -24,7 +24,7 @@ import {
     showConfirm,
     handleError,
 } from '../../common.js';
-import { isGuest } from '../../auth.js';
+import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
 import { appContext } from '../../core/app-context.js';
@@ -39,6 +39,8 @@ export class AgConfigPage extends LitElement {
         configFormat: { type: String },
         backups: { type: Array },
         loading: { type: Boolean },
+        _provisionableIds: { state: true },
+        _selectedOutput: { state: true },
     };
 
     constructor() {
@@ -50,6 +52,8 @@ export class AgConfigPage extends LitElement {
         this.rawContent = '';
         this.configFormat = 'conf';
         this.backups = [];
+        this._provisionableIds = [];
+        this._selectedOutput = null;
         this._boundHandleServiceMetrics = this._handleServiceMetricsSSE.bind(this);
 
         this.servicesFetch = new FetchController(this, {
@@ -133,6 +137,46 @@ export class AgConfigPage extends LitElement {
 
     _loadServices() {
         return this.servicesFetch.fetch();
+    }
+
+    /** Receives the /audio-stack/status payload from the provisioning panel. */
+    _handleStatusLoaded(e) {
+        const status = e.detail || {};
+        this._provisionableIds = (status.services || []).map(s => s.service_id);
+        this._selectedOutput = status.selected_output || null;
+    }
+
+    /** A provision generated/changed configs — refresh the service grid. */
+    async _handleProvisioned() {
+        await this._loadServices();
+    }
+
+    /** Per-tile "regenerate to minimal" — reuses the pinned output (and mpd's existing library). */
+    async _handleRegenerate(e) {
+        const serviceId = e.detail?.serviceId;
+        if (!serviceId) return;
+        if (!this._selectedOutput) {
+            showToast('warning', 'No output selected', 'Initialize the audio stack above first.');
+            return;
+        }
+        const ok = await showConfirm(
+            `Regenerate ${serviceId} configuration?`,
+            'This resets the service to a minimal working config. The current config is backed up first.'
+        );
+        if (!ok) return;
+        try {
+            await apiPost('/audio-stack/provision', {
+                card_name: this._selectedOutput.card_name,
+                usb_id: this._selectedOutput.usb_id ?? null,
+                device_id: this._selectedOutput.device_id ?? 0,
+                services: [serviceId],
+                regenerate: true,
+            });
+            showToast('success', 'Regenerated', `${serviceId} reset to a minimal config.`);
+            await this._loadServices();
+        } catch (err) {
+            handleError(err, `Failed to regenerate ${serviceId}`);
+        }
     }
 
     async _handleServiceSelect(e) {
@@ -258,6 +302,7 @@ export class AgConfigPage extends LitElement {
         const content = window.UIComponents.InfoModal.createContent(
             'The Configuration tab allows you to safely edit the actual configuration files of your audio services.',
             [
+                { title: 'Initialize audio stack', text: 'At the top of the page (administrators only) <strong>Initialize audio stack</strong> auto-detects your DAC and music library and generates a minimal working configuration for MPD, AirPlay (shairport-sync) and UPnP (upmpdcli), all wired to the chosen output — ideal for first-time setup. It asks for your admin password before applying. Each service tile also offers a <strong>regenerate</strong> action that resets that single service to a minimal config (the current file is backed up first).' },
                 { title: 'Service Status', text: 'Each tile shows a <strong>RUNNING</strong> (green) or <strong>STOPPED</strong> (grey) badge reflecting the current systemd state of the service — so you know what is active before editing.' },
                 { title: 'Form Mode', text: 'Edit common settings through a user-friendly interface with field descriptions and validation. Ideal for day-to-day configuration.' },
                 { title: 'Expert Mode (Raw)', text: 'Directly edit the raw configuration file for advanced parameters not exposed in Form Mode. Includes syntax validation before save.' },
@@ -291,9 +336,15 @@ export class AgConfigPage extends LitElement {
                     @restore=${this._handleRestore}>
                 </ag-config-editor>
             ` : html`
-                <ag-card-grid 
+                ${isAdmin() ? html`
+                    <ag-audio-stack-provisioning
+                        @status-loaded=${this._handleStatusLoaded}
+                        @provisioned=${this._handleProvisioned}>
+                    </ag-audio-stack-provisioning>
+                ` : ''}
+                <ag-card-grid
                     class="config-selector-grid"
-                    grid-class="config-selector-grid-container" 
+                    grid-class="config-selector-grid-container"
                     skeleton-class="config-tile"
                     empty-message="No configurable services available"
                     .items=${this.services}
@@ -303,10 +354,12 @@ export class AgConfigPage extends LitElement {
                         <ag-config-card
                             style="display: block; height: 100%;"
                             .service=${service}
-                            .delayIndex=${index}>
+                            .delayIndex=${index}
+                            ?provisionable=${this._provisionableIds.includes(service.id)}>
                         </ag-config-card>
                     `}
-                    @edit-config=${this._handleServiceSelect}>
+                    @edit-config=${this._handleServiceSelect}
+                    @regenerate-config=${this._handleRegenerate}>
                 </ag-card-grid>
             `}
         `;
