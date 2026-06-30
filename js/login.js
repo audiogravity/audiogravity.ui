@@ -3,7 +3,7 @@
  * @description Login page management
  */
 
-import { API_BASE_URL, API_KEY, API_KEY_HEADER, FRONTEND_VERSION } from './core/config.js';
+import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config.js';
 import './components/atoms/ag-license-badge.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
@@ -258,7 +258,7 @@ function watchConnectivity() {
 }
 
 function initHeaderMeta(metaEl) {
-    metaEl.textContent = `v${FRONTEND_VERSION} · ${window.location.hostname.toUpperCase()}`;
+    metaEl.textContent = `v${UI_VERSION} · ${window.location.hostname.toUpperCase()}`;
 }
 
 function showPasskeyPanel() {

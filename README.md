@@ -62,7 +62,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 ./dev.sh help          # full command list
 ```
 
-> **Note** — The default core port is 8001. Override if needed: `BACKEND_PORT=8002 ./dev.sh start`
+> **Note** — The default core port is 8001. Override if needed: `CORE_PORT=8002 ./dev.sh start`
 
 ---
 

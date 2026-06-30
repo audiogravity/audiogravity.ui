@@ -29,6 +29,7 @@ import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
+import { originBadge } from '../library-constants.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -720,12 +721,13 @@ export class AgNowPlayingFullscreen extends LitElement {
         const overlay = coverUrl(secondaryToken);
         const swapLabel = this._coverSwapped ? 'Show track cover' : 'Show station logo';
 
-        const dur     = s?.duration ?? 0;
-        const tn      = s?.track_number;
-        const hiLabel = this._hiResLabel(s?.format);
-        const tnLabel = tn
+        const dur         = s?.duration ?? 0;
+        const tn          = s?.track_number;
+        const hiLabel     = this._hiResLabel(s?.format);
+        const tnLabel     = tn
             ? `A${Math.ceil(parseInt(tn) / 10)} · TRACK ${tn.toString().padStart(2, '0')}`
             : null;
+        const sourceBadge = s?.origin ? originBadge(s.origin, null) : null;
 
         // A hidden probe <img> detects 404s on the CSS background-image URL (CSS
         // background-image errors are silent — there is no onerror event on the div).
@@ -751,9 +753,15 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 @click=${this._toggleCoverSwap}
                                 style="background-image:url('${overlay}')"></button>
                     ` : nothing}
-                    ${tnLabel  ? html`<div class="npfs-cover-corner">${tnLabel}</div>` : nothing}
-                    ${dur      ? html`<div class="npfs-cover-corner right">${fmtDuration(dur)}</div>` : nothing}
-                    ${hiLabel  ? html`<div class="npfs-cover-hires">${hiLabel}</div>` : nothing}
+                    ${tnLabel     ? html`<div class="npfs-cover-corner">${tnLabel}</div>` : nothing}
+                    ${dur         ? html`<div class="npfs-cover-corner right">${fmtDuration(dur)}</div>` : nothing}
+                    ${hiLabel     ? html`<div class="npfs-cover-hires">${hiLabel}</div>` : nothing}
+                    ${sourceBadge ? html`
+                        <div class="npfs-cover-source">
+                            <span class="npfs-cover-source-icon">${sourceBadge.icon}</span>
+                            ${sourceBadge.label}
+                        </div>
+                    ` : nothing}
                 </div>
             </div>
         `;
@@ -763,16 +771,8 @@ export class AgNowPlayingFullscreen extends LitElement {
         const hasSignal = s?.signal_path?.length || s?.output_label;
         return html`
             <div class="npfs-meta">
-                ${s?.origin || s?.source_name || hasSignal || this._rendererActive ? html`
+                ${hasSignal || this._rendererActive ? html`
                     <div class="npfs-source-row">
-                        ${s?.origin
-                            ? html`<ag-source-badge .origin=${s.origin} .name=${s.origin_name ?? ''}></ag-source-badge>`
-                            : s?.source_name ? html`
-                                <div class="npfs-source-badge">
-                                    <span class="npfs-source-dot"></span>
-                                    ${s.source_name.toUpperCase()}
-                                </div>
-                            ` : nothing}
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
                         ${!hasSignal && this._rendererActive ? html`
                             <span class="np-renderer-badge npfs-renderer-badge"

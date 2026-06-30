@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-const BACKEND_PORT = process.env.BACKEND_PORT || '8001';
+const CORE_PORT = process.env.CORE_PORT || '8001';
 // Bundle analysis is opt-in: `vite build --mode analyze`. Off by default so the
 // report is never produced during normal builds (and thus never deployed).
 const isAnalyze = process.argv.includes('analyze');
@@ -37,19 +37,19 @@ export default defineConfig({
         ? parseInt(process.env.VITE_HMR_CLIENT_PORT)
         : 3000
     },
-    // Proxy API requests to backend
+    // Proxy API requests to the core
     proxy: {
       '/api': {
-        target: `http://localhost:${BACKEND_PORT}`,
+        target: `http://localhost:${CORE_PORT}`,
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api/, '') // Remove /api prefix
       },
       '/sse': {
-        target: `http://localhost:${BACKEND_PORT}`,
+        target: `http://localhost:${CORE_PORT}`,
         changeOrigin: true
       },
       '/sysinfo/terminal/ws': {
-        target: `ws://localhost:${BACKEND_PORT}`,
+        target: `ws://localhost:${CORE_PORT}`,
         ws: true,
         changeOrigin: true
       }

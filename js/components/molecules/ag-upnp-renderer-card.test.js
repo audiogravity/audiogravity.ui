@@ -228,9 +228,9 @@ describe('AgUpnpRendererCard._renderRendererRow()', () => {
 // ---------------------------------------------------------------------------
 
 describe('AgUpnpRendererCard._renderScanSection()', () => {
-    it('shows Scan network button when not scanning', () => {
+    it('shows Scan renderers button when not scanning', () => {
         const el = makeEl({ _scanning: false });
-        expect(str(el._renderScanSection())).toContain('Scan network');
+        expect(str(el._renderScanSection())).toContain('Scan renderers');
     });
 
     it('shows Scanning… while scanning', () => {
