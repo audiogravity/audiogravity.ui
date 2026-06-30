@@ -43,7 +43,7 @@ the prompt.
 ### Custom backend port
 
 ```bash
-BACKEND_PORT=9000 npm run dev
+CORE_PORT=9000 npm run dev
 ```
 
 ### Build flags

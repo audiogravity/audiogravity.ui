@@ -18,8 +18,8 @@ describe('version propagation (single source: audiogravity.ops/VERSION)', () => 
         expect(VERSION).toMatch(/^\d+\.\d+\.\d+/);
     });
 
-    it('js/core/config.js FRONTEND_VERSION matches VERSION (UI display)', () => {
-        expect(read('js/core/config.js')).toContain(`FRONTEND_VERSION = '${VERSION}'`);
+    it('js/core/config.js UI_VERSION matches VERSION (UI display)', () => {
+        expect(read('js/core/config.js')).toContain(`UI_VERSION = '${VERSION}'`);
     });
 
     it('sw.js CACHE_NAME matches VERSION (PWA cache busting)', () => {

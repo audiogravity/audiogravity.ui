@@ -23,7 +23,7 @@ js/
 ├── core/
 │   ├── app-context.js          # @lit/context app state definition
 │   ├── app-context-provider.js # Context provider component
-│   ├── config.js               # FRONTEND_VERSION + runtime config (AG_CONFIG)
+│   ├── config.js               # UI_VERSION + runtime config (AG_CONFIG)
 │   ├── event-bus.js            # EventEmitter pub/sub (SSE data relay)
 │   └── FetchController.js      # Lit Reactive Controller for API fetches
 ├── components/

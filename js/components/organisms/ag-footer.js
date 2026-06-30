@@ -1,5 +1,5 @@
 import { LitElement, html } from 'lit';
-import { EventEmitter, FRONTEND_VERSION, API_BASE_URL, apiGet, AppState } from '../../common.js';
+import { EventEmitter, UI_VERSION, API_BASE_URL, apiGet, AppState } from '../../common.js';
 import { iconApiTree } from '../../ag-icons.js';
 
 /**

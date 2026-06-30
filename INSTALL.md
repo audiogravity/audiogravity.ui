@@ -31,12 +31,12 @@ Browser ──► Vite dev server (:3000)
 
 **Start:**
 ```bash
-./dev.sh start                  # sets BACKEND_PORT / HTTPS, tails logs
+./dev.sh start                  # sets CORE_PORT / HTTPS, tails logs
 # or directly:
 npm run dev
 ```
 Serves on **:3000**, bound to `0.0.0.0` (reachable on the LAN). `/api` and `/sse`
-are proxied to the core (`BACKEND_PORT`, default 8000) — see `vite.config.js`.
+are proxied to the core (`CORE_PORT`, default 8000) — see `vite.config.js`.
 
 > **AG_CONFIG in dev:** `window.AG_CONFIG` comes from `public/ag-config.js` (a dev
 > key). In production it is injected by the package installer. Never commit a

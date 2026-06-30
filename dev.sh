@@ -1,14 +1,14 @@
 #!/bin/bash
 # Audiogravity UI — Dev Environment Manager
-# Manages: Vite frontend (port 3000)
-# Requires: audiogravity.core backend running on port 8000
+# Manages: Vite UI (port 3000)
+# Requires: audiogravity.core running on port 8000
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VITE_PID_FILE="$SCRIPT_DIR/vite.pid"
 VITE_LOG_FILE="$SCRIPT_DIR/vite.log"
-BACKEND_PORT="${BACKEND_PORT:-8001}"
+CORE_PORT="${CORE_PORT:-8001}"
 VITE_HTTPS=false
 
 DEV_HOST="${AG_DEV_HOST:-$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+' || echo localhost)}"
@@ -38,10 +38,10 @@ _vite_start() {
         warn "node_modules not found — running npm install…"
         ( cd "$SCRIPT_DIR" && { npm ci || npm install; } )
     fi
-    info "Starting Vite → ${VITE_URL} (proxy → :${BACKEND_PORT})"
+    info "Starting Vite → ${VITE_URL} (proxy → :${CORE_PORT})"
     cd "$SCRIPT_DIR"
     # setsid creates a new process group — allows killing the full tree (npm + node/vite) with kill -- -PGID
-    setsid bash -c "BACKEND_PORT=$BACKEND_PORT VITE_HTTPS=$VITE_HTTPS exec npm run dev" > "$VITE_LOG_FILE" 2>&1 &
+    setsid bash -c "CORE_PORT=$CORE_PORT VITE_HTTPS=$VITE_HTTPS exec npm run dev" > "$VITE_LOG_FILE" 2>&1 &
     echo $! > "$VITE_PID_FILE"
     ok "Vite started (PID: $(cat $VITE_PID_FILE))"
 }
@@ -63,8 +63,8 @@ _vite_stop() {
 }
 
 _vite_status() {
-    if _vite_running; then ok "Frontend   PID=$(_vite_pid)  ${VITE_URL}"
-    else fail "Frontend   not running"; fi
+    if _vite_running; then ok "UI   PID=$(_vite_pid)  ${VITE_URL}"
+    else fail "UI   not running"; fi
 }
 
 # ── Commands ──────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ _vite_status() {
 cmd_start() {
     echo ""
     case "${2:-all}" in
-        frontend|vite|all|*) echo -e "${BLUE}Starting frontend…${NC}"; echo ""; _vite_start ;;
+        ui|vite|all|*) echo -e "${BLUE}Starting UI…${NC}"; echo ""; _vite_start ;;
     esac
     echo ""
 }
@@ -80,7 +80,7 @@ cmd_start() {
 cmd_stop() {
     echo ""
     case "${2:-all}" in
-        frontend|vite|all|*) echo -e "${BLUE}Stopping frontend…${NC}"; echo ""; _vite_stop ;;
+        ui|vite|all|*) echo -e "${BLUE}Stopping UI…${NC}"; echo ""; _vite_stop ;;
     esac
     echo ""
 }
@@ -96,8 +96,8 @@ cmd_status() {
 }
 
 cmd_logs() {
-    case "${2:-frontend}" in
-        frontend|vite|all|*) tail -f "$VITE_LOG_FILE" ;;
+    case "${2:-ui}" in
+        ui|vite|all|*) tail -f "$VITE_LOG_FILE" ;;
     esac
 }
 
@@ -110,13 +110,13 @@ cmd_test() {
     set -- "${rest_args[@]}"
 
     _vitest_report_args() {
-        [ "$REPORT" = true ] && echo "--reporter=default --reporter=junit --outputFile=$REPORT_DIR/ag-test-frontend.xml" || true
+        [ "$REPORT" = true ] && echo "--reporter=default --reporter=junit --outputFile=$REPORT_DIR/ag-test-ui.xml" || true
     }
 
-    target="${1:-frontend}"
+    target="${1:-ui}"
     case "$target" in
-        frontend|front|all|*)
-            [ "${1:-}" = "frontend" ] || [ "${1:-}" = "front" ] || [ "${1:-}" = "all" ] && shift || true
+        ui|front|all|*)
+            [ "${1:-}" = "ui" ] || [ "${1:-}" = "front" ] || [ "${1:-}" = "all" ] && shift || true
             cd "$SCRIPT_DIR" && npx vitest run --project unit "$@" $(_vitest_report_args)
             ;;
     esac
@@ -133,27 +133,27 @@ cmd_help() {
     echo ""
     echo "Commands:"
     echo "  start                  Start Vite dev server"
-    echo "  start frontend         Start Vite only"
+    echo "  start ui         Start Vite only"
     echo "  stop                   Stop Vite dev server"
-    echo "  stop frontend          Stop Vite only"
+    echo "  stop ui          Stop Vite only"
     echo "  restart                Restart Vite dev server"
-    echo "  restart frontend       Restart Vite only"
+    echo "  restart ui       Restart Vite only"
     echo "  status                 Show running state"
     echo "  logs                   Tail Vite log"
-    echo "  logs frontend          Tail Vite log"
-    echo "  test                   Run frontend unit tests"
-    echo "  test frontend          Run frontend unit tests only"
+    echo "  logs ui          Tail Vite log"
+    echo "  test                   Run UI unit tests"
+    echo "  test ui          Run UI unit tests only"
     echo "  test --report          Run tests and generate JUnit XML"
     echo "  storybook              Launch Storybook on :6006"
     echo "  help, -h, --help       Show this help"
     echo ""
     echo "Services:"
-    echo "  Frontend   ${VITE_URL}    Vite dev server (HMR, use --https for TLS)"
+    echo "  UI   ${VITE_URL}    Vite dev server (HMR, use --https for TLS)"
     echo ""
     echo "Notes:"
-    echo "  • Requires audiogravity.core backend running on port ${BACKEND_PORT}"
-    echo "  • Override backend port: BACKEND_PORT=8001 ./dev.sh start"
-    echo "  • Frontend updates instantly in the browser via HMR"
+    echo "  • Requires audiogravity.core running on port ${CORE_PORT}"
+    echo "  • Override core port: CORE_PORT=8001 ./dev.sh start"
+    echo "  • UI updates instantly in the browser via HMR"
     echo ""
 }
 
