@@ -72,14 +72,14 @@ export default defineConfig({
         //   icons       — all SVG paths; updated only when new icons are added
         //   atoms       — primitive UI elements; stable between feature releases
         //   nowplaying  — mini + fullscreen player; changes with player features
-        //   streaming   — service auth cards (HQP, Qobuz, Tidal, UPnP renderer)
+        //   streaming   — service auth cards (HQP, Qobuz, Tidal, HRA, UPnP renderer)
         //   library     — library store, api, constants; isolated from UI atoms
         manualChunks(id) {
           if (id.includes('lit-html') || id.includes('lit-element') || id.includes('/lit/') || id.includes('@lit/')) return 'lit';
           if (id.includes('ag-icons.js')) return 'icons';
           if (id.includes('/atoms/')) return 'atoms';
           if (id.includes('ag-now-playing')) return 'nowplaying';
-          if (id.includes('ag-hqplayer') || id.includes('ag-qobuz-output') || id.includes('ag-tidal-output') || id.includes('ag-upnp-renderer-card')) return 'streaming';
+          if (id.includes('ag-hqplayer') || id.includes('ag-qobuz-output') || id.includes('ag-tidal-output') || id.includes('ag-highresaudio-output') || id.includes('ag-upnp-renderer-card')) return 'streaming';
           if (id.includes('library-store') || id.includes('library-api') || id.includes('library-constants')) return 'library-core';
         },
         chunkFileNames: 'assets/[name]-[hash].js',

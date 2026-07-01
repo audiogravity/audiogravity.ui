@@ -15,6 +15,7 @@ export const SOURCE_LABELS = {
     src_mpd: 'MPD',
     src_qobuz: 'Qobuz',
     src_tidal: 'Tidal',
+    src_highresaudio: 'Highresaudio',
 };
 
 export const SOURCE_ICONS = {
@@ -23,6 +24,7 @@ export const SOURCE_ICONS = {
     src_mpd: 'MPD',
     src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
+    src_highresaudio: html`<img src="./pics/highresaudio.webp" alt="HRA" width="24" height="24" style="object-fit:contain">`,
     default: '♪',
 };
 
@@ -40,6 +42,7 @@ const originSvg = (glyph, label) => html`
 export const ORIGIN_LABELS = {
     tidal: 'Tidal',
     qobuz: 'Qobuz',
+    highresaudio: 'HRA',
     roon: 'Roon',
     radio: 'Radio',
     upnp: 'UPnP',
@@ -53,6 +56,7 @@ export const ORIGIN_LABELS = {
 export const ORIGIN_ICONS = {
     tidal: SOURCE_ICONS.src_tidal,
     qobuz: SOURCE_ICONS.src_qobuz,
+    highresaudio: SOURCE_ICONS.src_highresaudio,
     roon: SOURCE_ICONS.src_roon,
     radio: originSvg(iconRadio, 'Radio'),
     upnp: originSvg(iconHardDrive, 'UPnP'),
@@ -102,6 +106,10 @@ export const SOURCE_META = {
     src_mpd:         { label: 'MPD',   group: 'mpd'   },
     src_qobuz:       { label: 'Qobuz', group: 'qobuz' },
     src_tidal:       { label: 'Tidal', group: 'tidal' },
+    // `short` is used in space-constrained spots (library toolbar chip, banner)
+    // where the full 'Highresaudio' name overflows; the full name stays in the
+    // Sources card / picker rows (which use SOURCE_LABELS).
+    src_highresaudio:{ label: 'Highresaudio', short: 'HRA', group: 'highresaudio' },
 };
 
 /**

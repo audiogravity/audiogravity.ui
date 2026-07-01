@@ -193,7 +193,7 @@ export class AgLibrarySources extends LitElement {
 
         const libSources = this._nodes.filter(n =>
             n.id === 'src_mpd' || n.id === 'src_roon' || n.id === 'src_mono-sgen'
-            || n.id === 'src_qobuz' || n.id === 'src_tidal'
+            || n.id === 'src_qobuz' || n.id === 'src_tidal' || n.id === 'src_highresaudio'
         );
         const active = libSources.filter(n => n.id === this.sourceId);
         const others = libSources.filter(n => n.id !== this.sourceId);
@@ -309,6 +309,7 @@ export class AgLibrarySources extends LitElement {
                     </div>
                     <ag-qobuz-output></ag-qobuz-output>
                     <ag-tidal-output></ag-tidal-output>
+                    <ag-highresaudio-output></ag-highresaudio-output>
                 </div>
 
                 <div class="lib-hqp-section">

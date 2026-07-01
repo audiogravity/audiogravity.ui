@@ -309,7 +309,7 @@ export class AgLibraryPage extends LitElement {
         if (info?.protocol === 'mpris') return;
         // Don't re-raise the banner if it's already showing for this source.
         if (this._pendingSource?.id === state.source_id) return;
-        const name = SOURCE_META[state.source_id]?.label ?? info?.name ?? state.source_id.replace('src_', '');
+        const name = SOURCE_META[state.source_id]?.short ?? SOURCE_META[state.source_id]?.label ?? info?.name ?? state.source_id.replace('src_', '');
         this._pendingSource = { id: state.source_id, name };
     }
 
@@ -447,7 +447,7 @@ export class AgLibraryPage extends LitElement {
 
         const srcLabel = this._isUpnp(_sourceId)
             ? (this._upnpName || 'UPnP')
-            : (SOURCE_META[_sourceId]?.label ?? _sourceId.replace('src_', ''));
+            : (SOURCE_META[_sourceId]?.short ?? SOURCE_META[_sourceId]?.label ?? _sourceId.replace('src_', ''));
 
         return html`
             <div class="lib-page">

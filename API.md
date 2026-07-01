@@ -66,6 +66,10 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
 | GET | `/library/upnp-servers` | Scan for new UPnP servers |
 | GET | `/library/roon-zones` | List Roon zones |
+| GET | `/library/highresaudio-discover` | HRA curated album grid ("High-Res Essentials") |
+| GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
+
+> Streaming sources are addressed via `source_id`: `/library/albums?source_id=src_highresaudio` (favourites / My Album), `/library/search?source_id=src_highresaudio&q=…`, and `POST /library/queue` with `source_id=src_highresaudio` (`item_type` `album` or `track`). Same pattern as `src_qobuz` / `src_tidal`.
 
 ### UPnP Renderer — `/upnp-renderer/*`
 
@@ -136,6 +140,14 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | POST | `/qobuz/connection` | Start OAuth2 flow |
 | GET | `/qobuz/callback` | OAuth2 callback |
 | DELETE | `/qobuz/connection` | Disconnect |
+
+### HIGHRESAUDIO (HRA) — `/highresaudio/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`) |
+| POST | `/highresaudio/connection` | Log in — body `{username, password}` (401 on bad credentials / no subscription) |
+| DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
+| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN |
 
 ### Services — `/services/*`
 | Method | Path | Description |
