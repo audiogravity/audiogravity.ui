@@ -85,7 +85,7 @@ describe('normalizeSearchSources', () => {
 
     it('maps a pipeline source to {id,label,group,location}', () => {
         expect(normalizeSearchSources([mpd])).toEqual([
-            { id: 'src_mpd', label: 'MPD', group: 'mpd', location: '' },
+            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '' },
         ]);
     });
 

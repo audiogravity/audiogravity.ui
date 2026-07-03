@@ -4,7 +4,7 @@
  */
 
 import { html } from 'lit';
-import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones } from '../ag-icons.js';
+import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones, iconLibrary } from '../ag-icons.js';
 import { apiGet } from '../api.js';
 
 export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
@@ -12,7 +12,7 @@ export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
 export const SOURCE_LABELS = {
     'src_mono-sgen': 'Roon',
     src_roon: 'Roon',
-    src_mpd: 'MPD',
+    src_mpd: 'Local Library',
     src_qobuz: 'Qobuz',
     src_tidal: 'Tidal',
     src_highresaudio: 'Highresaudio',
@@ -21,7 +21,7 @@ export const SOURCE_LABELS = {
 export const SOURCE_ICONS = {
     'src_mono-sgen': html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
     src_roon: html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
-    src_mpd: 'MPD',
+    src_mpd: html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Local Library">${iconLibrary}</svg>`,
     src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
     src_highresaudio: html`<img src="./pics/highresaudio.webp" alt="HRA" width="24" height="24" style="object-fit:contain">`,
@@ -103,7 +103,7 @@ export function originBadge(origin, name) {
 export const SOURCE_META = {
     'src_mono-sgen': { label: 'Roon',  group: 'roon'  },
     src_roon:        { label: 'Roon',  group: 'roon'  },
-    src_mpd:         { label: 'MPD',   group: 'mpd'   },
+    src_mpd:         { label: 'Local Library', group: 'mpd' },
     src_qobuz:       { label: 'Qobuz', group: 'qobuz' },
     src_tidal:       { label: 'Tidal', group: 'tidal' },
     // `short` is used in space-constrained spots (library toolbar chip, banner)
