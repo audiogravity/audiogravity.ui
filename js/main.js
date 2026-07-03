@@ -103,6 +103,7 @@ import './components/molecules/ag-hqplayer-output.js';
 import './components/molecules/ag-upnp-renderer-card.js';
 import './components/molecules/ag-qobuz-output.js';
 import './components/molecules/ag-tidal-output.js';
+import './components/molecules/ag-highresaudio-output.js';
 // Organisms
 import './components/organisms/ag-modal.js';
 import './components/organisms/ag-confirm-dialog.js';

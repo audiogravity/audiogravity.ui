@@ -21,6 +21,9 @@ Tidal.args = { origin: 'tidal', name: '' };
 export const Qobuz = Template.bind({});
 Qobuz.args = { origin: 'qobuz', name: '' };
 
+export const Highresaudio = Template.bind({});
+Highresaudio.args = { origin: 'highresaudio', name: '' };
+
 export const Radio = Template.bind({});
 Radio.args = { origin: 'radio', name: 'FIP' };
 

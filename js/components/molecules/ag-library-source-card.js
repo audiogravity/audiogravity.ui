@@ -83,10 +83,9 @@ export class AgLibrarySourceCard extends LitElement {
 
         const icon     = SOURCE_ICONS[node.id] ?? SOURCE_ICONS.default;
         const name     = SOURCE_LABELS[node.id] ?? node.name;
-        // Only show a description when it adds information beyond the name.
-        // For MPD the full name differs from the label; for others (Roon, Tidal,
-        // Qobuz) the desc would just repeat the name — omit it.
-        const desc     = node.id === 'src_mpd' ? 'Music Player Daemon' : null;
+        // Source cards carry no subtitle — the label ('Local Library', 'Qobuz'…)
+        // is self-explanatory and every source stays visually consistent.
+        const desc     = null;
         const isRoon   = this._isRoon();
         const expanded = isRoon && this._expanded;
         const stCls    = node.status === 'active' ? 'up' : 'down';

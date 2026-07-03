@@ -41,6 +41,17 @@ const TIDAL_PILLS  = [
     ['editorial',    'Editorial'],
     ['playlists',    'Playlists'],
 ];
+const HRA_PILLS    = [
+    ['favorites', 'Favorites'],
+    ['discover',  'Discover'],
+    ['editors',   "Editor's Picks"],
+    ['bestsellers', 'Bestsellers'],
+];
+// Maps HRA browse pills to their HRA shop-category title (album grid).
+const HRA_CATEGORIES = {
+    editors:     'Editors Choice',
+    bestsellers: 'Bestsellers',
+};
 
 export class AgLibraryBrowse extends LitElement {
     static properties = {
@@ -76,9 +87,15 @@ export class AgLibraryBrowse extends LitElement {
     /** @returns {boolean} Whether the active source is Tidal. */
     get _isTidal() { return this.sourceId === 'src_tidal'; }
 
+    /** @returns {boolean} Whether the active source is HIGHRESAUDIO. */
+    get _isHighresaudio() { return this.sourceId === 'src_highresaudio'; }
+
+    /** @returns {boolean} Whether the active source is a streaming service (pills-driven). */
+    get _isStreaming() { return this._isQobuz || this._isTidal || this._isHighresaudio; }
+
     updated(changed) {
         if (changed.has('sourceId') && this.sourceId) {
-            this._filter = (this._isQobuz || this._isTidal) ? 'favorites' : 'all';
+            this._filter = this._isStreaming ? 'favorites' : 'all';
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
@@ -125,6 +142,7 @@ export class AgLibraryBrowse extends LitElement {
     async _fetchPage(offset) {
         if (this._isQobuz) return this._fetchQobuzPage(offset);
         if (this._isTidal) return this._fetchTidalPage(offset);
+        if (this._isHighresaudio) return this._fetchHighresaudioPage(offset);
         const params = new URLSearchParams({
             source_id: this.sourceId,
             offset:    String(offset),
@@ -151,6 +169,24 @@ export class AgLibraryBrowse extends LitElement {
                 params.set('source_id', this.sourceId);
                 return apiGet(`/library/albums?${params}`);
         }
+    }
+
+    /** @private HRA-specific fetch: favorites (My Album), the curated Discover grid,
+     * or a shop category (Editor's Picks, Bestsellers). */
+    async _fetchHighresaudioPage(offset) {
+        const params = new URLSearchParams({
+            offset: String(offset),
+            limit:  String(PAGE_SIZE),
+        });
+        if (this._filter === 'discover') {
+            return apiGet(`/library/highresaudio-discover?${params}`);
+        }
+        if (HRA_CATEGORIES[this._filter]) {
+            params.set('category', HRA_CATEGORIES[this._filter]);
+            return apiGet(`/library/highresaudio-category?${params}`);
+        }
+        params.set('source_id', this.sourceId);
+        return apiGet(`/library/albums?${params}`);
     }
 
     /** @private Tidal-specific fetch: favorites albums or the user's playlists. */
@@ -239,7 +275,7 @@ export class AgLibraryBrowse extends LitElement {
     _setFilter(f) {
         if (f === this._filter) return;
         this._filter = f;
-        if (this._isQobuz || this._isTidal) this._load();
+        if (this._isStreaming) this._load();
     }
 
     // ------------------------------------------------------------------
@@ -284,7 +320,7 @@ export class AgLibraryBrowse extends LitElement {
 
     _filtered() {
         const { _albums, _filter } = this;
-        if (!this._isQobuz && !this._isTidal) {
+        if (!this._isStreaming) {
             if (_filter === 'recent') return _albums.slice(0, 50);
             if (_filter === 'az')     return [..._albums].sort((a, b) => a.title.localeCompare(b.title));
         }
@@ -293,7 +329,10 @@ export class AgLibraryBrowse extends LitElement {
 
     /** @private Section header label based on the active streaming pill. */
     get _sectionLabel() {
-        const pills = this._isQobuz ? QOBUZ_PILLS : this._isTidal ? TIDAL_PILLS : null;
+        const pills = this._isQobuz ? QOBUZ_PILLS
+            : this._isTidal ? TIDAL_PILLS
+            : this._isHighresaudio ? HRA_PILLS
+            : null;
         if (!pills) return 'Albums';
         const entry = pills.find(([f]) => f === this._filter);
         return entry ? entry[1] : 'Albums';
@@ -306,7 +345,10 @@ export class AgLibraryBrowse extends LitElement {
         if (_loading)       return html`<div class="lib-loading">Loading…</div>`;
         if (_error)         return html`<div class="lib-empty">Error: ${_error}</div>`;
 
-        const pills        = this._isQobuz ? QOBUZ_PILLS : this._isTidal ? TIDAL_PILLS : MPD_PILLS;
+        const pills        = this._isQobuz ? QOBUZ_PILLS
+            : this._isTidal ? TIDAL_PILLS
+            : this._isHighresaudio ? HRA_PILLS
+            : MPD_PILLS;
         const filtered     = this._filtered();
         const recent       = filtered.slice(0, 10);
         const more         = filtered.slice(10);
