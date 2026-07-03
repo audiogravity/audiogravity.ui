@@ -55,11 +55,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/topology/view` | Pipeline topology graph |
 | POST | `/audio_pipeline/topology/save` | Save node positions |
 | POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) |
+| GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/library/queue` | Add/play item — routes to UPnP renderer when connected and action='play' |
+| POST | `/library/queue` | Add/play item — routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
+| GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
 | POST | `/library/upnp-play` | Play UPnP item — routes to renderer or MPD |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — **`location` param (was `control_url`)** |
