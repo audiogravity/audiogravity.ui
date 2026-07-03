@@ -89,7 +89,7 @@ def proxy_port():
     backend = http.server.ThreadingHTTPServer(("127.0.0.1", backend_port), _FakeSSEBackend)
     threading.Thread(target=backend.serve_forever, daemon=True).start()
 
-    serve_https.AudiogravityHandler.backend_url = f"http://127.0.0.1:{backend_port}"
+    serve_https.AudiogravityHandler.core_url = f"http://127.0.0.1:{backend_port}"
     proxy = http.server.ThreadingHTTPServer(("127.0.0.1", p_port), serve_https.AudiogravityHandler)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
 
@@ -199,7 +199,7 @@ def ws_proxy_port():
     threading.Thread(target=_ws_accept_loop, args=(backend,), daemon=True).start()
 
     p_port = _free_port()
-    serve_https.AudiogravityHandler.backend_url = f"http://127.0.0.1:{backend_port}"
+    serve_https.AudiogravityHandler.core_url = f"http://127.0.0.1:{backend_port}"
     proxy = http.server.ThreadingHTTPServer(("127.0.0.1", p_port), serve_https.AudiogravityHandler)
     threading.Thread(target=proxy.serve_forever, daemon=True).start()
 

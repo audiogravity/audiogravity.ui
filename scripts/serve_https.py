@@ -84,7 +84,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class AudiogravityHandler(SimpleHTTPRequestHandler):
-    backend_url = None
+    core_url = None
 
     def log_message(self, format, *args):
         logger.info("%s - %s" % (self.address_string(), format%args))
@@ -200,7 +200,7 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
             super().do_DELETE()
 
     def proxy_request(self, method):
-        if not self.backend_url:
+        if not self.core_url:
             self.send_error(502, "Backend URL not configured")
             return
 
@@ -208,7 +208,7 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         path = self.path[4:] if self.path.startswith('/api/') else self.path
         if not path: path = '/'
         
-        parsed_backend = urllib.parse.urlparse(self.backend_url)
+        parsed_backend = urllib.parse.urlparse(self.core_url)
         target_host = parsed_backend.hostname
         target_port = parsed_backend.port or (80 if parsed_backend.scheme == 'http' else 443)
         
@@ -299,7 +299,7 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         in both directions (handshake 101 + frames) until either side closes.
         """
         self.close_connection = True
-        if not self.backend_url:
+        if not self.core_url:
             self.send_error(502, "Backend URL not configured")
             return
 
@@ -309,7 +309,7 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         if not path:
             path = '/'
 
-        parsed = urllib.parse.urlparse(self.backend_url)
+        parsed = urllib.parse.urlparse(self.core_url)
         host = parsed.hostname
         port = parsed.port or (80 if parsed.scheme == 'http' else 443)
 
@@ -369,8 +369,8 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
                     return
 
 
-def run(port, backend, use_ssl, cert_file, key_file):
-    AudiogravityHandler.backend_url = backend
+def run(port, core, use_ssl, cert_file, key_file):
+    AudiogravityHandler.core_url = core
     server_address = ('0.0.0.0', port)
     
     # Use ThreadingHTTPServer to handle multiple concurrent connections
@@ -380,9 +380,9 @@ def run(port, backend, use_ssl, cert_file, key_file):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certfile=cert_file, keyfile=key_file)
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-        logger.info(f"Serving HTTPS on 0.0.0.0:{port}, proxying /api to {backend}")
+        logger.info(f"Serving HTTPS on 0.0.0.0:{port}, proxying /api to {core}")
     else:
-        logger.info(f"Serving HTTP on 0.0.0.0:{port}, proxying /api to {backend}")
+        logger.info(f"Serving HTTP on 0.0.0.0:{port}, proxying /api to {core}")
         
     try:
         httpd.serve_forever()
@@ -393,10 +393,10 @@ def run(port, backend, use_ssl, cert_file, key_file):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audiogravity Standalone Server')
     parser.add_argument('--port', type=int, default=8080, help='Port to listen on')
-    parser.add_argument('--backend', type=str, required=True, help='Backend base URL')
+    parser.add_argument('--core', type=str, required=True, help='AG core base URL to proxy /api to')
     parser.add_argument('--ssl', action='store_true', help='Enable SSL/TLS')
     parser.add_argument('--cert', type=str, default='ssl/cert.pem', help='Path to SSL certificate')
     parser.add_argument('--key', type=str, default='ssl/key.pem', help='Path to SSL private key')
     
     args = parser.parse_args()
-    run(args.port, args.backend, args.ssl, args.cert, args.key)
+    run(args.port, args.core, args.ssl, args.cert, args.key)
