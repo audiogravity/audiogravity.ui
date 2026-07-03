@@ -24,6 +24,7 @@ import {
     showConfirm,
     handleError,
 } from '../../common.js';
+import { showPasswordConfirm } from '../../ui-helpers.js';
 import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
@@ -159,11 +160,12 @@ export class AgConfigPage extends LitElement {
             showToast('warning', 'No output selected', 'Initialize the audio stack above first.');
             return;
         }
-        const ok = await showConfirm(
+        const password = await showPasswordConfirm(
             `Regenerate ${serviceId} configuration?`,
-            'This resets the service to a minimal working config. The current config is backed up first.'
+            'This resets the service to a minimal working config (the current one is backed up first). '
+            + 'Enter your admin password to confirm.'
         );
-        if (!ok) return;
+        if (!password) return;
         try {
             await apiPost('/audio-stack/provision', {
                 card_name: this._selectedOutput.card_name,
@@ -171,6 +173,7 @@ export class AgConfigPage extends LitElement {
                 device_id: this._selectedOutput.device_id ?? 0,
                 services: [serviceId],
                 regenerate: true,
+                password,
             });
             showToast('success', 'Regenerated', `${serviceId} reset to a minimal config.`);
             await this._loadServices();

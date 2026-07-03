@@ -129,6 +129,16 @@ describe('_provision', () => {
         expect(el._state).toBe('error');
         expect(el._errorMsg).toContain('music library');
     });
+    it('re-fetches status after success so the page refreshes its selected output', async () => {
+        apiPost.mockResolvedValue({ results: [{ service_id: 'mpd', status: 'generated' }] });
+        apiGet.mockResolvedValue({ outputs: [], library_sources: [], selected_output: null, services: [] });
+        const el = makeEl({ _libraryChoice: 'src:0' });
+        await el._provision();
+        expect(apiGet).toHaveBeenCalledWith('/audio-stack/status');
+        // status-loaded re-emitted → fixes stale "No output selected" after INITIALIZE.
+        const emitted = el.dispatchEvent.mock.calls.map(c => c[0].type);
+        expect(emitted).toContain('status-loaded');
+    });
 });
 
 describe('_loadStatus', () => {

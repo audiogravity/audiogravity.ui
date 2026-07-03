@@ -157,6 +157,10 @@ export class AgAudioStackProvisioning extends LitElement {
             this.dispatchEvent(new CustomEvent('provisioned', {
                 detail: { results: result.results }, bubbles: true, composed: true,
             }));
+            // Re-fetch the status so the pinned output + service tiles refresh and
+            // `status-loaded` is re-emitted — otherwise the parent page keeps a
+            // stale selected-output after INITIALIZE (would show "No output selected").
+            await this._loadStatus();
         } catch (e) {
             this._state = 'error';
             this._errorMsg = e.detail || e.message || 'Provisioning failed';
