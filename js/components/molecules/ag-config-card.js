@@ -22,7 +22,7 @@
  * @dependency css/config.css - Configuration card styling
  */
 import { LitElement, html, nothing } from 'lit';
-import { iconDownload } from '../../ag-icons.js';
+import { iconDownload, iconRefresh } from '../../ag-icons.js';
 import { AgAudioOutput } from '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -42,8 +42,14 @@ const _fmtMtime = (iso) => {
 export class AgConfigCard extends LitElement {
     static properties = {
         service: { type: Object },
-        delayIndex: { type: Number }
+        delayIndex: { type: Number },
+        provisionable: { type: Boolean }
     };
+
+    constructor() {
+        super();
+        this.provisionable = false;
+    }
 
     createRenderRoot() {
         // Use light DOM
@@ -53,6 +59,15 @@ export class AgConfigCard extends LitElement {
     handleEdit(e) {
         e.stopPropagation();
         this.dispatchEvent(new CustomEvent('edit-config', {
+            detail: { serviceId: this.service.id },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    handleRegenerate(e) {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('regenerate-config', {
             detail: { serviceId: this.service.id },
             bubbles: true,
             composed: true
@@ -133,6 +148,14 @@ export class AgConfigCard extends LitElement {
                         <div class="has-tooltip">
                             <button class="tile-action-btn" @click="${this.handleEdit}">EDIT CONFIG</button>
                             <div class="tooltip">Configure this service</div>
+                        </div>
+                        ` : nothing}
+                        ${!isGuest() && this.provisionable ? html`
+                        <div class="has-tooltip">
+                            <button class="tile-action-btn tile-action-btn--icon" @click="${this.handleRegenerate}" aria-label="Regenerate minimal config">
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRefresh}</svg>
+                            </button>
+                            <div class="tooltip">Reset to a minimal working config (backs up the current one)</div>
                         </div>
                         ` : nothing}
                         ${this.service.critical ? html`

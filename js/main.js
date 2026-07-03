@@ -143,6 +143,7 @@ import './components/organisms/ag-systemd-page.js';
 import './components/organisms/ag-performance-page.js';
 import './components/organisms/ag-system-page.js';
 import './components/organisms/ag-config-page.js';
+import './components/organisms/ag-audio-stack-provisioning.js';
 import './components/organisms/ag-pipeline-page.js';
 import './components/organisms/ag-admin-page.js';
 

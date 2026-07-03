@@ -648,6 +648,16 @@ body:has(.tabs--vertical.tabs--sidebar-hidden) .tab-sidebar-toggle {
     box-sizing: border-box;
 }
 
+/* Grid items default to min-width:auto and won't shrink below their content's
+   min-content width. A wide child (a long tab title, a config tile, a
+   provisioning card) then forces the column wider than the viewport, and
+   .main-content clips it (overflow-x hidden) — cutting content off on the right
+   on mobile. min-width:0 lets each tab's top-level content shrink to the column
+   so it wraps / truncates within the viewport instead. */
+.content-grid > * {
+    min-width: 0;
+}
+
 /* FOOTER */
 .footer {
     position: fixed;
