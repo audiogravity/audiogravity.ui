@@ -192,19 +192,25 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
 
 ### Audio Stack — `/audio-stack/*`
-Guided minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
-Consumed by the "Initialize audio stack" panel + per-tile "regenerate" in AUDIO
-SERVICES CONFIGURATION. **Admin-only** — both endpoints require an administrator
+Per-service minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
+Consumed by the first-time-setup modal + the editor's **Guided** mode in AUDIO
+SERVICES CONFIGURATION. **Admin-only** — all endpoints require an administrator
 (`require_admin`) on top of a full license.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio-stack/status` | Detected outputs, library sources, pinned output, per-service config state |
-| POST | `/audio-stack/provision` | Generate minimal configs for the chosen output + library (only-if-absent, or `regenerate`) |
+| GET | `/audio-stack/status` | Detected outputs, library sources, per-service pinned output + config state |
+| POST | `/audio-stack/provision` | (Re)generate minimal configs — always overwrite-with-backup; admin **password** required |
+| POST | `/audio-stack/output` | Targeted: change one service's audio output in place |
+| POST | `/audio-stack/library` | Targeted: change mpd's music library in place |
 
-`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, configured }] }`
+`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, configured, output: { usb_id, card_name, device_id } | null }] }`. `configured` is **true only when the file carries the AG marker** (not mere existence — distro packages ship defaults). `services[].output` is the per-service pinned output (null for upmpdcli / unset). `selected_output` is a back-compat single pin derived from the per-service map.
 
-`POST /audio-stack/provision` body: `{ card_name, usb_id?, device_id?, (music_directory | library_usb_uuid + library_fstype), regenerate?, services?, password? }` → `{ device, selected_output, music_directory, results: [{ service_id, status: "generated"|"skipped_exists"|"regenerated"|"error", config_path?, backup_path?, restarted?, error? }] }`. The **initial provision** (`regenerate` omitted/false) re-authenticates the admin: `password` is required and verified — a wrong/missing password returns **401**. Per-service regeneration (`regenerate: true`) only requires the admin role, no password. Returns **400** if `mpd` is targeted without a library (unless `regenerate` reuses mpd's existing one). The output is wired into mpd + shairport; the library is used by mpd only.
+`POST /audio-stack/provision` body: `{ card_name, usb_id?, device_id?, (music_directory | library_usb_uuid + library_fstype), regenerate?, services?, password }` → `{ device, selected_output, music_directory, results: [{ service_id, status: "generated"|"regenerated"|"error", config_path?, backup_path?, restarted?, error? }] }`. **Always overwrites** the config, auto-backing up any existing file first (distro packages ship defaults, so an only-if-absent write never applied). **Both** the initial provision and per-service `regenerate` require the admin `password` (verified — wrong/missing → **401**). Pins the chosen output for each targeted service that drives an ALSA device (mpd, airplay). Returns **400** if `mpd` is targeted without a library (a `regenerate` reuses mpd's existing one).
+
+`POST /audio-stack/output` body: `{ service_id, card_name, usb_id?, device_id? }` → `{ service_id, device, output }`. Rewrites **only** the ALSA device directive of that service (via steering's device switcher) and pins the new per-service output — the rest of the config is preserved. Admin-only, **no password**. **400** if the service has no ALSA output or the output cannot be resolved.
+
+`POST /audio-stack/library` body: `{ music_directory | library_usb_uuid + library_fstype }` → `{ service_id: "mpd", music_directory }`. Rewrites **only** mpd's `music_directory` (mounting a USB drive by UUID if given) — outputs and bit-perfect flags preserved. Admin-only, **no password**. **400** if no library is given.
 
 ### Other
 | Method | Path | Description |
