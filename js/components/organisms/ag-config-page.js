@@ -379,7 +379,7 @@ export class AgConfigPage extends LitElement {
                             <span>Detect your DAC and music library, then generate a minimal working
                                 configuration for MPD, AirPlay and UPnP.</span>
                         </div>
-                        <button class="action-btn primary" @click=${() => { this._showInitModal = true; }}>
+                        <button class="tile-action-btn" @click=${() => { this._showInitModal = true; }}>
                             Configure audio stack
                         </button>
                     </div>
