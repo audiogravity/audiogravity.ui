@@ -140,6 +140,45 @@
     margin-left: auto;
 }
 
+/* Segmented mode control (Guided | Structured | Expert) for provisionable services. */
+.config-mode-tabs {
+    margin-left: auto;
+    display: inline-flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.config-mode-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.config-mode-tab:hover {
+    color: var(--text-primary);
+}
+
+.config-mode-tab.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.config-guided-editor {
+    display: none;
+}
+
+.config-guided-editor.active {
+    display: block;
+}
+
 /* =====================
    FORM EDITOR
    ===================== */

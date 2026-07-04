@@ -24,6 +24,7 @@ import { LitElement, html, css } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { autoExpandTextarea } from '../utils-lit.js';
 import { iconArrowLeft, iconCode, iconCheck, iconWarning, iconSave, iconSliders, iconClose, iconHistory, iconInfo } from '../../ag-icons.js';
+import './ag-guided-config.js';
 
 export class AgConfigEditor extends LitElement {
     static properties = {
@@ -34,6 +35,10 @@ export class AgConfigEditor extends LitElement {
         configFormat: { type: String },
         backups: { type: Array },
         isGuest: { type: Boolean },
+        guided: { type: Boolean },
+        outputs: { type: Array },
+        librarySources: { type: Array },
+        serviceOutput: { type: Object },
 
         currentMode: { state: true },
         isDirty: { state: true },
@@ -53,6 +58,10 @@ export class AgConfigEditor extends LitElement {
         this.configFormat = 'conf';
         this.backups = [];
         this.isGuest = false;
+        this.guided = false;
+        this.outputs = [];
+        this.librarySources = [];
+        this.serviceOutput = null;
 
         this.currentMode = 'form';
         this.isDirty = false;
@@ -87,6 +96,10 @@ export class AgConfigEditor extends LitElement {
                 this._initialized = true;
                 this.isDirty = false;
             }
+        }
+        // Provisionable services open in the guided view by default.
+        if (changedProperties.has('service')) {
+            this.currentMode = this.guided ? 'guided' : 'form';
         }
     }
 
@@ -265,6 +278,26 @@ export class AgConfigEditor extends LitElement {
         this._revertChanges();
     }
 
+    /** Switch to an explicit mode (guided | form | raw), confirming discard if dirty. */
+    _setMode(mode) {
+        if (mode === this.currentMode) return;
+        if (this.isDirty) {
+            window.showConfirm(
+                'Switch Mode',
+                'Switching modes will discard unsaved changes. Continue?'
+            ).then(confirmed => {
+                if (confirmed) this._applyMode(mode);
+            });
+        } else {
+            this._applyMode(mode);
+        }
+    }
+
+    _applyMode(mode) {
+        this.currentMode = mode;
+        this._revertChanges();
+    }
+
     _revertChanges() {
         this.formData = JSON.parse(JSON.stringify(this._originalFormData));
         this.rawContent = this._originalRawContent;
@@ -385,12 +418,20 @@ export class AgConfigEditor extends LitElement {
                             </button>
                             <div class="tooltip tooltip-bottom">Return to service selection</div>
                         </div>
+                        ${this.guided ? html`
+                            <div class="config-mode-tabs" role="tablist">
+                                <button class="config-mode-tab ${this.currentMode === 'guided' ? 'active' : ''}" @click=${() => this._setMode('guided')}>Guided</button>
+                                <button class="config-mode-tab ${this.currentMode === 'form' ? 'active' : ''}" @click=${() => this._setMode('form')}>Structured</button>
+                                <button class="config-mode-tab ${this.currentMode === 'raw' ? 'active' : ''}" @click=${() => this._setMode('raw')}>Expert</button>
+                            </div>
+                        ` : html`
                         <div class="has-tooltip">
                             <button class="btn-action compact config-mode-toggle" @click=${this._handleToggleMode}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCode}</svg> ${this.currentMode === 'form' ? 'Expert Mode' : 'Form Mode'}
                             </button>
                             <div class="tooltip tooltip-bottom-right">Switch between Form view and Raw file editor</div>
                         </div>
+                        `}
                     </div>
                 </div>
                 
@@ -415,6 +456,12 @@ export class AgConfigEditor extends LitElement {
                         </div>
                 </div>
 
+                ${this.currentMode === 'guided' ? html`
+                    <div class="config-guided-editor active">
+                        <ag-guided-config .serviceId=${this.service?.id} .outputs=${this.outputs}
+                            .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}></ag-guided-config>
+                    </div>
+                ` : html`
                 <div class="config-actions">
                     ${!this.isGuest ? html`
                         <div class="has-tooltip">
@@ -463,6 +510,7 @@ export class AgConfigEditor extends LitElement {
                         .originalFormData=${this._originalFormData}>
                     </ag-config-diff>
                 ` : ''}
+                `}
             </div>
         `;
     }

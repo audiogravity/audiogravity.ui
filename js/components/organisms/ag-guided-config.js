@@ -17,7 +17,7 @@
  * @prop {Array} librarySources - Detected library sources.
  * @prop {Object} serviceOutput - The service's currently pinned output, or null.
  * @fires guided-changed - Bubbles, after a successful apply or reset (parent refreshes).
- * @dependency js/common.js
+ * @dependency js/api.js
  * @dependency js/ui-helpers.js
  * @dependency js/components/utils-lit.js
  * @dependency js/components/molecules/ag-prov-output-picker.js
@@ -25,8 +25,8 @@
  * @dependency css/audio-stack.css
  */
 import { LitElement, html, nothing } from 'lit';
-import { apiPost, showToast, handleError } from '../../common.js';
-import { showPasswordConfirm } from '../../ui-helpers.js';
+import { apiPost } from '../../api.js';
+import { showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
 import { svgIcon } from '../utils-lit.js';
 import { iconRefresh } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';

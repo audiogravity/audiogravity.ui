@@ -42,6 +42,9 @@ export class AgConfigPage extends LitElement {
         loading: { type: Boolean },
         _provisionableIds: { state: true },
         _selectedOutput: { state: true },
+        _outputs: { state: true },
+        _librarySources: { state: true },
+        _statusServices: { state: true },
     };
 
     constructor() {
@@ -55,6 +58,9 @@ export class AgConfigPage extends LitElement {
         this.backups = [];
         this._provisionableIds = [];
         this._selectedOutput = null;
+        this._outputs = [];
+        this._librarySources = [];
+        this._statusServices = [];
         this._boundHandleServiceMetrics = this._handleServiceMetricsSSE.bind(this);
 
         this.servicesFetch = new FetchController(this, {
@@ -142,9 +148,30 @@ export class AgConfigPage extends LitElement {
 
     /** Receives the /audio-stack/status payload from the provisioning panel. */
     _handleStatusLoaded(e) {
-        const status = e.detail || {};
-        this._provisionableIds = (status.services || []).map(s => s.service_id);
+        this._storeAudioStatus(e.detail || {});
+    }
+
+    _storeAudioStatus(status) {
+        this._outputs = status.outputs || [];
+        this._librarySources = status.library_sources || [];
+        this._statusServices = status.services || [];
+        this._provisionableIds = this._statusServices.map(s => s.service_id);
         this._selectedOutput = status.selected_output || null;
+    }
+
+    /** Fetch the audio-stack status for the editor's guided mode (admin only). */
+    async _loadAudioStatus() {
+        if (!isAdmin()) return;
+        try {
+            this._storeAudioStatus(await apiGet('/audio-stack/status'));
+        } catch (e) {
+            // Non-fatal: the guided mode simply shows no detected outputs/sources.
+        }
+    }
+
+    /** The pinned output of a service, from the last status load (or null). */
+    _serviceOutputFor(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.output || null;
     }
 
     /** A provision generated/changed configs — refresh the service grid. */
@@ -182,6 +209,26 @@ export class AgConfigPage extends LitElement {
         }
     }
 
+    /** A guided apply/reset changed the config — reload the editor data + status. */
+    async _handleGuidedChanged() {
+        if (this.selectedServiceId) {
+            await this._reloadServiceConfig(this.selectedServiceId);
+        }
+        await this._loadAudioStatus();
+    }
+
+    async _reloadServiceConfig(serviceId) {
+        const [jsonConfig, rawConfig] = await Promise.all([
+            apiGet(`/audio_app_config/${serviceId}/config?type=structured`),
+            apiGet(`/audio_app_config/${serviceId}/config?type=raw`)
+        ]);
+        this.schema = jsonConfig.config_schema || jsonConfig.schema;
+        this.formData = jsonConfig.data || {};
+        this.rawContent = rawConfig.content || '';
+        this.configFormat = rawConfig.format || jsonConfig.format || 'conf';
+        await this._loadBackups(serviceId);
+    }
+
     async _handleServiceSelect(e) {
         const serviceId = e.detail?.serviceId;
         if (!serviceId) return;
@@ -191,7 +238,8 @@ export class AgConfigPage extends LitElement {
         try {
             const [jsonConfig, rawConfig] = await Promise.all([
                 apiGet(`/audio_app_config/${serviceId}/config?type=structured`),
-                apiGet(`/audio_app_config/${serviceId}/config?type=raw`)
+                apiGet(`/audio_app_config/${serviceId}/config?type=raw`),
+                this._loadAudioStatus()
             ]);
 
             this.schema = jsonConfig.config_schema || jsonConfig.schema;
@@ -334,9 +382,14 @@ export class AgConfigPage extends LitElement {
                     .configFormat=${this.configFormat}
                     .backups=${this.backups}
                     .isGuest=${!!(window.isGuest && isGuest())}
+                    .guided=${isAdmin() && this._provisionableIds.includes(this.selectedServiceId)}
+                    .outputs=${this._outputs}
+                    .librarySources=${this._librarySources}
+                    .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}
-                    @restore=${this._handleRestore}>
+                    @restore=${this._handleRestore}
+                    @guided-changed=${this._handleGuidedChanged}>
                 </ag-config-editor>
             ` : html`
                 ${isAdmin() ? html`

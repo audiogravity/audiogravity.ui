@@ -10,16 +10,16 @@ vi.mock('lit', () => ({
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
-vi.mock('../../common.js', () => ({ apiPost: vi.fn(), showToast: vi.fn(), handleError: vi.fn() }));
-vi.mock('../../ui-helpers.js', () => ({ showPasswordConfirm: vi.fn() }));
+vi.mock('../../api.js', () => ({ apiPost: vi.fn() }));
+vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), handleError: vi.fn(), showPasswordConfirm: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({
     iconRefresh: '', iconConnectorUsbA: '', iconHardDrive: '', iconRadio: '',
     iconCircle: '', iconStar: '', iconWifi: '', iconFolder: '',
 }));
 
-import { apiPost, showToast, handleError } from '../../common.js';
-import { showPasswordConfirm } from '../../ui-helpers.js';
+import { apiPost } from '../../api.js';
+import { showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
 import { AgGuidedConfig, GUIDED_FIELDS } from './ag-guided-config.js';
 
 const OUTPUTS = [
