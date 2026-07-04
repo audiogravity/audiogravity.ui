@@ -142,6 +142,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | POST | `/qobuz/connection` | Start OAuth2 flow |
 | GET | `/qobuz/callback` | OAuth2 callback |
 | DELETE | `/qobuz/connection` | Disconnect |
+| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
@@ -149,7 +150,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`) |
 | POST | `/highresaudio/connection` | Log in — body `{username, password}` (401 on bad credentials / no subscription) |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
-| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN |
+| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 
 ### Services — `/services/*`
 | Method | Path | Description |
