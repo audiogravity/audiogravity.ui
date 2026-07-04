@@ -89,13 +89,14 @@ export class AgConfigEditor extends LitElement {
     }
 
     willUpdate(changedProperties) {
-        if (changedProperties.has('formData') || changedProperties.has('rawContent')) {
-            if (!this._initialized) {
-                this._originalFormData = JSON.parse(JSON.stringify(this.formData || {}));
-                this._originalRawContent = this.rawContent || '';
-                this._initialized = true;
-                this.isDirty = false;
-            }
+        // A parent-driven (re)load sets formData AND rawContent together; a user edit
+        // in one mode changes only one of them. Re-capture the originals on a load so
+        // a guided apply (which reloads the config) doesn't leave stale form/raw
+        // baselines that a later mode switch would revert to (dropping the change).
+        if (changedProperties.has('formData') && changedProperties.has('rawContent')) {
+            this._originalFormData = JSON.parse(JSON.stringify(this.formData || {}));
+            this._originalRawContent = this.rawContent || '';
+            this.isDirty = false;
         }
         // Provisionable services open in the guided view by default.
         if (changedProperties.has('service')) {

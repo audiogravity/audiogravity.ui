@@ -102,3 +102,27 @@ describe('AgConfigEditor — guided/structured/expert mode switching', () => {
         expect(el.currentMode).toBe('form');
     });
 });
+
+describe('AgConfigEditor — originals capture on parent reload (guided-apply safety)', () => {
+    it('re-captures originals when the parent reloads the config (both props change)', () => {
+        const el = new AgConfigEditor();
+        el.formData = { a: 1 }; el.rawContent = 'old';
+        el.willUpdate(new Map([['formData', {}], ['rawContent', '']]));   // initial load
+        expect(el._originalRawContent).toBe('old');
+        // Parent reloads a fresh config (both change together, e.g. after a guided apply).
+        el.formData = { a: 2 }; el.rawContent = 'new';
+        el.willUpdate(new Map([['formData', { a: 1 }], ['rawContent', 'old']]));
+        expect(el._originalFormData).toEqual({ a: 2 });
+        expect(el._originalRawContent).toBe('new');
+        expect(el.isDirty).toBe(false);
+    });
+
+    it('does not re-capture originals on a single-mode edit (only one prop changes)', () => {
+        const el = new AgConfigEditor();
+        el.formData = { a: 1 }; el.rawContent = 'x';
+        el.willUpdate(new Map([['formData', {}], ['rawContent', '']]));   // load
+        el.formData = { a: 2 };   // user edits the form
+        el.willUpdate(new Map([['formData', { a: 1 }]]));   // only formData changed
+        expect(el._originalFormData).toEqual({ a: 1 });   // baseline preserved
+    });
+});
