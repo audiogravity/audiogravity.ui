@@ -501,7 +501,9 @@ class AgUpnpRendererCard extends LitElement {
                     }
                 </button>
 
-                ${newFound.map(r => html`
+                ${newFound.map(r => r.is_local
+                    ? this._renderLocalDeviceRow(r)
+                    : html`
                     <div class="lib-hqp-card"
                          style="cursor:pointer; margin-top:var(--spacing-xs)"
                          @click=${() => this._connectNew(r)}>
@@ -524,6 +526,38 @@ class AgUpnpRendererCard extends LitElement {
                         ${this._known.length > 0 ? 'No new renderer found' : 'No UPnP renderer found on the network'}
                     </div>
                 ` : nothing}
+            </div>
+        `;
+    }
+
+    /**
+     * Info-only row for a renderer co-located with AG (its own on-host upmpdcli).
+     *
+     * Surfaced for transparency — AG advertises itself as a UPnP target so
+     * external controllers can cast *to* it — but it is deliberately NOT
+     * selectable as an output: it bridges to the same local MPD / DAC as the
+     * "Local DAC" output, so selecting it would be a redundant duplicate. The
+     * backend also rejects a connect to it (HTTP 400).
+     *
+     * @param {{udn:string, friendly_name:string}} r - The discovered local renderer.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderLocalDeviceRow(r) {
+        return html`
+            <div class="lib-hqp-card"
+                 style="margin-top:var(--spacing-xs); opacity:0.6"
+                 title="This AudioGravity device is discoverable so external apps can cast to it. To play here, use “Local DAC”.">
+                <div class="lib-hqp-card-hd">
+                    <div class="lib-hqp-ic lib-rdr-ic">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                             stroke="currentColor" stroke-width="1.5">${iconCast}</svg>
+                    </div>
+                    <div class="lib-hqp-col">
+                        <div class="lib-hqp-name">${r.friendly_name || r.udn}</div>
+                        <div class="lib-hqp-desc">This device · receives external casts</div>
+                    </div>
+                    <span class="lib-hqp-desc">Not selectable</span>
+                </div>
             </div>
         `;
     }

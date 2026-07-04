@@ -79,11 +79,11 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices |
+| GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices. Each entry carries **`is_local`** — `true` for a renderer co-located with AG (its own on-host upmpdcli), which the UI shows as an info row but must not offer as an output |
 | GET | `/upnp-renderer/known` | All known renderers with live `active`, `reachable` fields |
 | DELETE | `/upnp-renderer/{udn}` | Permanently remove renderer from known list (disconnects if active) |
 | GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
-| PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output) |
+| PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output). Returns **400** for a co-located (`is_local`) renderer — it receives external casts and duplicates the Local DAC, so it cannot be selected as an output |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
 | GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`uses_local_mpd`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
 | POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
