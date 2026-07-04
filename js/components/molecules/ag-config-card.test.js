@@ -1,5 +1,5 @@
 /**
- * Unit tests for ag-config-card.js — the per-service "regenerate" augmentation.
+ * Unit tests for ag-config-card.js — edit event and provisioning state.
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -8,7 +8,7 @@ vi.mock('lit', () => ({
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
-vi.mock('../../ag-icons.js', () => ({ iconDownload: '', iconRefresh: '' }));
+vi.mock('../../ag-icons.js', () => ({ iconDownload: '' }));
 vi.mock('../atoms/ag-audio-output.js', () => ({ AgAudioOutput: class {} }));
 vi.mock('../../auth.js', () => ({ isGuest: () => false }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));
@@ -22,13 +22,13 @@ function makeCard() {
     return el;
 }
 
-describe('handleRegenerate', () => {
-    it('dispatches a bubbling regenerate-config event with the service id', () => {
+describe('handleEdit', () => {
+    it('dispatches a bubbling edit-config event with the service id', () => {
         const el = makeCard();
-        el.handleRegenerate({ stopPropagation: vi.fn() });
+        el.handleEdit({ stopPropagation: vi.fn() });
         expect(el.dispatchEvent).toHaveBeenCalledTimes(1);
         const evt = el.dispatchEvent.mock.calls[0][0];
-        expect(evt.type).toBe('regenerate-config');
+        expect(evt.type).toBe('edit-config');
         expect(evt.detail).toEqual({ serviceId: 'mpd' });
         expect(evt.bubbles).toBe(true);
         expect(evt.composed).toBe(true);
@@ -37,12 +37,15 @@ describe('handleRegenerate', () => {
     it('stops propagation so the tile click does not also fire', () => {
         const el = makeCard();
         const stop = vi.fn();
-        el.handleRegenerate({ stopPropagation: stop });
+        el.handleEdit({ stopPropagation: stop });
         expect(stop).toHaveBeenCalled();
     });
+});
 
-    it('defaults provisionable to false', () => {
+describe('provisioning state defaults', () => {
+    it('defaults provisionable and configured to false', () => {
         const el = new AgConfigCard();
         expect(el.provisionable).toBe(false);
+        expect(el.configured).toBe(false);
     });
 });

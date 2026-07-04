@@ -22,7 +22,7 @@
  * @dependency css/config.css - Configuration card styling
  */
 import { LitElement, html, nothing } from 'lit';
-import { iconDownload, iconRefresh } from '../../ag-icons.js';
+import { iconDownload } from '../../ag-icons.js';
 import { AgAudioOutput } from '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -43,12 +43,14 @@ export class AgConfigCard extends LitElement {
     static properties = {
         service: { type: Object },
         delayIndex: { type: Number },
-        provisionable: { type: Boolean }
+        provisionable: { type: Boolean },
+        configured: { type: Boolean }
     };
 
     constructor() {
         super();
         this.provisionable = false;
+        this.configured = false;
     }
 
     createRenderRoot() {
@@ -59,15 +61,6 @@ export class AgConfigCard extends LitElement {
     handleEdit(e) {
         e.stopPropagation();
         this.dispatchEvent(new CustomEvent('edit-config', {
-            detail: { serviceId: this.service.id },
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    handleRegenerate(e) {
-        e.stopPropagation();
-        this.dispatchEvent(new CustomEvent('regenerate-config', {
             detail: { serviceId: this.service.id },
             bubbles: true,
             composed: true
@@ -127,6 +120,12 @@ export class AgConfigCard extends LitElement {
                         ${statusLabel ? html`
                             <span class="config-status-badge config-status-badge--${statusVariant}">${statusLabel}</span>
                         ` : nothing}
+                        ${this.provisionable ? html`
+                            <div class="has-tooltip">
+                                <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
+                                <div class="tooltip">${this.configured ? 'Set up by AudioGravity' : 'Using package defaults — not set up by AudioGravity'}</div>
+                            </div>
+                        ` : nothing}
                     </div>
                 </div>
 
@@ -148,14 +147,6 @@ export class AgConfigCard extends LitElement {
                         <div class="has-tooltip">
                             <button class="tile-action-btn" @click="${this.handleEdit}">EDIT CONFIG</button>
                             <div class="tooltip">Configure this service</div>
-                        </div>
-                        ` : nothing}
-                        ${!isGuest() && this.provisionable ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn tile-action-btn--icon" @click="${this.handleRegenerate}" aria-label="Regenerate minimal config">
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRefresh}</svg>
-                            </button>
-                            <div class="tooltip">Reset to a minimal working config (backs up the current one)</div>
                         </div>
                         ` : nothing}
                         ${this.service.critical ? html`

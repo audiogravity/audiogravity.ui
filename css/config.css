@@ -179,6 +179,36 @@
     display: block;
 }
 
+/* First-time setup CTA (empty-state banner that opens the init modal). */
+.config-init-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.config-init-cta-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.config-init-cta-text strong {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+}
+
+.config-init-cta-text span {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
 /* =====================
    FORM EDITOR
    ===================== */
