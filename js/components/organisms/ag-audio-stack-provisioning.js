@@ -4,8 +4,12 @@
  * CONFIGURATION tab. Loads detected outputs + library sources from the core,
  * lets the user pick the DAC (pre-selecting the recommended one) and a music
  * library (detected USB / network mount / manual path), then provisions minimal
- * configs for mpd/upmpdcli/shairport via POST /audio-stack/provision
- * (only-if-absent). Shows a per-service result report.
+ * configs for mpd/upmpdcli/shairport via POST /audio-stack/provision. Shows a
+ * per-service result report.
+ *
+ * The output/library pickers are delegated to the reusable molecules
+ * ag-prov-output-picker / ag-prov-library-picker (shared with the guided config
+ * editor and the INITIALIZE-all dialog).
  *
  * Admin-only: the panel is mounted by ag-config-page only for administrators,
  * and the initial provision re-authenticates with the admin password
@@ -20,19 +24,18 @@
  * @fires provisioned - Bubbles. detail: { results } — a successful provision (parent should refresh)
  * @dependency js/api.js
  * @dependency js/ui-helpers.js
- * @dependency js/ag-icons.js
+ * @dependency js/components/utils-lit.js
+ * @dependency js/components/molecules/ag-prov-output-picker.js
+ * @dependency js/components/molecules/ag-prov-library-picker.js
  * @dependency css/audio-stack.css
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { showPasswordConfirm } from '../../ui-helpers.js';
-import {
-    iconConnectorUsbA, iconHardDrive, iconWifi, iconFolder,
-    iconCheck, iconClose, iconWarning, iconRadio, iconCircle, iconStar,
-} from '../../ag-icons.js';
-
-const _svg = (icon) => html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none"
-    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`;
+import { svgIcon } from '../utils-lit.js';
+import { iconCheck, iconClose, iconWarning } from '../../ag-icons.js';
+import '../molecules/ag-prov-output-picker.js';
+import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
 
 export class AgAudioStackProvisioning extends LitElement {
     static properties = {
@@ -103,18 +106,7 @@ export class AgAudioStackProvisioning extends LitElement {
 
     /** Library payload fragment, or null when no usable library is chosen. */
     get _libraryPayload() {
-        if (this._libraryChoice === 'manual') {
-            const p = this._manualPath.trim();
-            return p ? { music_directory: p } : null;
-        }
-        if (this._libraryChoice?.startsWith('src:')) {
-            const src = this._librarySources[Number(this._libraryChoice.slice(4))];
-            if (!src) return null;
-            return src.kind === 'usb'
-                ? { library_usb_uuid: src.uuid, library_fstype: src.fstype }
-                : { music_directory: src.path };
-        }
-        return null;
+        return AgProvLibraryPicker.payloadFor(this._libraryChoice, this._manualPath, this._librarySources);
     }
 
     get _canProvision() {
@@ -167,18 +159,13 @@ export class AgAudioStackProvisioning extends LitElement {
         }
     }
 
-    _libraryIcon(src) {
-        if (src.kind === 'usb') return iconHardDrive;
-        return src.fstype && ['cifs', 'nfs', 'nfs4', 'smb3'].includes(src.fstype) ? iconWifi : iconFolder;
-    }
-
     render() {
         if (this._loading) {
             return html`<div class="ag-prov-panel"><div class="ag-prov-loading">Loading…</div></div>`;
         }
         if (this._error) {
             return html`<div class="ag-prov-panel">
-                <div class="ag-prov-error">${_svg(iconWarning)} ${this._error}
+                <div class="ag-prov-error">${svgIcon(iconWarning)} ${this._error}
                     <button class="action-btn compact secondary" @click=${this._loadStatus}>RETRY</button>
                 </div></div>`;
         }
@@ -195,19 +182,17 @@ export class AgAudioStackProvisioning extends LitElement {
                     <h4>Audio output</h4>
                     <p class="ag-prov-hint">Wired into MPD and AirPlay (shairport-sync). To use a different output
                         per service, edit that service's config below after initializing.</p>
-                    ${this._outputs.length
-                        ? html`<div class="ag-prov-list">${this._outputs.map(o => this._renderOutput(o))}</div>`
-                        : html`<div class="ag-prov-empty">No audio outputs detected</div>`}
+                    <ag-prov-output-picker .outputs=${this._outputs} .selected=${this._selectedOutputId}
+                        @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; }}></ag-prov-output-picker>
                 </div>
 
                 <div class="ag-prov-section">
                     <h4>Music library <span class="ag-prov-scope">MPD</span></h4>
                     <p class="ag-prov-hint">Used by MPD only. Pick a detected source or type an existing mount path —
                         a new network share (CIFS/NFS) must be mounted at the OS level first, then it appears here.</p>
-                    <div class="ag-prov-list">
-                        ${this._librarySources.map((s, i) => this._renderLibrarySource(s, i))}
-                        ${this._renderManualLibrary()}
-                    </div>
+                    <ag-prov-library-picker .sources=${this._librarySources} .choice=${this._libraryChoice}
+                        .manualPath=${this._manualPath}
+                        @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}></ag-prov-library-picker>
                 </div>
 
                 <div class="ag-prov-actions">
@@ -224,66 +209,19 @@ export class AgAudioStackProvisioning extends LitElement {
         `;
     }
 
-    _renderOutput(o) {
-        const selected = o.hw === this._selectedOutputId;
-        return html`
-            <button class="ag-prov-card ${selected ? 'selected' : ''}"
-                    @click=${() => { this._selectedOutputId = o.hw; }}>
-                ${_svg(selected ? iconRadio : iconCircle)}
-                <span class="ag-prov-card-icon">${_svg(o.is_usb_dac ? iconConnectorUsbA : iconHardDrive)}</span>
-                <span class="ag-prov-card-label">${o.label}</span>
-                ${o.recommended
-                    ? html`<span class="ag-prov-rec" title="Recommended" aria-label="Recommended">${_svg(iconStar)}</span>`
-                    : nothing}
-            </button>
-        `;
-    }
-
-    _renderLibrarySource(s, i) {
-        const key = `src:${i}`;
-        const selected = this._libraryChoice === key;
-        const tag = s.kind === 'usb' ? 'USB' : (s.fstype || 'mount').toUpperCase();
-        return html`
-            <button class="ag-prov-card ${selected ? 'selected' : ''}"
-                    @click=${() => { this._libraryChoice = key; }}>
-                ${_svg(selected ? iconRadio : iconCircle)}
-                <span class="ag-prov-card-icon">${_svg(this._libraryIcon(s))}</span>
-                <span class="ag-prov-card-label">${s.label}</span>
-                <span class="badge neutral">${tag}</span>
-            </button>
-        `;
-    }
-
-    _renderManualLibrary() {
-        const selected = this._libraryChoice === 'manual';
-        return html`
-            <div class="ag-prov-card ${selected ? 'selected' : ''} ag-prov-manual">
-                <button class="ag-prov-manual-radio" @click=${() => { this._libraryChoice = 'manual'; }}>
-                    ${_svg(selected ? iconRadio : iconCircle)}
-                    <span class="ag-prov-card-icon">${_svg(iconFolder)}</span>
-                    <span class="ag-prov-card-label">Manual path</span>
-                </button>
-                <input class="ag-prov-input" type="text" placeholder="/mnt/musics"
-                       .value=${this._manualPath}
-                       @focus=${() => { this._libraryChoice = 'manual'; }}
-                       @input=${(e) => { this._manualPath = e.target.value; }}>
-            </div>
-        `;
-    }
-
     _renderResult() {
         if (this._state === 'error') {
             return html`<div class="ag-prov-result error">
-                ${_svg(iconWarning)} <span>${this._errorMsg}</span></div>`;
+                ${svgIcon(iconWarning)} <span>${this._errorMsg}</span></div>`;
         }
         if (this._state === 'success' && this._result) {
             return html`
                 <div class="ag-prov-result success">
-                    <div class="ag-prov-result-head">${_svg(iconCheck)} Audio stack initialized</div>
+                    <div class="ag-prov-result-head">${svgIcon(iconCheck)} Audio stack initialized</div>
                     <ul class="ag-prov-result-list">
                         ${(this._result.results || []).map(r => html`
                             <li class="ag-prov-result-item ${r.status === 'error' ? 'error' : 'ok'}">
-                                ${_svg(r.status === 'error' ? iconClose : iconCheck)}
+                                ${svgIcon(r.status === 'error' ? iconClose : iconCheck)}
                                 <span class="ag-prov-result-svc">${r.service_id}</span>
                                 <span class="ag-prov-result-status">${r.status}</span>
                                 ${r.error ? html`<span class="ag-prov-result-err">${r.error}</span>` : nothing}
