@@ -240,3 +240,29 @@
     font-size: var(--font-size-xs);
     color: var(--color-error);
 }
+
+/* ── Guided config (ag-guided-config: 3rd editor mode) ───────────────────── */
+.ag-guided-field {
+    margin-bottom: var(--spacing-md);
+}
+
+.ag-guided-field h4 {
+    margin: 0 0 var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+}
+
+.ag-guided-note {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+}
+
+.ag-guided-actions {
+    margin-top: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}

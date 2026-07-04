@@ -1,0 +1,218 @@
+/**
+ * @module AgGuidedConfig
+ * @description Guided ("zero-conf") editor for a provisionable audio service,
+ * shown as the default mode of ag-config-editor. Presents package-specific,
+ * hardware-aware fields (audio output, music library) driven by a per-service
+ * descriptor, and applies them as TARGETED patches (POST /audio-stack/output,
+ * /audio-stack/library) that preserve the rest of the config. Also offers a
+ * "Reset to default" action that regenerates a minimal working config
+ * (POST /audio-stack/provision, admin password required).
+ *
+ * The descriptor (GUIDED_FIELDS) is intentionally data-driven so new fields can
+ * be added per package without reworking the component.
+ *
+ * @element ag-guided-config
+ * @prop {string} serviceId - Provisionable service id (mpd | airplay | upmpdcli).
+ * @prop {Array} outputs - Detected output candidates (from /audio-stack/status).
+ * @prop {Array} librarySources - Detected library sources.
+ * @prop {Object} serviceOutput - The service's currently pinned output, or null.
+ * @fires guided-changed - Bubbles, after a successful apply or reset (parent refreshes).
+ * @dependency js/common.js
+ * @dependency js/ui-helpers.js
+ * @dependency js/components/utils-lit.js
+ * @dependency js/components/molecules/ag-prov-output-picker.js
+ * @dependency js/components/molecules/ag-prov-library-picker.js
+ * @dependency css/audio-stack.css
+ */
+import { LitElement, html, nothing } from 'lit';
+import { apiPost, showToast, handleError } from '../../common.js';
+import { showPasswordConfirm } from '../../ui-helpers.js';
+import { svgIcon } from '../utils-lit.js';
+import { iconRefresh } from '../../ag-icons.js';
+import '../molecules/ag-prov-output-picker.js';
+import '../molecules/ag-prov-library-picker.js';
+import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
+
+/**
+ * Guided fields per provisionable service. Data-driven so it can grow (a future
+ * "name" field for airplay/upmpdcli lands here once a targeted patch exists).
+ */
+export const GUIDED_FIELDS = {
+    mpd: ['output', 'library'],
+    airplay: ['output'],
+    upmpdcli: [],
+};
+
+export class AgGuidedConfig extends LitElement {
+    static properties = {
+        serviceId: { type: String },
+        outputs: { type: Array },
+        librarySources: { type: Array },
+        serviceOutput: { type: Object },
+        _selectedOutputId: { state: true },
+        _libraryChoice: { state: true },
+        _manualPath: { state: true },
+        _busy: { state: true },
+    };
+
+    constructor() {
+        super();
+        this.serviceId = null;
+        this.outputs = [];
+        this.librarySources = [];
+        this.serviceOutput = null;
+        this._selectedOutputId = null;
+        this._libraryChoice = null;
+        this._manualPath = '';
+        this._busy = false;
+    }
+
+    createRenderRoot() {
+        return this; // Light DOM (global theme + audio-stack.css)
+    }
+
+    /** Fields configured for the current service. */
+    get _fields() {
+        return GUIDED_FIELDS[this.serviceId] || [];
+    }
+
+    /** Pre-select the pinned output once the data arrives. */
+    willUpdate(changed) {
+        if ((changed.has('outputs') || changed.has('serviceOutput')) && this._selectedOutputId == null) {
+            this._selectedOutputId = this._initialOutputId();
+        }
+    }
+
+    _initialOutputId() {
+        const pin = this.serviceOutput;
+        const match = pin && this.outputs.find(o => o.usb_id === pin.usb_id && o.card_name === pin.card_name);
+        return match?.hw || this.outputs.find(o => o.recommended)?.hw || this.outputs[0]?.hw || null;
+    }
+
+    get _selectedOutput() {
+        return this.outputs.find(o => o.hw === this._selectedOutputId) || null;
+    }
+
+    /** True when the selected output differs from the service's current pin. */
+    get _outputChanged() {
+        const o = this._selectedOutput;
+        const pin = this.serviceOutput;
+        if (!o) return false;
+        return !pin
+            || o.usb_id !== pin.usb_id
+            || o.card_name !== pin.card_name
+            || (o.device_id ?? 0) !== (pin.device_id ?? 0);
+    }
+
+    get _libraryPayload() {
+        return AgProvLibraryPicker.payloadFor(this._libraryChoice, this._manualPath, this.librarySources);
+    }
+
+    get _canApply() {
+        if (this._busy) return false;
+        const outChange = this._fields.includes('output') && this._outputChanged;
+        const libChange = this._fields.includes('library') && !!this._libraryPayload;
+        return outChange || libChange;
+    }
+
+    /** Apply the changed fields as targeted patches (preserves the rest of the config). */
+    async _apply() {
+        if (!this._canApply) return;
+        this._busy = true;
+        try {
+            if (this._fields.includes('output') && this._outputChanged) {
+                const o = this._selectedOutput;
+                await apiPost('/audio-stack/output', {
+                    service_id: this.serviceId,
+                    card_name: o.card_name,
+                    usb_id: o.usb_id ?? null,
+                    device_id: o.device_id ?? 0,
+                });
+            }
+            if (this._fields.includes('library') && this._libraryPayload) {
+                await apiPost('/audio-stack/library', this._libraryPayload);
+            }
+            showToast('success', 'Applied', `${this.serviceId} configuration updated.`);
+            this._libraryChoice = null;
+            this._manualPath = '';
+            this._emitChanged();
+        } catch (e) {
+            handleError(e, `Failed to update ${this.serviceId}`);
+        } finally {
+            this._busy = false;
+        }
+    }
+
+    /** Regenerate a minimal working config for this service (full overwrite + password). */
+    async _reset() {
+        const o = this._selectedOutput;
+        if (!o) {
+            showToast('warning', 'No audio output', 'Select an audio output first.');
+            return;
+        }
+        const password = await showPasswordConfirm(
+            `Reset ${this.serviceId} to a working default?`,
+            'This regenerates a minimal working configuration (the current one is backed up first). '
+            + 'Enter your admin password to confirm.'
+        );
+        if (!password) return;
+        this._busy = true;
+        try {
+            await apiPost('/audio-stack/provision', {
+                card_name: o.card_name,
+                usb_id: o.usb_id ?? null,
+                device_id: o.device_id ?? 0,
+                services: [this.serviceId],
+                regenerate: true,
+                ...(this._libraryPayload || {}),
+                password,
+            });
+            showToast('success', 'Reset', `${this.serviceId} reset to a working default.`);
+            this._emitChanged();
+        } catch (e) {
+            handleError(e, `Failed to reset ${this.serviceId}`);
+        } finally {
+            this._busy = false;
+        }
+    }
+
+    _emitChanged() {
+        this.dispatchEvent(new CustomEvent('guided-changed', { bubbles: true, composed: true }));
+    }
+
+    render() {
+        const fields = this._fields;
+        return html`
+            <div class="ag-guided">
+                ${fields.includes('output') ? html`
+                    <div class="ag-guided-field">
+                        <h4>Audio output</h4>
+                        <ag-prov-output-picker .outputs=${this.outputs} .selected=${this._selectedOutputId}
+                            @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; }}></ag-prov-output-picker>
+                    </div>` : nothing}
+
+                ${fields.includes('library') ? html`
+                    <div class="ag-guided-field">
+                        <h4>Music library</h4>
+                        <ag-prov-library-picker .sources=${this.librarySources} .choice=${this._libraryChoice}
+                            .manualPath=${this._manualPath}
+                            @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}></ag-prov-library-picker>
+                    </div>` : nothing}
+
+                ${!fields.length ? html`
+                    <p class="ag-guided-note">No guided settings for this service yet — it renders via MPD.
+                        You can still reset it to a working default below.</p>` : nothing}
+
+                <div class="ag-guided-actions">
+                    ${fields.length ? html`
+                        <button class="action-btn primary compact" ?disabled=${!this._canApply}
+                                @click=${this._apply}>Apply changes</button>` : nothing}
+                    <button class="action-btn secondary compact" ?disabled=${this._busy} @click=${this._reset}>
+                        ${svgIcon(iconRefresh)} Reset to default
+                    </button>
+                </div>
+            </div>`;
+    }
+}
+
+customElements.define('ag-guided-config', AgGuidedConfig);
