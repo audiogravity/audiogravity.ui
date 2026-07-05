@@ -141,9 +141,12 @@ export class AgConfigPage extends LitElement {
         }
     }
 
-    _loadServices() {
-        this._loadAudioStatus();
-        return this.servicesFetch.fetch();
+    async _loadServices() {
+        // Await BOTH the services list and the audio status together: otherwise the
+        // grid re-renders with stale `configured` flags (from the previous status)
+        // before `_loadAudioStatus` resolves, so the empty-state "Configure audio
+        // stack" CTA flashes the pre-provision state after a provision.
+        await Promise.all([this._loadAudioStatus(), this.servicesFetch.fetch()]);
     }
 
     /** Receives the /audio-stack/status payload from the provisioning panel. */
