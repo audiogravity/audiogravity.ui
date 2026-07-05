@@ -247,7 +247,13 @@ remote license server (refreshed every 24 h, or immediately after activation).
       "body": "Optional longer description (nullable)",
       "url": "Optional call-to-action URL (nullable)"
     }
-  ]
+  ],
+  "update": {
+    "available": false,
+    "latest": null,
+    "mandatory": false,
+    "notes_url": null
+  }
 }
 ```
 
@@ -255,6 +261,13 @@ remote license server (refreshed every 24 h, or immediately after activation).
 24 h check-in. Displayed in the AG Admin tab as dismissable banners
 (`ag-announcement-banner`). Empty array when no active announcements exist or
 when the license server is unconfigured.
+
+`update` — availability of a newer AG release, computed by the license server
+(newer than this backend's version and within the licence `version_scope`). When
+an update applies: `{ "available": true, "latest": "0.9.11", "mandatory": false,
+"notes_url": "…" }`. Defaults to `{ "available": false }` when up to date or the
+license server is unconfigured/unreachable. The backend only surfaces this — it
+performs no version comparison and downloads nothing (self-update lands later).
 
 ---
 
