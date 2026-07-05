@@ -62,7 +62,11 @@ const Template = (args) => html`
         .rawContent="${args.rawContent}"
         .configFormat="${args.configFormat}"
         .backups="${args.backups}"
-        ?is-guest="${args.isGuest}">
+        ?is-guest="${args.isGuest}"
+        .guided="${args.guided}"
+        .outputs="${args.outputs}"
+        .librarySources="${args.librarySources}"
+        .serviceOutput="${args.serviceOutput}">
     </ag-config-editor>
   </div>
 `;
@@ -85,4 +89,18 @@ export const GuestMode = Template.bind({});
 GuestMode.args = {
     ...FormMode.args,
     isGuest: true
+};
+
+export const GuidedMode = Template.bind({});
+GuidedMode.args = {
+    ...FormMode.args,
+    guided: true,
+    outputs: [
+        { hw: 'hw:2,0', card_name: 'Abacus', usb_id: '20b1:30ab', device_id: 0, is_usb_dac: true, recommended: true, label: 'Abacus — USB Audio' },
+        { hw: 'hw:0,0', card_name: 'PCH', usb_id: null, device_id: 0, is_usb_dac: false, recommended: false, label: 'PCH — onboard' }
+    ],
+    librarySources: [
+        { kind: 'usb', uuid: 'u-1', fstype: 'ext4', path: '/mnt/aglibrary', label: 'MUSIC (ext4)' }
+    ],
+    serviceOutput: { usb_id: '20b1:30ab', card_name: 'Abacus', device_id: 0 }
 };

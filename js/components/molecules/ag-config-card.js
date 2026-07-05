@@ -42,8 +42,16 @@ const _fmtMtime = (iso) => {
 export class AgConfigCard extends LitElement {
     static properties = {
         service: { type: Object },
-        delayIndex: { type: Number }
+        delayIndex: { type: Number },
+        provisionable: { type: Boolean },
+        configured: { type: Boolean }
     };
+
+    constructor() {
+        super();
+        this.provisionable = false;
+        this.configured = false;
+    }
 
     createRenderRoot() {
         // Use light DOM
@@ -111,6 +119,12 @@ export class AgConfigCard extends LitElement {
                         ` : nothing}
                         ${statusLabel ? html`
                             <span class="config-status-badge config-status-badge--${statusVariant}">${statusLabel}</span>
+                        ` : nothing}
+                        ${this.provisionable ? html`
+                            <div class="has-tooltip">
+                                <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
+                                <div class="tooltip">${this.configured ? 'Set up by AudioGravity' : 'Using package defaults — not set up by AudioGravity'}</div>
+                            </div>
                         ` : nothing}
                     </div>
                 </div>

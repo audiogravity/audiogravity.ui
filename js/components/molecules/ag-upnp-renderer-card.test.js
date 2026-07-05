@@ -278,4 +278,31 @@ describe('AgUpnpRendererCard._renderScanSection()', () => {
         expect(out).not.toContain('No UPnP renderer found');
         expect(out).not.toContain('No new renderer found');
     });
+
+    it('renders a co-located (is_local) renderer as a non-selectable info row', () => {
+        const el = makeEl({
+            _known: [],
+            _discovered: [{ udn: 'uuid:self', friendly_name: 'AudioGravity', is_local: true }],
+        });
+        const out = str(el._renderScanSection());
+        expect(out).toContain('AudioGravity');
+        expect(out).toContain('receives external casts');
+        expect(out).toContain('Not selectable');
+        // Must NOT be offered as a connectable renderer (no "Available" indicator).
+        expect(out).not.toContain('Available');
+    });
+
+    it('still offers remote renderers as selectable alongside a local one', () => {
+        const el = makeEl({
+            _known: [],
+            _discovered: [
+                { udn: 'uuid:self',   friendly_name: 'AudioGravity', is_local: true },
+                { udn: 'uuid:remote', friendly_name: 'Marantz',      is_local: false },
+            ],
+        });
+        const out = str(el._renderScanSection());
+        expect(out).toContain('Not selectable');   // local info row present
+        expect(out).toContain('Marantz');           // remote selectable row present
+        expect(out).toContain('Available');         // remote still connectable
+    });
 });

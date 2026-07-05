@@ -140,6 +140,75 @@
     margin-left: auto;
 }
 
+/* Segmented mode control (Guided | Structured | Expert) for provisionable services. */
+.config-mode-tabs {
+    margin-left: auto;
+    display: inline-flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.config-mode-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.config-mode-tab:hover {
+    color: var(--text-primary);
+}
+
+.config-mode-tab.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.config-guided-editor {
+    display: none;
+}
+
+.config-guided-editor.active {
+    display: block;
+}
+
+/* First-time setup CTA (empty-state banner that opens the init modal). */
+.config-init-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.config-init-cta-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.config-init-cta-text strong {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+}
+
+.config-init-cta-text span {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
 /* =====================
    FORM EDITOR
    ===================== */
@@ -630,6 +699,14 @@
     background: var(--color-success-bg);
     border-radius: var(--radius-xs);
     padding: 0 4px;
+}
+
+/* Inner card grid: let tiles shrink instead of forcing the grid wider than the
+   page column. The page-level grid-item fix lives in layout.css
+   (.content-grid > *), which covers the .config-zone wrapper. */
+.config-selector-grid > *,
+.config-selector-grid-container > * {
+    min-width: 0;
 }
 
 /* =====================

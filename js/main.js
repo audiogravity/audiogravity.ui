@@ -76,6 +76,8 @@ import './components/molecules/ag-tabs.js';
 import './components/molecules/ag-user-card.js';
 import './components/molecules/ag-config-card.js';
 import './components/molecules/ag-systemd-card.js';
+import './components/molecules/ag-prov-output-picker.js';
+import './components/molecules/ag-prov-library-picker.js';
 import './components/molecules/ag-governor-card.js';
 import './components/molecules/ag-audio-card.js';
 import './components/molecules/ag-network-card.js';
@@ -143,6 +145,7 @@ import './components/organisms/ag-systemd-page.js';
 import './components/organisms/ag-performance-page.js';
 import './components/organisms/ag-system-page.js';
 import './components/organisms/ag-config-page.js';
+import './components/organisms/ag-audio-stack-provisioning.js';
 import './components/organisms/ag-pipeline-page.js';
 import './components/organisms/ag-admin-page.js';
 

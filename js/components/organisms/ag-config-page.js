@@ -24,7 +24,7 @@ import {
     showConfirm,
     handleError,
 } from '../../common.js';
-import { isGuest } from '../../auth.js';
+import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
 import { appContext } from '../../core/app-context.js';
@@ -39,6 +39,11 @@ export class AgConfigPage extends LitElement {
         configFormat: { type: String },
         backups: { type: Array },
         loading: { type: Boolean },
+        _provisionableIds: { state: true },
+        _outputs: { state: true },
+        _librarySources: { state: true },
+        _statusServices: { state: true },
+        _showInitModal: { state: true },
     };
 
     constructor() {
@@ -50,6 +55,11 @@ export class AgConfigPage extends LitElement {
         this.rawContent = '';
         this.configFormat = 'conf';
         this.backups = [];
+        this._provisionableIds = [];
+        this._outputs = [];
+        this._librarySources = [];
+        this._statusServices = [];
+        this._showInitModal = false;
         this._boundHandleServiceMetrics = this._handleServiceMetricsSSE.bind(this);
 
         this.servicesFetch = new FetchController(this, {
@@ -131,8 +141,74 @@ export class AgConfigPage extends LitElement {
         }
     }
 
-    _loadServices() {
-        return this.servicesFetch.fetch();
+    async _loadServices() {
+        // Await BOTH the services list and the audio status together: otherwise the
+        // grid re-renders with stale `configured` flags (from the previous status)
+        // before `_loadAudioStatus` resolves, so the empty-state "Configure audio
+        // stack" CTA flashes the pre-provision state after a provision.
+        await Promise.all([this._loadAudioStatus(), this.servicesFetch.fetch()]);
+    }
+
+    /** Receives the /audio-stack/status payload from the provisioning panel. */
+    _handleStatusLoaded(e) {
+        this._storeAudioStatus(e.detail || {});
+    }
+
+    _storeAudioStatus(status) {
+        this._outputs = status.outputs || [];
+        this._librarySources = status.library_sources || [];
+        this._statusServices = status.services || [];
+        this._provisionableIds = this._statusServices.map(s => s.service_id);
+    }
+
+    /** Fetch the audio-stack status for the editor's guided mode (admin only). */
+    async _loadAudioStatus() {
+        if (!isAdmin()) return;
+        try {
+            this._storeAudioStatus(await apiGet('/audio-stack/status'));
+        } catch (e) {
+            // Non-fatal: the guided mode simply shows no detected outputs/sources.
+        }
+    }
+
+    /** The pinned output of a service, from the last status load (or null). */
+    _serviceOutputFor(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.output || null;
+    }
+
+    /** A provision generated/changed configs — refresh the grid and the box state. */
+    async _handleProvisioned() {
+        await this._loadServices();
+    }
+
+    /** Whether the box is unconfigured: provisionable services exist, none AG-provisioned. */
+    get _boxIsNew() {
+        return this._statusServices.length > 0 && this._statusServices.every(s => !s.configured);
+    }
+
+    /** Whether a service carries the AG marker (from the last status load). */
+    _serviceConfigured(serviceId) {
+        return !!this._statusServices.find(s => s.service_id === serviceId)?.configured;
+    }
+
+    /** A guided apply/reset changed the config — reload the editor data + status. */
+    async _handleGuidedChanged() {
+        if (this.selectedServiceId) {
+            await this._reloadServiceConfig(this.selectedServiceId);
+        }
+        await this._loadAudioStatus();
+    }
+
+    async _reloadServiceConfig(serviceId) {
+        const [jsonConfig, rawConfig] = await Promise.all([
+            apiGet(`/audio_app_config/${serviceId}/config?type=structured`),
+            apiGet(`/audio_app_config/${serviceId}/config?type=raw`)
+        ]);
+        this.schema = jsonConfig.config_schema || jsonConfig.schema;
+        this.formData = jsonConfig.data || {};
+        this.rawContent = rawConfig.content || '';
+        this.configFormat = rawConfig.format || jsonConfig.format || 'conf';
+        await this._loadBackups(serviceId);
     }
 
     async _handleServiceSelect(e) {
@@ -144,7 +220,8 @@ export class AgConfigPage extends LitElement {
         try {
             const [jsonConfig, rawConfig] = await Promise.all([
                 apiGet(`/audio_app_config/${serviceId}/config?type=structured`),
-                apiGet(`/audio_app_config/${serviceId}/config?type=raw`)
+                apiGet(`/audio_app_config/${serviceId}/config?type=raw`),
+                this._loadAudioStatus()
             ]);
 
             this.schema = jsonConfig.config_schema || jsonConfig.schema;
@@ -258,6 +335,8 @@ export class AgConfigPage extends LitElement {
         const content = window.UIComponents.InfoModal.createContent(
             'The Configuration tab allows you to safely edit the actual configuration files of your audio services.',
             [
+                { title: 'First-time setup', text: 'On a new box (administrators only), an <strong>Initialize audio stack</strong> panel auto-detects your DAC and music library and generates a minimal working configuration for MPD, AirPlay (shairport-sync) and UPnP (upmpdcli), all wired to the chosen output. It asks for your admin password before applying. Once at least one service is set up, the panel disappears.' },
+                { title: 'Guided mode', text: 'For MPD, AirPlay and UPnP, the editor opens in a <strong>Guided</strong> view where you change the audio output or music library in a couple of clicks — only the changed setting is rewritten, the rest of your config is preserved. A <strong>Reset to default</strong> action there regenerates a minimal working config (admin password required; the current file is backed up first). Each MPD/AirPlay/UPnP tile shows a <strong>CONFIGURED</strong> badge once set up by AudioGravity.' },
                 { title: 'Service Status', text: 'Each tile shows a <strong>RUNNING</strong> (green) or <strong>STOPPED</strong> (grey) badge reflecting the current systemd state of the service — so you know what is active before editing.' },
                 { title: 'Form Mode', text: 'Edit common settings through a user-friendly interface with field descriptions and validation. Ideal for day-to-day configuration.' },
                 { title: 'Expert Mode (Raw)', text: 'Directly edit the raw configuration file for advanced parameters not exposed in Form Mode. Includes syntax validation before save.' },
@@ -286,14 +365,42 @@ export class AgConfigPage extends LitElement {
                     .configFormat=${this.configFormat}
                     .backups=${this.backups}
                     .isGuest=${!!(window.isGuest && isGuest())}
+                    .guided=${isAdmin() && this._provisionableIds.includes(this.selectedServiceId)}
+                    .outputs=${this._outputs}
+                    .librarySources=${this._librarySources}
+                    .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}
-                    @restore=${this._handleRestore}>
+                    @restore=${this._handleRestore}
+                    @guided-changed=${this._handleGuidedChanged}>
                 </ag-config-editor>
             ` : html`
-                <ag-card-grid 
+                ${isAdmin() && this._boxIsNew ? html`
+                    <div class="config-init-cta">
+                        <div class="config-init-cta-text">
+                            <strong>Set up your audio stack</strong>
+                            <span>Detect your DAC and music library, then generate a minimal working
+                                configuration for MPD, AirPlay and UPnP.</span>
+                        </div>
+                        <button class="tile-action-btn" @click=${() => { this._showInitModal = true; }}>
+                            Configure audio stack
+                        </button>
+                    </div>
+                ` : ''}
+                ${this._showInitModal ? html`
+                    <ag-modal title="First-time setup" ?show=${this._showInitModal} size="large"
+                        .bodyTemplate=${html`
+                            <ag-audio-stack-provisioning
+                                @status-loaded=${this._handleStatusLoaded}
+                                @provisioned=${this._handleProvisioned}>
+                            </ag-audio-stack-provisioning>
+                        `}
+                        @modal-close=${() => { this._showInitModal = false; }}>
+                    </ag-modal>
+                ` : ''}
+                <ag-card-grid
                     class="config-selector-grid"
-                    grid-class="config-selector-grid-container" 
+                    grid-class="config-selector-grid-container"
                     skeleton-class="config-tile"
                     empty-message="No configurable services available"
                     .items=${this.services}
@@ -303,7 +410,9 @@ export class AgConfigPage extends LitElement {
                         <ag-config-card
                             style="display: block; height: 100%;"
                             .service=${service}
-                            .delayIndex=${index}>
+                            .delayIndex=${index}
+                            ?provisionable=${this._provisionableIds.includes(service.id)}
+                            ?configured=${this._serviceConfigured(service.id)}>
                         </ag-config-card>
                     `}
                     @edit-config=${this._handleServiceSelect}>

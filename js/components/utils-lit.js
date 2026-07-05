@@ -2,6 +2,7 @@
  * @module LitUtils
  * @description Shared utility functions for Lit components to avoid duplication.
  */
+import { html } from 'lit';
 import { API_BASE_URL, API_KEY } from '../core/config.js';
 
 /**
@@ -25,6 +26,20 @@ export async function loadWithState(host, fn) {
     } finally {
         host._loading = false;
     }
+}
+
+/**
+ * Wrap an ag-icons.js icon (the inner SVG content) in a sized `<svg>` element.
+ * Centralises the `<svg viewBox="0 0 24 24">…</svg>` boilerplate otherwise
+ * repeated across components, with the Lucide stroke convention of the icon set.
+ * @param {import('lit').SVGTemplateResult} icon - An icon export from ag-icons.js.
+ * @param {object} [opts]
+ * @param {string} [opts.size='1em'] - width/height of the SVG.
+ * @returns {import('lit').TemplateResult}
+ */
+export function svgIcon(icon, { size = '1em' } = {}) {
+    return html`<svg viewBox="0 0 24 24" width=${size} height=${size} fill="none"
+        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`;
 }
 
 /**

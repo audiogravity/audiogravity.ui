@@ -79,11 +79,11 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices |
+| GET | `/upnp-renderer/discover` | Scan LAN for MediaRenderer devices. Each entry carries **`is_local`** — `true` for a renderer co-located with AG (its own on-host upmpdcli), which the UI shows as an info row but must not offer as an output |
 | GET | `/upnp-renderer/known` | All known renderers with live `active`, `reachable` fields |
 | DELETE | `/upnp-renderer/{udn}` | Permanently remove renderer from known list (disconnects if active) |
 | GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
-| PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output) |
+| PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output). Returns **400** for a co-located (`is_local`) renderer — it receives external casts and duplicates the Local DAC, so it cannot be selected as an output |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
 | GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`uses_local_mpd`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
 | POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
@@ -142,6 +142,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | POST | `/qobuz/connection` | Start OAuth2 flow |
 | GET | `/qobuz/callback` | OAuth2 callback |
 | DELETE | `/qobuz/connection` | Disconnect |
+| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
@@ -149,7 +150,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`) |
 | POST | `/highresaudio/connection` | Log in — body `{username, password}` (401 on bad credentials / no subscription) |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
-| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN |
+| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 
 ### Services — `/services/*`
 | Method | Path | Description |
@@ -190,6 +191,27 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/sysinfo/audio-devices` | ALSA cards + USB interfaces |
 | GET | `/sysinfo/logs` | Journalctl logs for a unit |
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
+
+### Audio Stack — `/audio-stack/*`
+Per-service minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
+Consumed by the first-time-setup modal + the editor's **Guided** mode in AUDIO
+SERVICES CONFIGURATION. **Admin-only** — all endpoints require an administrator
+(`require_admin`) on top of a full license.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/audio-stack/status` | Detected outputs, library sources, per-service pinned output + config state |
+| POST | `/audio-stack/provision` | (Re)generate minimal configs — always overwrite-with-backup; admin **password** required |
+| POST | `/audio-stack/output` | Targeted: change one service's audio output in place |
+| POST | `/audio-stack/library` | Targeted: change mpd's music library in place |
+
+`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, configured, output: { usb_id, card_name, device_id } | null }] }`. `configured` is **true only when the file carries the AG marker** (not mere existence — distro packages ship defaults). `services[].output` is the per-service pinned output (null for upmpdcli / unset). `selected_output` is a back-compat single pin derived from the per-service map.
+
+`POST /audio-stack/provision` body: `{ card_name, usb_id?, device_id?, (music_directory | library_usb_uuid + library_fstype), regenerate?, services?, password }` → `{ device, selected_output, music_directory, results: [{ service_id, status: "generated"|"regenerated"|"error", config_path?, backup_path?, restarted?, error? }] }`. **Always overwrites** the config, auto-backing up any existing file first (distro packages ship defaults, so an only-if-absent write never applied). **Both** the initial provision and per-service `regenerate` require the admin `password` (verified — wrong/missing → **401**). Pins the chosen output for each targeted service that drives an ALSA device (mpd, airplay). Returns **400** if `mpd` is targeted without a library (a `regenerate` reuses mpd's existing one).
+
+`POST /audio-stack/output` body: `{ service_id, card_name, usb_id?, device_id? }` → `{ service_id, device, output }`. Rewrites **only** the ALSA device directive of that service (via steering's device switcher) and pins the new per-service output — the rest of the config is preserved. Admin-only, **no password**. **400** if the service has no ALSA output or the output cannot be resolved.
+
+`POST /audio-stack/library` body: `{ music_directory | library_usb_uuid + library_fstype }` → `{ service_id: "mpd", music_directory }`. Rewrites **only** mpd's `music_directory` (mounting a USB drive by UUID if given) — outputs and bit-perfect flags preserved. Admin-only, **no password**. **400** if no library is given.
 
 ### Other
 | Method | Path | Description |

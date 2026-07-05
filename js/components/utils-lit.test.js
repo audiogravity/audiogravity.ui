@@ -7,8 +7,21 @@ import {
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection,
+    formatTimestamp, loadConnection, svgIcon,
 } from './utils-lit.js';
+
+describe('svgIcon', () => {
+    it('wraps an icon in a sized <svg> with the Lucide stroke convention', () => {
+        const tpl = svgIcon('ICON');
+        expect(tpl.strings.join('')).toContain('<svg viewBox="0 0 24 24"');
+        expect(tpl.strings.join('')).toContain('stroke="currentColor"');
+        expect(tpl.values).toContain('ICON');
+        expect(tpl.values).toContain('1em');   // default size
+    });
+    it('honours a custom size', () => {
+        expect(svgIcon('X', { size: '22px' }).values).toContain('22px');
+    });
+});
 
 describe('safeToFixed', () => {
     it('formats valid numbers', () => {
