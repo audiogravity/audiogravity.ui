@@ -32,6 +32,7 @@ import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import '../molecules/ag-announcement-banner.js';
 import '../molecules/ag-update-banner.js';
+import '../molecules/ag-version-skew-banner.js';
 
 export class AgAdminPage extends LitElement {
     static properties = {
@@ -315,6 +316,7 @@ export class AgAdminPage extends LitElement {
         return html`
             <div class="admin-zone tab-zone">
                 <ag-announcement-banner></ag-announcement-banner>
+                <ag-version-skew-banner></ag-version-skew-banner>
                 <ag-update-banner></ag-update-banner>
                 <ag-license-status
                     @license-key-click=${() => { this._licenseModalOpen = true; }}
