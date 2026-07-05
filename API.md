@@ -191,6 +191,12 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/sysinfo/audio-devices` | ALSA cards + USB interfaces |
 | GET | `/sysinfo/logs` | Journalctl logs for a unit |
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
+| POST | `/sysinfo/actions/update` | Self-update the core to a newer release; admin **password** required |
+| GET | `/sysinfo/update-status` | Current self-update progress (phase) |
+
+`POST /sysinfo/actions/update` body: `{ password, version?, token? }` → `{ status: "updating", from, to }`. Admin + **password** gated. Launches a **detached** updater (transient systemd unit) that reinstalls the core binary (to `version`, or latest when omitted), health-checks it, and **rolls back** on failure. `token` is an optional GitHub PAT for the private releases repo (Early Access). Returns **409** if an update is already in progress. Follow progress via `GET /sysinfo/update-status`.
+
+`GET /sysinfo/update-status` → `{ phase, from?, to?, error?, updated_at? }` where `phase` ∈ `idle | starting | downloading | installing | verifying | done | rolled_back | failed`. Read from disk, so it survives the core restart mid-update.
 
 ### Audio Stack — `/audio-stack/*`
 Per-service minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
