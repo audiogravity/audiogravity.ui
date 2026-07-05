@@ -34,3 +34,14 @@ export const NoReleaseNotes = () => Template({
 });
 
 export const NoUpdate = () => Template({ available: false });
+
+/** Renders the in-progress state (bypasses the API call and the trigger flow). */
+const Progress = (phase) => {
+    const el = new AgUpdateBanner();
+    el._updating = true;
+    el._phase = phase;
+    return _wrap(el);
+};
+
+export const Installing = () => Progress('installing');
+export const Verifying = () => Progress('verifying');

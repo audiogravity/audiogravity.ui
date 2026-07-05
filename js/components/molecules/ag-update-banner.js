@@ -1,17 +1,26 @@
 /**
  * @module AgUpdateBanner
- * @description Molecule that shows a "new AudioGravity release available" banner.
- * Fetches GET /license/online-status on mount and reads its `update` field
- * (computed by the license server). Read-only indicator — the actual update
- * action lands in a later phase. Renders nothing when no update applies.
+ * @description Molecule that shows a "new AudioGravity release available" banner
+ * and drives the one-click self-update. Fetches GET /license/online-status on
+ * mount and reads its `update` field (computed by the license server). When an
+ * update applies, an admin can trigger it (password-confirmed); progress is then
+ * polled from GET /sysinfo/update-status, tolerating the core restart mid-update.
  *
  * Uses light DOM (createRenderRoot override) so global theme tokens and
  * stylesheet rules apply without shadow-DOM piercing.
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { apiGet } from '../../api.js';
-import { iconDownload } from '../../ag-icons.js';
+import { apiGet, apiPost } from '../../api.js';
+import { iconDownload, iconRepeat } from '../../ag-icons.js';
+import { isAdmin } from '../../auth.js';
+import { showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
+
+/** Self-update phases that end the flow (no more polling). */
+const _TERMINAL_PHASES = new Set(['done', 'rolled_back', 'failed']);
+/** Poll cadence and overall guard for the progress loop. */
+const _POLL_INTERVAL_MS = 3000;
+const _POLL_TIMEOUT_MS = 6 * 60 * 1000;
 
 /**
  * Whether the update payload warrants showing the banner.
@@ -20,6 +29,23 @@ import { iconDownload } from '../../ag-icons.js';
  */
 export function isUpdateAvailable(update) {
     return !!(update && update.available && update.latest);
+}
+
+/**
+ * Human-readable label for a self-update phase.
+ * @param {string} phase
+ * @returns {string}
+ */
+export function updatePhaseLabel(phase) {
+    return {
+        starting:    'Starting…',
+        downloading: 'Downloading…',
+        installing:  'Installing…',
+        verifying:   'Verifying…',
+        done:        'Update complete',
+        rolled_back: 'Update failed — previous version restored',
+        failed:      'Update failed',
+    }[phase] || 'Updating…';
 }
 
 /**
@@ -34,7 +60,9 @@ export function isUpdateAvailable(update) {
  */
 export class AgUpdateBanner extends LitElement {
     static properties = {
-        _update: { state: true },
+        _update:   { state: true },
+        _updating: { state: true },
+        _phase:    { state: true },
     };
 
     /** Light DOM — inherits global CSS variables and stylesheet rules. */
@@ -43,7 +71,10 @@ export class AgUpdateBanner extends LitElement {
     constructor() {
         super();
         this._update = null;
+        this._updating = false;
+        this._phase = null;
         this._abortController = null;
+        this._pollTimer = null;
     }
 
     connectedCallback() {
@@ -56,6 +87,7 @@ export class AgUpdateBanner extends LitElement {
         super.disconnectedCallback();
         this._abortController?.abort();
         this._abortController = null;
+        this._stopPolling();
     }
 
     async _load() {
@@ -68,10 +100,74 @@ export class AgUpdateBanner extends LitElement {
         }
     }
 
-    render() {
+    /** Confirm, authenticate, then trigger the self-update and start polling progress. */
+    async _handleUpdate() {
         const u = this._update;
-        if (!isUpdateAvailable(u)) return nothing;
+        if (!isUpdateAvailable(u)) return;
+        const confirmed = await showConfirm(
+            'Update AudioGravity',
+            `Install v${u.latest}? The core service will restart, so playback will briefly stop. ` +
+            `If the new version fails to start, the previous one is restored automatically.`,
+        );
+        if (!confirmed) return;
+        const password = await showPasswordConfirm(
+            'Confirm update',
+            'Enter your admin password to install the update.',
+        );
+        if (!password) return;
 
+        try {
+            await apiPost('/sysinfo/actions/update', { password, version: u.latest });
+            this._updating = true;
+            this._phase = 'starting';
+            showToast('info', 'Update started', 'Installing — the app will reconnect automatically…');
+            this._startPolling();
+        } catch (err) {
+            showToast('error', 'Update failed to start', err?.message || 'Unknown error');
+        }
+    }
+
+    /** Poll GET /sysinfo/update-status until a terminal phase, tolerating the restart. */
+    _startPolling() {
+        const deadline = Date.now() + _POLL_TIMEOUT_MS;
+        this._stopPolling();
+        this._pollTimer = setInterval(async () => {
+            if (Date.now() > deadline) {
+                this._stopPolling();
+                this._updating = false;
+                showToast('warning', 'Update status unknown', 'Timed out waiting — check the system status.');
+                return;
+            }
+            try {
+                // retry=false: a single attempt; the core is briefly down during the swap.
+                const s = await apiGet('/sysinfo/update-status', false);
+                this._phase = s?.phase || this._phase;
+                if (_TERMINAL_PHASES.has(this._phase)) {
+                    this._stopPolling();
+                    if (this._phase === 'done') {
+                        showToast('success', 'Update complete', 'Reloading…');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        this._updating = false;
+                        showToast('error', 'Update not applied', updatePhaseLabel(this._phase));
+                    }
+                }
+            } catch {
+                // Core restarting mid-update — keep polling until it answers again.
+            }
+        }, _POLL_INTERVAL_MS);
+    }
+
+    /** Stop the progress polling loop. */
+    _stopPolling() {
+        if (this._pollTimer) {
+            clearInterval(this._pollTimer);
+            this._pollTimer = null;
+        }
+    }
+
+    /** Scoped style block, shared by the banner and the progress views. */
+    get _styleBlock() {
         return html`
             <style>
                 ag-update-banner .ag-upd-banner {
@@ -115,7 +211,36 @@ export class AgUpdateBanner extends LitElement {
                     font-size: var(--font-size-xs);
                 }
                 ag-update-banner .ag-upd-link:hover { text-decoration: underline; }
+                ag-update-banner .ag-upd-btn { align-self: center; flex-shrink: 0; }
             </style>
+        `;
+    }
+
+    _renderProgress() {
+        return html`
+            ${this._styleBlock}
+            <div class="ag-upd-banner">
+                <span class="ag-upd-icon">
+                    <svg class="ag-spin" viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none"
+                         stroke="currentColor" stroke-width="1.5"
+                         stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg>
+                </span>
+                <div class="ag-upd-body">
+                    <div class="ag-upd-title">Updating AudioGravity…</div>
+                    <div class="ag-upd-text">${updatePhaseLabel(this._phase)}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    render() {
+        if (this._updating) return this._renderProgress();
+
+        const u = this._update;
+        if (!isUpdateAvailable(u)) return nothing;
+
+        return html`
+            ${this._styleBlock}
             <div class="ag-upd-banner ${u.mandatory ? 'mandatory' : ''}">
                 <span class="ag-upd-icon">
                     <svg viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none"
@@ -132,6 +257,12 @@ export class AgUpdateBanner extends LitElement {
                         ? html`<a class="ag-upd-link" href=${u.notes_url} target="_blank" rel="noopener">Release notes →</a>`
                         : nothing}
                 </div>
+                ${isAdmin() ? html`
+                    <button class="btn-action compact primary ag-upd-btn" @click=${this._handleUpdate}>
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+                             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
+                        Update now
+                    </button>` : nothing}
             </div>
         `;
     }
