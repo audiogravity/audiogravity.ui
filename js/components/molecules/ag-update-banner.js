@@ -258,7 +258,7 @@ export class AgUpdateBanner extends LitElement {
                         : nothing}
                 </div>
                 ${isAdmin() ? html`
-                    <button class="btn-action compact primary ag-upd-btn" @click=${this._handleUpdate}>
+                    <button class="action-btn compact primary ag-upd-btn" @click=${this._handleUpdate}>
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
                              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
                         Update now
