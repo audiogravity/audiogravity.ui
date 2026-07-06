@@ -191,6 +191,12 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/sysinfo/audio-devices` | ALSA cards + USB interfaces |
 | GET | `/sysinfo/logs` | Journalctl logs for a unit |
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
+| POST | `/sysinfo/actions/update` | Self-update the core to a newer release; admin **password** required |
+| GET | `/sysinfo/update-status` | Current self-update progress (phase) |
+
+`POST /sysinfo/actions/update` body: `{ password, version?, token? }` → `{ status: "updating", from, to }`. Admin + **password** gated. Launches a **detached** updater (transient systemd unit) that reinstalls the core binary (to `version`, or latest when omitted), health-checks it, and **rolls back** on failure. `token` is an optional GitHub PAT for the private releases repo (Early Access); when omitted it falls back to the core's configured `RELEASE_DOWNLOAD_TOKEN`. Health-check requires the new binary to report the **target version** (not just answer `200`). Returns **409** if an update is already in progress (a crashed/stale in-progress state older than 15 min is ignored, so a dead updater can't wedge this). Follow progress via `GET /sysinfo/update-status`.
+
+`GET /sysinfo/update-status` → `{ phase, from?, to?, error?, updated_at? }` where `phase` ∈ `idle | starting | downloading | installing | verifying | done | rolled_back | failed`. Read from disk, so it survives the core restart mid-update.
 
 ### Audio Stack — `/audio-stack/*`
 Per-service minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
@@ -247,7 +253,13 @@ remote license server (refreshed every 24 h, or immediately after activation).
       "body": "Optional longer description (nullable)",
       "url": "Optional call-to-action URL (nullable)"
     }
-  ]
+  ],
+  "update": {
+    "available": false,
+    "latest": null,
+    "mandatory": false,
+    "notes_url": null
+  }
 }
 ```
 
@@ -255,6 +267,13 @@ remote license server (refreshed every 24 h, or immediately after activation).
 24 h check-in. Displayed in the AG Admin tab as dismissable banners
 (`ag-announcement-banner`). Empty array when no active announcements exist or
 when the license server is unconfigured.
+
+`update` — availability of a newer AG release, computed by the license server
+(newer than this backend's version and within the licence `version_scope`). When
+an update applies: `{ "available": true, "latest": "0.9.11", "mandatory": false,
+"notes_url": "…" }`. Defaults to `{ "available": false }` when up to date or the
+license server is unconfigured/unreachable. The backend only surfaces this — it
+performs no version comparison and downloads nothing (self-update lands later).
 
 ---
 

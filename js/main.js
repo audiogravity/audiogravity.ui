@@ -91,6 +91,8 @@ import './components/molecules/ag-event-item.js';
 import './components/molecules/ag-validation-results.js';
 import './components/molecules/ag-metric-detail.js';
 import './components/molecules/ag-license-status.js';
+import './components/molecules/ag-update-banner.js';
+import './components/molecules/ag-version-skew-banner.js';
 import './components/molecules/ag-license-activation.js';
 import './components/molecules/ag-license-verify.js';
 import './components/molecules/ag-volume-popover.js';
