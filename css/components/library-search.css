@@ -48,11 +48,21 @@
 
 .lib-src-badges {
     display: flex;
+    flex-wrap: nowrap;
     gap: var(--spacing-sm);
     margin: 0 20px 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox — the chip strip scrolls without a visible bar */
+}
+
+.lib-src-badges::-webkit-scrollbar {
+    display: none; /* WebKit/Blink */
 }
 
 .lib-src-badge {
+    flex: 0 0 auto;
+    white-space: nowrap;
     font-family: var(--font-family);
     font-size: var(--font-size-xxs);
     text-transform: uppercase;
