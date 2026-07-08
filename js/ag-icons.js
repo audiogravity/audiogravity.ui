@@ -473,6 +473,26 @@ export const iconCpu = svg`
     <rect x="4" y="4" width="16" height="16" rx="2"/>
     <rect x="8" y="8" width="8" height="8" rx="1"/>`;
 
+/** Server — a music/media server node (e.g. Roon Core) in the pipeline. (Lucide: server) */
+export const iconServer = svg`
+    <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+    <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+    <line x1="6" x2="6.01" y1="6" y2="6"/>
+    <line x1="6" x2="6.01" y1="18" y2="18"/>`;
+
+/** Audio lines — an amplifier node in the signal chain. (Lucide: audio-lines) */
+export const iconAudioLines = svg`
+    <path d="M2 10v3"/>
+    <path d="M6 6v11"/>
+    <path d="M10 3v18"/>
+    <path d="M14 8v7"/>
+    <path d="M18 5v13"/>
+    <path d="M22 10v3"/>`;
+
+/** Audio waveform — a converter / DAC (digital-to-analog) node. (Lucide: audio-waveform) */
+export const iconAudioWaveform = svg`
+    <path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/>`;
+
 /** Thermometer — temperature metric. (Lucide: thermometer) */
 export const iconThermometer = svg`
     <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>`;
@@ -621,6 +641,19 @@ export const iconCrosshair = svg`
     <line x1="12" y1="6"  x2="12" y2="2"/>
     <line x1="12" y1="22" x2="12" y2="18"/>
     <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>`;
+
+/** Zoom in — pipeline viewport zoom-in control. (Lucide: zoom-in) */
+export const iconZoomIn = svg`
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" x2="16.65" y1="21" y2="16.65"/>
+    <line x1="11" x2="11" y1="8" y2="14"/>
+    <line x1="8" x2="14" y1="11" y2="11"/>`;
+
+/** Zoom out — pipeline viewport zoom-out control. (Lucide: zoom-out) */
+export const iconZoomOut = svg`
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" x2="16.65" y1="21" y2="16.65"/>
+    <line x1="8" x2="14" y1="11" y2="11"/>`;
 
 /** Bar chart — statistics / components. (Lucide: bar-chart-3) */
 export const iconBarChart = svg`

@@ -1,6 +1,6 @@
 import { LitElement, html, css, svg } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { iconMusicNote, iconCrosshair } from '../../ag-icons.js';
+import { iconMusicNote, iconCrosshair, iconZoomIn, iconZoomOut } from '../../ag-icons.js';
 import { renderPipelineNode } from '../atoms/ag-pipeline-node.js';
 import { renderPipelineLink } from '../atoms/ag-pipeline-link.js';
 
@@ -1581,9 +1581,9 @@ export class AgAudioPipeline extends LitElement {
                 <div class="controls ${this._controlsCollapsed ? 'collapsed' : ''}">
                     <button class="controls-toggle" @click=${this._toggleControlsCollapsed} title="${this._controlsCollapsed ? 'Expand controls' : 'Collapse controls'}">${this._controlsCollapsed ? '›' : '‹'}</button>
                     <div class="control-group">
-                        <button class="zoom-btn" @click=${this._zoomIn} title="Zoom In">+</button>
+                        <button class="zoom-btn" @click=${this._zoomIn} title="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
                         <span class="zoom-value">${Math.round(this.zoom * 100)}%</span>
-                        <button class="zoom-btn" @click=${this._zoomOut} title="Zoom Out">-</button>
+                        <button class="zoom-btn" @click=${this._zoomOut} title="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
                         <button class="zoom-btn" @click=${this._zoomToFit} title="Zoom to fit" style="font-size: 8px; font-weight: 700;">FIT</button>
                         <button class="zoom-btn" @click=${this._resetView} title="Reset Zoom/Pan">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconCrosshair}</svg>

@@ -1,6 +1,6 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { iconSmartphone, iconSliders, iconMusicNote, iconHeadphones, iconPowerCord, iconVolume, iconMusicNote as iconFileMusic, iconDatabase, iconConnection } from '../../ag-icons.js';
+import { iconSmartphone, iconServer, iconCpu, iconAudioWaveform, iconAudioLines, iconVolume, iconMusicNote as iconFileMusic, iconDatabase, iconConnection } from '../../ag-icons.js';
 
 /**
  * Mobile-optimized read-only view of the active audio pipeline.
@@ -212,10 +212,10 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: #10b981; 
     _renderDeviceIcon(type) {
         const DEVICE_ICON_MAP = {
             controller: iconSmartphone,
-            server:     iconSliders,
-            streamer:   iconMusicNote,
-            converter:  iconHeadphones,
-            amplifier:  iconPowerCord,
+            server:     iconServer,
+            streamer:   iconCpu,
+            converter:  iconAudioWaveform,
+            amplifier:  iconAudioLines,
             output:     iconVolume,
             source:     iconFileMusic,
             storage:    iconDatabase,

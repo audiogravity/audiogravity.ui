@@ -71,7 +71,7 @@ export class AgFooter extends LitElement {
 
         modal.bodyTemplate = html`
             <div class="logo-preview-body" style="display: flex; justify-content: center; padding: var(--spacing-lg);">
-                <div style="width:192px; height:192px; background:var(--text-primary); color:var(--bg-primary); display:flex; align-items:center; justify-content:center; font-family:Helvetica, Arial; font-weight:700; font-size:96px; line-height:1">A<span style="font-size:40px; vertical-align:super; margin-left:-4px">ty©</span></div>
+                <img src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:192px; height:192px; border-radius:var(--radius-md); display:block">
             </div>
         `;
 
@@ -104,7 +104,7 @@ export class AgFooter extends LitElement {
         return html`
             <footer class="footer" role="contentinfo">
                 <div class="footer-logo" @click="${this._openLogoModal}">
-                    <div style="width:var(--footer-height); height:var(--footer-height); background:var(--text-primary); color:var(--bg-primary); display:flex; align-items:center; justify-content:center; font-family:Helvetica, Arial; font-weight:700; font-size:calc(var(--footer-height) * 0.5); line-height:1">A<span style="font-size:calc(var(--footer-height) * 0.21); vertical-align:super; margin-left:-2px">ty©</span></div>
+                    <img src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:var(--footer-height); height:var(--footer-height); border-radius:var(--radius-sm); display:block">
                 </div>
                 
                 <span><a href="https://audiogravity.app" target="_blank" rel="noopener">Audiogravi<sup>ty</sup></a> © 2026 — <a
