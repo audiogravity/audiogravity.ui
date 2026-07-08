@@ -86,8 +86,9 @@ ag-mobile-pipeline .amp-connector-line.inactive { background: var(--border-color
 ag-mobile-pipeline .amp-connector-label { margin-left: 10px; font-size: 9px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-tertiary, #94a3b8); }
 ag-mobile-pipeline .amp-loading  { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-tertiary, #94a3b8); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
 ag-mobile-pipeline .amp-no-stream { text-align: center; padding: 40px 20px; color: var(--text-tertiary, #94a3b8); font-size: 13px; }
-ag-mobile-pipeline .amp-output-switcher { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-ag-mobile-pipeline .amp-output-pill { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 1px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-secondary, #ffffff); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-tertiary, #94a3b8); cursor: pointer; transition: all 0.15s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
+ag-mobile-pipeline .amp-output-switcher { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+ag-mobile-pipeline .amp-output-switcher::-webkit-scrollbar { display: none; }
+ag-mobile-pipeline .amp-output-pill { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; white-space: nowrap; padding: 5px 10px; border-radius: 1px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-secondary, #ffffff); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-tertiary, #94a3b8); cursor: pointer; transition: all 0.15s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
 ag-mobile-pipeline .amp-output-pill:active { opacity: 0.7; }
 ag-mobile-pipeline .amp-output-pill.active { border-color: rgba(16,185,129,0.5); background: rgba(16,185,129,0.1); color: #10b981; }
 ag-mobile-pipeline .amp-output-pill.switching { opacity: 0.5; pointer-events: none; }
