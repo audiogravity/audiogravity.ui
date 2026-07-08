@@ -9,9 +9,10 @@
  * @attr {string} source-id - Active source ID (used to derive service name for switch-output)
  * @fires lib-output-change - Bubbles. detail: { outputId } — user selected an output
  */
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
+import { showToast } from '../../ui-helpers.js';
 import {
     iconConnectorUsbA, iconConnectorToslink,
     iconConnectorRj45, iconConnectorDefault,
@@ -35,6 +36,7 @@ export class AgLibraryOutputs extends LitElement {
         sourceId: { type: String, attribute: 'source-id' },
         _outputs: { state: true },
         _loading: { state: true },
+        _switching: { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -44,6 +46,7 @@ export class AgLibraryOutputs extends LitElement {
         this.sourceId = '';
         this._outputs = [];
         this._loading = false;
+        this._switching = null;   // id of the output currently being switched to
     }
 
     connectedCallback() {
@@ -58,17 +61,28 @@ export class AgLibraryOutputs extends LitElement {
     }
 
     async _activate(output) {
+        // Guard: ignore clicks on the active output or while a switch is in flight.
+        if (output.active || this._switching) return;
+
+        this._switching = output.id;
         try {
             const fallback = (this.sourceId || '').replace('src_', '') || 'mpd';
             const service  = SOURCE_TO_SERVICE[this.sourceId] ?? fallback;
+            // The backend reports honestly (SPEC §10): a switch that was not applied
+            // returns 4xx (error detail), so a resolved POST means it took.
             await apiPost('/steering/switch-output', { service, output: output.id });
-            await this._load();
             this.dispatchEvent(new CustomEvent('lib-output-change', {
                 detail: { outputId: output.id },
                 bubbles: true,
             }));
         } catch (e) {
             console.error('[outputs] switch failed:', e);
+            showToast('error', 'Output switch failed', e?.message || 'Could not switch output');
+        } finally {
+            // Re-fetch the real state so the UI reflects what actually happened
+            // (rollback to the previous output if the switch did not take).
+            this._switching = null;
+            await this._load();
         }
     }
 
@@ -87,16 +101,19 @@ export class AgLibraryOutputs extends LitElement {
     }
 
     _renderCard(output) {
-        const isActive  = output.active;
-        const connector = output.connector ?? 'default';
-        const icon      = CONNECTOR_ICONS[connector] ?? CONNECTOR_ICONS.default;
-        const badge     = isActive
-            ? html`<span class="lib-out-badge ok">ACTIVE</span>`
-            : html`<span class="lib-out-badge line">READY</span>`;
+        const isActive   = output.active;
+        const isSwitching = this._switching === output.id;
+        const connector  = output.connector ?? 'default';
+        const icon       = CONNECTOR_ICONS[connector] ?? CONNECTOR_ICONS.default;
+        const badge      = isSwitching
+            ? html`<span class="lib-out-badge line">SWITCHING…</span>`
+            : isActive
+                ? html`<span class="lib-out-badge ok">ACTIVE</span>`
+                : html`<span class="lib-out-badge line">READY</span>`;
 
         return html`
             <div
-                class="lib-out-card ${isActive ? 'active' : ''}"
+                class="lib-out-card ${isActive ? 'active' : ''} ${isSwitching ? 'switching' : ''}"
                 @click=${() => this._activate(output)}
             >
                 <div class="lib-out-hd">

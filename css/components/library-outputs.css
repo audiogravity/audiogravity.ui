@@ -20,6 +20,12 @@
     border-width: 1.5px;
 }
 
+/* Switch in flight: dim the card and disable the pointer affordance. */
+.lib-out-card.switching {
+    opacity: 0.6;
+    cursor: progress;
+}
+
 .lib-out-hd {
     display: flex;
     justify-content: space-between;
