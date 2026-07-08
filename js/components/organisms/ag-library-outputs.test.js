@@ -14,14 +14,14 @@ vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({
     loadWithState: vi.fn(async (host, cb) => { await cb(); }),
 }));
-vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
+vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), showConfirm: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({
     iconConnectorUsbA: '', iconConnectorToslink: '',
     iconConnectorRj45: '', iconConnectorDefault: '',
 }));
 
 import { apiGet, apiPost } from '../../api.js';
-import { showToast } from '../../ui-helpers.js';
+import { showToast, showConfirm } from '../../ui-helpers.js';
 import { AgLibraryOutputs } from './ag-library-outputs.js';
 
 function makeEl(overrides = {}) {
@@ -90,5 +90,30 @@ describe('ag-library-outputs _activate', () => {
         const el = makeEl({ sourceId: 'src_roon' });
         await el._activate({ id: 'toslink', active: false });
         expect(apiPost).toHaveBeenCalledWith('/steering/switch-output', { service: 'roonbridge', output: 'toslink' });
+    });
+
+    it('MPD switch does not prompt for confirmation', async () => {
+        apiPost.mockResolvedValue({ success: true });
+        const el = makeEl();  // service → mpd
+        await el._activate({ id: 'usb', active: false });
+        expect(showConfirm).not.toHaveBeenCalled();
+        expect(apiPost).toHaveBeenCalled();
+    });
+
+    it('AirPlay switch confirms first, then posts when accepted', async () => {
+        showConfirm.mockResolvedValue(true);
+        apiPost.mockResolvedValue({ success: true });
+        const el = makeEl({ sourceId: 'src_airplay' });
+        await el._activate({ id: 'toslink', active: false });
+        expect(showConfirm).toHaveBeenCalled();
+        expect(apiPost).toHaveBeenCalledWith('/steering/switch-output', { service: 'airplay', output: 'toslink' });
+    });
+
+    it('AirPlay switch is aborted when the user cancels the confirm', async () => {
+        showConfirm.mockResolvedValue(false);
+        const el = makeEl({ sourceId: 'src_airplay' });
+        await el._activate({ id: 'toslink', active: false });
+        expect(apiPost).not.toHaveBeenCalled();
+        expect(el._switching).toBe(null);
     });
 });

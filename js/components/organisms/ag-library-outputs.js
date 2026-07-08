@@ -12,7 +12,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
-import { showToast } from '../../ui-helpers.js';
+import { showToast, showConfirm } from '../../ui-helpers.js';
 import {
     iconConnectorUsbA, iconConnectorToslink,
     iconConnectorRj45, iconConnectorDefault,
@@ -64,10 +64,26 @@ export class AgLibraryOutputs extends LitElement {
         // Guard: ignore clicks on the active output or while a switch is in flight.
         if (output.active || this._switching) return;
 
+        const fallback = (this.sourceId || '').replace('src_', '') || 'mpd';
+        const service  = SOURCE_TO_SERVICE[this.sourceId] ?? fallback;
+
+        // Claim the in-flight guard up front so a second click (incl. during the
+        // AirPlay confirm dialog) is ignored.
         this._switching = output.id;
         try {
-            const fallback = (this.sourceId || '').replace('src_', '') || 'mpd';
-            const service  = SOURCE_TO_SERVICE[this.sourceId] ?? fallback;
+            // MPD switches natively (seamless), but AirPlay has no hot-switch: changing
+            // its output restarts the receiver, interrupting any AirPlay stream in
+            // progress with no resume (AirPlay is sender-driven). Warn first.
+            if (service === 'airplay') {
+                const ok = await showConfirm(
+                    'Switch AirPlay output?',
+                    'Changing the AirPlay output restarts the receiver and will interrupt '
+                    + 'any AirPlay playback in progress — you may need to re-select this '
+                    + 'device on your phone.',
+                    { okLabel: 'Switch', cancelLabel: 'Cancel' },
+                );
+                if (!ok) return;
+            }
             // The backend reports honestly (SPEC §10): a switch that was not applied
             // returns 4xx (error detail), so a resolved POST means it took.
             await apiPost('/steering/switch-output', { service, output: output.id });
