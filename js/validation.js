@@ -30,6 +30,21 @@ export async function validateAudioConfig(config) {
     }
 }
 
+/**
+ * Validate audio topology data (audio-topology.json)
+ * @param {Object} topology - Topology object to validate
+ * @returns {Promise<Object>} Validation result with errors (blocking) and warnings (non-blocking)
+ */
+export async function validateTopologyConfig(topology) {
+    try {
+        const response = await apiPost('/config_validation/validate-topology', topology);
+        return response;
+    } catch (error) {
+        console.error('Topology validation API error:', error);
+        throw error;
+    }
+}
+
 // =====================
 // UI RENDERING
 // =====================

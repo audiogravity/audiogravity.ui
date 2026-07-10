@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { AppState, EventEmitter, showToast } from '../../common.js';
 import { apiGet, apiPost } from '../../api.js';
 import { isGuest } from '../../auth.js';
+import { validateTopologyConfig, showValidationModal } from '../../validation.js';
 // ag-mobile-pipeline est chargé dynamiquement via lazyLoadTabContent (common.js)
 
 export class AgPipelinePage extends LitElement {
@@ -86,6 +87,7 @@ export class AgPipelinePage extends LitElement {
             modal.modalTitle = 'Topology Configuration';
             modal.filename = 'audio-topology.json';
             modal.isGuest = isGuest();
+            modal.allowFileTransfer = true;  // enable Download / Upload for the topology file
             modal.isOpen = true;
         } catch (error) {
             console.error('[Topology Modal] Failed to load config:', error);
@@ -98,6 +100,37 @@ export class AgPipelinePage extends LitElement {
         const modal = document.getElementById('agTopologyConfigModal');
         if (!modal) return;
 
+        modal._isLoading = true;
+
+        // Validate structure and link integrity before persisting (SPEC §10 topology).
+        // A validation outage must never block a save, so a failed call falls through.
+        let validation = null;
+        try {
+            validation = await validateTopologyConfig(newConfig);
+        } catch (error) {
+            console.warn('[Topology Modal] Validation unavailable, saving without it:', error);
+        }
+
+        // Structural errors block the save and are surfaced to the user.
+        if (validation && !validation.valid) {
+            modal._isLoading = false;
+            modal._validationMessage = '';  // clear the modal's optimistic "Saving..." label
+            showValidationModal(validation);
+            return;
+        }
+
+        // Non-blocking warnings (broken links, unmappable connectors): confirm first.
+        if (validation && validation.warnings && validation.warnings.length > 0) {
+            modal._isLoading = false;
+            modal._validationMessage = '';  // clear the modal's optimistic "Saving..." label
+            showValidationModal(validation, () => this._persistTopology(newConfig, modal));
+            return;
+        }
+
+        await this._persistTopology(newConfig, modal);
+    }
+
+    async _persistTopology(newConfig, modal) {
         try {
             modal._isLoading = true;
             showToast('info', 'Saving', 'Saving audio-topology.json...');
