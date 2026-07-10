@@ -52,8 +52,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | Method | Path | Description |
 |---|---|---|
 | GET | `/audio_pipeline/current` | Current pipeline state + now playing |
-| GET | `/audio_pipeline/topology/view` | Pipeline topology graph |
-| POST | `/audio_pipeline/topology/save` | Save node positions |
+| GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
+| POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
 | POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
@@ -218,6 +218,21 @@ SERVICES CONFIGURATION. **Admin-only** — all endpoints require an administrato
 `POST /audio-stack/output` body: `{ service_id, card_name, usb_id?, device_id? }` → `{ service_id, device, output }`. Rewrites **only** the ALSA device directive of that service (via steering's device switcher) and pins the new per-service output — the rest of the config is preserved. Admin-only, **no password**. **400** if the service has no ALSA output or the output cannot be resolved.
 
 `POST /audio-stack/library` body: `{ music_directory | library_usb_uuid + library_fstype }` → `{ service_id: "mpd", music_directory }`. Rewrites **only** mpd's `music_directory` (mounting a USB drive by UUID if given) — outputs and bit-perfect flags preserved. Admin-only, **no password**. **400** if no library is given.
+
+### Config Validation — `/config_validation/*`
+Structural + semantic validation of the editable audio config files. Full-license gated.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/config_validation/validate` | Validate `audio-config.json` data (structure + systemd/file checks) |
+| POST | `/config_validation/validate-topology` | Validate `audio-topology.json` data (structure errors + link/connector warnings) |
+
+Both return `{ valid: bool, errors: [{ location, message, type }], warnings: [string], summary? }`.
+For `validate-topology`, structural problems (unknown device type, malformed shape) are blocking
+`errors`; broken references (`target_device_id`/`target_input_id`) and unmappable streamer
+connectors are non-blocking `warnings` (the topology only feeds the signal-path view). The UI
+runs it before saving from the topology editor — errors block the save, warnings ask for
+confirmation.
 
 ### Other
 | Method | Path | Description |
