@@ -24,7 +24,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: ['io.di-marco.net', '8443.tars.di-marco.net', 'tars.di-marco.net', '10.0.4.254', 'localhost'],
+    allowedHosts: ['10.0.4.254', 'localhost'],
     https: process.env.VITE_HTTPS === 'true' ? {
       cert: '/var/www/audiogravity-frontend/ssl/cert.pem',
       key: '/var/www/audiogravity-frontend/ssl/key.pem',
