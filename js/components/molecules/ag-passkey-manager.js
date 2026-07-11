@@ -50,7 +50,8 @@ export class AgPasskeyManager extends LitElement {
     async _loadCredentials() {
         this._loading = true;
         try {
-            this._credentials = await apiGet('/auth/webauthn/credentials');
+            const creds = await apiGet('/auth/webauthn/credentials');
+            this._credentials = Array.isArray(creds) ? creds : [];
         } catch {
             this._credentials = [];
         } finally {

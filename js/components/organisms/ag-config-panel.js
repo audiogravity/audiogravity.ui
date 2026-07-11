@@ -569,7 +569,8 @@ export class AgConfigPanel extends LitElement {
 
     async _loadPasskeys() {
         try {
-            this.passkeys = await apiGet('/auth/webauthn/credentials', false);
+            const creds = await apiGet('/auth/webauthn/credentials', false);
+            this.passkeys = Array.isArray(creds) ? creds : [];
         } catch {
             this.passkeys = [];
         }

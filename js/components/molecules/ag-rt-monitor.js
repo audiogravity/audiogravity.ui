@@ -48,7 +48,8 @@ export class AgRtMonitor extends LitElement {
 
     async _load() {
         try {
-            this._processes = await apiGet('/performance/rt-processes');
+            const data = await apiGet('/performance/rt-processes');
+            this._processes = Array.isArray(data) ? data : [];
             this._error = null;
         } catch (e) {
             this._error = e.message || 'Failed to load';
