@@ -95,9 +95,23 @@ export class AgUpdateBanner extends LitElement {
             const data = await apiGet('/license/online-status');
             if (this._abortController?.signal.aborted) return;
             this._update = data.update || null;
+            this._emitBadge();
         } catch {
             // Non-blocking — the banner is optional.
         }
+    }
+
+    /**
+     * Broadcast update availability so ag-tabs can show (or clear) the badge on
+     * the Admin tab, mirroring ag-announcement-banner's announcement-badge event.
+     */
+    _emitBadge() {
+        window.dispatchEvent(new CustomEvent('update-badge', {
+            detail: {
+                available: isUpdateAvailable(this._update),
+                mandatory: !!this._update?.mandatory,
+            },
+        }));
     }
 
     /** Confirm, authenticate, then trigger the self-update and start polling progress. */

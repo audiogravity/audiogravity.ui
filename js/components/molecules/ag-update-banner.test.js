@@ -27,6 +27,15 @@ function updatePhaseLabel(phase) {
     }[phase] || 'Updating…';
 }
 
+function emitBadge(update) {
+    const detail = {
+        available: isUpdateAvailable(update),
+        mandatory: !!(update && update.mandatory),
+    };
+    window.dispatchEvent(new CustomEvent('update-badge', { detail }));
+    return detail;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('ag-update-banner — isUpdateAvailable', () => {
@@ -78,5 +87,35 @@ describe('ag-update-banner — terminal phases', () => {
         for (const p of ['starting', 'downloading', 'installing', 'verifying']) {
             expect(_TERMINAL_PHASES.has(p)).toBe(false);
         }
+    });
+});
+
+describe('ag-update-banner — _emitBadge (update-badge event)', () => {
+    /** Capture the update-badge details emitted during fn(). */
+    function capture(fn) {
+        const events = [];
+        const handler = e => events.push(e.detail);
+        window.addEventListener('update-badge', handler);
+        try { fn(); } finally { window.removeEventListener('update-badge', handler); }
+        return events;
+    }
+
+    it('emits available:true for an available update, clearing on none', () => {
+        const events = capture(() => {
+            emitBadge({ available: true, latest: '1.0.0' });
+            emitBadge(null);
+        });
+        expect(events[0]).toEqual({ available: true, mandatory: false });
+        expect(events[1]).toEqual({ available: false, mandatory: false });
+    });
+
+    it('flags a mandatory update', () => {
+        const [detail] = capture(() => emitBadge({ available: true, latest: '1.0.0', mandatory: true }));
+        expect(detail).toEqual({ available: true, mandatory: true });
+    });
+
+    it('emits available:false when available but latest is missing', () => {
+        const [detail] = capture(() => emitBadge({ available: true }));
+        expect(detail.available).toBe(false);
     });
 });
