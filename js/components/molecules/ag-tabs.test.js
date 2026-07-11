@@ -14,7 +14,7 @@ vi.mock('lit/directives/class-map.js', () => ({ classMap: () => ({}) }));
 vi.mock('../../ag-icons.js', () => ({
     iconTabProfiles: '', iconTabServices: '', iconTabPipeline: '', iconTabSystem: '',
     iconTabPerformance: '', iconTabLibrary: '', iconHeadphones: '', iconSettingsSliders: '',
-    iconSliders: '', iconShield: '', iconDsdLock: '', iconBell: '',
+    iconSliders: '', iconShield: '', iconDsdLock: '', iconBell: '', iconDownload: '',
 }));
 vi.mock('../../auth.js', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));

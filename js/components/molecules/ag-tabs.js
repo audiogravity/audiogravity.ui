@@ -14,7 +14,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell } from '../../ag-icons.js';
+import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -55,6 +55,8 @@ export class AgTabs extends LitElement {
         _previewTab: { type: String, state: true }, // Tab highlighted during swipe gesture
         _isMobile: { type: Boolean, state: true },
         _announcementCount: { type: Number, state: true },
+        _updateAvailable: { type: Boolean, state: true },
+        _updateMandatory: { type: Boolean, state: true },
         _animationsEnabled: { type: Boolean, state: true },
     };
 
@@ -82,6 +84,8 @@ export class AgTabs extends LitElement {
         this._licenseDaysRemaining = null;
         this._tabStats = {};
         this._announcementCount = 0;
+        this._updateAvailable = false;
+        this._updateMandatory = false;
         this._animationsEnabled = window.AppState?.animationsEnabled ?? true;
 
         // Touch gesture state
@@ -226,6 +230,13 @@ export class AgTabs extends LitElement {
         };
         window.addEventListener('announcement-badge', this._handleAnnouncementBadge);
 
+        // Update badge — updated by ag-update-banner after each load (Admin tab)
+        this._handleUpdateBadge = ({ detail }) => {
+            this._updateAvailable = !!detail?.available;
+            this._updateMandatory = !!detail?.mandatory;
+        };
+        window.addEventListener('update-badge', this._handleUpdateBadge);
+
         this._handleAnimationsChanged = ({ detail }) => {
             this._animationsEnabled = detail?.enabled ?? true;
         };
@@ -315,6 +326,8 @@ export class AgTabs extends LitElement {
         document.removeEventListener('library-click', this._handleLibraryClick);
         if (this._handleAnnouncementBadge)
             window.removeEventListener('announcement-badge', this._handleAnnouncementBadge);
+        if (this._handleUpdateBadge)
+            window.removeEventListener('update-badge', this._handleUpdateBadge);
         if (this._handleAnimationsChanged)
             window.removeEventListener('animations-changed', this._handleAnimationsChanged);
         if (window.EventEmitter) {
@@ -747,6 +760,9 @@ export class AgTabs extends LitElement {
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
                         ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
                             <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
+                        ` : ''}
+                        ${!locked && tab.id === 'admin' && this._updateAvailable ? html`
+                            <span aria-label="Update available" title="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
                         ` : ''}
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`

@@ -58,3 +58,33 @@ export const WithBadge = () => html`
     </ag-tabs>
   </div>
 `;
+
+/* ── Update available (Admin tab indicator) ───────────────────── */
+const TABS_WITH_ADMIN = [
+    ...TABS,
+    { id: 'admin', label: 'Admin', hidden: false, badgeCount: null },
+];
+
+// The download indicator on the Admin tab is driven by _updateAvailable, which
+// ag-tabs normally sets from the update-badge window event (ag-update-banner).
+export const UpdateAvailable = () => html`
+  <div style="padding: 20px;">
+    <ag-tabs
+        .tabs="${TABS_WITH_ADMIN}"
+        .activeTab="services"
+        ._updateAvailable="${true}">
+    </ag-tabs>
+  </div>
+`;
+
+// Mandatory updates use the warning colour instead of the accent.
+export const UpdateAvailableMandatory = () => html`
+  <div style="padding: 20px;">
+    <ag-tabs
+        .tabs="${TABS_WITH_ADMIN}"
+        .activeTab="services"
+        ._updateAvailable="${true}"
+        ._updateMandatory="${true}">
+    </ag-tabs>
+  </div>
+`;
