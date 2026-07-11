@@ -445,6 +445,18 @@ export class AgTabs extends LitElement {
         if (configModal) { configModal.style.transition = ''; configModal.style.removeProperty('transform'); }
     }
 
+    /**
+     * Remove any inline drag transform left on the sidebar, its toggle button and
+     * the config modal. An orphaned inline transform overrides the class-based CSS
+     * and would leave the sidebar stuck off-screen while its state says "open".
+     */
+    _clearDragTransform() {
+        this.style.removeProperty('transform');
+        if (this._sidebarToggleEl) this._sidebarToggleEl.style.removeProperty('transform');
+        const configModal = document.querySelector('.config-modal');
+        if (configModal) { configModal.style.transition = ''; configModal.style.removeProperty('transform'); }
+    }
+
     // Compute target tab index based on swipe distance (1 tab per ~50px)
     _computeSwipeTarget(deltaY, currentIndex, visibleTabs) {
         const tabHeight = 25;
@@ -464,6 +476,9 @@ export class AgTabs extends LitElement {
                 this._touchOpening = false;
                 this.style.transition = '';
                 if (this._sidebarToggleEl) this._sidebarToggleEl.style.transition = '';
+                // A previous frame may have applied an inline transform — clear it,
+                // else the sidebar stays stuck off-screen (state says open, CSS can't win).
+                this._clearDragTransform();
                 return;
             }
 
@@ -556,15 +571,11 @@ export class AgTabs extends LitElement {
                 localStorage.setItem('tabs-sidebar-hidden', 'false');
                 this._syncSidebarToggleEl();
             }
-            this.style.removeProperty('transform');
-            if (this._sidebarToggleEl) this._sidebarToggleEl.style.removeProperty('transform');
-            // Restore config modal transform (mutual exclusion will close it if needed)
-            const configModal = document.querySelector('.config-modal');
-            if (configModal) { configModal.style.transition = ''; configModal.style.removeProperty('transform'); }
+            this._clearDragTransform();
             return;
         }
 
-        if (!this._touchActive) return;
+        if (!this._touchActive) { this._clearDragTransform(); return; }
         this._touchActive = false;
 
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
@@ -608,8 +619,7 @@ export class AgTabs extends LitElement {
 
         // Remove inline transform AFTER class is toggled: the CSS transition on
         // transform fires from the dragged position to the new class value.
-        this.style.removeProperty('transform');
-        if (this._sidebarToggleEl) this._sidebarToggleEl.style.removeProperty('transform');
+        this._clearDragTransform();
     }
 
     setTabBadge(tabId, count, type = 'info') {
