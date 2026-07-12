@@ -328,7 +328,7 @@ export class AgProfilesPage extends LitElement {
         if (!window.UIComponents || !window.UIComponents.InfoModal) return;
 
         const content = window.UIComponents.InfoModal.createContent(
-            'Audiogravity Profiles represent high-level automation scenarios for your audio system.',
+            'Audiogravi<sup>ty</sup> Profiles represent high-level automation scenarios for your audio system.',
             [
                 { title: 'One-Click Orchestration', text: 'Switching a profile automatically starts necessary services and stops conflicting ones to ensure bit-perfect playback.' },
                 { title: 'Audiophile Scenarios', text: 'Profiles optimized for Hi-Res Audio or Minimalist configurations to reduce jitter.' },

@@ -297,7 +297,7 @@ export class AgAdminPage extends LitElement {
         if (!window.UIComponents || !window.UIComponents.InfoModal) return;
 
         const content = window.UIComponents.InfoModal.createContent(
-            'The User Management section allows administrators to manage access to the Audiogravity platform.',
+            'The User Management section allows administrators to manage access to the Audiogravi<sup>ty</sup> platform.',
             [
                 { title: 'Admin Role', text: 'Full access to all system features and user management. Cannot be deleted or demoted by others.' },
                 { title: 'User Role', text: 'Standard access to system features but cannot manage users or core system settings.' },

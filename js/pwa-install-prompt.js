@@ -63,7 +63,7 @@ function _showBanner() {
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <path d="m7 10 5 5 5-5"/>
             </svg>
-            <span class="pwa-install-banner__text">Add Audiogravity to your home screen</span>
+            <span class="pwa-install-banner__text">Add Audiogravi<sup>ty</sup> to your home screen</span>
         </div>
         <div class="pwa-install-banner__actions">
             <button class="action-btn compact primary pwa-install-banner__btn-install">Install</button>
