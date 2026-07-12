@@ -21,7 +21,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { getSnapshot, getRoonZones, subscribePlayerState } from '../../library-store.js';
 import { iconBack, iconQueue, iconRefresh, iconOutput, iconInfo } from '../../ag-icons.js';
-import { SOURCE_META, normalizeSearchSources } from '../library-constants.js';
+import { SOURCE_META, normalizeSearchSources, resolvePlayingSource } from '../library-constants.js';
 
 /* ─── shared CSS injected once into <head> ─── */
 const LIB_STYLES = `
@@ -305,18 +305,24 @@ export class AgLibraryPage extends LitElement {
 
         // Banner logic — skip until the initial snapshot has set _sourceId.
         if (!this._sourceId || !state.source_id) return;
-        if (state.source_id === this._sourceId) {
-            // Source came back to the current one — clear any pending banner.
-            this._pendingSource = null;
+
+        // Distinguish SOURCE from engine: Qobuz/Tidal/HIGHRESAUDIO and local
+        // files all play over the MPD engine ('src_mpd') but carry a distinct
+        // `origin`. Compare at the source level (as the library view does) so
+        // playing Qobuz while browsing Qobuz does not spuriously offer to switch
+        // to "Local Library" (the engine).
+        const viewedGroup = SOURCE_META[this._sourceId]?.group ?? this._sourceId;
+        const playing = resolvePlayingSource(state);
+        if (playing.group === viewedGroup) {
+            this._pendingSource = null;   // same source — only the engine differs
             return;
         }
-        // Skip mpris sources (no library to browse).
+        // Skip mpris receivers (AirPlay, Spotify) — no library to browse.
         const info = state.sources?.find(s => s.source_id === state.source_id);
         if (info?.protocol === 'mpris') return;
         // Don't re-raise the banner if it's already showing for this source.
-        if (this._pendingSource?.id === state.source_id) return;
-        const name = SOURCE_META[state.source_id]?.short ?? SOURCE_META[state.source_id]?.label ?? info?.name ?? state.source_id.replace('src_', '');
-        this._pendingSource = { id: state.source_id, name };
+        if (this._pendingSource?.id === playing.id) return;
+        this._pendingSource = { id: playing.id, name: playing.label };
     }
 
     /**

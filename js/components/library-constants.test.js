@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources } from './library-constants.js';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -74,6 +74,45 @@ describe('initOriginLabels', () => {
         apiGet.mockResolvedValue({});
         await initOriginLabels();
         expect(apiGet).toHaveBeenCalledWith('/player/origins');
+    });
+});
+
+describe('resolvePlayingSource — SOURCE vs engine', () => {
+    it('resolves a Qobuz stream (MPD engine) to the Qobuz browse source, not "Local Library"', () => {
+        // The bug: Qobuz plays over MPD (source_id 'src_mpd') with origin 'qobuz'.
+        const r = resolvePlayingSource({ source_id: 'src_mpd', origin: 'qobuz' });
+        expect(r).toEqual({ id: 'src_qobuz', group: 'qobuz', label: 'Qobuz' });
+        // …and it matches the group of the Qobuz browse source (so no banner fires).
+        expect(r.group).toBe(SOURCE_META.src_qobuz.group);
+    });
+
+    it('resolves Tidal and HIGHRESAUDIO streams to their own browse source', () => {
+        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'tidal' }))
+            .toEqual({ id: 'src_tidal', group: 'tidal', label: 'Tidal' });
+        // HRA uses the space-saving `short` label.
+        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'highresaudio' }))
+            .toEqual({ id: 'src_highresaudio', group: 'highresaudio', label: 'HRA' });
+    });
+
+    it('keeps a local-file stream on the MPD engine ("Local Library")', () => {
+        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'library' }))
+            .toEqual({ id: 'src_mpd', group: 'mpd', label: 'Local Library' });
+    });
+
+    it('leaves non-MPD engines (Roon) on their own source_id', () => {
+        expect(resolvePlayingSource({ source_id: 'src_mono-sgen', origin: 'roon' }))
+            .toEqual({ id: 'src_mono-sgen', group: 'roon', label: 'Roon' });
+    });
+
+    it('prefers an explicit origin_name (e.g. UPnP server) for the label', () => {
+        const r = resolvePlayingSource({ source_id: 'upnp:abc', origin: 'upnp', origin_name: 'MinimServer' });
+        expect(r.label).toBe('MinimServer');
+        expect(r.group).toBe('upnp:abc');
+    });
+
+    it('falls back gracefully for an unknown source', () => {
+        expect(resolvePlayingSource({ source_id: 'src_mystery' }))
+            .toEqual({ id: 'src_mystery', group: 'src_mystery', label: 'mystery' });
     });
 });
 
