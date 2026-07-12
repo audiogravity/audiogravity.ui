@@ -57,6 +57,10 @@ export class AgLibraryBrowse extends LitElement {
     static properties = {
         sourceId:     { type: String, attribute: 'source-id' },
         zoneId:       { type: String, attribute: 'zone-id' },
+        // Artist drill-down: when set, the browse lists only this artist's albums
+        // (via /library/albums?artist_id=…) with an "Albums by <name>" header.
+        artistId:     { type: String, attribute: 'artist-id' },
+        artistName:   { type: String, attribute: 'artist-name' },
         _albums:      { state: true },
         _filter:      { state: true },
         _loading:     { state: true },
@@ -71,6 +75,8 @@ export class AgLibraryBrowse extends LitElement {
         super();
         this.sourceId     = '';
         this.zoneId       = '';
+        this.artistId     = '';
+        this.artistName   = '';
         this._albums      = [];
         this._filter      = 'all';
         this._loading     = false;
@@ -94,7 +100,8 @@ export class AgLibraryBrowse extends LitElement {
     get _isStreaming() { return this._isQobuz || this._isTidal || this._isHighresaudio; }
 
     updated(changed) {
-        if (changed.has('sourceId') && this.sourceId) {
+        // Reload on a source switch or when entering/leaving/changing artist mode.
+        if ((changed.has('sourceId') || changed.has('artistId')) && this.sourceId) {
             this._filter = this._isStreaming ? 'favorites' : 'all';
             Promise.resolve().then(() => this._load());
         }
@@ -140,6 +147,18 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     async _fetchPage(offset) {
+        // Artist drill-down bypasses the per-source pill routing: every source
+        // resolves an artist's albums through /library/albums?artist_id=… .
+        if (this.artistId) {
+            const params = new URLSearchParams({
+                source_id: this.sourceId,
+                artist_id: this.artistId,
+                offset:    String(offset),
+                limit:     String(PAGE_SIZE),
+            });
+            if (this.zoneId) params.set('zone_id', this.zoneId);
+            return apiGet(`/library/albums?${params}`);
+        }
         if (this._isQobuz) return this._fetchQobuzPage(offset);
         if (this._isTidal) return this._fetchTidalPage(offset);
         if (this._isHighresaudio) return this._fetchHighresaudioPage(offset);
@@ -327,8 +346,9 @@ export class AgLibraryBrowse extends LitElement {
         return _albums;
     }
 
-    /** @private Section header label based on the active streaming pill. */
+    /** @private Section header label based on the active streaming pill (or artist). */
     get _sectionLabel() {
+        if (this.artistId) return `Albums by ${this.artistName || 'artist'}`;
         const pills = this._isQobuz ? QOBUZ_PILLS
             : this._isTidal ? TIDAL_PILLS
             : this._isHighresaudio ? HRA_PILLS
@@ -357,7 +377,12 @@ export class AgLibraryBrowse extends LitElement {
 
         return html`
             <div class="lib-filters">
-                ${pills.map(([f, label]) => html`
+                ${this.artistId ? html`
+                    <button
+                        class="lib-pill"
+                        @click=${() => this.dispatchEvent(new CustomEvent('lib-artist-back', { bubbles: true }))}
+                    >← Back</button>
+                ` : pills.map(([f, label]) => html`
                     <button
                         class="lib-pill ${_filter === f ? 'on' : ''}"
                         @click=${() => this._setFilter(f)}

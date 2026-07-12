@@ -181,6 +181,7 @@ const VIEW_TAB = {
     library: 'library', outputs: 'library',
     radio: 'radio',
     'roon-browser': 'browse', 'upnp-browser': 'browse',
+    artist: 'browse',
 };
 
 
@@ -198,6 +199,9 @@ export class AgLibraryPage extends LitElement {
         _upnpServers:     { state: true },
         /** Non-null when an external source change is detected — drives the banner. */
         _pendingSource:   { state: true },
+        /** Artist drill-down: the artist whose albums the browse is filtered to. */
+        _artistId:        { state: true },
+        _artistName:      { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -213,6 +217,8 @@ export class AgLibraryPage extends LitElement {
         this._sources         = [];
         this._upnpServers     = [];
         this._pendingSource   = null;
+        this._artistId        = '';
+        this._artistName      = '';
         this._unsubscribeState = null;
         this._boundLibGoto    = (e) => this._onLibGoto(e);
     }
@@ -335,6 +341,33 @@ export class AgLibraryPage extends LitElement {
         });
     }
 
+    /**
+     * Open an artist's albums (drill-down) from a search result. An artist is not
+     * a playable item, so tapping it browses its discography instead of queueing.
+     * @param {CustomEvent} e - detail: { artistId, artistName }
+     */
+    _onOpenArtist(e) {
+        // UPnP has no artist-albums endpoint and Roon search item_keys aren't
+        // navigable on the browse hierarchy — never enter the artist view for
+        // them (defensive; the search also keeps those rows inert).
+        if (this._isUpnp(this._sourceId) || this._isRoon(this._sourceId)) return;
+        this._pendingSource = null;
+        this._artistId   = e.detail?.artistId ?? '';
+        this._artistName = e.detail?.artistName ?? '';
+        this._navigate('artist');
+    }
+
+    /**
+     * Leave artist mode and return to the normal album browse. The artist view
+     * has its own ag-library-browse instance (unmounted here), so the main browse
+     * keeps its loaded albums + scroll — no reload, no double fetch.
+     */
+    _onArtistBack() {
+        this._artistId   = '';
+        this._artistName = '';
+        this._view       = 'browse';
+    }
+
     async _onLibGoto(e) {
         this._pendingSource = null;
         const { view, source_id } = e.detail ?? {};
@@ -368,6 +401,8 @@ export class AgLibraryPage extends LitElement {
     }
 
     _onTabChange(e) {
+        this._artistId = '';
+        this._artistName = '';
         const map = { browse: 'browse', search: 'search', queue: 'queue', library: 'library', radio: 'radio' };
         let view = map[e.detail.tab] ?? 'browse';
         if (view === 'browse' && this._isUpnp(this._sourceId)) view = 'upnp-browser';
@@ -384,6 +419,8 @@ export class AgLibraryPage extends LitElement {
 
     _onSourceChange(e) {
         this._pendingSource = null;
+        this._artistId = '';
+        this._artistName = '';
         const { sourceId, zoneId = '', zoneDisplayName = '', location = '', serverName = '' } = e.detail;
         if (this._isRoon(sourceId) && !zoneId) {
             this._fetchRoonZoneAndSwitch(sourceId);
@@ -437,6 +474,7 @@ export class AgLibraryPage extends LitElement {
         const { _view, _sourceId, _zoneId, _zoneDisplayName } = this;
 
         const isBrowse   = _view === 'browse';
+        const isArtist   = _view === 'artist';
         const isSearch   = _view === 'search';
         const isQueue    = _view === 'queue';
         const isLibrary  = _view === 'library';
@@ -516,6 +554,29 @@ export class AgLibraryPage extends LitElement {
                     </div>
                 </div>
 
+                <div class="lib-view ${isArtist ? 'active' : ''}">
+                    <div class="lib-topbar">
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <div class="lib-topbar-right">
+                            ${_sourceId ? html`<span class="lib-live">${srcLabel}</span>` : nothing}
+                        </div>
+                    </div>
+                    <div class="lib-body">
+                        <div class="lib-scroll">
+                            ${isArtist ? html`
+                                <ag-library-browse
+                                    source-id=${_sourceId}
+                                    zone-id=${_zoneId}
+                                    artist-id=${this._artistId}
+                                    artist-name=${this._artistName}
+                                    @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
+                                    @lib-artist-back=${this._onArtistBack}
+                                ></ag-library-browse>
+                            ` : nothing}
+                        </div>
+                    </div>
+                </div>
+
                 <div class="lib-view ${isSearch ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
@@ -528,6 +589,7 @@ export class AgLibraryPage extends LitElement {
                                 .sources=${this._sources}
                                 @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
                                 @lib-source-change=${this._onSourceChange}
+                                @lib-open-artist=${this._onOpenArtist}
                             ></ag-library-search>
                         </div>
                     </div>
