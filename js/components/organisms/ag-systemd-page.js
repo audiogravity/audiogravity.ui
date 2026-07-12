@@ -269,7 +269,7 @@ export class AgSystemdPage extends LitElement {
                 <ul class="pl-20 list-disc text-secondary-color">
                     <li class="mb-sm"><strong class="text-primary-color">Drop-in Overrides</strong>: The native distribution <code>.service</code> files are <strong>never modified</strong>. All custom properties are safely kept in an isolated <code>.d/override.conf</code> configuration tree.</li>
                     <li class="mb-sm"><strong class="text-primary-color">Automatic Backups</strong>: When overwriting an existing drop-in, the previous state is automatically backed up, allowing you to quickly <em>"Restore Backup"</em> if the new tuning proves unstable.</li>
-                    <li class="mb-sm"><strong class="text-primary-color">Absolute Reversion</strong>: If a configuration breaks service startup, simply click <em>"Remove Override"</em>. Audiogravity will delete the drop-in file and instantly rollback the service to its original factory behavior.</li>
+                    <li class="mb-sm"><strong class="text-primary-color">Absolute Reversion</strong>: If a configuration breaks service startup, simply click <em>"Remove Override"</em>. Audiogravi<sup>ty</sup> will delete the drop-in file and instantly rollback the service to its original factory behavior.</li>
                 </ul>
             </div>
         `;

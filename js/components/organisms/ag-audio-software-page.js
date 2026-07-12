@@ -540,7 +540,7 @@ export class AgAudioSoftwarePage extends LitElement {
         if (!window.UIComponents || !window.UIComponents.InfoModal) return;
 
         const content = window.UIComponents.InfoModal.createContent(
-            'Manage audio software packages — install, update, and uninstall the services used by Audiogravity.',
+            'Manage audio software packages — install, update, and uninstall the services used by Audiogravi<sup>ty</sup>.',
             [
                 { title: 'Filter', text: 'Use ALL / INSTALLED / UPDATES to quickly narrow the package list.' },
                 { title: 'Package States', text: 'NOT INSTALLED (gray), INSTALLED (green), INSTALLING / UPDATING / UNINSTALLING (orange progress bar), ERROR (red).' },

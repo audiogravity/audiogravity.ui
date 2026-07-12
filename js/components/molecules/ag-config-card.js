@@ -123,7 +123,7 @@ export class AgConfigCard extends LitElement {
                         ${this.provisionable ? html`
                             <div class="has-tooltip">
                                 <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
-                                <div class="tooltip">${this.configured ? 'Set up by AudioGravity' : 'Using package defaults — not set up by AudioGravity'}</div>
+                                <div class="tooltip">${this.configured ? 'Set up by Audiogravity' : 'Using package defaults — not set up by Audiogravity'}</div>
                             </div>
                         ` : nothing}
                     </div>

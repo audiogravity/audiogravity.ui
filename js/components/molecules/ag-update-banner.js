@@ -1,6 +1,6 @@
 /**
  * @module AgUpdateBanner
- * @description Molecule that shows a "new AudioGravity release available" banner
+ * @description Molecule that shows a "new Audiogravity release available" banner
  * and drives the one-click self-update. Fetches GET /license/online-status on
  * mount and reads its `update` field (computed by the license server). When an
  * update applies, an admin can trigger it (password-confirmed); progress is then
@@ -119,7 +119,7 @@ export class AgUpdateBanner extends LitElement {
         const u = this._update;
         if (!isUpdateAvailable(u)) return;
         const confirmed = await showConfirm(
-            'Update AudioGravity',
+            'Update Audiogravity',
             `Install v${u.latest}? The core service will restart, so playback will briefly stop. ` +
             `If the new version fails to start, the previous one is restored automatically.`,
         );
@@ -240,7 +240,7 @@ export class AgUpdateBanner extends LitElement {
                          stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg>
                 </span>
                 <div class="ag-upd-body">
-                    <div class="ag-upd-title">Updating AudioGravity…</div>
+                    <div class="ag-upd-title">Updating Audiogravi<sup>ty</sup>…</div>
                     <div class="ag-upd-text">${updatePhaseLabel(this._phase)}</div>
                 </div>
             </div>
