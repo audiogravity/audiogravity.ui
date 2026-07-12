@@ -266,7 +266,7 @@ export class AgUpdateBanner extends LitElement {
                         Update available — v${u.latest}
                         ${u.mandatory ? html`<span class="ag-upd-badge">required</span>` : nothing}
                     </div>
-                    <div class="ag-upd-text">A newer AudioGravity release is available for this device.</div>
+                    <div class="ag-upd-text">A newer Audiogravi<sup>ty</sup> release is available for this device.</div>
                     ${u.notes_url
                         ? html`<a class="ag-upd-link" href=${u.notes_url} target="_blank" rel="noopener">Release notes →</a>`
                         : nothing}
