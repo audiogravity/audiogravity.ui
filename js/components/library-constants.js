@@ -112,6 +112,39 @@ export const SOURCE_META = {
     src_highresaudio:{ label: 'Highresaudio', short: 'HRA', group: 'highresaudio' },
 };
 
+/** Reverse of SOURCE_META: dedup group → its canonical meta ({label, short?}). */
+export const GROUP_META = Object.values(SOURCE_META).reduce((acc, m) => {
+    if (!acc[m.group]) acc[m.group] = m;
+    return acc;
+}, {});
+
+/** Streaming providers browse under their own source but play over the MPD
+ *  engine (source_id 'src_mpd'); map their `origin` back to that browse source. */
+const ORIGIN_TO_SOURCE_ID = {
+    qobuz: 'src_qobuz',
+    tidal: 'src_tidal',
+    highresaudio: 'src_highresaudio',
+};
+
+/**
+ * Identify the SOURCE currently playing, as distinct from the transport engine.
+ * Qobuz/Tidal/HIGHRESAUDIO and local files all play over the MPD engine
+ * (``source_id === 'src_mpd'``) but carry a distinct ``origin``. The library view
+ * is organised by source, so resolve the browse source from ``origin`` first and
+ * fall back to the transport ``source_id`` — otherwise "playing Qobuz" reads as
+ * the MPD engine ("Local Library").
+ * @param {{source_id?:string, origin?:string, origin_name?:string}} state
+ * @returns {{id:string, group:string, label:string}}
+ */
+export function resolvePlayingSource(state) {
+    const id = ORIGIN_TO_SOURCE_ID[state?.origin] || state?.source_id || '';
+    const group = SOURCE_META[id]?.group ?? id;
+    const label = state?.origin_name
+        || GROUP_META[group]?.short || GROUP_META[group]?.label
+        || ORIGIN_LABELS[state?.origin] || id.replace('src_', '');
+    return { id, group, label };
+}
+
 /**
  * Build the deduplicated list of searchable library sources for the search bar.
  * Combines playback-pipeline sources with known UPnP/DLNA media servers (which
