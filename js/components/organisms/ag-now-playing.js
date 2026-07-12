@@ -618,7 +618,7 @@ export class AgNowPlaying extends LitElement {
                 <div class="np-info">
                     <div class="np-source-row">
                         ${item.origin
-                            ? html`<ag-source-badge .origin=${item.origin} .name=${item.origin_name ?? ''}></ag-source-badge>`
+                            ? html`<ag-source-badge .origin=${item.origin}></ag-source-badge>`
                             : html`<span class="np-service-badge">${item.display_name}</span>`}
                         ${item.output_connector && (!this._rendererActive || this._rendererStatus?.uses_local_mpd)
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
