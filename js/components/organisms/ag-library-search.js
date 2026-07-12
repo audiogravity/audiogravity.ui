@@ -131,6 +131,31 @@ export class AgLibrarySearch extends LitElement {
                     : type === 'album'  ? `${item.artist ?? ''} · ${item.year ?? ''}`
                     : item.name ?? item.title;
         const label = type === 'track' ? item.title : (item.title ?? item.name);
+        // An artist is a navigational entity, not a playable item — tapping it
+        // drills down to its albums instead of queueing (which the backends
+        // reject: only track / album / playlist are queueable). No add action.
+        if (type === 'artist') {
+            // Drill-down resolves albums via /library/albums?artist_id=…, which is
+            // unsupported for UPnP/DLNA (ContentDirectory-only) and unreliable for
+            // Roon (its search item_keys are session-scoped and can't be navigated
+            // on the browse hierarchy — use the dedicated Roon browser instead).
+            // For those sources the artist row stays inert rather than opening a
+            // dead-end / wrong-node view. BACKLOG: proper Roon search drill-down.
+            const src = this.sourceId ?? '';
+            const drillable = !src.startsWith('upnp:') && src !== 'src_roon' && src !== 'src_mono-sgen';
+            return html`
+                <ag-library-list-row
+                    cover=${coverUrl(item.cover_token)}
+                    fallback="album"
+                    title=${label}
+                    subtitle=${sub}
+                    @row-click=${drillable ? () => this.dispatchEvent(new CustomEvent('lib-open-artist', {
+                        detail: { artistId: item.id, artistName: item.name ?? label },
+                        bubbles: true,
+                    })) : null}
+                ></ag-library-list-row>
+            `;
+        }
         return html`
             <ag-library-list-row
                 cover=${coverUrl(item.cover_token)}
