@@ -102,3 +102,74 @@ ag-library-add-btn {
 .lib-ac-wrap:focus-within .lib-ac-add { opacity: 1; }
 
 @media (hover: none) { .lib-ac-add { opacity: 1; } }
+
+/* Favorite (★) toggle — mirrors the add button but anchored bottom-LEFT so it
+   never overlaps the bottom-right "+ queue" button. A favorited album shows a
+   filled accent star at all times; an unfavorited one reveals the empty star on
+   hover (like the add button). */
+.lib-lr-fav {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.lib-lr-fav.on {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.lib-lr-fav svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.lib-ac-fav {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgb(0 0 0 / 0.6);
+    border: 0;
+    color: #ffffff;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.lib-ac-fav svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+
+    /* Defines the glyph edges over busy/light album art. */
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55));
+}
+
+.lib-ac-wrap:hover .lib-ac-fav,
+.lib-ac-wrap:focus-within .lib-ac-fav { opacity: 1; }
+
+/* A favorited album shows its star at all times, not only on hover. The overlay
+   sits on a FIXED dark pill, so it uses a theme-independent gold (the universal
+   "favorite" star) rather than --accent-primary, which is #000 in the light
+   theme and would be near-invisible here. */
+.lib-ac-fav.on {
+    opacity: 1;
+    color: #ffcf4d;
+}
+
+@media (hover: none) { .lib-ac-fav { opacity: 1; } }

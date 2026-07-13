@@ -17,7 +17,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
 import { queueItem, queueWithFeedback } from '../../library-api.js';
-import { showToast } from '../../ui-helpers.js';
+import { FavoritesController } from '../../core/FavoritesController.js';
 import { iconSearch } from '../../ag-icons.js';
 import '../molecules/ag-library-list-row.js';
 
@@ -42,6 +42,12 @@ export class AgLibrarySearch extends LitElement {
         this._results  = null;
         this._loading  = false;
         this._debounce = null;
+        this._fav      = new FavoritesController(this);   // streaming album ★ state
+    }
+
+    /** True for the streaming sources that support album favorites. */
+    get _isStreaming() {
+        return ['src_qobuz', 'src_tidal', 'src_highresaudio'].includes(this.sourceId);
     }
 
     _onInput(e) {
@@ -94,6 +100,7 @@ export class AgLibrarySearch extends LitElement {
             if (loc) params.set('location', loc);
             this._results = await apiGet(`/library/search?${params}`);
         });
+        if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — album ★ state
     }
 
     _itemOpts(itemId, itemType, artistId, itemTitle, action) {
@@ -163,6 +170,9 @@ export class AgLibrarySearch extends LitElement {
                 title=${label}
                 subtitle=${sub}
                 actionable
+                ?favoritable=${type === 'album' && this._isStreaming}
+                ?favorite=${type === 'album' && this._fav.has(item.id)}
+                @fav-toggle=${(e) => this._fav.toggle(this.sourceId, item.id, e.detail.favorite)}
                 @row-click=${() => this._play(item.id, type, item.artist, label)}
                 @row-action=${() => this._addToQueue(item.id, type, item.artist, label)}
             ></ag-library-list-row>

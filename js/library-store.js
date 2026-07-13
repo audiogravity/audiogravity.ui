@@ -23,6 +23,7 @@
  */
 
 import { apiGet, buildAuthedUrl } from './api.js';
+import { fetchFavoriteIds, addFavorite, removeFavorite } from './library-api.js';
 
 const TTL_SNAPSHOT   = 30_000;
 const TTL_ROON_ZONES = 60_000;
@@ -251,5 +252,92 @@ export async function fetchActiveRendererStatus() {
         return await apiGet(`/upnp-renderer/${active.udn}/status`);
     } catch {
         return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Streaming favorites (album ★) — per-source id cache for accurate star state
+// ---------------------------------------------------------------------------
+
+const TTL_FAVORITES = 60_000;
+/** sourceId → { value: Set<string>|null, fetchedAt: number, inFlight: Promise|null } */
+const _favorites = new Map();
+/** sourceId → Set<callback> notified whenever the favorite set changes (any view) */
+const _favSubscribers = new Map();
+
+function _favEntry(sourceId) {
+    let e = _favorites.get(sourceId);
+    if (!e) { e = { value: null, fetchedAt: 0, inFlight: null }; _favorites.set(sourceId, e); }
+    return e;
+}
+
+function _notifyFavorites(sourceId) {
+    const subs = _favSubscribers.get(sourceId);
+    if (subs) for (const cb of subs) {
+        try { cb(); } catch (err) { console.warn('[library-store] favorites subscriber threw:', err); }
+    }
+}
+
+/**
+ * Subscribe to favorite-set changes for a source. Fires on every toggle (optimistic
+ * update AND revert) so all views (browse, search) stay in sync live.
+ * @param {string} sourceId
+ * @param {() => void} cb
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeFavorites(sourceId, cb) {
+    if (!_favSubscribers.has(sourceId)) _favSubscribers.set(sourceId, new Set());
+    _favSubscribers.get(sourceId).add(cb);
+    return () => {
+        const s = _favSubscribers.get(sourceId);
+        if (s) { s.delete(cb); if (s.size === 0) _favSubscribers.delete(sourceId); }
+    };
+}
+
+/**
+ * Set of the user's favorited album ids on a streaming source (cached, dedup + TTL 60s).
+ * Lets browse/search render the accurate ★ state with a single fetch per source.
+ * Returns a COPY — the internal cache is never handed out, so a later toggle can't
+ * mutate a Set a caller already holds.
+ * @param {string} sourceId
+ * @param {{force?: boolean}} [opts]
+ * @returns {Promise<Set<string>>}
+ */
+export async function getFavoriteAlbumIds(sourceId, { force = false } = {}) {
+    const e = _favEntry(sourceId);
+    if (!force && isFresh(e, TTL_FAVORITES)) return new Set(e.value);
+    if (e.inFlight) return e.inFlight.then((v) => new Set(v));
+    e.inFlight = fetchFavoriteIds(sourceId, 'album')
+        .then((ids) => { e.value = new Set(ids); e.fetchedAt = Date.now(); return e.value; })
+        .finally(() => { e.inFlight = null; });
+    return e.inFlight.then((v) => new Set(v));
+}
+
+/**
+ * Persist an album's favorite state and keep the cached Set in sync. Updates the
+ * cache optimistically (instant ★ — the Set is REPLACED, not mutated) and reverts on
+ * failure; notifies subscribers on every change so every view re-renders.
+ * @param {string} sourceId
+ * @param {string} albumId
+ * @param {boolean} favorited - desired state
+ * @returns {Promise<boolean>} the persisted state
+ * @throws re-throws the API error (after reverting the cache) so the caller can toast
+ */
+export async function setAlbumFavorited(sourceId, albumId, favorited) {
+    const e = _favEntry(sourceId);
+    const optimistic = new Set(e.value ?? []);
+    if (favorited) optimistic.add(albumId); else optimistic.delete(albumId);
+    e.value = optimistic;              // replace — never mutate a handed-out Set
+    _notifyFavorites(sourceId);
+    try {
+        if (favorited) await addFavorite(sourceId, albumId, 'album');
+        else await removeFavorite(sourceId, albumId, 'album');
+        return favorited;
+    } catch (err) {
+        const reverted = new Set(e.value);
+        if (favorited) reverted.delete(albumId); else reverted.add(albumId);
+        e.value = reverted;
+        _notifyFavorites(sourceId);
+        throw err;
     }
 }

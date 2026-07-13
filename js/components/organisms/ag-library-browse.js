@@ -20,9 +20,10 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
 import { queueItem, queueWithFeedback } from '../../library-api.js';
-import { showToast } from '../../ui-helpers.js';
+import { FavoritesController } from '../../core/FavoritesController.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
+import '../atoms/ag-library-fav-btn.js';
 import '../molecules/ag-library-list-row.js';
 
 const PAGE_SIZE = 50;
@@ -78,6 +79,7 @@ export class AgLibraryBrowse extends LitElement {
         this.artistId     = '';
         this.artistName   = '';
         this._albums      = [];
+        this._fav         = new FavoritesController(this);   // streaming album ★ state
         this._filter      = 'all';
         this._loading     = false;
         this._loadingMore = false;
@@ -123,6 +125,7 @@ export class AgLibraryBrowse extends LitElement {
         this._albums  = [];
         this._offset  = 0;
         this._hasMore = false;
+        if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — star state fills in
         await loadWithState(this, async () => {
             const page    = await this._fetchPage(0);
             this._albums  = page;
@@ -315,6 +318,13 @@ export class AgLibraryBrowse extends LitElement {
                         variant="card"
                         @click=${(e) => { e.stopPropagation(); this._addAlbumToQueue(album); }}
                     ></ag-library-add-btn>
+                    ${this._isStreaming ? html`
+                        <ag-library-fav-btn
+                            variant="card"
+                            ?favorite=${this._fav.has(album.id)}
+                            @fav-toggle=${(e) => this._fav.toggle(this.sourceId, album.id, e.detail.favorite)}
+                        ></ag-library-fav-btn>
+                    ` : nothing}
                 </div>
                 <div class="lib-ac-t">${album.title}</div>
                 <div class="lib-ac-a">${album.artist ?? ''}</div>

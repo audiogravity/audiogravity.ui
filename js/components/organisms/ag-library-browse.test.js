@@ -16,9 +16,15 @@ const apiGetMock = vi.fn();
 vi.mock('../../api.js', () => ({ apiGet: (...args) => apiGetMock(...args) }));
 vi.mock('../utils-lit.js', () => ({ coverUrl: () => '', loadWithState: vi.fn() }));
 vi.mock('../../library-api.js', () => ({ queueItem: vi.fn(), queueWithFeedback: vi.fn() }));
+vi.mock('../../library-store.js', () => ({
+    getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
+    setAlbumFavorited: vi.fn(),
+    subscribeFavorites: vi.fn(() => () => {}),
+}));
 vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
 vi.mock('../atoms/ag-library-add-btn.js', () => ({}));
+vi.mock('../atoms/ag-library-fav-btn.js', () => ({}));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
 
 import { AgLibraryBrowse } from './ag-library-browse.js';

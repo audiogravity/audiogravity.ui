@@ -13,15 +13,19 @@
  * @attr {string}  subtitle     - Secondary label (optional)
  * @attr {boolean} actionable   - When true, render the trailing "+ add" button
  * @attr {string}  action-label - aria/tooltip for the action button (default: "Add to queue")
+ * @attr {boolean} favoritable  - When true, render the trailing ★ Favorites toggle
+ * @attr {boolean} favorite     - Filled star (item already in Favorites)
  *
  * @fires row-click   - Bubbles. Row body clicked.
  * @fires row-action  - Bubbles. Action button clicked (stopPropagation handled internally).
+ * @fires fav-toggle  - Bubbles (from ag-library-fav-btn). detail: { favorite: boolean } — desired state.
  */
 
 import { LitElement, html, nothing } from 'lit';
 import { emit } from '../utils-lit.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
+import '../atoms/ag-library-fav-btn.js';
 
 export class AgLibraryListRow extends LitElement {
     static properties = {
@@ -31,6 +35,8 @@ export class AgLibraryListRow extends LitElement {
         subtitle:    { type: String },
         actionable:  { type: Boolean },
         actionLabel: { type: String, attribute: 'action-label' },
+        favoritable: { type: Boolean },
+        favorite:    { type: Boolean },
     };
 
     createRenderRoot() { return this; }
@@ -43,6 +49,8 @@ export class AgLibraryListRow extends LitElement {
         this.subtitle    = '';
         this.actionable  = false;
         this.actionLabel = 'Add to queue';
+        this.favoritable = false;
+        this.favorite    = false;
     }
 
     _onRowClick = () => emit(this, 'row-click');
@@ -60,6 +68,9 @@ export class AgLibraryListRow extends LitElement {
                     <span class="lib-lr-t">${this.title}</span>
                     ${this.subtitle ? html`<span class="lib-lr-a">${this.subtitle}</span>` : nothing}
                 </div>
+                ${this.favoritable ? html`
+                    <ag-library-fav-btn variant="row" ?favorite=${this.favorite}></ag-library-fav-btn>
+                ` : nothing}
                 ${this.actionable ? html`
                     <ag-library-add-btn
                         label=${this.actionLabel}

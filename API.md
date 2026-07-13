@@ -61,6 +61,9 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | Method | Path | Description |
 |---|---|---|
 | POST | `/library/queue` | Add/play item — routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
+| GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
+| POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
+| DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
 | POST | `/library/upnp-play` | Play UPnP item — routes to renderer or MPD |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |

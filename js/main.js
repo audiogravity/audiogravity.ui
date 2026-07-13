@@ -59,6 +59,7 @@ import './components/atoms/ag-validation-badge.js';
 import './components/atoms/ag-license-badge.js';
 import './components/atoms/ag-library-cover.js';
 import './components/atoms/ag-library-add-btn.js';
+import './components/atoms/ag-library-fav-btn.js';
 import './components/atoms/ag-connector-badge.js';
 import './components/atoms/ag-dsd-lock.js';
 import './components/atoms/ag-track-meta.js';

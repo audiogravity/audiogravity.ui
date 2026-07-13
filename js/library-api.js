@@ -5,7 +5,7 @@
  * and the conditional-undefined dance on every callsite.
  */
 
-import { apiPost, apiDelete } from './api.js';
+import { apiGet, apiPost, apiDelete } from './api.js';
 import { showToast } from './ui-helpers.js';
 
 /**
@@ -67,6 +67,38 @@ export function queueItem({
  */
 export function removeQueueItem(sourceId, queueId) {
     return apiDelete(`/library/queue/${queueId}?source_id=${encodeURIComponent(sourceId)}`);
+}
+
+/**
+ * Ids of the user's favorited items on a streaming source (v1: albums). Used to
+ * render the accurate favorite (★) state on browse/search grids.
+ * @param {string} sourceId - Streaming source (src_qobuz / src_tidal / src_highresaudio).
+ * @param {string} [itemType='album']
+ * @returns {Promise<string[]>}
+ */
+export async function fetchFavoriteIds(sourceId, itemType = 'album') {
+    const r = await apiGet(`/library/favorite-ids?source_id=${encodeURIComponent(sourceId)}&item_type=${itemType}`);
+    return r?.ids ?? [];
+}
+
+/**
+ * Add an item to the user's favorites on its streaming source.
+ * @param {string} sourceId
+ * @param {string} itemId
+ * @param {string} [itemType='album']
+ */
+export function addFavorite(sourceId, itemId, itemType = 'album') {
+    return apiPost('/library/favorite', { source_id: sourceId, item_id: itemId, item_type: itemType });
+}
+
+/**
+ * Remove an item from the user's favorites on its streaming source.
+ * @param {string} sourceId
+ * @param {string} itemId
+ * @param {string} [itemType='album']
+ */
+export function removeFavorite(sourceId, itemId, itemType = 'album') {
+    return apiDelete(`/library/favorite?source_id=${encodeURIComponent(sourceId)}&item_id=${encodeURIComponent(itemId)}&item_type=${itemType}`);
 }
 
 /**
