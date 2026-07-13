@@ -1,0 +1,67 @@
+/**
+ * Portrait-orientation gate — enforces portrait where the OS can't be locked.
+ *
+ * On iOS the manifest orientation is ignored and there is no Screen Orientation
+ * lock API, so we block landscape visually: this overlay is revealed only when
+ * the installed PWA (`body.pwa-standalone`) is shown in landscape on a touch
+ * device (phone or tablet) while the portrait lock is enabled
+ * (`body.lock-portrait`). On Android the manifest + Screen Orientation lock keep
+ * the screen in portrait, so the landscape media query never matches there.
+ * Rendered by <ag-orientation-gate>; toggled by js/orientation-lock.js.
+ */
+.orientation-gate {
+    display: none;
+}
+
+@media (orientation: landscape) and (any-pointer: coarse) {
+    body.pwa-standalone.lock-portrait .orientation-gate {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647; /* above every modal and toast */
+        align-items: center;
+        justify-content: center;
+        padding: max(var(--spacing-xl), env(safe-area-inset-top))
+                 max(var(--spacing-xl), env(safe-area-inset-right))
+                 max(var(--spacing-xl), env(safe-area-inset-bottom))
+                 max(var(--spacing-xl), env(safe-area-inset-left));
+        background: var(--bg-primary);
+    }
+}
+
+.orientation-gate-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    max-width: 420px;
+    text-align: center;
+}
+
+.orientation-gate-icon svg {
+    width: 56px;
+    height: 56px;
+    color: var(--accent-primary);
+}
+
+.orientation-gate-title {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.orientation-gate-msg {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-md);
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+/* Escape hatch — lets a landscape-fixed device (or a user who can't reach the
+   Settings toggle behind the overlay) turn the lock off and use the app. */
+.orientation-gate-dismiss {
+    margin-top: var(--spacing-md);
+}

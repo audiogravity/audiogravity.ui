@@ -44,7 +44,7 @@
     "background_color": "#12141c",
     "display": "standalone",
     "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
-    "orientation": "any",
+    "orientation": "portrait",
     "start_url": "/",
     "scope": "/",
     "shortcuts": [

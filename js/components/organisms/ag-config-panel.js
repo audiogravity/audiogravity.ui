@@ -24,6 +24,7 @@ import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, API_KEY, THEMES, API_BASE_URL, setApiKey } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
+import { applyOrientationLock } from '../../orientation-lock.js';
 import { showToast, handleError } from '../../ui-helpers.js';
 import { addToHistory } from '../../history.js';
 import { validateAudioConfig, showValidationModal } from '../../validation.js';
@@ -41,6 +42,7 @@ export class AgConfigPanel extends LitElement {
         darkMode: { type: Boolean },
         compactMode: { type: Boolean },
         animations: { type: Boolean },
+        lockPortrait: { type: Boolean },
         theme: { type: String },
         apiKey: { type: String },
         showApiKey: { type: Boolean },
@@ -64,6 +66,11 @@ export class AgConfigPanel extends LitElement {
         this.darkMode = AppState ? AppState.darkMode : false;
         this.compactMode = AppState ? AppState.compactMode : true;
         this.animations = AppState ? AppState.animationsEnabled : true;
+        this.lockPortrait = AppState ? AppState.lockPortrait : true;
+        // Portrait Lock is a touch affordance — hide the toggle on desktop/mouse,
+        // where the overlay never shows and the OS lock is a no-op.
+        this._isTouchDevice = typeof window.matchMedia === 'function'
+            && window.matchMedia('(any-pointer: coarse)').matches;
         this.theme = AppState ? AppState.theme : 'minimal';
 
         // Initialize state
@@ -212,6 +219,7 @@ export class AgConfigPanel extends LitElement {
                 this.darkMode = AppState.darkMode;
                 this.compactMode = AppState.compactMode;
                 this.animations = AppState.animationsEnabled;
+                this.lockPortrait = AppState.lockPortrait;
                 this.theme = AppState.theme;
                 this.requestUpdate(); // Force Lit to re-evaluate properties
             }
@@ -525,6 +533,13 @@ export class AgConfigPanel extends LitElement {
         document.body.classList.toggle('no-animations', !this.animations);
     }
 
+    _handleLockPortrait(e) {
+        this.lockPortrait = e.detail ? e.detail.checked : e.target.checked;
+        if (AppState) AppState.lockPortrait = this.lockPortrait;
+        if (MemoryCache) MemoryCache.set('lockPortrait', this.lockPortrait);
+        applyOrientationLock(this.lockPortrait);
+    }
+
     _handleThemeChange(e) {
         const newTheme = e.target.value;
         this.theme = newTheme;
@@ -744,7 +759,15 @@ export class AgConfigPanel extends LitElement {
                             <ag-switch .checked=${this.animations} @ag-change=${this._handleAnimations}></ag-switch>
                         </div>
                     </div>
-                    
+
+                    ${this._isTouchDevice ? html`
+                    <div class="config-item config-item-row">
+                        <div class="config-item-half">
+                            <label>Portrait Lock</label>
+                            <ag-switch .checked=${this.lockPortrait} @ag-change=${this._handleLockPortrait}></ag-switch>
+                        </div>
+                    </div>` : ''}
+
                     ${isWebAuthnAvailable() ? html`
                     <div class="config-item config-item-row">
                         <div class="config-item-half">

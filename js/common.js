@@ -8,6 +8,7 @@ import { connectSSE, updateConnectionStatus, updateSystemMetrics, loadInitialMet
 import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-helpers.js';
 import { addToHistory, clearHistory, renderHistory } from './history.js';
 import { AgTimerManager } from './timer.js';
+import { applyOrientationLock } from './orientation-lock.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
@@ -231,6 +232,7 @@ const AppState = {
     darkMode: MemoryCache.get('darkMode', false),
     compactMode: MemoryCache.get('compactMode', true),
     animationsEnabled: MemoryCache.get('animationsEnabled', true),
+    lockPortrait: MemoryCache.get('lockPortrait', true),
     currentTab: window.location.hash.slice(1) || MemoryCache.get('activeTab', 'profiles'),
     sseConnection: null,
     profileHistory: MemoryCache.get('profileHistory', []),
@@ -317,6 +319,7 @@ if (EventEmitter) {
 }
 
 window.AppState = AppState; // Expose globally
+window.MemoryCache = MemoryCache; // Expose globally (used e.g. by the orientation gate)
 window.applyTheme = applyTheme; // Expose globally
 
 // Apply saved UI state immediately to avoid flashing or inconsistency
@@ -327,6 +330,7 @@ if (document.body) {
     }
     if (AppState.compactMode) document.body.classList.add('compact-mode');
     if (!AppState.animationsEnabled) document.body.classList.add('no-animations');
+    applyOrientationLock(AppState.lockPortrait); // portrait lock (class + touch OS lock)
     applyTheme(AppState.theme);
     updateThemeColorMeta();
 }

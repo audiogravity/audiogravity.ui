@@ -7,6 +7,18 @@ import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config
 import './components/atoms/ag-license-badge.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
+import { applyOrientationLock } from './orientation-lock.js';
+
+// Honour the persisted portrait lock on the login screen too — the app's
+// common.js / <ag-orientation-gate> don't run here, so without this an Android
+// user who turned Portrait Lock off would still get a portrait-locked login (the
+// manifest lock is only released by the runtime override). Default is on.
+try {
+    const stored = localStorage.getItem('lockPortrait');
+    applyOrientationLock(stored === null ? true : JSON.parse(stored));
+} catch {
+    applyOrientationLock(true);
+}
 
 // =====================
 // DOM ELEMENTS
