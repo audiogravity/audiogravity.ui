@@ -85,7 +85,7 @@ describe('_priceDisplay — price formatting', () => {
     });
 });
 
-describe('_acquisitionStepsHtml — price as text node', () => {
+describe('_renderAcquisitionSteps — price as text node', () => {
     it('embeds price as plain text, XSS payload is inert', () => {
         const xssPayload = '<img src=x onerror=alert(1)>';
         // After the fix, _priceDisplay goes through Lit text interpolation.
