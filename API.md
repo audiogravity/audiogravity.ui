@@ -75,6 +75,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
+> **Queue items** (`GET /library/queue`) now carry an **`origin`** field (`radio`, `qobuz`, `tidal`, `upnp`, `library`…) that mirrors `NowPlayingItem.origin` — the real stream provider, independent of the MPD transport. It lets the queue label by the actual source (e.g. "Radio") rather than the engine ("Local Library"), and a recognised radio stream's `cover_token` is now the station logo.
+
 ### UPnP Renderer — `/upnp-renderer/*`
 
 Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:…`).

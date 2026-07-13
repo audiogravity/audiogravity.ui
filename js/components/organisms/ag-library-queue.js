@@ -14,7 +14,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, fmtDuration, loadWithState } from '../utils-lit.js';
-import { SOURCE_LABELS } from '../library-constants.js';
+import { queueSourceLabel } from '../library-constants.js';
 import { removeQueueItem } from '../../library-api.js';
 import { iconPause, iconDragHandle, iconArrowLeft } from '../../ag-icons.js';
 import '../atoms/ag-library-cover.js';
@@ -97,7 +97,9 @@ export class AgLibraryQueue extends LitElement {
         const items       = queue?.items ?? [];
         const current     = items.find(i => i.is_current);
         const upNext      = items.filter(i => !i.is_current);
-        const sourceLabel = SOURCE_LABELS[this.sourceId] || this.sourceId;
+        // Label by what is actually playing (origin) rather than the MPD engine:
+        // a radio stream queued from "Local Library" is still radio.
+        const sourceLabel = queueSourceLabel(current?.origin, this.sourceId);
         const ctxLabel    = this.zoneDisplayName ? `${sourceLabel} · ${this.zoneDisplayName}` : sourceLabel;
 
         return html`

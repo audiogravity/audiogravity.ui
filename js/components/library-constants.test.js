@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META } from './library-constants.js';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -74,6 +74,33 @@ describe('initOriginLabels', () => {
         apiGet.mockResolvedValue({});
         await initOriginLabels();
         expect(apiGet).toHaveBeenCalledWith('/player/origins');
+    });
+});
+
+describe('queueSourceLabel — header labels by playing origin', () => {
+    it('shows the origin label for streams that play over MPD (radio, upnp)', () => {
+        expect(queueSourceLabel('radio', 'src_mpd')).toBe('Radio');
+        expect(queueSourceLabel('upnp', 'src_mpd')).toBe('UPnP');
+    });
+
+    it('keeps the full source label for local library and HIGHRESAUDIO (not "Library"/"HRA")', () => {
+        // Regression guard: origin 'library' must NOT collapse to ORIGIN_LABELS.library ('Library').
+        expect(queueSourceLabel('library', 'src_mpd')).toBe('Local Library');
+        expect(queueSourceLabel('highresaudio', 'src_highresaudio')).toBe('Highresaudio');
+    });
+
+    it('reuses the source label for Qobuz/Tidal (origin and source agree)', () => {
+        expect(queueSourceLabel('qobuz', 'src_qobuz')).toBe('Qobuz');
+        expect(queueSourceLabel('tidal', 'src_tidal')).toBe('Tidal');
+    });
+
+    it('falls back to the browsed source label when there is no origin', () => {
+        expect(queueSourceLabel(null, 'src_mpd')).toBe('Local Library');
+        expect(queueSourceLabel(undefined, 'upnp:abc')).toBe('upnp:abc');
+    });
+
+    it('falls back to the source label for an unknown origin', () => {
+        expect(queueSourceLabel('mystery', 'src_mpd')).toBe('Local Library');
     });
 });
 

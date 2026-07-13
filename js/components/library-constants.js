@@ -96,6 +96,33 @@ export function originBadge(origin, name) {
     return { icon, label };
 }
 
+/** Origin → the browse source id whose full label the queue header should reuse,
+ *  so a local-library queue stays "Local Library" (not "Library") and HRA stays
+ *  "Highresaudio" (not "HRA"). Radio/UPnP have no source card and use ORIGIN_LABELS. */
+const ORIGIN_SOURCE_LABEL_ID = {
+    library: 'src_mpd', qobuz: 'src_qobuz', tidal: 'src_tidal',
+    highresaudio: 'src_highresaudio', roon: 'src_roon',
+};
+
+/**
+ * Queue header label: prefer the currently-playing item's real source (its
+ * `origin`) over the browsed source, so a radio stream queued from the Local
+ * Library reads "Radio". Origins backed by a browse source reuse that source's
+ * full label; radio/upnp fall back to the origin label; otherwise the browsed
+ * source label.
+ * @param {string|null|undefined} origin - now-playing origin of the current queue item
+ * @param {string} sourceId - the browsed source id
+ * @returns {string}
+ */
+export function queueSourceLabel(origin, sourceId) {
+    if (origin) {
+        const srcId = ORIGIN_SOURCE_LABEL_ID[origin];
+        if (srcId && SOURCE_LABELS[srcId]) return SOURCE_LABELS[srcId];
+        if (ORIGIN_LABELS[origin]) return ORIGIN_LABELS[origin];
+    }
+    return SOURCE_LABELS[sourceId] || sourceId;
+}
+
 /* ─── Searchable library sources ─── */
 
 /** Maps known source IDs to a display label and a deduplication group
