@@ -14,7 +14,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload } from '../../ag-icons.js';
+import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload, iconManual } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -108,9 +108,11 @@ export class AgTabs extends LitElement {
     }
 
     connectedCallback() {
-        // Read initial static HTML before lit wipes it out on first render
+        // Read initial static HTML before lit wipes it out on first render.
+        // Match real tabs by their defining attribute (data-tab), not the .tab-btn
+        // styling class — trailing action buttons (Manual) also carry .tab-btn.
         if (this.tabs.length === 0) {
-            const btns = Array.from(this.querySelectorAll('.tab-btn'));
+            const btns = Array.from(this.querySelectorAll('.tab-btn[data-tab]'));
             if (btns.length > 0) {
                 this.tabs = btns.map(btn => {
                     const badge = btn.querySelector('.badge');
@@ -421,8 +423,8 @@ export class AgTabs extends LitElement {
             return;
         }
 
-        // Use the first button as proxy for the sidebar strip bounds
-        const firstBtn = this.querySelector('.tab-btn');
+        // Use the first real tab (data-tab) as proxy for the sidebar strip bounds
+        const firstBtn = this.querySelector('.tab-btn[data-tab]');
         const ref = firstBtn || this;
         const rect = ref.getBoundingClientRect();
 
@@ -770,6 +772,12 @@ export class AgTabs extends LitElement {
                     </button>
                 `;
         })}
+            <button class="tab-btn tab-manual-btn"
+                    @click=${this._openManual}
+                    title="User Manual">
+                <span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconManual}</svg></span>
+                Manual
+            </button>
             ${!this._isMobile ? html`
             <button class="tab-orientation-btn"
                     @click=${this._toggleOrientation}
@@ -777,6 +785,11 @@ export class AgTabs extends LitElement {
                 <span class="btn-text">Switch</span>&nbsp;${this._vertical ? '⇄' : '⇅'}
             </button>` : nothing}
         `;
+    }
+
+    /** Open the user-manual modal (mounted once in index.html). */
+    _openManual() {
+        document.getElementById('agManualModal')?.open();
     }
 }
 

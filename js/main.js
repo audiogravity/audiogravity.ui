@@ -114,6 +114,7 @@ import './components/organisms/ag-confirm-dialog.js';
 import './components/organisms/ag-user-modal.js';
 import './components/organisms/ag-logs-modal.js';
 import './components/organisms/ag-docs-modal.js';
+import './components/organisms/ag-manual-modal.js';
 import './components/organisms/ag-card-grid.js';
 import './components/organisms/ag-log-viewer.js';
 import './components/organisms/ag-event-detail-modal.js';
