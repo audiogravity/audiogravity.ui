@@ -192,6 +192,11 @@
     gap: 12px;
     padding: 8px 20px;
     border-bottom: 1px solid var(--border-color);
+
+    /* Opaque so the shared swipe-to-remove reveal (.ag-swipe-reveal) only shows
+       as the row slides. The gesture's touch-action / user-select are stamped by
+       the swipeRow directive. */
+    background: var(--bg-primary);
 }
 
 /* Per-row provider badge, stacked under the artist so the title keeps full

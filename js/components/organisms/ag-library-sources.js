@@ -22,11 +22,7 @@ import { iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
 import '../molecules/ag-upnp-renderer-card.js';
-
-// Distance (px) past which a left-swipe commits as "remove".
-const _SWIPE_COMMIT_PX = 140;
-// Dead-zone before interpreting a move as a swipe (not a tap).
-const _SWIPE_SLOP_PX   = 8;
+import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
 
 export class AgLibrarySources extends LitElement {
     static properties = {
@@ -39,8 +35,6 @@ export class AgLibrarySources extends LitElement {
         _upnpLoading:    { state: true },
         _upnpDiscovered: { state: true },
         _upnpExtraHost:  { state: true },
-        _upnpSwipeDx:    { state: true },
-        _upnpSwipeSrv:   { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -56,10 +50,12 @@ export class AgLibrarySources extends LitElement {
         this._upnpLoading    = false;
         this._upnpDiscovered = false;
         this._upnpExtraHost  = '';
-        this._upnpSwipeDx    = 0;
-        this._upnpSwipeSrv   = null;
-        this._upnpSwipeStartX  = null;
-        this._upnpSwipeActive  = false;
+        this._swipe = new SwipeToDismissController(this, {
+            onCommit: (id) => {
+                const srv = this._upnpServers.find(s => s.id === id);
+                if (srv) this._removeUpnpServer(srv);
+            },
+        });
     }
 
     connectedCallback() {
@@ -88,45 +84,6 @@ export class AgLibrarySources extends LitElement {
         this._upnpDiscovered = false;
         this._upnpServers    = [];
     }
-
-    /* ─── UPnP swipe-to-remove gesture ─────────────────────────────── */
-
-    _onUpnpPointerDown(e, srv) {
-        if (e.button !== undefined && e.button !== 0) return;
-        this._upnpSwipeSrv    = srv;
-        this._upnpSwipeStartX = e.clientX;
-        this._upnpSwipeActive = false;
-        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-    }
-
-    _onUpnpPointerMove = (e) => {
-        if (this._upnpSwipeStartX === null) return;
-        const dx = e.clientX - this._upnpSwipeStartX;
-        if (!this._upnpSwipeActive && Math.abs(dx) > _SWIPE_SLOP_PX) {
-            this._upnpSwipeActive = true;
-        }
-        if (this._upnpSwipeActive) {
-            this._upnpSwipeDx = Math.min(0, dx);
-        }
-    };
-
-    _onUpnpPointerEnd = (e) => {
-        if (this._upnpSwipeStartX === null) return;
-        const wasActive = this._upnpSwipeActive;
-        const dx        = this._upnpSwipeDx;
-        const srv       = this._upnpSwipeSrv;
-        this._upnpSwipeStartX = null;
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
-        const committed = wasActive
-            && e.type !== 'pointercancel'
-            && dx <= -_SWIPE_COMMIT_PX
-            && srv;
-        if (committed) {
-            this._removeUpnpServer(srv);
-        }
-        this._upnpSwipeDx = 0;
-        setTimeout(() => { this._upnpSwipeActive = false; }, 0);
-    };
 
     /**
      * Remove a UPnP server from the UI immediately and persist the change.
@@ -239,19 +196,12 @@ export class AgLibrarySources extends LitElement {
                     ? this._upnpServers.length === 0
                         ? html`<div class="lib-empty" style="padding:16px 0">No UPnP server found</div>`
                         : this._upnpServers.map(srv => {
-                            const isSwipe    = this._upnpSwipeSrv?.id === srv.id;
-                            const dx         = isSwipe ? this._upnpSwipeDx : 0;
-                            const innerStyle = `transform: translateX(${dx}px); transition: ${this._upnpSwipeStartX === null ? 'transform 180ms ease-out' : 'none'};`;
                             return html`
-                                <div class="lib-upnp-wrap">
-                                    <div class="lib-upnp-delete" aria-hidden="true">Remove</div>
+                                <div class="ag-swipe-wrap lib-upnp-wrap">
+                                    <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
                                     <div class="lib-src-card ${this.sourceId === srv.id ? 'active' : ''}"
-                                        style=${innerStyle}
-                                        @click=${() => !this._upnpSwipeActive && this._selectUpnpServer(srv)}
-                                        @pointerdown=${(e) => this._onUpnpPointerDown(e, srv)}
-                                        @pointermove=${this._onUpnpPointerMove}
-                                        @pointerup=${this._onUpnpPointerEnd}
-                                        @pointercancel=${this._onUpnpPointerEnd}>
+                                        ${swipeRow(this._swipe, srv.id)}
+                                        @click=${() => !this._swipe.swiping && this._selectUpnpServer(srv)}>
                                         <div class="lib-src-card-hd">
                                             <div class="lib-src-ic">${srv.manufacturer?.toLowerCase().includes('minimserver')
                                                 ? html`<img src="./pics/minimserver.webp" alt="MinimServer" width="28" height="28" style="object-fit:contain">`

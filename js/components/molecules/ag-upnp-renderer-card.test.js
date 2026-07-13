@@ -33,6 +33,8 @@ function makeEl(overrides = {}) {
     el._scanning   = false;
     el._discovered = null;
     el._switching  = null;
+    // Bare instance (no constructor) → stub the swipe controller the render path uses.
+    el._swipe = { styleFor: () => '', swiping: false, start() {}, move() {}, end() {} };
     Object.assign(el, overrides);
     return el;
 }

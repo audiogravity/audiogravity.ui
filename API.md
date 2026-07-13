@@ -77,6 +77,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 
 > **Queue items** (`GET /library/queue?source_id=…`) carry an **`origin`** field (`radio`, `qobuz`, `tidal`, `upnp`, `library`…) that mirrors `NowPlayingItem.origin` — the real stream provider, independent of the MPD transport. It lets the queue label by the actual source (e.g. "Radio") rather than the engine ("Local Library"), and a recognised radio stream's `cover_token` is the station logo. Qobuz/Tidal/HIGHRESAUDIO play over the shared MPD engine, so `GET /library/queue?source_id=src_qobuz` (and `src_tidal` / `src_highresaudio`) returns that shared queue with each item's real `origin` — previously it returned an empty queue. When no MPD engine exists yet the endpoint returns an empty queue (200), not an error. An optional **`?limit=<n>`** returns only the current track plus up to `n` following items (a lightweight next-track peek; item `position` stays the absolute MPD queue position) — omit it for the full queue.
 
+> **Queue removal** is **by stable song id, not position**: each queue item carries a **`queue_id`** (the MPD `Id`, unchanged when the queue reindexes; `None` for Roon), and **`DELETE /library/queue/{queue_id}?source_id=…`** removes via MPD `deleteid`. This is reindex-safe — removing one track never hits the wrong one even if the queue shifted since it was listed. (The path segment was previously the 0-based `position`.)
+
 ### UPnP Renderer — `/upnp-renderer/*`
 
 Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:…`).

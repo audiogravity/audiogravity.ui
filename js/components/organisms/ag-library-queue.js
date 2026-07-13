@@ -2,7 +2,9 @@
  * @module AgLibraryQueue
  * @description Playback queue view. Shows the currently playing track and the
  * list of upcoming tracks. Fetches from GET /api/library/queue.
- * Supports track removal via DELETE /api/library/queue/{position}.
+ * Supports track removal (button + left-swipe) via DELETE
+ * /api/library/queue/{queue_id} — keyed on the stable MPD song id, not the
+ * position, so removal is reindex-safe.
  *
  * @element ag-library-queue
  *
@@ -17,6 +19,7 @@ import { coverUrl, fmtDuration, loadWithState } from '../utils-lit.js';
 import { queueSourceLabel, originLabel } from '../library-constants.js';
 import { removeQueueItem } from '../../library-api.js';
 import { iconPause, iconDragHandle, iconArrowLeft } from '../../ag-icons.js';
+import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-source-badge.js';
 import '../atoms/ag-filter-bar.js';
@@ -47,6 +50,11 @@ export class AgLibraryQueue extends LitElement {
         this._queue          = null;
         this._loading        = false;
         this._originFilter   = ALL_SOURCES;
+        // Swipe an up-next row left to remove it (same gesture as radio / UPnP
+        // lists). Keyed by the row's real MPD position.
+        this._swipe = new SwipeToDismissController(this, {
+            onCommit: (queueId) => this._remove(queueId),
+        });
     }
 
     updated(changed) {
@@ -126,10 +134,10 @@ export class AgLibraryQueue extends LitElement {
         }
     }
 
-    async _remove(position) {
+    async _remove(queueId) {
         if (this._isRoon()) return;
         try {
-            await removeQueueItem(this.sourceId, position);
+            await removeQueueItem(this.sourceId, queueId);
             await this._load();
         } catch (e) {
             console.error('[queue] remove failed:', e);
@@ -139,14 +147,13 @@ export class AgLibraryQueue extends LitElement {
     async _clear() {
         if (this._isRoon()) return;
         // Clear only what the active filter is showing (all up-next when unfiltered),
-        // so Clear matches what the user actually sees. Delete in descending order
-        // to avoid MPD reindexing shifting subsequent positions.
+        // so Clear matches what the user actually sees. Removing by stable song id
+        // (deleteid) is reindex-safe, so order doesn't matter.
         const upNext = (this._queue?.items ?? []).filter(i => !i.is_current);
         const { shownNext } = this._filterView(upNext);
-        const toDelete = [...shownNext].sort((a, b) => b.position - a.position);
-        for (const item of toDelete) {
+        for (const item of shownNext) {
             try {
-                await removeQueueItem(this.sourceId, item.position);
+                await removeQueueItem(this.sourceId, item.queue_id);
             } catch (_) { /* ignore individual failures */ }
         }
         await this._load();
@@ -239,28 +246,35 @@ export class AgLibraryQueue extends LitElement {
                 : nothing
             }
 
-            ${shownNext.map(item => html`
-                <div class="lib-queue-row">
-                    <div class="lib-queue-grip">
-                        <svg viewBox="0 0 24 24">${iconDragHandle}</svg>
+            ${shownNext.map(item => {
+                // Roon queues can't be edited; and removal needs the stable song id,
+                // so a row without queue_id is not swipeable/removable.
+                const swipeable = !this._isRoon() && item.queue_id != null;
+                return html`
+                <div class="ag-swipe-wrap">
+                    ${swipeable ? html`<div class="ag-swipe-reveal" aria-hidden="true">Remove</div>` : nothing}
+                    <div class="lib-queue-row" ${swipeRow(this._swipe, item.queue_id, swipeable)}>
+                        <div class="lib-queue-grip">
+                            <svg viewBox="0 0 24 24">${iconDragHandle}</svg>
+                        </div>
+                        <ag-library-cover
+                            cover=${coverUrl(item.cover_token)}
+                            fallback="track"
+                            size="36"
+                        ></ag-library-cover>
+                        <div class="lib-queue-col">
+                            <span class="lib-queue-col-t">${item.title}</span>
+                            <span class="lib-queue-col-a">${item.artist ?? ''}${item.album ? ` — ${item.album}` : ''}</span>
+                            ${mixed ? html`<ag-source-badge origin=${item.origin}></ag-source-badge>` : nothing}
+                        </div>
+                        <span class="lib-queue-dur">${fmtDuration(item.duration)}</span>
+                        ${swipeable ? html`
+                        <button class="lib-queue-more" @click=${() => !this._swipe.swiping && this._remove(item.queue_id)} title="Remove">
+                            <svg viewBox="0 0 24 24">${iconArrowLeft}</svg>
+                        </button>` : nothing}
                     </div>
-                    <ag-library-cover
-                        cover=${coverUrl(item.cover_token)}
-                        fallback="track"
-                        size="36"
-                    ></ag-library-cover>
-                    <div class="lib-queue-col">
-                        <span class="lib-queue-col-t">${item.title}</span>
-                        <span class="lib-queue-col-a">${item.artist ?? ''}${item.album ? ` — ${item.album}` : ''}</span>
-                        ${mixed ? html`<ag-source-badge origin=${item.origin}></ag-source-badge>` : nothing}
-                    </div>
-                    <span class="lib-queue-dur">${fmtDuration(item.duration)}</span>
-                    ${!this._isRoon() ? html`
-                    <button class="lib-queue-more" @click=${() => this._remove(item.position)} title="Remove">
-                        <svg viewBox="0 0 24 24">${iconArrowLeft}</svg>
-                    </button>` : nothing}
                 </div>
-            `)}
+            `})}
 
             <div style="height:12px"></div>
         `;

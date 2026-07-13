@@ -60,12 +60,13 @@ export function queueItem({
 }
 
 /**
- * Remove a single track from the queue by position.
+ * Remove a single track from the queue by its stable MPD song id (QueueItem.queue_id).
+ * Reindex-safe (deleteid), unlike removing by position.
  * @param {string} sourceId - Active source (required).
- * @param {number} position - 0-based position in the queue.
+ * @param {string|number} queueId - The item's queue_id (MPD song id).
  */
-export function removeQueueItem(sourceId, position) {
-    return apiDelete(`/library/queue/${position}?source_id=${encodeURIComponent(sourceId)}`);
+export function removeQueueItem(sourceId, queueId) {
+    return apiDelete(`/library/queue/${queueId}?source_id=${encodeURIComponent(sourceId)}`);
 }
 
 /**

@@ -30,13 +30,9 @@
 import { LitElement, html, nothing } from 'lit';
 import { coverUrl } from '../utils-lit.js';
 import { iconStar, iconStarFilled, iconPencil, iconPlus, iconCheck } from '../../ag-icons.js';
+import { SwipeToDismissController, swipeRow, SINGLE } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-connector-badge.js';
-
-// Distance (px) past which a horizontal pointer move commits the swipe.
-const _SWIPE_COMMIT_PX = 140;
-// Distance past which we start interpreting movement as a swipe rather than a tap.
-const _SWIPE_SLOP_PX = 8;
 
 export class AgRadioCard extends LitElement {
     static properties = {
@@ -45,7 +41,6 @@ export class AgRadioCard extends LitElement {
         inLibrary:  { type: Boolean, attribute: 'in-library' },
         editable:   { type: Boolean },
         swipeable:  { type: Boolean },
-        _swipeDx:   { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -57,9 +52,9 @@ export class AgRadioCard extends LitElement {
         this.inLibrary = false;
         this.editable  = false;
         this.swipeable = false;
-        this._swipeDx  = 0;
-        this._swipeStartX = null;
-        this._swipeActive = false;
+        this._swipe = new SwipeToDismissController(this, {
+            onCommit: () => { if (this.station) this._emit('radio-swipe-remove', { station: this.station }); },
+        });
     }
 
     _emit = (name, detail) => {
@@ -70,7 +65,7 @@ export class AgRadioCard extends LitElement {
 
     _onTap = () => {
         // Suppress the play action when the tap was actually a swipe-in-progress.
-        if (this._swipeActive) return;
+        if (this._swipe.swiping) return;
         if (!this.station) return;
         this._emit('radio-play', { station: this.station });
     };
@@ -93,54 +88,6 @@ export class AgRadioCard extends LitElement {
         this._emit('radio-edit', { station: this.station });
     };
 
-    /* ─── Swipe-left gesture ────────────────────────────────────── */
-
-    _onPointerDown = (e) => {
-        if (!this.swipeable) return;
-        // Mouse-wheel / right-click / touch beyond first finger: skip.
-        if (e.button !== undefined && e.button !== 0) return;
-        this._swipeStartX = e.clientX;
-        this._swipeActive = false;
-        const inner = e.currentTarget;
-        try { inner.setPointerCapture(e.pointerId); } catch (_) { /* old Safari */ }
-    };
-
-    _onPointerMove = (e) => {
-        if (!this.swipeable || this._swipeStartX === null) return;
-        const dx = e.clientX - this._swipeStartX;
-        if (!this._swipeActive && Math.abs(dx) > _SWIPE_SLOP_PX) {
-            this._swipeActive = true;
-        }
-        if (this._swipeActive) {
-            // Only left swipe — clamp positive deltas to zero so the card never
-            // moves right (Safari rubber-band would otherwise feel uncanny).
-            this._swipeDx = Math.min(0, dx);
-        }
-    };
-
-    _onPointerEnd = (e) => {
-        if (!this.swipeable || this._swipeStartX === null) return;
-        const wasActive = this._swipeActive;
-        const dx = this._swipeDx;
-        this._swipeStartX = null;
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
-        // ``pointercancel`` arrives when the browser takes over the gesture
-        // (scroll, system back-gesture, popup) — never treat it as a commit
-        // even if dx crossed the threshold, the user didn't release.
-        const committed = wasActive
-            && e.type !== 'pointercancel'
-            && dx <= -_SWIPE_COMMIT_PX
-            && this.station;
-        if (committed) {
-            this._emit('radio-swipe-remove', { station: this.station });
-        }
-        // Snap-back animation handled by CSS transition on transform.
-        this._swipeDx = 0;
-        // Clear the swipe flag on the next tick — keeps _onTap suppressed for
-        // the trailing click that some browsers fire after pointerup.
-        setTimeout(() => { this._swipeActive = false; }, 0);
-    };
-
     render() {
         const s = this.station;
         if (!s) return nothing;
@@ -152,20 +99,14 @@ export class AgRadioCard extends LitElement {
         // and re-uses the existing cover cache.
         const logoUrl = s.favicon ? coverUrl(`url:${s.favicon}`) : '';
 
-        const innerStyle = `transform: translateX(${this._swipeDx}px); transition: ${this._swipeStartX === null ? 'transform 180ms ease-out' : 'none'};`;
-
         return html`
-            <div class="lib-radio-card-wrap ${this.swipeable ? 'swipeable' : ''}">
+            <div class="ag-swipe-wrap lib-radio-card-wrap ${this.swipeable ? 'swipeable' : ''}">
                 ${this.swipeable ? html`
-                    <div class="lib-radio-card-delete" aria-hidden="true">Remove</div>
+                    <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
                 ` : nothing}
                 <div class="lib-radio-card"
-                     style=${innerStyle}
+                     ${swipeRow(this._swipe, SINGLE, this.swipeable)}
                      @click=${this._onTap}
-                     @pointerdown=${this._onPointerDown}
-                     @pointermove=${this._onPointerMove}
-                     @pointerup=${this._onPointerEnd}
-                     @pointercancel=${this._onPointerEnd}
                      role="button" tabindex="0">
                     <ag-library-cover
                         cover=${logoUrl}

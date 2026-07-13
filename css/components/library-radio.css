@@ -195,31 +195,10 @@
 
 /* ─── One station card ─── */
 
-/* Wrapper exists to layer a delete affordance behind the card for the
-   swipe-to-remove gesture. Non-swipeable cards reuse the same DOM shape
-   (without the .swipeable modifier) so the layout stays identical. */
-.lib-radio-card-wrap {
-    position: relative;
-    overflow: hidden;
-}
-
-.lib-radio-card-delete {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: var(--spacing-md);
-    background: var(--color-error);
-    color: #ffffff;
-    font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    pointer-events: none;
-}
-
+/* Swipe-to-remove: the wrap + "Remove" reveal come from the shared .ag-swipe-*
+   classes (swipe.css); the swipeRow directive stamps touch-action / user-select
+   on .lib-radio-card. Non-swipeable cards reuse the same DOM shape (without the
+   .swipeable modifier) so the layout stays identical. */
 .lib-radio-card {
     display: grid;
     grid-template-columns: 40px 1fr auto;
@@ -231,11 +210,6 @@
     transition: background var(--transition-fast);
     background: var(--bg-primary);
     position: relative;
-
-    /* Touch behaviour: ``pan-y`` lets vertical scroll pass through to the
-       parent list while we capture horizontal pan for the swipe gesture. */
-    touch-action: pan-y;
-    user-select: none;
 }
 
 .lib-radio-card-wrap.swipeable .lib-radio-card { cursor: grab; }

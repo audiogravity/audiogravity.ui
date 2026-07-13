@@ -171,11 +171,11 @@
 
 .lib-src-status.down .lib-src-dot { background: var(--text-tertiary); }
 
-/* UPnP server card — swipe-to-remove wrapper (mirrors .lib-radio-card-wrap pattern) */
+/* UPnP server card — swipe-to-remove. Wrap/reveal come from the shared
+   .ag-swipe-* classes (swipe.css); the swipeRow directive stamps
+   touch-action / user-select on .lib-src-card. */
 
 .lib-upnp-wrap {
-    position: relative;
-    overflow: hidden;
     margin-bottom: 10px;
     border: 1px solid var(--border-color);
 }
@@ -185,31 +185,11 @@
     margin-bottom: 0;
     background: var(--bg-primary);
     position: relative;
-    touch-action: pan-y;
-    user-select: none;
     cursor: grab;
 }
 
 .lib-upnp-wrap .lib-src-card.active {
     border: none;
-}
-
-.lib-upnp-delete {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: var(--spacing-md);
-    background: var(--color-error);
-    /* stylelint-disable-next-line color-no-invalid-hex -- no --on-error token; white on error-red is intentional regardless of theme */
-    color: #ffffff;
-    font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    pointer-events: none;
 }
 
 /* UPnP discovery panel */
@@ -715,41 +695,17 @@
 
 /* ── UPnP Renderer — swipe-to-delete ─────────────────────────────────────── */
 
-/* Wrapper clips the sliding card and layers the delete zone behind it. */
+/* The wrap/reveal come from the shared .ag-swipe-* classes (swipe.css); the
+   swipeRow directive stamps touch-action / user-select on .lib-hqp-card. */
 .lib-rdr-swipe-wrap {
-    position: relative;
-    overflow: hidden;
     margin-bottom: var(--spacing-xs);
 }
 
-/* Card inside the wrapper: explicit background so it covers the delete zone
-   at rest; margin goes to the wrapper so no gap between wrapper and card. */
+/* Card inside the wrapper: opaque background so it covers the reveal at rest;
+   margin goes to the wrapper so there is no gap between wrapper and card. */
 .lib-rdr-swipe-wrap .lib-hqp-card {
     margin-bottom: 0;
     background: var(--bg-primary);
     position: relative;
-
-    /* Allow vertical scroll to pass through while we capture horizontal pan. */
-    touch-action: pan-y;
-    user-select: none;
-}
-
-/* Red delete backdrop fills the entire wrapper — revealed as the card slides left.
-   pointer-events: none so the commit is triggered by the swipe threshold, not a tap. */
-.lib-rdr-delete-zone {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: var(--spacing-md);
-    background: var(--color-error);
-    /* stylelint-disable-next-line color-no-invalid-hex -- no --on-error token; white on error-red is intentional regardless of theme */
-    color: #ffffff;
-    font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    pointer-events: none;
+    cursor: pointer;
 }

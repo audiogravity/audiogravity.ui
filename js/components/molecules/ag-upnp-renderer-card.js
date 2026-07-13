@@ -25,11 +25,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPut, apiDelete } from '../../api.js';
 import { subscribeRendererStatus } from '../../library-store.js';
 import { iconWifi, iconCast, iconOutput } from '../../ag-icons.js';
-
-// Distance (px) at which a horizontal pointer move commits the swipe-to-delete.
-const _SWIPE_COMMIT_PX = 140;
-// Minimum movement before we classify the gesture as a swipe (not a tap).
-const _SWIPE_SLOP_PX   = 8;
+import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-status-indicator.js';
 import './ag-volume-popover.js';
 
@@ -44,8 +40,6 @@ class AgUpnpRendererCard extends LitElement {
         _scanning:    { state: true },
         _discovered:  { state: true },  // List<DiscoveredRenderer> | null (after scan)
         _switching:   { state: true },  // id being switched to
-        _swipingUdn:  { state: true },  // UDN of the row currently being dragged
-        _swipeDx:     { state: true },  // live horizontal offset of the dragged card (px, ≤ 0)
     };
 
     /** @override Light DOM — inherits global CSS. */
@@ -61,11 +55,9 @@ class AgUpnpRendererCard extends LitElement {
         this._scanning      = false;
         this._discovered    = null;
         this._switching     = null;
-        this._swipingUdn    = null;
-        this._swipeDx       = 0;
-        /** @private Non-reactive swipe tracking — does not trigger re-render. */
-        this._swipeStart    = null;   // { x: number, udn: string } | null
-        this._swipeWasActive = false; // true once movement exceeds SLOP — suppresses click
+        this._swipe = new SwipeToDismissController(this, {
+            onCommit: (udn) => this._removeRenderer(udn),
+        });
     }
 
     connectedCallback() {
@@ -243,59 +235,6 @@ class AgUpnpRendererCard extends LitElement {
         }
     }
 
-    /**
-     * Pointer down — starts tracking a swipe gesture on an inactive renderer row.
-     * @param {PointerEvent} e
-     * @param {string} udn
-     */
-    _onPointerDown(e, udn) {
-        if (e.button !== undefined && e.button !== 0) return;
-        this._swipeStart     = { x: e.clientX, udn };
-        this._swipingUdn     = udn;
-        this._swipeDx        = 0;
-        this._swipeWasActive = false;
-        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-    }
-
-    /**
-     * Pointer move — updates the live translation of the dragged card.
-     * @param {PointerEvent} e
-     * @param {string} udn
-     */
-    _onPointerMove(e, udn) {
-        if (!this._swipeStart || this._swipeStart.udn !== udn) return;
-        const dx = e.clientX - this._swipeStart.x;
-        if (!this._swipeWasActive && Math.abs(dx) > _SWIPE_SLOP_PX) {
-            this._swipeWasActive = true;
-        }
-        if (this._swipeWasActive) {
-            // Left-swipe only — clamp positive (rightward) to zero.
-            this._swipeDx = Math.min(0, dx);
-        }
-    }
-
-    /**
-     * Pointer up / cancel — commits the remove if past threshold, otherwise snaps back.
-     * @param {PointerEvent} e
-     * @param {string} udn
-     */
-    _onPointerEnd(e, udn) {
-        if (!this._swipeStart || this._swipeStart.udn !== udn) return;
-        const committed = this._swipeWasActive
-            && e.type !== 'pointercancel'
-            && this._swipeDx <= -_SWIPE_COMMIT_PX;
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
-        this._swipeStart = null;
-        this._swipingUdn = null;
-        this._swipeDx    = 0;
-        // Delay clearing so the trailing click fired by some browsers after pointerup
-        // is still suppressed by _swipeWasActive.
-        setTimeout(() => { this._swipeWasActive = false; }, 0);
-        if (committed) {
-            this._removeRenderer(udn);
-        }
-    }
-
     // ── SSE ───────────────────────────────────────────────────────────────────
 
     /**
@@ -388,9 +327,8 @@ class AgUpnpRendererCard extends LitElement {
     /**
      * Row for a known renderer.
      *
-     * Inactive renderers are wrapped in a swipe-to-delete container that follows
-     * the same Pointer Events pattern as ag-radio-card: drag left past
-     * _SWIPE_COMMIT_PX to commit the deletion.
+     * Inactive renderers are wrapped in a swipe-to-delete container driven by the
+     * shared SwipeToDismissController (drag left past the threshold to commit).
      *
      * Active renderers are rendered without the swipe wrapper — they show
      * Disconnect + Volume controls instead.
@@ -459,22 +397,15 @@ class AgUpnpRendererCard extends LitElement {
             `;
         }
 
-        // Inactive renderer — swipeable.
-        const isDragging = this._swipingUdn === udn;
-        const dx         = isDragging ? this._swipeDx : 0;
-        const cardStyle  = `transform: translateX(${dx}px); transition: ${isDragging ? 'none' : 'transform 180ms ease-out'};`;
+        // Inactive renderer — swipeable via the shared swipeRow directive.
 
         return html`
-            <div class="lib-rdr-swipe-wrap">
-                <div class="lib-rdr-delete-zone" aria-hidden="true">Remove</div>
+            <div class="ag-swipe-wrap lib-rdr-swipe-wrap">
+                <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
                 <div class="lib-hqp-card"
-                     style="${!isSwitching ? 'cursor:pointer;' : ''}${cardStyle}"
-                     @pointerdown=${(e) => this._onPointerDown(e, udn)}
-                     @pointermove=${(e) => this._onPointerMove(e, udn)}
-                     @pointerup=${(e) => this._onPointerEnd(e, udn)}
-                     @pointercancel=${(e) => this._onPointerEnd(e, udn)}
+                     ${swipeRow(this._swipe, udn)}
                      @click=${!isSwitching ? () => {
-                         if (!this._swipeWasActive) this._selectRenderer(renderer);
+                         if (!this._swipe.swiping) this._selectRenderer(renderer);
                      } : undefined}>
                     ${header}
                 </div>

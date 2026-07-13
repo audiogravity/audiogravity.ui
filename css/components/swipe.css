@@ -1,0 +1,44 @@
+/**
+ * @component .ag-swipe-*
+ * @description Shared swipe-to-remove affordance for AG list rows, driven by the
+ * SwipeToDismissController + swipeRow directive (js/core/SwipeToDismissController.js).
+ * Replaces the four per-feature copies (radio, UPnP servers, UPnP renderers, queue).
+ *
+ * The row — opaque via its own background — slides left over a red "Remove"
+ * backdrop; a committed swipe removes the item. Usage:
+ *   <div class="ag-swipe-wrap">
+ *     <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
+ *     <div class="my-row" ${swipeRow(this._swipe, key)}> … </div>
+ *   </div>
+ * (the directive stamps .no-swipe + touch-action + user-select on the row).
+ */
+
+.ag-swipe-wrap {
+    position: relative;
+    overflow: hidden;
+}
+
+/* The swiped row (stamped by the swipeRow directive) must be positioned so that,
+   being an opaque element later in the DOM than .ag-swipe-reveal, it paints ABOVE
+   the reveal at rest and only uncovers it as it slides. The row supplies its own
+   opaque background. */
+.ag-swipe-row {
+    position: relative;
+}
+
+.ag-swipe-reveal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: var(--spacing-md);
+    background: var(--color-error);
+    color: #ffffff;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+}

@@ -35,6 +35,8 @@ import { AgLibraryQueue } from './ag-library-queue.js';
 /** Bare instance with sane defaults (no DOM, no lifecycle). */
 const el = (overrides = {}) =>
     Object.assign(Object.create(AgLibraryQueue.prototype), {
+        // bare instance (no constructor) → stub the swipe controller render()/handlers reference
+        _swipe: { swiping: false },
         _originFilter: 'all', sourceId: 'src_mpd', zoneId: '', ...overrides,
     });
 
@@ -106,29 +108,30 @@ describe('ag-library-queue — source filter', () => {
 describe('ag-library-queue — Clear respects the filter', () => {
     it('_clear removes only the shown (filtered) items, not the whole queue', async () => {
         const e = el({ _originFilter: 'qobuz', sourceId: 'src_qobuz' });
+        // queue_id differs from position to prove removal keys on the stable id.
         e._queue = { items: [
-            { origin: 'qobuz', position: 0, is_current: true },   // current — never deleted
-            { origin: 'qobuz', position: 1, is_current: false },
-            { origin: 'radio', position: 2, is_current: false },  // filtered out — kept
-            { origin: 'qobuz', position: 3, is_current: false },
+            { origin: 'qobuz', position: 0, queue_id: '90', is_current: true },   // current — never deleted
+            { origin: 'qobuz', position: 1, queue_id: '91', is_current: false },
+            { origin: 'radio', position: 2, queue_id: '92', is_current: false },  // filtered out — kept
+            { origin: 'qobuz', position: 3, queue_id: '93', is_current: false },
         ] };
         e._load = vi.fn().mockResolvedValue(undefined); // stub the reload
         await e._clear();
-        const removed = removeQueueItemMock.mock.calls.map(c => c[1]).sort((a, b) => a - b);
-        expect(removed).toEqual([1, 3]);
+        const removed = removeQueueItemMock.mock.calls.map(c => c[1]).sort();
+        expect(removed).toEqual(['91', '93']);   // qobuz up-next, by stable song id
     });
 
     it('_clear with no filter clears every up-next item', async () => {
         const e = el({ _originFilter: 'all', sourceId: 'src_qobuz' });
         e._queue = { items: [
-            { origin: 'qobuz', position: 0, is_current: true },
-            { origin: 'qobuz', position: 1, is_current: false },
-            { origin: 'radio', position: 2, is_current: false },
+            { origin: 'qobuz', position: 0, queue_id: '90', is_current: true },
+            { origin: 'qobuz', position: 1, queue_id: '91', is_current: false },
+            { origin: 'radio', position: 2, queue_id: '92', is_current: false },
         ] };
         e._load = vi.fn().mockResolvedValue(undefined);
         await e._clear();
-        const removed = removeQueueItemMock.mock.calls.map(c => c[1]).sort((a, b) => a - b);
-        expect(removed).toEqual([1, 2]);
+        const removed = removeQueueItemMock.mock.calls.map(c => c[1]).sort();
+        expect(removed).toEqual(['91', '92']);
     });
 });
 
