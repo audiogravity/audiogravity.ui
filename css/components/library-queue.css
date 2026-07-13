@@ -175,6 +175,16 @@
     color: var(--text-tertiary);
 }
 
+/* Source filter bar — sits between the "Up next" header and the rows, shown
+   only when the queue mixes providers (Qobuz + radio + local…).
+   The 20px horizontal padding intentionally matches this file's row/header
+   gutter (.lib-queue-ctx, .lib-queue-now, .lib-queue-list-hd, .lib-queue-row);
+   there is no 20px spacing token, and aligning to that gutter keeps the filter
+   bar flush with the rows above and below. */
+.lib-queue-filter {
+    padding: 0 20px var(--spacing-sm);
+}
+
 .lib-queue-row {
     display: grid;
     grid-template-columns: auto 36px 1fr auto auto;
@@ -182,6 +192,15 @@
     gap: 12px;
     padding: 8px 20px;
     border-bottom: 1px solid var(--border-color);
+}
+
+/* Per-row provider badge, stacked under the artist so the title keeps full
+   width on narrow portrait screens. Sizes to its content instead of stretching
+   the flex column. */
+.lib-queue-col .ag-source-badge {
+    align-self: flex-start;
+    margin-top: var(--spacing-xs);
+    font-size: var(--font-size-xxs);
 }
 
 .lib-queue-grip {

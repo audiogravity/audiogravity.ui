@@ -92,8 +92,18 @@ export async function initOriginLabels() {
 export function originBadge(origin, name) {
     if (!origin) return null;
     const icon = ORIGIN_ICONS[origin] ?? ORIGIN_ICONS.library;
-    const label = name || ORIGIN_LABELS[origin] || origin;
+    const label = name || originLabel(origin);
     return { icon, label };
+}
+
+/**
+ * Resolve the display label for a stream origin kind, falling back to the raw
+ * kind when unknown.
+ * @param {string|null|undefined} origin - origin kind (e.g. 'qobuz', 'radio').
+ * @returns {string} The human label.
+ */
+export function originLabel(origin) {
+    return ORIGIN_LABELS[origin] || origin || '';
 }
 
 /** Origin → the browse source id whose full label the queue header should reuse,

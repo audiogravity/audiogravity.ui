@@ -481,7 +481,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         }
 
         try {
-            const params = new URLSearchParams({ source_id: s.source_id });
+            // Windowed peek (current + next) so the backend doesn't enrich the
+            // whole queue just for the one upcoming track we display here.
+            const params = new URLSearchParams({ source_id: s.source_id, limit: '1' });
             if (s.zone_id) params.set('zone_id', s.zone_id);
             const queue = await apiGet(`/library/queue?${params}`);
             const items = queue?.items ?? [];
