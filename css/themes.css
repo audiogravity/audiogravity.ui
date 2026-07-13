@@ -227,6 +227,16 @@ body.compact-mode {
       animation-iteration-count: infinite !important;
    }
 
+   /* Preserve loading spinners — functional feedback, not decoration: a frozen
+      spinner reads as "stuck" during a real operation (e.g. a self-update).
+      Covers both the SVG icon spinner (.ag-spin) and the CSS border loader
+      (.spinner) used for activation/login/log feedback. */
+   .ag-spin,
+   .spinner {
+      animation-duration: var(--animation-spin, 0.8s) !important;
+      animation-iteration-count: infinite !important;
+   }
+
    /* Preserve skeleton loading animation */
    .skeleton-text,
    .skeleton-line,
@@ -256,6 +266,14 @@ body.no-animations *::after {
    animation-delay: 0s !important;
    transition-duration: 0.01ms !important;
    transition-delay: 0s !important;
+}
+
+/* Preserve loading spinners — functional feedback (mirrors the prefers-reduced-motion
+   exemption above): a frozen spinner reads as "stuck" during a real operation. */
+body.no-animations .ag-spin,
+body.no-animations .spinner {
+   animation-duration: var(--animation-spin, 0.8s) !important;
+   animation-iteration-count: infinite !important;
 }
 
 /* Preserve essential transforms but remove animations */
