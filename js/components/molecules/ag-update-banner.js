@@ -240,7 +240,7 @@ export class AgUpdateBanner extends LitElement {
                          stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg>
                 </span>
                 <div class="ag-upd-body">
-                    <div class="ag-upd-title">Updating Audiogravi<sup>ty</sup>…</div>
+                    <div class="ag-upd-title"><span>Updating Audiogravi<sup>ty</sup>…</span></div>
                     <div class="ag-upd-text">${updatePhaseLabel(this._phase)}</div>
                 </div>
             </div>
