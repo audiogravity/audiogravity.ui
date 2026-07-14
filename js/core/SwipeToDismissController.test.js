@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PartType } from 'lit/directive.js';
 import { SwipeToDismissController, SINGLE, SwipeRowDirective } from './SwipeToDismissController.js';
+import { EDGE_GESTURE_PX } from './gesture-constants.js';
 
 /** Fake ReactiveControllerHost. */
 const makeHost = () => ({ addController: vi.fn(), requestUpdate: vi.fn() });
@@ -19,8 +20,8 @@ const makeEl = () => ({
 });
 
 /** Synthetic pointer event. */
-const ev = (clientX, type = 'pointermove', { pointerId = 1, button = 0 } = {}) =>
-    ({ clientX, type, pointerId, button });
+const ev = (clientX, type = 'pointermove', { pointerId = 1, button = 0, pointerType } = {}) =>
+    ({ clientX, type, pointerId, button, pointerType });
 
 describe('SwipeToDismissController', () => {
     let host;
@@ -121,6 +122,61 @@ describe('SwipeToDismissController', () => {
         c.move(ev(40));
         c.end(ev(40, 'pointerup'));
         expect(onCommit).toHaveBeenCalledWith(SINGLE);
+    });
+
+    describe('screen-edge guard (panel-open swipe coexistence)', () => {
+        // jsdom's default window.innerWidth (1024); read it rather than mutate the
+        // shared window so other suites are unaffected.
+        const W = window.innerWidth;
+
+        it('ignores a gesture that starts in the right-edge band (reserved for the settings panel)', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            c.start(ev(W - Math.floor(EDGE_GESTURE_PX / 2), 'pointerdown'), el, 'row1'); // inside right band
+            expect(el.captured).toBe(null);            // never armed → no pointer capture
+            c.move(ev(40));                            // no-op: gesture never started
+            c.end(ev(40, 'pointerup'));
+            expect(c.swiping).toBe(false);
+            expect(onCommit).not.toHaveBeenCalled();
+            expect(el.style.transform).toBeUndefined();
+        });
+
+        it('ignores a gesture that starts in the left-edge band (reserved for the sidebar)', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            c.start(ev(Math.floor(EDGE_GESTURE_PX / 2), 'pointerdown'), el, 'row1');     // inside left band
+            expect(el.captured).toBe(null);
+            c.move(ev(-100));
+            c.end(ev(-100, 'pointerup'));
+            expect(c.swiping).toBe(false);
+            expect(onCommit).not.toHaveBeenCalled();
+        });
+
+        it('still arms and commits a gesture that starts clear of the reserved bands', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            const startX = EDGE_GESTURE_PX + 5;        // just clear of the left band
+            c.start(ev(startX, 'pointerdown'), el, 'row1');
+            expect(el.captured).toBe(1);
+            c.move(ev(startX - 160));                  // dx = -160 (>= 140)
+            c.end(ev(startX - 160, 'pointerup'));
+            expect(onCommit).toHaveBeenCalledWith('row1');
+        });
+
+        it('exempts the MOUSE: an edge-start mouse drag still arms (no touch panel to coexist with)', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            const startX = W - Math.floor(EDGE_GESTURE_PX / 2);   // inside right band
+            c.start(ev(startX, 'pointerdown', { pointerType: 'mouse' }), el, 'row1');
+            expect(el.captured).toBe(1);               // armed despite the edge — it's a mouse
+            c.move(ev(startX - 160));                  // dx = -160
+            c.end(ev(startX - 160, 'pointerup'));
+            expect(onCommit).toHaveBeenCalledWith('row1');
+        });
     });
 
     describe('multi-touch / pointer isolation', () => {

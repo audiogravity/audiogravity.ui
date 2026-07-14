@@ -6,8 +6,13 @@
  * playback queue), replacing four hand-maintained copies.
  *
  * The gesture is pointer-based (touch + mouse) and left-only; it commits past a
- * threshold. A browser-initiated `pointercancel` (vertical scroll / system gesture)
- * never commits. The swiped row is transformed IMPERATIVELY (`el.style.transform`)
+ * threshold. A TOUCH gesture that STARTS in the screen-edge band is ignored — that
+ * band is reserved for the panel-open swipes (settings from the right edge, sidebar
+ * from the left), so an edge swipe opens the panel without also removing a row; a
+ * mouse is exempt (it never opens those panels). See gesture-constants.js. A
+ * browser-initiated `pointercancel`
+ * (vertical scroll / system gesture) never commits. The swiped row is transformed
+ * IMPERATIVELY (`el.style.transform`)
  * during the drag, so a drag does not re-render the host — only the committed
  * removal does. The trailing `click` after a swipe is suppressed via `swiping`.
  *
@@ -26,6 +31,7 @@
 import { nothing } from 'lit';
 import { directive, PartType } from 'lit/directive.js';
 import { AsyncDirective } from 'lit/async-directive.js';
+import { isScreenEdgeStart } from './gesture-constants.js';
 
 const DEFAULT_COMMIT_PX = 140;
 const DEFAULT_SLOP_PX = 8;
@@ -77,6 +83,12 @@ export class SwipeToDismissController {
      */
     start(e, el, key) {
         if (e.button !== undefined && e.button !== 0) return;   // primary button / touch only
+        // A TOUCH gesture that BEGINS in the screen-edge band is reserved for the
+        // panel-open swipes (settings/config panel from the right edge, sidebar from
+        // the left — both touch-only). Yield so a right-edge swipe opens the panel
+        // WITHOUT also removing this row. A mouse never triggers those panels, so it
+        // is exempt and can still start a drag anywhere. See gesture-constants.js.
+        if (e.pointerType !== 'mouse' && isScreenEdgeStart(e.clientX)) return;
         if (this._pointerId !== null) return;                    // a gesture is already in flight
         this._el = el;
         this._key = key;
