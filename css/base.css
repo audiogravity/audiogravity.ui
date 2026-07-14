@@ -129,13 +129,18 @@ button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
     user-select: none;
 }
 
-/* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+/* Prevent iOS Safari from auto-zooming on input focus (it zooms whenever a form
+   control's font-size < 16px). The `:not()` chain lifts the specificity to
+   (0,3,1) so this WINS over per-component descendant overrides such as
+   `.form-group input` / `.config-field input` (both (0,1,1), and loaded after
+   base.css — they would otherwise win the tie and re-introduce a 14px field that
+   zooms). It also covers inputs with no explicit `type`. Excludes controls that
+   don't take text (checkbox/radio/range). Mobile only — desktop is unchanged. */
 @media (width <= 768px) {
-    input[type="text"],
-    input[type="password"],
-    input[type="email"],
-    input[type="search"],
-    input[type="number"],
+    /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
+       intentional: it raises specificity to (0,3,1) so this wins the (0,1,1) tie.
+       The list form :not(a, b, c) would collapse back to (0,1,1) and re-break it. */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
     select,
     textarea {
         font-size: 16px;
