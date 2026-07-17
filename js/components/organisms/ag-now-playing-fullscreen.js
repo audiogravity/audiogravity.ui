@@ -21,6 +21,7 @@ import '../molecules/ag-sleep-timer.js';
 import '../molecules/ag-playback-controls.js';
 import '../molecules/ag-progress-bar.js';
 import '../molecules/ag-format-strip.js';
+import '../molecules/ag-volume-popover.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';

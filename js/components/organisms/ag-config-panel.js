@@ -34,6 +34,7 @@ import { logger } from '../../utils.js';
 import { toggleSubscription, getPushStatus } from '../../push-manager.js';
 import { getCurrentUser } from '../../auth.js';
 import { isWebAuthnAvailable, registerPasskey } from '../../webauthn.js';
+import '../atoms/ag-switch.js';
 import { iconSettings, iconClose, iconDownload, iconUpload, iconDsdLock, iconUnlock, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
 
 export class AgConfigPanel extends LitElement {
