@@ -185,9 +185,20 @@ const VIEW_TAB = {
 };
 
 
-export class AgLibraryPage extends LitElement {
-    static _stylesInjected = false;
+/**
+ * Inject the shared library styles (`lib-*`) into the document head, once.
+ * Called by the page at connect time, and by Storybook stories that mount
+ * library organisms (queue, browse, outputs…) outside the page shell.
+ */
+export function injectLibStyles() {
+    if (document.getElementById('ag-lib-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'ag-lib-styles';
+    s.textContent = LIB_STYLES;
+    document.head.appendChild(s);
+}
 
+export class AgLibraryPage extends LitElement {
     static properties = {
         _view:          { state: true },
         _sourceId:      { state: true },
@@ -259,12 +270,7 @@ export class AgLibraryPage extends LitElement {
     }
 
     _injectStyles() {
-        if (AgLibraryPage._stylesInjected) return;
-        AgLibraryPage._stylesInjected = true;
-        const s = document.createElement('style');
-        s.id = 'ag-lib-styles';
-        s.textContent = LIB_STYLES;
-        document.head.appendChild(s);
+        injectLibStyles();
     }
 
     async _syncActiveSource() {
