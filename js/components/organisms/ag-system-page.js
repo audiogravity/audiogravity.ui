@@ -2,6 +2,11 @@ import { LitElement, html, nothing } from 'lit';
 import { AppState, EventEmitter } from '../../common.js';
 import { isGuest, isAdmin } from '../../auth.js';
 import { iconTrash } from '../../ag-icons.js';
+import '../atoms/ag-badge.js';
+import '../molecules/ag-event-item.js';
+import './ag-log-viewer.js';
+import '../molecules/ag-system-actions.js';
+import '../molecules/ag-terminal.js';
 
 /**
  * @module AgSystemPage

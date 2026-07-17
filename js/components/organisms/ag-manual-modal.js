@@ -34,9 +34,13 @@ export const MANUAL_BASE =
     (typeof window !== 'undefined' && window.AG_CONFIG && window.AG_CONFIG.manualBase)
     || 'https://audiogravity.app/docs/manual';
 
-// BACKLOG: this TOC duplicates docs/manual/README.md (audiogravity.site) — derive
-// it live instead of hardcoding. See audiogravity.ops/BACKLOG.md (UI / Polish).
-/** Ordered chapters — stable slugs (mirror docs/manual/) → sidebar labels. */
+/**
+ * Fallback chapter list, used only until (or unless) the live TOC loads: in
+ * normal operation the sidebar is derived from the published
+ * docs/manual/README.md "Contents" list (see _loadToc/parseToc), so the site
+ * repo stays the single source of truth. Keep this snapshot roughly in sync so
+ * an offline box still shows a sensible sidebar.
+ */
 export const MANUAL_CHAPTERS = [
     { id: '00-quick-start',       label: 'Quick start' },
     { id: '01-introduction',      label: 'Introduction' },
@@ -53,6 +57,24 @@ export const MANUAL_CHAPTERS = [
 
 /** Match an intra-manual link "NN-name.md" with an optional "#anchor". */
 const CHAPTER_HREF = /^(?:\.\/)?(\d{2}-[a-z0-9-]+)\.md(?:#(.+))?$/i;
+
+/**
+ * Parse the manual README's "Contents" list into chapter descriptors.
+ * Accepts numbered list lines like `3. [First run](03-first-run.md) — guided…`;
+ * anything else is ignored. Inline markup in the label (e.g. `<sup>`) is
+ * stripped for the plain-text sidebar.
+ * @param {string} md - README.md markdown
+ * @returns {Array<{id: string, label: string}>} chapters in list order (empty if none matched)
+ */
+export function parseToc(md) {
+    const out = [];
+    const re = /^\s*\d+\.\s*\[([^\]]+)\]\((\d{2}-[a-z0-9-]+)\.md\)/gim;
+    let m;
+    while ((m = re.exec(md)) !== null) {
+        out.push({ id: m[2], label: m[1].replace(/<[^>]+>/g, '') });
+    }
+    return out;
+}
 
 /**
  * GitHub-style heading slug so intra-manual anchors (authored against GitHub's
@@ -76,6 +98,7 @@ export class AgManualModal extends LitElement {
         _html:     { state: true },
         _loading:  { state: true },
         _error:    { state: true },
+        _chapters: { state: true },
     };
 
     createRenderRoot() {
@@ -85,6 +108,8 @@ export class AgManualModal extends LitElement {
     constructor() {
         super();
         this.isOpen = false;
+        /** @type {Array<{id: string, label: string}>} sidebar chapters — fallback until the live TOC loads */
+        this._chapters = MANUAL_CHAPTERS;
         this._activeId = MANUAL_CHAPTERS[0].id;
         this._html = '';
         this._loading = false;
@@ -93,6 +118,8 @@ export class AgManualModal extends LitElement {
         this._cache = new Map();
         /** @type {Map<string, Promise<boolean>>} in-flight loads, de-duped by id */
         this._inflight = new Map();
+        /** @type {?Promise<void>} single-flight guard for the live-TOC fetch */
+        this._tocPromise = null;
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onContentClick = this._onContentClick.bind(this);
     }
@@ -115,9 +142,32 @@ export class AgManualModal extends LitElement {
             // load so the reading pane is never blank. open() already sets _loading,
             // so this only fires for the attribute path.
             if (this.isOpen && !this._html && !this._loading && !this._error) {
+                this._loadToc();
                 this._loadChapter(this._activeId);
             }
         }
+    }
+
+    /**
+     * Refresh the sidebar from the published manual's canonical TOC
+     * (docs/manual/README.md "Contents" list), so a chapter added or renamed in
+     * the site repo appears here without a UI change. Fire-and-forget and
+     * single-flight; on any failure the hardcoded fallback list simply stays.
+     * @returns {Promise<void>}
+     */
+    _loadToc() {
+        if (this._tocPromise) return this._tocPromise;
+        this._tocPromise = (async () => {
+            try {
+                const res = await fetch(`${MANUAL_BASE}/README.md`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const parsed = parseToc(await res.text());
+                if (parsed.length) this._chapters = parsed;
+            } catch {
+                this._tocPromise = null; // failed — allow a retry on the next open
+            }
+        })();
+        return this._tocPromise;
     }
 
     /**
@@ -126,6 +176,7 @@ export class AgManualModal extends LitElement {
      */
     open(chapterId) {
         this.isOpen = true;
+        this._loadToc();
         this._loadChapter(chapterId || this._activeId);
     }
 
@@ -263,7 +314,7 @@ export class AgManualModal extends LitElement {
         if (a.dataset.chapter || a.target === '_blank') return; // already rewritten
 
         const m = href.match(CHAPTER_HREF);
-        if (m && MANUAL_CHAPTERS.some((c) => c.id === m[1])) {
+        if (m && this._chapters.some((c) => c.id === m[1])) {
             a.dataset.chapter = m[1];
             if (m[2]) a.dataset.anchor = m[2];
             a.setAttribute('href', `${MANUAL_BASE}/${m[1]}.md${m[2] ? `#${m[2]}` : ''}`);
@@ -334,7 +385,7 @@ export class AgManualModal extends LitElement {
             </div>
             <div class="manual-modal-body">
                 <nav class="manual-toc" aria-label="Manual chapters">
-                    ${MANUAL_CHAPTERS.map((c) => html`
+                    ${this._chapters.map((c) => html`
                         <button
                             class="manual-toc-item ${c.id === this._activeId ? 'active' : ''}"
                             aria-current=${c.id === this._activeId ? 'true' : nothing}

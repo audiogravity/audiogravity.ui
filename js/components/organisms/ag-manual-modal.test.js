@@ -3,7 +3,7 @@
  * open/close, the table of contents, link rewriting and in-modal navigation.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MANUAL_CHAPTERS, MANUAL_BASE } from './ag-manual-modal.js';
+import { MANUAL_CHAPTERS, MANUAL_BASE, parseToc } from './ag-manual-modal.js';
 
 // The component lazy-imports the real `marked` (installed dep); tests assert on its
 // actual output rather than a mock, so they exercise the true render integration.
@@ -25,11 +25,62 @@ describe('ag-manual-modal', () => {
         vi.restoreAllMocks();
     });
 
-    it('exposes the 11 manual chapters in order', () => {
-        expect(MANUAL_CHAPTERS).toHaveLength(11);
-        expect(MANUAL_CHAPTERS[0].id).toBe('00-quick-start');
-        expect(MANUAL_CHAPTERS[1].id).toBe('01-introduction');
-        expect(MANUAL_CHAPTERS[10].id).toBe('10-glossary');
+    it('fallback chapters are structurally sound (unique ids, NN-prefix order, labels)', () => {
+        // Structural, not data, assertions: the canonical TOC lives in the site
+        // repo's README.md (fetched live); this list is only the offline fallback.
+        const ids = MANUAL_CHAPTERS.map((c) => c.id);
+        expect(new Set(ids).size).toBe(ids.length);
+        expect(ids.every((id) => /^\d{2}-[a-z0-9-]+$/.test(id))).toBe(true);
+        expect([...ids].sort()).toEqual(ids); // NN prefixes in ascending order
+        expect(MANUAL_CHAPTERS.every((c) => c.label.trim().length > 0)).toBe(true);
+    });
+
+    describe('parseToc (live TOC from README.md)', () => {
+        it('parses numbered contents entries, including chapter 0, stripping label markup', () => {
+            const md = [
+                '# Audiogravi<sup>ty</sup> — User Manual',
+                '',
+                '0. [Quick start](00-quick-start.md) — from zero to music',
+                '1. [Introduction](01-introduction.md) — what Audiogravi<sup>ty</sup> is',
+                '10. [Glossary](10-glossary.md) — the vocabulary',
+                'Not a chapter line. See [elsewhere](../../README.md).',
+            ].join('\n');
+            expect(parseToc(md)).toEqual([
+                { id: '00-quick-start', label: 'Quick start' },
+                { id: '01-introduction', label: 'Introduction' },
+                { id: '10-glossary', label: 'Glossary' },
+            ]);
+        });
+
+        it('returns empty for markdown with no contents list', () => {
+            expect(parseToc('# X\n\nJust prose.')).toEqual([]);
+        });
+    });
+
+    describe('_loadToc (sidebar derived from the published README)', () => {
+        it('replaces the fallback with the parsed live TOC', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                text: () => Promise.resolve('0. [Quick start](00-quick-start.md)\n11. [New chapter](11-new-chapter.md)'),
+            }));
+            await el._loadToc();
+            expect(el._chapters.map((c) => c.id)).toEqual(['00-quick-start', '11-new-chapter']);
+        });
+
+        it('keeps the fallback (and allows a retry) when the fetch fails', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+            await el._loadToc();
+            expect(el._chapters).toBe(MANUAL_CHAPTERS);
+            expect(el._tocPromise).toBeNull(); // next open retries
+        });
+
+        it('keeps the fallback when the README has no parsable contents list', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true, text: () => Promise.resolve('# Broken page'),
+            }));
+            await el._loadToc();
+            expect(el._chapters).toBe(MANUAL_CHAPTERS);
+        });
     });
 
     it('starts closed', () => {

@@ -3,6 +3,8 @@ import { AppState, EventEmitter, showToast } from '../../common.js';
 import { apiGet, apiPost } from '../../api.js';
 import { isGuest } from '../../auth.js';
 import { validateTopologyConfig, showValidationModal } from '../../validation.js';
+import '../atoms/ag-badge.js';
+import './ag-history-panel.js';
 // ag-mobile-pipeline est chargé dynamiquement via lazyLoadTabContent (common.js)
 
 export class AgPipelinePage extends LitElement {

@@ -19,6 +19,7 @@
 
 import { LitElement, html } from 'lit';
 import { iconCheck, iconWarning, iconPencil, iconDownload, iconUpload } from '../../ag-icons.js';
+import './ag-modal.js';
 
 export class AgJsonConfigModal extends LitElement {
     static properties = {

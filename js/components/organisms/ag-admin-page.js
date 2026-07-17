@@ -33,6 +33,11 @@ import { appContext } from '../../core/app-context.js';
 import '../molecules/ag-announcement-banner.js';
 import '../molecules/ag-update-banner.js';
 import '../molecules/ag-version-skew-banner.js';
+import './ag-card-grid.js';
+import '../molecules/ag-license-activation.js';
+import '../molecules/ag-license-status.js';
+import '../molecules/ag-license-verify.js';
+import '../molecules/ag-user-card.js';
 
 export class AgAdminPage extends LitElement {
     static properties = {

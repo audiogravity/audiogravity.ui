@@ -21,6 +21,7 @@ import { LitElement, html } from 'lit';
 import { showConfirm } from '../../ui-helpers.js';
 import '../molecules/ag-config-diff.js';
 import { iconMusicNote, iconUndo } from '../../ag-icons.js';
+import './ag-modal.js';
 
 /**
  * Map of IO scheduling class names to their systemd numeric values.

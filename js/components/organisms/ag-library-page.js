@@ -22,6 +22,15 @@ import { apiGet, apiPost } from '../../api.js';
 import { getSnapshot, getRoonZones, subscribePlayerState } from '../../library-store.js';
 import { iconBack, iconQueue, iconRefresh, iconOutput, iconInfo } from '../../ag-icons.js';
 import { SOURCE_META, normalizeSearchSources, resolvePlayingSource } from '../library-constants.js';
+import '../molecules/ag-lib-tabbar.js';
+import './ag-library-browse.js';
+import './ag-library-outputs.js';
+import './ag-library-queue.js';
+import './ag-library-radio.js';
+import './ag-library-roon-browser.js';
+import './ag-library-search.js';
+import './ag-library-sources.js';
+import './ag-library-upnp-browser.js';
 
 /* ─── shared CSS injected once into <head> ─── */
 const LIB_STYLES = `

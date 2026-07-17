@@ -20,6 +20,8 @@ import { LitElement, html } from 'lit';
 import { apiGet, apiPost, AgTimerManager, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
 import { saveLatencyResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { iconHistory } from '../../ag-icons.js';
+import '../atoms/ag-stat-box.js';
+import '../atoms/ag-switch.js';
 
 export class AgLatencyTest extends LitElement {
     static properties = {

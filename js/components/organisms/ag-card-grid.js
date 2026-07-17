@@ -19,6 +19,7 @@
  */
 
 import { LitElement, html } from 'lit';
+import '../molecules/ag-skeleton-loader.js';
 
 export class AgCardGrid extends LitElement {
     static properties = {

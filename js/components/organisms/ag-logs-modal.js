@@ -26,6 +26,7 @@ import { escapeHtml, showToast } from '../../common.js';
 import { logger } from '../../utils.js';
 import { copyToClipboard } from '../../ui-helpers.js';
 import { iconCopy } from '../../ag-icons.js';
+import './ag-modal.js';
 
 export class AgLogsModal extends LitElement {
     static properties = {

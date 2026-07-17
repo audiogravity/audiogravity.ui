@@ -9,6 +9,8 @@ import { LitElement, html } from 'lit';
 import { AgTimerManager, sseStats } from '../../common.js';
 import { logger } from '../../utils.js';
 import { iconZap } from '../../ag-icons.js';
+import '../atoms/ag-button.js';
+import '../atoms/ag-stat-box.js';
 
 export class AgPerfMonitor extends LitElement {
     static properties = {

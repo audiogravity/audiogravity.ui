@@ -6,6 +6,11 @@ import { classMap } from 'lit/directives/class-map.js';
 import { FetchController } from '../../core/FetchController.js';
 import { formatUptime } from '../../utils.js';
 import { iconInfo, iconConnection, iconMusicNote } from '../../ag-icons.js';
+import '../molecules/ag-audio-card.js';
+import './ag-card-grid.js';
+import '../molecules/ag-network-card.js';
+import '../molecules/ag-system-info.js';
+import '../molecules/ag-system-tile.js';
 
 /**
  * System Dashboard Web Component

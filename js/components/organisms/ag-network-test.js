@@ -22,6 +22,7 @@ import { LitElement, html } from 'lit';
 import { apiPost } from '../../api.js';
 import { saveNetworkResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { iconHistory } from '../../ag-icons.js';
+import '../atoms/ag-stat-box.js';
 
 export class AgNetworkTest extends LitElement {
     static properties = {

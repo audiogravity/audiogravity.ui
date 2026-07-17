@@ -26,6 +26,8 @@ import { logger } from '../../utils.js';
 import '../atoms/ag-filter-bar.js';
 import '../atoms/ag-health-bar.js';
 import '../molecules/ag-service-detail-modal.js';
+import './ag-card-grid.js';
+import '../molecules/ag-service-card.js';
 
 export class AgServicesPage extends LitElement {
     static properties = {

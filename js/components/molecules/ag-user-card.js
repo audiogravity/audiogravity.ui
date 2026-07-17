@@ -24,6 +24,11 @@ import { LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isWebAuthnAvailable } from '../../webauthn.js';
 import { iconUser, iconUserAdmin, iconEye, iconKey } from '../../ag-icons.js';
+import '../atoms/ag-badge.js';
+import '../atoms/ag-button.js';
+import './ag-passkey-manager.js';
+import '../atoms/ag-status-indicator.js';
+import '../atoms/ag-switch.js';
 
 export class AgUserCard extends LitElement {
     static properties = {

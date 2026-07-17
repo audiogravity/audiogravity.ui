@@ -28,6 +28,10 @@ import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
 import { appContext } from '../../core/app-context.js';
+import './ag-audio-stack-provisioning.js';
+import './ag-card-grid.js';
+import '../molecules/ag-config-card.js';
+import './ag-modal.js';
 
 export class AgConfigPage extends LitElement {
     static properties = {

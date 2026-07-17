@@ -32,6 +32,8 @@ import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
 import { appContext } from '../../core/app-context.js';
+import './ag-card-grid.js';
+import '../molecules/ag-package-card.js';
 
 export class AgAudioSoftwarePage extends LitElement {
     static properties = {

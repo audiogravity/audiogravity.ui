@@ -19,6 +19,7 @@
  */
 
 import { LitElement, html } from 'lit';
+import './ag-modal.js';
 
 export class AgUserModal extends LitElement {
     static properties = {

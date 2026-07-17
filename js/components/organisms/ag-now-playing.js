@@ -8,6 +8,8 @@ import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
+import '../atoms/ag-source-badge.js';
+import '../molecules/ag-volume-popover.js';
 
 /**
  * @module AgNowPlaying

@@ -13,6 +13,8 @@ vi.mock('lit', () => ({
     LitElement: class { },
     html: (strings, ...values) => ({ strings, values }),
     css: (strings, ...values) => ({ strings, values }),
+    svg: (strings, ...values) => ({ strings, values }),
+    nothing: Symbol('nothing'),
 }));
 vi.mock('../../common.js', () => ({
     AppState: { currentTab: '' },

@@ -21,6 +21,7 @@ import { apiGet, apiPut, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
 import { iconSliders, iconChevronDown, iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
+import '../atoms/ag-switch.js';
 
 class AgHqplayerOutput extends LitElement {
 

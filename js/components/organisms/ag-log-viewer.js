@@ -27,6 +27,8 @@ import { classMap } from 'lit/directives/class-map.js';
 import { apiGet, apiPost, escapeHtml, showToast, AgTimerManager } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { logger } from '../../utils.js';
+import '../atoms/ag-badge.js';
+import '../atoms/ag-tooltip.js';
 
 export class AgLogViewer extends LitElement {
     static properties = {

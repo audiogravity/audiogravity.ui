@@ -24,6 +24,8 @@ import { classMap } from 'lit/directives/class-map.js';
 import { AppState, EventEmitter } from '../../common.js';
 import { safeToFixed, formatUptime } from '../utils-lit.js';
 import { iconSettings, iconTabLibrary } from '../../ag-icons.js';
+import '../atoms/ag-status-indicator.js';
+import '../atoms/ag-tooltip.js';
 
 export class AgTopBar extends LitElement {
     static properties = {

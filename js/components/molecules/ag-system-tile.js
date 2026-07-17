@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { iconWifi, iconCpu, iconThermometer, iconMemory, iconHardDrive, iconConnection, iconClock } from '../../ag-icons.js';
+import '../atoms/ag-sparkline.js';
 
 /** Map from legacy icomoon class name to SVG icon template. */
 const ICON_MAP = {

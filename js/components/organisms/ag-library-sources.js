@@ -23,6 +23,10 @@ import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
 import '../molecules/ag-upnp-renderer-card.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
+import '../molecules/ag-highresaudio-output.js';
+import '../molecules/ag-hqplayer-output.js';
+import '../molecules/ag-qobuz-output.js';
+import '../molecules/ag-tidal-output.js';
 
 export class AgLibrarySources extends LitElement {
     static properties = {

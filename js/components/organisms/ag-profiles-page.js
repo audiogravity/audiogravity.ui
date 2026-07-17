@@ -21,6 +21,8 @@ import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0
 import { appContext } from '../../core/app-context.js';
 import '../molecules/ag-profile-detail-modal.js';
 import '../atoms/ag-filter-bar.js';
+import './ag-card-grid.js';
+import '../molecules/ag-profile-card.js';
 
 /**
  * AgProfilesPage

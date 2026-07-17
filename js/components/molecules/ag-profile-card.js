@@ -24,6 +24,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import '../atoms/ag-health-bar.js';
 import { isGuest } from '../../auth.js';
 import { formatTimestamp } from '../utils-lit.js';
+import '../atoms/ag-status-indicator.js';
 
 export class AgProfileCard extends LitElement {
     static properties = {

@@ -29,6 +29,10 @@ import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
 import '../../components/molecules/ag-rt-monitor.js';
+import '../atoms/ag-button.js';
+import './ag-card-grid.js';
+import '../molecules/ag-governor-card.js';
+import '../atoms/ag-stat-box.js';
 
 /**
  * AgPerformancePage

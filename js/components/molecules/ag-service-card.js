@@ -24,6 +24,9 @@ import { classMap } from 'lit/directives/class-map.js';
 import { formatRate, formatTimestamp, getActivityLevel, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate } from '../utils-lit.js';
 import { isGuest } from '../../auth.js';
 import { iconPower, iconArrowDown, iconArrowUp, iconFileText, iconPencil } from '../../ag-icons.js';
+import './ag-metric-detail.js';
+import '../atoms/ag-sparkline.js';
+import '../atoms/ag-status-indicator.js';
 
 export class AgServiceCard extends LitElement {
     static properties = {

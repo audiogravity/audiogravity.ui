@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
+import '../atoms/ag-sparkline.js';
 
 /**
  * CPU Governor Card Molecule
