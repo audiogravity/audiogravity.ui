@@ -11,12 +11,14 @@
     <meta name="theme-color" content="#12141c">
     <!-- CSP: enforced via HTTP headers in production (Nginx/Lighttpd via install.sh).
          This meta tag covers the Vite dev server only. 'unsafe-eval' is needed for Vite HMR.
-         In production, the Nginx CSP is applied instead (no unsafe-eval). -->
+         In production, the Nginx CSP is applied instead (no unsafe-eval).
+         img-src allows audiogravity.app for the in-app manual's illustrations
+         (a box repointing AG_CONFIG.manualBase must allow its origin too). -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
         style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
-        img-src 'self' data: blob:;
+        img-src 'self' data: blob: https://audiogravity.app;
         font-src 'self' data: https://fonts.gstatic.com;
         connect-src 'self' ws: wss: * http://*:* https://*:*;
         frame-src 'self' * http://*:* https://*:*;
