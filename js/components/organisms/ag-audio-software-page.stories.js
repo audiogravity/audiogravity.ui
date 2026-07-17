@@ -22,20 +22,23 @@ export default {
 };
 
 const packagesMock = [
-    { 
-        id: 'mpd', label: 'Music Player Daemon', description: 'Flexible, powerful, server-side application for playing music.', 
+    {
+        id: 'mpd', label: 'Music Player Daemon', description: 'Flexible, powerful, server-side application for playing music.',
         status: 'installed', installed_version: '0.23.5', available_version: '0.23.5',
-        type: 'audio-engine', homepage: 'https://www.musicpd.org/'
+        type: 'audio-engine', homepage: 'https://www.musicpd.org/',
+        is_supported: true, arch_support: ['amd64', 'arm64']
     },
-    { 
-        id: 'squeezelite', label: 'Squeezelite', description: 'Lightweight headless Squeezebox player.', 
+    {
+        id: 'squeezelite', label: 'Squeezelite', description: 'Lightweight headless Squeezebox player.',
         status: 'not_installed', installed_version: null, available_version: '1.9.9',
-        type: 'audio-engine', homepage: 'https://github.com/ralph-irving/squeezelite'
+        type: 'audio-engine', homepage: 'https://github.com/ralph-irving/squeezelite',
+        is_supported: true, arch_support: ['amd64', 'arm64']
     },
-    { 
-        id: 'shairport-sync', label: 'Shairport Sync', description: 'AirPlay audio player.', 
+    {
+        id: 'shairport-sync', label: 'Shairport Sync', description: 'AirPlay audio player.',
         status: 'installed', installed_version: '3.3.8', available_version: '3.4.1',
-        type: 'audio-engine', homepage: 'https://github.com/mikebrady/shairport-sync'
+        type: 'audio-engine', homepage: 'https://github.com/mikebrady/shairport-sync',
+        is_supported: true, arch_support: ['amd64', 'arm64']
     }
 ];
 

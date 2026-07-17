@@ -15,6 +15,9 @@ const _wrap = (inner) => html`
 /** Renders the banner with a pre-seeded update payload (bypasses the API call). */
 const Template = (update) => {
     const el = new AgUpdateBanner();
+    // Stub the connect-time fetch: Storybook's fetch mock answers with an empty
+    // payload, which would otherwise clear the pre-seeded update on mount.
+    el._load = async () => {};
     el._update = update;
     return _wrap(el);
 };
@@ -38,6 +41,7 @@ export const NoUpdate = () => Template({ available: false });
 /** Renders the in-progress state (bypasses the API call and the trigger flow). */
 const Progress = (phase) => {
     const el = new AgUpdateBanner();
+    el._load = async () => {};
     el._updating = true;
     el._phase = phase;
     return _wrap(el);

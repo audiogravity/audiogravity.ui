@@ -1,19 +1,11 @@
 import { html } from 'lit';
 import './ag-guided-config.js';
+import { DEMO_OUTPUTS as OUTPUTS, DEMO_SOURCES as SOURCES } from './audio-stack-demo-data.js';
 
 export default {
     title: 'Organisms/GuidedConfig',
     component: 'ag-guided-config',
 };
-
-const OUTPUTS = [
-    { hw: 'hw:2,0', card_name: 'Abacus', usb_id: '20b1:30ab', device_id: 0, is_usb_dac: true, recommended: true, label: 'Abacus — USB Audio' },
-    { hw: 'hw:0,0', card_name: 'PCH', usb_id: null, device_id: 0, is_usb_dac: false, recommended: false, label: 'PCH — onboard' },
-];
-const SOURCES = [
-    { kind: 'usb', uuid: 'u-1', fstype: 'ext4', path: '/mnt/aglibrary', label: 'MUSIC (ext4)' },
-    { kind: 'mount', fstype: 'cifs', path: '/mnt/musics', label: '/mnt/musics (cifs)' },
-];
 
 const Template = (args) => html`
   <div style="padding: 20px; max-width: 560px;">
