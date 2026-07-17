@@ -25,10 +25,11 @@ describe('ag-manual-modal', () => {
         vi.restoreAllMocks();
     });
 
-    it('exposes the 9 manual chapters in order', () => {
-        expect(MANUAL_CHAPTERS).toHaveLength(9);
-        expect(MANUAL_CHAPTERS[0].id).toBe('01-introduction');
-        expect(MANUAL_CHAPTERS[8].id).toBe('09-troubleshooting');
+    it('exposes the 11 manual chapters in order', () => {
+        expect(MANUAL_CHAPTERS).toHaveLength(11);
+        expect(MANUAL_CHAPTERS[0].id).toBe('00-quick-start');
+        expect(MANUAL_CHAPTERS[1].id).toBe('01-introduction');
+        expect(MANUAL_CHAPTERS[10].id).toBe('10-glossary');
     });
 
     it('starts closed', () => {
@@ -39,7 +40,7 @@ describe('ag-manual-modal', () => {
         const spy = vi.spyOn(el, '_loadChapter').mockResolvedValue();
         el.open();
         expect(el.isOpen).toBe(true);
-        expect(spy).toHaveBeenCalledWith('01-introduction');
+        expect(spy).toHaveBeenCalledWith('00-quick-start');
     });
 
     it('open(id) loads the requested chapter', () => {
@@ -52,7 +53,7 @@ describe('ag-manual-modal', () => {
         const load = vi.spyOn(el, '_loadChapter').mockResolvedValue();
         el.isOpen = true; // attribute/property path — no open() call
         await el.updateComplete;
-        expect(load).toHaveBeenCalledWith('01-introduction');
+        expect(load).toHaveBeenCalledWith('00-quick-start');
     });
 
     it('does not double-load: open() sets _loading so updated() skips the auto-load', async () => {
@@ -68,7 +69,7 @@ describe('ag-manual-modal', () => {
 
         await el._loadChapter('02-installation');
         expect(fetchMock).toHaveBeenCalledWith(`${MANUAL_BASE}/02-installation.md`);
-        expect(el._html).toContain('<h1>Hello</h1>'); // real marked output
+        expect(el._html).toContain('<h1 id="hello">Hello</h1>'); // marked output, enhanced at cache time
         expect(el._error).toBe(false);
         expect(el._loading).toBe(false);
 
@@ -127,13 +128,13 @@ describe('ag-manual-modal', () => {
         expect(el.isOpen).toBe(false);
     });
 
-    it('renders the 9-item TOC and the rendered chapter body', async () => {
+    it('renders the 11-item TOC and the rendered chapter body', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve('# X') }));
         el.isOpen = true;
         await el._loadChapter('01-introduction');
         await el.updateComplete;
 
-        expect(el.querySelectorAll('.manual-toc-item')).toHaveLength(9);
+        expect(el.querySelectorAll('.manual-toc-item')).toHaveLength(11);
         expect(el.querySelector('.manual-toc-item.active').textContent).toContain('Introduction');
         expect(el.querySelector('.manual-md').textContent).toContain('X');
     });
@@ -191,7 +192,7 @@ describe('ag-manual-modal', () => {
         });
     });
 
-    describe('link rewriting (_rewriteLink / _enhanceRenderedContent)', () => {
+    describe('link rewriting (_rewriteLink / _enhanceHtml)', () => {
         const mkLink = (href) => {
             const a = document.createElement('a');
             a.setAttribute('href', href);
@@ -242,13 +243,55 @@ describe('ag-manual-modal', () => {
             expect(a.getAttribute('href')).toBe(`${MANUAL_BASE}/06-outputs-engines.md`);
         });
 
-        it('stamps GitHub-style slug ids (punctuation, duplicate dedup, unicode)', async () => {
-            el._html = '<h2>Audio topology (signal-chain map)</h2><h2>Roon</h2><h2>Roon</h2><h3>Réglages</h3>';
-            el.isOpen = true;
-            await el.updateComplete;
-            el._enhanceRenderedContent();
-            const ids = [...el.querySelectorAll('.manual-md h2, .manual-md h3')].map((h) => h.id);
+        it('absolutises a manual-relative image against the manual base, lazily', () => {
+            const img = document.createElement('img');
+            img.setAttribute('src', 'images/04-queue.png');
+            el._rewriteImage(img);
+            expect(img.getAttribute('src')).toBe(`${MANUAL_BASE}/images/04-queue.png`);
+            expect(img.getAttribute('loading')).toBe('lazy');
+        });
+
+        it('keeps absolute and data: image sources as authored (still lazy)', () => {
+            const abs = document.createElement('img');
+            abs.setAttribute('src', 'https://example.com/pic.png');
+            el._rewriteImage(abs);
+            expect(abs.getAttribute('src')).toBe('https://example.com/pic.png');
+            expect(abs.getAttribute('loading')).toBe('lazy');
+
+            const data = document.createElement('img');
+            data.setAttribute('src', 'data:image/png;base64,AAAA');
+            el._rewriteImage(data);
+            expect(data.getAttribute('src')).toBe('data:image/png;base64,AAAA');
+        });
+
+        it('is idempotent — a second pass leaves an already-absolutised image unchanged', () => {
+            const img = document.createElement('img');
+            img.setAttribute('src', 'images/04-queue.png');
+            el._rewriteImage(img);
+            el._rewriteImage(img);
+            expect(img.getAttribute('src')).toBe(`${MANUAL_BASE}/images/04-queue.png`);
+        });
+
+        it('stamps GitHub-style slug ids (punctuation, duplicate dedup, unicode)', () => {
+            const out = el._enhanceHtml(
+                '<h2>Audio topology (signal-chain map)</h2><h2>Roon</h2><h2>Roon</h2><h3>Réglages</h3>',
+            );
+            const tpl = document.createElement('template');
+            tpl.innerHTML = out;
+            const ids = [...tpl.content.querySelectorAll('h2, h3')].map((h) => h.id);
             expect(ids).toEqual(['audio-topology-signal-chain-map', 'roon', 'roon-1', 'réglages']);
+        });
+
+        it('enhances at cache time: cached HTML already has ids, absolute lazy images', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                text: () => Promise.resolve('## Roon\n\n<img src="images/x.png" alt="">'),
+            }));
+            await el._loadChapter('06-outputs-engines');
+            const cached = el._cache.get('06-outputs-engines');
+            expect(cached).toContain('id="roon"');
+            expect(cached).toContain(`${MANUAL_BASE}/images/x.png`);
+            expect(cached).toContain('loading="lazy"');
         });
     });
 });

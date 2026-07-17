@@ -38,6 +38,7 @@ export const MANUAL_BASE =
 // it live instead of hardcoding. See audiogravity.ops/BACKLOG.md (UI / Polish).
 /** Ordered chapters — stable slugs (mirror docs/manual/) → sidebar labels. */
 export const MANUAL_CHAPTERS = [
+    { id: '00-quick-start',       label: 'Quick start' },
     { id: '01-introduction',      label: 'Introduction' },
     { id: '02-installation',      label: 'Installation' },
     { id: '03-first-run',         label: 'First run' },
@@ -47,6 +48,7 @@ export const MANUAL_CHAPTERS = [
     { id: '07-administration',    label: 'Administration' },
     { id: '08-updating',          label: 'Updating' },
     { id: '09-troubleshooting',   label: 'Troubleshooting' },
+    { id: '10-glossary',          label: 'Glossary' },
 ];
 
 /** Match an intra-manual link "NN-name.md" with an optional "#anchor". */
@@ -141,9 +143,10 @@ export class AgManualModal extends LitElement {
     }
 
     /**
-     * Show a chapter: fetch+render it (cached), then — in a single post-render
-     * step — stamp heading ids, rewrite links, and scroll (anchor or top). The
-     * scroll is applied unconditionally after `updateComplete` rather than gated on
+     * Show a chapter: fetch+render+enhance it (cached), then scroll (anchor or
+     * top). The cached HTML is already enhanced (heading ids, absolute links,
+     * lazy absolute images), so displaying is a pure innerHTML swap. The scroll
+     * is applied unconditionally after `updateComplete` rather than gated on
      * `_html` changing, so navigating to an anchor within the already-displayed
      * chapter still scrolls.
      * @param {string} id - chapter slug (a MANUAL_CHAPTERS[].id)
@@ -162,7 +165,6 @@ export class AgManualModal extends LitElement {
         this._html = this._cache.get(id);
         await this.updateComplete;
         if (this._activeId !== id) return; // user switched chapters mid-render
-        this._enhanceRenderedContent();
         this._scrollTo(anchor);
     }
 
@@ -183,7 +185,7 @@ export class AgManualModal extends LitElement {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const md = await res.text();
                 const { marked } = await import('marked');
-                this._cache.set(id, marked.parse(md, { gfm: true }));
+                this._cache.set(id, this._enhanceHtml(marked.parse(md, { gfm: true })));
                 return true;
             } catch (e) {
                 console.error('[manual] chapter load failed', id, e);
@@ -199,14 +201,22 @@ export class AgManualModal extends LitElement {
     }
 
     /**
-     * After a chapter renders, stamp slug ids on its headings (marked emits none)
-     * and absolutise links so non-left-click interactions (middle-click, "copy
-     * link address", "open in new tab") resolve to real published URLs instead of
-     * the box origin. Runs on the live rendered DOM — no throwaway parse.
+     * Enhance a rendered chapter BEFORE it reaches the live DOM: stamp slug ids
+     * on headings (marked emits none), absolutise links so non-left-click
+     * interactions (middle-click, "copy link address") resolve to published URLs,
+     * and absolutise + lazy-load images. Runs inside an inert <template> — its
+     * content lives in a separate document, so setting an image src cannot
+     * trigger a fetch. Enhancing at cache time means the browser never sees a
+     * manual-relative image src (which would eagerly 404 against the app origin),
+     * `loading="lazy"` exists before the fetch decision, and chapter revisits
+     * reuse the enhanced HTML with zero rework.
+     * @param {string} html - marked output for one chapter
+     * @returns {string} the enhanced HTML
      */
-    _enhanceRenderedContent() {
-        const root = this.querySelector('.manual-md');
-        if (!root) return;
+    _enhanceHtml(html) {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        const root = tpl.content;
         const seen = new Map(); // disambiguate duplicate headings ("Notes" → notes, notes-1)
         root.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => {
             if (h.id) return;
@@ -216,6 +226,27 @@ export class AgManualModal extends LitElement {
             h.id = n ? `${slug}-${n}` : slug;
         });
         root.querySelectorAll('a[href]').forEach((a) => this._rewriteLink(a));
+        root.querySelectorAll('img[src]').forEach((img) => this._rewriteImage(img));
+        return tpl.innerHTML;
+    }
+
+    /**
+     * Absolutise a rendered image against the manual base and make it lazy.
+     * Markdown images are authored manual-relative (`images/04-queue.png`); left
+     * as-is the browser would resolve them against the app origin, where they
+     * don't exist. Absolute (http/https/data) sources are kept as authored.
+     * @param {HTMLImageElement} img - a rendered <img src>
+     */
+    _rewriteImage(img) {
+        // Attribute (not property) so it survives template-content serialisation.
+        img.setAttribute('loading', 'lazy'); // illustrated chapters must not fetch every image up front
+        const src = img.getAttribute('src') || '';
+        if (!src || /^(https?:|data:)/i.test(src)) return;
+        try {
+            img.setAttribute('src', new URL(src, `${MANUAL_BASE}/`).href);
+        } catch {
+            /* leave a malformed src untouched */
+        }
     }
 
     /**
@@ -303,12 +334,12 @@ export class AgManualModal extends LitElement {
             </div>
             <div class="manual-modal-body">
                 <nav class="manual-toc" aria-label="Manual chapters">
-                    ${MANUAL_CHAPTERS.map((c, i) => html`
+                    ${MANUAL_CHAPTERS.map((c) => html`
                         <button
                             class="manual-toc-item ${c.id === this._activeId ? 'active' : ''}"
                             aria-current=${c.id === this._activeId ? 'true' : nothing}
                             @click=${() => this._loadChapter(c.id)}
-                        >${i + 1}. ${c.label}</button>
+                        >${parseInt(c.id, 10)}. ${c.label}</button>
                     `)}
                 </nav>
                 <div class="manual-content" aria-live="polite" @click=${this._onContentClick}>
