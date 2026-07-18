@@ -148,8 +148,8 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | Method | Path | Description |
 |---|---|---|
 | GET | `/qobuz/connection` | Connection state |
-| POST | `/qobuz/connection` | Start OAuth2 flow |
-| GET | `/qobuz/callback` | OAuth2 callback |
+| POST | `/qobuz/connection` | Start OAuth2 flow — **502** when the Qobuz app-bundle credentials cannot be fetched (`play.qobuz.com` unreachable / format changed) |
+| GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a backend failure returns the styled **error** page with status **502**, not a raw 500 |
 | DELETE | `/qobuz/connection` | Disconnect |
 | GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 
