@@ -117,6 +117,18 @@ export async function loginWithPasskey(username) {
     const challengeToken = options._token || null;
     delete options._token;
 
+    // Username flow with no credentials → this account has no passkey. The server
+    // now returns 200 with an empty allowCredentials for an unknown/passkey-less
+    // user (by design, to avoid a username-enumeration oracle via the old 404).
+    // Short-circuit with a clear signal instead of calling navigator.credentials.get()
+    // with an empty allowCredentials, which would prompt for *any* resident passkey
+    // on the device (a different account) and then fail server-side.
+    if (username && (!options.allowCredentials || options.allowCredentials.length === 0)) {
+        const err = new Error('No passkey registered for this account.');
+        err.name = 'NoPasskeyError';
+        throw err;
+    }
+
     // 2 — decode binary fields
     options.challenge = base64urlToUint8Array(options.challenge);
     if (options.allowCredentials) {

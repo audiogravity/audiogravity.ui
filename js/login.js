@@ -177,7 +177,9 @@ async function performPasskeyLogin() {
         }
         console.error('Passkey login error:', error);
         let message = error.message;
-        if (message.includes('404') || message.includes('No passkeys')) {
+        if (error.name === 'NoPasskeyError') {
+            // No passkey for the typed username (server returns 200 with empty
+            // allowCredentials; webauthn.js raises this before prompting).
             message = 'No passkey registered for this account.';
         } else if (message.includes('401') || message.includes('failed')) {
             message = 'Passkey verification failed. Try again.';
