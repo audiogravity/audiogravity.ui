@@ -108,6 +108,20 @@ export class AgGuidedConfig extends LitElement {
         return AgProvLibraryPicker.payloadFor(this._libraryChoice, this._manualPath, this.librarySources);
     }
 
+    /**
+     * A share was just mounted from the embedded form: select it via the
+     * manual-path choice. `librarySources` is parent-owned (a later parent
+     * render would clobber a local append, stranding a `src:<idx>` choice on
+     * the wrong entry) — the manual path lives in this component's own state
+     * and resolves to the exact mountpoint whatever the array does.
+     * @param {{mountpoint: string}} mount - The created mount (already live).
+     */
+    _onMountCreated(mount) {
+        if (!mount?.mountpoint) return;
+        this._libraryChoice = 'manual';
+        this._manualPath = mount.mountpoint;
+    }
+
     get _canApply() {
         if (this._busy) return false;
         const outChange = this._fields.includes('output') && this._outputChanged;
@@ -165,7 +179,7 @@ export class AgGuidedConfig extends LitElement {
                 services: [this.serviceId],
                 regenerate: true,
                 ...(this._libraryPayload || {}),
-                password,
+                admin_password: password,
             });
             showToast('success', 'Reset', `${this.serviceId} reset to a working default.`);
             this._emitChanged();
@@ -196,7 +210,8 @@ export class AgGuidedConfig extends LitElement {
                         <h4>Music library</h4>
                         <ag-prov-library-picker .sources=${this.librarySources} .choice=${this._libraryChoice}
                             .manualPath=${this._manualPath}
-                            @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}></ag-prov-library-picker>
+                            @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}
+                            @mount-created=${(e) => this._onMountCreated(e.detail.mount)}></ag-prov-library-picker>
                     </div>` : nothing}
 
                 ${!fields.length ? html`

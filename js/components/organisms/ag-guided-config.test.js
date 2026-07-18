@@ -129,7 +129,7 @@ describe('_reset', () => {
         await el._reset();
         expect(showPasswordConfirm).toHaveBeenCalled();
         expect(apiPost).toHaveBeenCalledWith('/audio-stack/provision', expect.objectContaining({
-            card_name: 'Abacus', services: ['mpd'], regenerate: true, password: 'pw',
+            card_name: 'Abacus', services: ['mpd'], regenerate: true, admin_password: 'pw',
         }));
         expect(el.dispatchEvent).toHaveBeenCalled();
     });
@@ -138,5 +138,23 @@ describe('_reset', () => {
         showPasswordConfirm.mockResolvedValue(null);
         await makeEl()._reset();
         expect(apiPost).not.toHaveBeenCalled();
+    });
+});
+
+describe('_onMountCreated', () => {
+    it('selects the freshly mounted share via the manual path (index-proof)', () => {
+        const el = makeEl();
+        el._onMountCreated({ mountpoint: '/mnt/nas-salon', label: 'NAS Salon' });
+        expect(el._libraryChoice).toBe('manual');
+        expect(el._manualPath).toBe('/mnt/nas-salon');
+        // The payload resolves to the exact mountpoint regardless of how the
+        // parent-owned librarySources array is later re-fetched or re-ordered.
+        expect(el._libraryPayload).toEqual({ music_directory: '/mnt/nas-salon' });
+    });
+
+    it('ignores a malformed event', () => {
+        const el = makeEl();
+        el._onMountCreated(undefined);
+        expect(el._libraryChoice).toBe(null);
     });
 });

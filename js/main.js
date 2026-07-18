@@ -79,6 +79,7 @@ import './components/molecules/ag-config-card.js';
 import './components/molecules/ag-systemd-card.js';
 import './components/molecules/ag-prov-output-picker.js';
 import './components/molecules/ag-prov-library-picker.js';
+import './components/molecules/ag-network-mount-form.js';
 import './components/molecules/ag-governor-card.js';
 import './components/molecules/ag-audio-card.js';
 import './components/molecules/ag-network-card.js';

@@ -13,6 +13,8 @@ vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({
     iconHardDrive: '', iconWifi: '', iconFolder: '', iconRadio: '', iconCircle: '',
 }));
+// The embedded network-mount form pulls api.js (auth guard) — out of scope here.
+vi.mock('./ag-network-mount-form.js', () => ({}));
 
 import { AgProvLibraryPicker } from './ag-prov-library-picker.js';
 

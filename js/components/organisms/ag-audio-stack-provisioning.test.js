@@ -103,7 +103,7 @@ describe('_provision', () => {
         expect(apiPost).toHaveBeenCalledWith('/audio-stack/provision', {
             card_name: 'Abacus', usb_id: '20b1:30ab', device_id: 0,
             library_usb_uuid: 'u-1', library_fstype: 'ext4',
-            password: 'admin-pw',
+            admin_password: 'admin-pw',
         });
         expect(el._state).toBe('success');
         expect(el.dispatchEvent).toHaveBeenCalled();
@@ -154,5 +154,25 @@ describe('_loadStatus', () => {
         expect(el.dispatchEvent).toHaveBeenCalled();
         expect(el.dispatchEvent.mock.calls[0][0].type).toBe('status-loaded');
         expect(el._loading).toBe(false);
+    });
+});
+
+describe('_onMountCreated', () => {
+    it('reloads the status then selects the new share via the manual path', async () => {
+        const el = makeEl();
+        el._loadStatus = vi.fn().mockResolvedValue(undefined);
+        await el._onMountCreated({ mountpoint: '/mnt/nas-salon' });
+        expect(el._loadStatus).toHaveBeenCalledTimes(1);
+        expect(el._libraryChoice).toBe('manual');
+        expect(el._manualPath).toBe('/mnt/nas-salon');
+    });
+
+    it('still refreshes, but selects nothing, on a malformed event', async () => {
+        const el = makeEl();
+        el._loadStatus = vi.fn().mockResolvedValue(undefined);
+        el._libraryChoice = null;
+        await el._onMountCreated(undefined);
+        expect(el._loadStatus).toHaveBeenCalledTimes(1);
+        expect(el._libraryChoice).toBe(null);
     });
 });

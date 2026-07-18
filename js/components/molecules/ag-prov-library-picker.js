@@ -17,11 +17,15 @@
  *   payload is the API fragment (music_directory OR library_usb_uuid/fstype), or null.
  * @dependency js/components/utils-lit.js
  * @dependency js/ag-icons.js
+ * @dependency js/components/molecules/ag-network-mount-form.js — embedded "Add
+ *   network share" panel; parents listen to its bubbling `mount-created` to
+ *   refresh their source list.
  * @dependency css/audio-stack.css
  */
 import { LitElement, html } from 'lit';
 import { svgIcon } from '../utils-lit.js';
 import { iconHardDrive, iconWifi, iconFolder, iconRadio, iconCircle } from '../../ag-icons.js';
+import './ag-network-mount-form.js';
 
 const NETWORK_FS = ['cifs', 'nfs', 'nfs4', 'smb3'];
 
@@ -93,6 +97,7 @@ export class AgProvLibraryPicker extends LitElement {
             <div class="ag-prov-list">
                 ${this.sources.map((s, i) => this._srcCard(s, i))}
                 ${this._manual()}
+                <ag-network-mount-form></ag-network-mount-form>
             </div>`;
     }
 

@@ -15,6 +15,10 @@
  *   node tools/shoot-manual.cjs
  *
  * Env overrides: STORYBOOK_URL, AG_DEV_URL, AG_MANUAL_IMAGES_DIR.
+ *
+ * Optional argv filter: `node tools/shoot-manual.cjs queue fullscreen` reshoots
+ * only the files whose name contains one of the terms (login included only
+ * when matched).
  */
 const path = require('node:path');
 const fs = require('node:fs');
@@ -46,6 +50,7 @@ const STORY_SHOTS = [
     { id: 'pages-servicespage--default', selector: 'ag-services-page', file: 'ios-services' },
     { id: 'organisms-configpanel--sidebar-open', selector: '.config-modal', file: 'ios-settings' },
     { id: 'molecules-updatebanner--update-available', selector: 'ag-update-banner', file: 'ios-update-banner' },
+    { id: 'molecules-networkmountform--open', selector: 'ag-network-mount-form', file: 'ios-network-mount' },
 ];
 
 /** Deterministic hue from a token string. */
@@ -160,6 +165,8 @@ async function shootLogin(browser) {
 
 (async () => {
     fs.mkdirSync(OUT_DIR, { recursive: true });
+    const filters = process.argv.slice(2);
+    const wanted = (name) => !filters.length || filters.some((f) => name.includes(f));
     const sb = await fetch(`${STORYBOOK_URL}/`).then((r) => r.ok).catch(() => false);
     if (!sb) {
         console.error(`Storybook not reachable at ${STORYBOOK_URL} — run: npm run storybook`);
@@ -167,6 +174,7 @@ async function shootLogin(browser) {
     }
     const browser = await chromium.launch();
     for (const shot of STORY_SHOTS) {
+        if (!wanted(shot.file)) continue;
         const page = await browser.newPage(DEVICE);
         await stageRoutes(page);
         await page.goto(`${STORYBOOK_URL}/iframe.html?id=${shot.id}&viewMode=story&${GLOBALS}`, { waitUntil: 'networkidle' });
@@ -178,7 +186,7 @@ async function shootLogin(browser) {
         await capture(page, shot.selector, shot.file);
         await page.close();
     }
-    await shootLogin(browser);
+    if (wanted('ios-login')) await shootLogin(browser);
     await browser.close();
     console.log(`\nDone → ${OUT_DIR}`);
 })();

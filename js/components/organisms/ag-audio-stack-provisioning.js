@@ -104,6 +104,21 @@ export class AgAudioStackProvisioning extends LitElement {
         return this._outputs.find(o => o.hw === this._selectedOutputId) || null;
     }
 
+    /**
+     * A share was just mounted from the embedded form: refresh the detected
+     * sources and select the new mountpoint. Selection uses the manual-path
+     * choice (not a `src:<idx>` index) so it stays correct however the source
+     * array is re-fetched or re-ordered afterwards.
+     * @param {{mountpoint: string}} mount - The created mount (already live).
+     */
+    async _onMountCreated(mount) {
+        await this._loadStatus();
+        if (mount?.mountpoint) {
+            this._libraryChoice = 'manual';
+            this._manualPath = mount.mountpoint;
+        }
+    }
+
     /** Library payload fragment, or null when no usable library is chosen. */
     get _libraryPayload() {
         return AgProvLibraryPicker.payloadFor(this._libraryChoice, this._manualPath, this._librarySources);
@@ -142,7 +157,7 @@ export class AgAudioStackProvisioning extends LitElement {
                 usb_id: out.usb_id ?? null,
                 device_id: out.device_id ?? 0,
                 ...lib,
-                password,
+                admin_password: password,
             });
             this._state = 'success';
             this._result = result;
@@ -188,11 +203,12 @@ export class AgAudioStackProvisioning extends LitElement {
 
                 <div class="ag-prov-section">
                     <h4>Music library <span class="ag-prov-scope">MPD</span></h4>
-                    <p class="ag-prov-hint">Used by MPD only. Pick a detected source or type an existing mount path —
-                        a new network share (CIFS/NFS) must be mounted at the OS level first, then it appears here.</p>
+                    <p class="ag-prov-hint">Used by MPD only. Pick a detected source, type an existing mount path,
+                        or add a NAS share below — it is mounted and tested on the spot.</p>
                     <ag-prov-library-picker .sources=${this._librarySources} .choice=${this._libraryChoice}
                         .manualPath=${this._manualPath}
-                        @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}></ag-prov-library-picker>
+                        @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}
+                        @mount-created=${(e) => this._onMountCreated(e.detail.mount)}></ag-prov-library-picker>
                 </div>
 
                 <div class="ag-prov-actions">
