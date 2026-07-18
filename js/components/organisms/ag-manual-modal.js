@@ -53,6 +53,7 @@ export const MANUAL_CHAPTERS = [
     { id: '08-updating',          label: 'Updating' },
     { id: '09-troubleshooting',   label: 'Troubleshooting' },
     { id: '10-glossary',          label: 'Glossary' },
+    { id: '11-faq',               label: 'FAQ' },
 ];
 
 /** Match an intra-manual link "NN-name.md" with an optional "#anchor". */

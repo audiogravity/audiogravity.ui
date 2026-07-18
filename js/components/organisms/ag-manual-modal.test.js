@@ -179,13 +179,13 @@ describe('ag-manual-modal', () => {
         expect(el.isOpen).toBe(false);
     });
 
-    it('renders the 11-item TOC and the rendered chapter body', async () => {
+    it('renders one TOC item per fallback chapter and the rendered chapter body', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve('# X') }));
         el.isOpen = true;
         await el._loadChapter('01-introduction');
         await el.updateComplete;
 
-        expect(el.querySelectorAll('.manual-toc-item')).toHaveLength(11);
+        expect(el.querySelectorAll('.manual-toc-item')).toHaveLength(MANUAL_CHAPTERS.length);
         expect(el.querySelector('.manual-toc-item.active').textContent).toContain('Introduction');
         expect(el.querySelector('.manual-md').textContent).toContain('X');
     });
