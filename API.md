@@ -43,7 +43,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/auth/users/active` | Current user info |
 | POST | `/auth/webauthn/register/begin` | Start passkey registration |
 | POST | `/auth/webauthn/register/complete` | Complete passkey registration |
-| POST | `/auth/webauthn/login/begin` | Start passkey login |
+| POST | `/auth/webauthn/login/begin` | Start passkey login — always **200** with authentication options (empty `allowCredentials` when the user is unknown or has no passkeys); it never 404s, so it cannot be used to enumerate usernames |
 | POST | `/auth/webauthn/login/complete` | Complete passkey login |
 | GET | `/auth/webauthn/credentials` | List registered passkeys |
 | DELETE | `/auth/webauthn/credentials/{id}` | Remove passkey |
