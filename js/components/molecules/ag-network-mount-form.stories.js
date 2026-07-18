@@ -58,3 +58,16 @@ export const MountError = {
         _error: 'Could not mount //192.168.1.20/music: mount error(13): Permission denied',
     }),
 };
+
+/** Mount in progress — the button shows a spinner (can take up to ~30s). */
+export const Mounting = {
+    render: () => mount({
+        _open: true,
+        _mounts: [],
+        _busy: true,
+        _form: {
+            label: 'NAS Salon', host: '192.168.1.20', share: 'music',
+            username: 'nasuser', password: 'secret', read_only: true,
+        },
+    }),
+};

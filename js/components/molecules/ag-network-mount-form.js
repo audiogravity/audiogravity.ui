@@ -15,7 +15,7 @@
  * @element ag-network-mount-form
  * @fires mount-created - Bubbles. detail: { mount } — after a successful mount;
  *   parents refresh their source list (the new share is mounted and visible).
- * @fires mount-removed - Bubbles. detail: { slug } — after a removal.
+ * @fires mount-removed - Bubbles. detail: { slug, mountpoint } — after a removal.
  * @dependency js/api.js
  * @dependency js/ui-helpers.js
  * @dependency js/ag-icons.js
@@ -25,7 +25,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { showConfirm, showPasswordConfirm, getUserFriendlyError } from '../../ui-helpers.js';
 import { svgIcon } from '../utils-lit.js';
-import { iconPlus, iconTrash, iconWifi } from '../../ag-icons.js';
+import { iconPlus, iconTrash, iconWifi, iconSpinner } from '../../ag-icons.js';
 
 export class AgNetworkMountForm extends LitElement {
     static properties = {
@@ -152,7 +152,8 @@ export class AgNetworkMountForm extends LitElement {
             await this._delete(mount.slug, mount.in_use);
             await this._loadMounts();
             this.dispatchEvent(new CustomEvent('mount-removed', {
-                detail: { slug: mount.slug }, bubbles: true, composed: true,
+                detail: { slug: mount.slug, mountpoint: mount.mountpoint },
+                bubbles: true, composed: true,
             }));
         } catch (e) {
             this._error = getUserFriendlyError(e);
@@ -219,25 +220,27 @@ export class AgNetworkMountForm extends LitElement {
                             </div>`)}
                     </div>` : nothing}
 
-                <div class="ag-nmf-grid">
-                    <input class="ag-prov-input" type="text" placeholder="Name (e.g. NAS Music)"
-                           .value=${f.label} @input=${(e) => this._set('label', e.target.value)}>
-                    <input class="ag-prov-input" type="text" placeholder="Host or IP (e.g. 192.168.1.20)"
-                           .value=${f.host} @input=${(e) => this._set('host', e.target.value)}>
-                    <input class="ag-prov-input" type="text" placeholder="Share (e.g. music)"
-                           .value=${f.share} @input=${(e) => this._set('share', e.target.value)}>
-                    <input class="ag-prov-input" type="text" placeholder="Username (empty = guest)"
-                           autocomplete="off"
-                           .value=${f.username} @input=${(e) => this._set('username', e.target.value)}>
-                    <input class="ag-prov-input" type="password" placeholder="Password"
-                           autocomplete="new-password"
-                           .value=${f.password} @input=${(e) => this._set('password', e.target.value)}>
-                </div>
-                <label class="ag-nmf-ro">
-                    <input type="checkbox" .checked=${f.read_only}
-                           @change=${(e) => this._set('read_only', e.target.checked)}>
-                    Mount read-only (recommended for a music library)
-                </label>
+                <fieldset class="ag-nmf-fields" ?disabled=${this._busy}>
+                    <div class="ag-nmf-grid">
+                        <input class="ag-prov-input" type="text" placeholder="Name (e.g. NAS Music)"
+                               .value=${f.label} @input=${(e) => this._set('label', e.target.value)}>
+                        <input class="ag-prov-input" type="text" placeholder="Host or IP (e.g. 192.168.1.20)"
+                               .value=${f.host} @input=${(e) => this._set('host', e.target.value)}>
+                        <input class="ag-prov-input" type="text" placeholder="Share (e.g. music)"
+                               .value=${f.share} @input=${(e) => this._set('share', e.target.value)}>
+                        <input class="ag-prov-input" type="text" placeholder="Username (empty = guest)"
+                               autocomplete="off"
+                               .value=${f.username} @input=${(e) => this._set('username', e.target.value)}>
+                        <input class="ag-prov-input" type="password" placeholder="Password"
+                               autocomplete="new-password"
+                               .value=${f.password} @input=${(e) => this._set('password', e.target.value)}>
+                    </div>
+                    <label class="ag-nmf-ro">
+                        <input type="checkbox" .checked=${f.read_only}
+                               @change=${(e) => this._set('read_only', e.target.checked)}>
+                        Mount read-only (recommended for a music library)
+                    </label>
+                </fieldset>
                 <p class="ag-nmf-note">CIFS/SMB only — for NFS or a hand-managed mount, see the
                     manual's NAS section (anything mounted under /mnt is detected).</p>
 
@@ -245,7 +248,12 @@ export class AgNetworkMountForm extends LitElement {
 
                 <button class="action-btn primary compact" ?disabled=${this._busy}
                         @click=${() => this._submit()}>
-                    ${this._busy ? 'Testing & mounting…' : 'Mount share'}
+                    ${this._busy
+                        ? html`<svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em"
+                                    fill="none" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg>
+                               Testing &amp; mounting…`
+                        : 'Mount share'}
                 </button>
             </div>`;
     }

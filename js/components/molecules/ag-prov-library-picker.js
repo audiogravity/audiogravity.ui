@@ -18,8 +18,9 @@
  * @dependency js/components/utils-lit.js
  * @dependency js/ag-icons.js
  * @dependency js/components/molecules/ag-network-mount-form.js — embedded "Add
- *   network share" panel; parents listen to its bubbling `mount-created` to
- *   refresh their source list.
+ *   network share" panel; parents listen to its bubbling `mount-created` /
+ *   `mount-removed` to refresh their source list and reconcile the selection
+ *   (see the static reindexChoice helper).
  * @dependency css/audio-stack.css
  */
 import { LitElement, html } from 'lit';
@@ -68,6 +69,54 @@ export class AgProvLibraryPicker extends LitElement {
                 : { music_directory: src.path };
         }
         return null;
+    }
+
+    /**
+     * A source's stable identity across a source-list refresh: the USB uuid, or
+     * the mount path. Used to re-anchor a positional selection when the list is
+     * re-fetched (a share added/removed shifts every later index).
+     * @param {object} source - A detected source.
+     * @returns {string|undefined} The identity key, or undefined if none.
+     */
+    static sourceKey(source) {
+        return source?.uuid || source?.path || undefined;
+    }
+
+    /**
+     * Reconcile a positional `src:<idx>` selection across a source-list change,
+     * keyed on source identity, so a removed or re-ordered list never leaves the
+     * selection silently pointing at a *different* source. `manual` and `null`
+     * choices pass through unchanged (a manual path is index-independent).
+     *
+     * Shared so every picker host reconciles identically (mirrors payloadFor).
+     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | null.
+     * @param {Array} oldSources - The sources the choice indexed into.
+     * @param {Array} newSources - The refreshed sources.
+     * @returns {string|null} The reconciled choice: a new `src:<idx>`, or null if
+     *   the selected source is gone.
+     */
+    static reindexChoice(choice, oldSources = [], newSources = []) {
+        if (!choice?.startsWith('src:')) return choice;
+        const key = AgProvLibraryPicker.sourceKey(oldSources[Number(choice.slice(4))]);
+        if (!key) return null;
+        const idx = newSources.findIndex(s => AgProvLibraryPicker.sourceKey(s) === key);
+        return idx >= 0 ? `src:${idx}` : null;
+    }
+
+    /**
+     * Drop a `manual` selection that points at a now-removed mountpoint, so a
+     * deleted share can't stay selected. Any other choice passes through.
+     * Shared so every picker host reconciles removals identically.
+     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | null.
+     * @param {string} manualPath - The current manual path.
+     * @param {string} [removedMountpoint] - The removed share's mountpoint.
+     * @returns {{choice: string|null, manualPath: string}} The reconciled pair.
+     */
+    static clearRemovedManual(choice, manualPath, removedMountpoint) {
+        if (choice === 'manual' && manualPath === removedMountpoint) {
+            return { choice: null, manualPath: '' };
+        }
+        return { choice, manualPath };
     }
 
     /**

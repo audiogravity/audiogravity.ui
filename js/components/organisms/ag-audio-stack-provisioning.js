@@ -35,6 +35,7 @@ import { showPasswordConfirm } from '../../ui-helpers.js';
 import { svgIcon } from '../utils-lit.js';
 import { iconCheck, iconClose, iconWarning } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';
+import '../molecules/ag-library-scan-indicator.js';
 import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
 
 export class AgAudioStackProvisioning extends LitElement {
@@ -105,18 +106,51 @@ export class AgAudioStackProvisioning extends LitElement {
     }
 
     /**
+     * Re-fetch the detected sources/outputs WITHOUT the full-load side effects:
+     * no `_loading` flip (which would blank the panel and collapse the embedded
+     * form) and no `_selectedOutputId` reset (which would discard the user's DAC
+     * pick). A positional `src:<idx>` selection is re-anchored by identity so it
+     * can't silently shift onto a different source.
+     * @returns {Promise<void>}
+     */
+    async _refreshSources() {
+        try {
+            const previous = this._librarySources;
+            const status = await apiGet('/audio-stack/status');
+            this._outputs = status.outputs || [];
+            this._librarySources = status.library_sources || [];
+            this._libraryChoice = AgProvLibraryPicker.reindexChoice(
+                this._libraryChoice, previous, this._librarySources);
+        } catch (e) {
+            // Keep the current view on a transient failure.
+            console.error('[provisioning] source refresh failed:', e);
+        }
+    }
+
+    /**
      * A share was just mounted from the embedded form: refresh the detected
-     * sources and select the new mountpoint. Selection uses the manual-path
-     * choice (not a `src:<idx>` index) so it stays correct however the source
-     * array is re-fetched or re-ordered afterwards.
+     * sources and select the new mountpoint via the manual-path choice (which
+     * is index-independent).
      * @param {{mountpoint: string}} mount - The created mount (already live).
      */
     async _onMountCreated(mount) {
-        await this._loadStatus();
+        await this._refreshSources();
         if (mount?.mountpoint) {
             this._libraryChoice = 'manual';
             this._manualPath = mount.mountpoint;
         }
+    }
+
+    /**
+     * A share was just removed from the embedded form: drop a manual selection
+     * pointing at it, then refresh (which re-anchors any card selection and
+     * drops the removed source's card).
+     * @param {{mountpoint?: string}} detail - The removed mount's mountpoint.
+     */
+    async _onMountRemoved({ mountpoint } = {}) {
+        ({ choice: this._libraryChoice, manualPath: this._manualPath } =
+            AgProvLibraryPicker.clearRemovedManual(this._libraryChoice, this._manualPath, mountpoint));
+        await this._refreshSources();
     }
 
     /** Library payload fragment, or null when no usable library is chosen. */
@@ -168,6 +202,14 @@ export class AgAudioStackProvisioning extends LitElement {
             // `status-loaded` is re-emitted — otherwise the parent page keeps a
             // stale selected-output after INITIALIZE (would show "No output selected").
             await this._loadStatus();
+            // INITIALIZE generated mpd.conf and triggered a rescan — surface it
+            // on the indicator that _loadStatus just (re)rendered. Must run AFTER
+            // _loadStatus: its `_loading` flip tears down and rebuilds the panel
+            // (and the indicator with it), which would discard an earlier start().
+            if (typeof this.querySelector === 'function') {
+                await this.updateComplete;
+                this.querySelector('ag-library-scan-indicator')?.start();
+            }
         } catch (e) {
             this._state = 'error';
             this._errorMsg = e.detail || e.message || 'Provisioning failed';
@@ -208,7 +250,8 @@ export class AgAudioStackProvisioning extends LitElement {
                     <ag-prov-library-picker .sources=${this._librarySources} .choice=${this._libraryChoice}
                         .manualPath=${this._manualPath}
                         @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}
-                        @mount-created=${(e) => this._onMountCreated(e.detail.mount)}></ag-prov-library-picker>
+                        @mount-created=${(e) => this._onMountCreated(e.detail.mount)}
+                        @mount-removed=${(e) => this._onMountRemoved(e.detail)}></ag-prov-library-picker>
                 </div>
 
                 <div class="ag-prov-actions">
@@ -221,6 +264,7 @@ export class AgAudioStackProvisioning extends LitElement {
                 </div>
 
                 ${this._renderResult()}
+                <ag-library-scan-indicator></ag-library-scan-indicator>
             </div>
         `;
     }

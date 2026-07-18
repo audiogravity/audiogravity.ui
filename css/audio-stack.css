@@ -365,3 +365,41 @@
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
 }
+
+/* Fieldset only groups the mount-form inputs so they disable as one while a
+   mount is in flight — strip its native chrome (border/margin/padding and the
+   min-inline-size that would break the inner grid). */
+.ag-nmf-fields {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-inline-size: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* ── ag-library-scan-indicator (post-apply "indexing library" row) ─────── */
+.ag-lsi {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.ag-lsi.done {
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.ag-lsi svg {
+    flex-shrink: 0;
+    width: 1.1em;
+    height: 1.1em;
+}

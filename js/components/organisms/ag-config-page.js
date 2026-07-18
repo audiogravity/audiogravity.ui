@@ -377,7 +377,9 @@ export class AgConfigPage extends LitElement {
                     @back=${this._handleBack}
                     @save=${this._handleSave}
                     @restore=${this._handleRestore}
-                    @guided-changed=${this._handleGuidedChanged}>
+                    @guided-changed=${this._handleGuidedChanged}
+                    @mount-created=${this._loadAudioStatus}
+                    @mount-removed=${this._loadAudioStatus}>
                 </ag-config-editor>
             ` : html`
                 ${isAdmin() && this._boxIsNew ? html`

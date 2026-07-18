@@ -103,10 +103,13 @@ describe('ag-network-mount-form', () => {
         el.addEventListener('mount-removed', removed);
         el._error = 'stale error from a previous attempt';
 
-        await el._remove({ slug: 'nas', label: 'NAS', in_use: false });
+        await el._remove({ slug: 'nas', label: 'NAS', mountpoint: '/mnt/nas', in_use: false });
 
         expect(apiDelete).toHaveBeenCalledWith('/audio-stack/mounts/nas');
         expect(removed).toHaveBeenCalledTimes(1);
+        // The hosts key their selection reconcile off detail.mountpoint — assert
+        // the producer actually emits it (not just slug).
+        expect(removed.mock.calls[0][0].detail).toEqual({ slug: 'nas', mountpoint: '/mnt/nas' });
         expect(el._error).toBe('');
     });
 

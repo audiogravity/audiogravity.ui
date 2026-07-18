@@ -158,21 +158,77 @@ describe('_loadStatus', () => {
 });
 
 describe('_onMountCreated', () => {
-    it('reloads the status then selects the new share via the manual path', async () => {
+    it('refreshes sources then selects the new share via the manual path', async () => {
         const el = makeEl();
-        el._loadStatus = vi.fn().mockResolvedValue(undefined);
+        el._refreshSources = vi.fn().mockResolvedValue(undefined);
         await el._onMountCreated({ mountpoint: '/mnt/nas-salon' });
-        expect(el._loadStatus).toHaveBeenCalledTimes(1);
+        expect(el._refreshSources).toHaveBeenCalledTimes(1);
         expect(el._libraryChoice).toBe('manual');
         expect(el._manualPath).toBe('/mnt/nas-salon');
     });
 
     it('still refreshes, but selects nothing, on a malformed event', async () => {
-        const el = makeEl();
-        el._loadStatus = vi.fn().mockResolvedValue(undefined);
-        el._libraryChoice = null;
+        const el = makeEl({ _libraryChoice: null });
+        el._refreshSources = vi.fn().mockResolvedValue(undefined);
         await el._onMountCreated(undefined);
-        expect(el._loadStatus).toHaveBeenCalledTimes(1);
+        expect(el._refreshSources).toHaveBeenCalledTimes(1);
         expect(el._libraryChoice).toBe(null);
+    });
+});
+
+describe('_onMountRemoved', () => {
+    it('clears a manual selection pointing at the removed share, and refreshes', async () => {
+        const el = makeEl({ _libraryChoice: 'manual', _manualPath: '/mnt/nas-salon' });
+        el._refreshSources = vi.fn().mockResolvedValue(undefined);
+        await el._onMountRemoved({ mountpoint: '/mnt/nas-salon' });
+        expect(el._libraryChoice).toBe(null);
+        expect(el._manualPath).toBe('');
+        expect(el._refreshSources).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps a manual selection pointing elsewhere, but still refreshes', async () => {
+        const el = makeEl({ _libraryChoice: 'manual', _manualPath: '/mnt/other' });
+        el._refreshSources = vi.fn().mockResolvedValue(undefined);
+        await el._onMountRemoved({ mountpoint: '/mnt/nas-salon' });
+        expect(el._manualPath).toBe('/mnt/other');
+        expect(el._refreshSources).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('_refreshSources', () => {
+    const status = (sources) => ({ outputs: OUTPUTS, library_sources: sources, selected_output: null });
+
+    it('preserves the user DAC pick and never flips the loading flag', async () => {
+        // Regression: _loadStatus would reset _selectedOutputId to the
+        // recommended output and blank the panel via _loading.
+        const el = makeEl({ _selectedOutputId: 'hw:1,0', _loading: false }); // non-recommended pick
+        apiGet.mockResolvedValue(status(LIB_SOURCES));
+        await el._refreshSources();
+        expect(el._selectedOutputId).toBe('hw:1,0');
+        expect(el._loading).toBe(false);
+    });
+
+    it('re-anchors a card selection by identity when the list shifts', async () => {
+        // Selected the cifs mount (index 1); the USB source ahead of it is
+        // dropped, so the mount is now at index 0.
+        const el = makeEl({ _libraryChoice: 'src:1' });
+        apiGet.mockResolvedValue(status([LIB_SOURCES[1]]));
+        await el._refreshSources();
+        expect(el._libraryChoice).toBe('src:0');
+    });
+
+    it('clears a card selection whose source is gone', async () => {
+        const el = makeEl({ _libraryChoice: 'src:1' });
+        apiGet.mockResolvedValue(status([LIB_SOURCES[0]])); // the cifs mount removed
+        await el._refreshSources();
+        expect(el._libraryChoice).toBe(null);
+    });
+
+    it('keeps the current view on a transient fetch failure', async () => {
+        const el = makeEl({ _libraryChoice: 'src:1' });
+        apiGet.mockRejectedValue(new Error('boom'));
+        await el._refreshSources();
+        expect(el._libraryChoice).toBe('src:1');
+        expect(el._librarySources).toBe(LIB_SOURCES);
     });
 });

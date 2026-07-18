@@ -31,6 +31,7 @@ import { svgIcon } from '../utils-lit.js';
 import { iconRefresh } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';
 import '../molecules/ag-prov-library-picker.js';
+import '../molecules/ag-library-scan-indicator.js';
 import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
 
 /**
@@ -76,10 +77,18 @@ export class AgGuidedConfig extends LitElement {
         return GUIDED_FIELDS[this.serviceId] || [];
     }
 
-    /** Pre-select the pinned output once the data arrives. */
+    /** Pre-select the pinned output, and re-anchor the library selection when
+     * the parent re-fetches the sources under us. */
     willUpdate(changed) {
         if ((changed.has('outputs') || changed.has('serviceOutput')) && this._selectedOutputId == null) {
             this._selectedOutputId = this._initialOutputId();
+        }
+        // librarySources is parent-owned; when it is re-fetched (e.g. after a
+        // share is removed) a positional `src:<idx>` selection would silently
+        // shift onto a different source. Re-anchor it by identity.
+        if (changed.has('librarySources') && this._libraryChoice?.startsWith('src:')) {
+            this._libraryChoice = AgProvLibraryPicker.reindexChoice(
+                this._libraryChoice, changed.get('librarySources') || [], this.librarySources);
         }
     }
 
@@ -122,6 +131,18 @@ export class AgGuidedConfig extends LitElement {
         this._manualPath = mount.mountpoint;
     }
 
+    /**
+     * A share was just removed from the embedded form: drop a manual selection
+     * pointing at it. A card (`src:<idx>`) selection is re-anchored in
+     * willUpdate once the owner (ag-config-page) reloads and re-passes the
+     * detected sources.
+     * @param {{mountpoint?: string}} detail - The removed mount's mountpoint.
+     */
+    _onMountRemoved({ mountpoint } = {}) {
+        ({ choice: this._libraryChoice, manualPath: this._manualPath } =
+            AgProvLibraryPicker.clearRemovedManual(this._libraryChoice, this._manualPath, mountpoint));
+    }
+
     get _canApply() {
         if (this._busy) return false;
         const outChange = this._fields.includes('output') && this._outputChanged;
@@ -143,13 +164,18 @@ export class AgGuidedConfig extends LitElement {
                     device_id: o.device_id ?? 0,
                 });
             }
-            if (this._fields.includes('library') && this._libraryPayload) {
+            const libraryChanged = this._fields.includes('library') && !!this._libraryPayload;
+            if (libraryChanged) {
                 await apiPost('/audio-stack/library', this._libraryPayload);
             }
             showToast('success', 'Applied', `${this.serviceId} configuration updated.`);
             this._libraryChoice = null;
             this._manualPath = '';
             this._emitChanged();
+            // A library change triggers an MPD rescan server-side — surface it.
+            if (libraryChanged && typeof this.querySelector === 'function') {
+                this.querySelector('ag-library-scan-indicator')?.start();
+            }
         } catch (e) {
             handleError(e, `Failed to update ${this.serviceId}`);
         } finally {
@@ -211,7 +237,8 @@ export class AgGuidedConfig extends LitElement {
                         <ag-prov-library-picker .sources=${this.librarySources} .choice=${this._libraryChoice}
                             .manualPath=${this._manualPath}
                             @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}
-                            @mount-created=${(e) => this._onMountCreated(e.detail.mount)}></ag-prov-library-picker>
+                            @mount-created=${(e) => this._onMountCreated(e.detail.mount)}
+                            @mount-removed=${(e) => this._onMountRemoved(e.detail)}></ag-prov-library-picker>
                     </div>` : nothing}
 
                 ${!fields.length ? html`
@@ -226,6 +253,9 @@ export class AgGuidedConfig extends LitElement {
                         ${svgIcon(iconRefresh)} Reset to default
                     </button>
                 </div>
+
+                ${fields.includes('library')
+                    ? html`<ag-library-scan-indicator></ag-library-scan-indicator>` : nothing}
             </div>`;
     }
 }

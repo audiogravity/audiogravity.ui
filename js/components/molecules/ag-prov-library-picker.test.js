@@ -76,3 +76,52 @@ describe('_emit', () => {
         expect(el.dispatchEvent.mock.calls[0][0].detail.payload).toBeNull();
     });
 });
+
+describe('reindexChoice', () => {
+    const OLD = [
+        { kind: 'usb', uuid: 'u-1', path: '/mnt/aglibrary' },
+        { kind: 'mount', path: '/mnt/nas-a' },
+        { kind: 'mount', path: '/mnt/nas-b' },
+    ];
+    it('passes manual and null choices through unchanged', () => {
+        expect(AgProvLibraryPicker.reindexChoice('manual', OLD, [])).toBe('manual');
+        expect(AgProvLibraryPicker.reindexChoice(null, OLD, [])).toBe(null);
+    });
+    it('re-anchors a card selection to its new index by identity', () => {
+        // nas-b was at index 2; drop nas-a (index 1) → nas-b now at index 1.
+        const next = [OLD[0], OLD[2]];
+        expect(AgProvLibraryPicker.reindexChoice('src:2', OLD, next)).toBe('src:1');
+    });
+    it('keeps the index when nothing before it changed', () => {
+        const next = [OLD[0], OLD[1]]; // dropped the last one
+        expect(AgProvLibraryPicker.reindexChoice('src:1', OLD, next)).toBe('src:1');
+    });
+    it('clears the selection when its source is gone', () => {
+        const next = [OLD[0], OLD[2]]; // nas-a (src:1) removed
+        expect(AgProvLibraryPicker.reindexChoice('src:1', OLD, next)).toBe(null);
+    });
+    it('matches USB sources by uuid, not path', () => {
+        const next = [{ kind: 'usb', uuid: 'u-1', path: '/mnt/elsewhere' }];
+        expect(AgProvLibraryPicker.reindexChoice('src:0', OLD, next)).toBe('src:0');
+    });
+    it('clears when the previous index is out of range', () => {
+        expect(AgProvLibraryPicker.reindexChoice('src:9', OLD, OLD)).toBe(null);
+    });
+});
+
+describe('clearRemovedManual', () => {
+    it('clears a manual selection pointing at the removed mountpoint', () => {
+        expect(AgProvLibraryPicker.clearRemovedManual('manual', '/mnt/nas', '/mnt/nas'))
+            .toEqual({ choice: null, manualPath: '' });
+    });
+    it('keeps a manual selection pointing elsewhere', () => {
+        expect(AgProvLibraryPicker.clearRemovedManual('manual', '/mnt/other', '/mnt/nas'))
+            .toEqual({ choice: 'manual', manualPath: '/mnt/other' });
+    });
+    it('leaves a card (src:) or empty selection untouched', () => {
+        expect(AgProvLibraryPicker.clearRemovedManual('src:1', '', '/mnt/nas'))
+            .toEqual({ choice: 'src:1', manualPath: '' });
+        expect(AgProvLibraryPicker.clearRemovedManual(null, '', '/mnt/nas'))
+            .toEqual({ choice: null, manualPath: '' });
+    });
+});

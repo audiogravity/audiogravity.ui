@@ -158,3 +158,44 @@ describe('_onMountCreated', () => {
         expect(el._libraryChoice).toBe(null);
     });
 });
+
+describe('_onMountRemoved', () => {
+    it('clears the selection when it pointed at the removed share', () => {
+        const el = makeEl();
+        el._libraryChoice = 'manual';
+        el._manualPath = '/mnt/nas-salon';
+        el._onMountRemoved({ mountpoint: '/mnt/nas-salon' });
+        expect(el._libraryChoice).toBe(null);
+        expect(el._manualPath).toBe('');
+    });
+
+    it('leaves a selection that pointed elsewhere untouched', () => {
+        const el = makeEl();
+        el._libraryChoice = 'manual';
+        el._manualPath = '/mnt/other';
+        el._onMountRemoved({ mountpoint: '/mnt/nas-salon' });
+        expect(el._manualPath).toBe('/mnt/other');
+    });
+});
+
+describe('willUpdate — library selection re-anchor', () => {
+    const src = (over) => ({ kind: 'mount', path: '/mnt/x', ...over });
+    it('re-anchors a card selection when the parent re-fetches librarySources', () => {
+        const older = [src({ path: '/mnt/nas-a' }), src({ path: '/mnt/nas-b' })];
+        const el = makeEl({ librarySources: [src({ path: '/mnt/nas-b' })], _libraryChoice: 'src:1' });
+        // nas-a dropped → nas-b moved from index 1 to index 0.
+        el.willUpdate(new Map([['librarySources', older]]));
+        expect(el._libraryChoice).toBe('src:0');
+    });
+    it('clears a card selection whose source disappeared', () => {
+        const older = [src({ path: '/mnt/nas-a' })];
+        const el = makeEl({ librarySources: [], _libraryChoice: 'src:0' });
+        el.willUpdate(new Map([['librarySources', older]]));
+        expect(el._libraryChoice).toBe(null);
+    });
+    it('leaves a manual selection untouched', () => {
+        const el = makeEl({ librarySources: [], _libraryChoice: 'manual', _manualPath: '/mnt/x' });
+        el.willUpdate(new Map([['librarySources', [src()]]]));
+        expect(el._libraryChoice).toBe('manual');
+    });
+});
