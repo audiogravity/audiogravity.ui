@@ -166,9 +166,9 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/services` | List all managed systemd services |
 | GET | `/services/{name}` | Service details + metrics |
-| POST | `/services/{name}/action` | start / stop / restart / enable / disable |
+| POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravity-managed units** (audio engines + core AG services); a non-managed unit is rejected |
 | GET | `/services/{name}/properties` | systemd unit properties |
-| PUT | `/services/{name}/properties` | Update RT/CPU/IO properties |
+| PUT | `/services/{name}/properties` | Update RT/CPU/IO properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
 ### Profiles — `/profiles/*`
 | Method | Path | Description |
