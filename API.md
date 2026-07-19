@@ -54,7 +54,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/current` | Current pipeline state + now playing |
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
-| POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) |
+| POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) — body `{ source_id, action, volume?/seek_position? }`. `source_id` may be a pipeline source (`src_mpd`…) or a **virtual source**: `src_hqplayer` or **`upnp_renderer`** (an active native UPnP renderer, cast target). |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
@@ -78,6 +78,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
+> **Virtual now-playing source `upnp_renderer`:** when an active native UPnP renderer (a cast target — Marantz, Linn, a remote AG box) is Playing/Paused, the now-playing list and `player_state.sources` include a virtual item with `source_id: "upnp_renderer"` (alongside the existing `src_hqplayer`), so the mini-player and fullscreen render it like any other source. It is controlled via `POST /audio_pipeline/control` **or** `POST /player/control` with `source_id: "upnp_renderer"` — the latter works even when the renderer is the selected output but **Stopped** (it then appears only in `player_state` with `playback_status: "Stopped"`, `playing: false`). An on-host (local-MPD) renderer is never surfaced this way — it is not selectable as an output.
+
 > **Queue items** (`GET /library/queue?source_id=…`) carry an **`origin`** field (`radio`, `qobuz`, `tidal`, `upnp`, `library`…) that mirrors `NowPlayingItem.origin` — the real stream provider, independent of the MPD transport. It lets the queue label by the actual source (e.g. "Radio") rather than the engine ("Local Library"), and a recognised radio stream's `cover_token` is the station logo. Qobuz/Tidal/HIGHRESAUDIO play over the shared MPD engine, so `GET /library/queue?source_id=src_qobuz` (and `src_tidal` / `src_highresaudio`) returns that shared queue with each item's real `origin` — previously it returned an empty queue. When no MPD engine exists yet the endpoint returns an empty queue (200), not an error. An optional **`?limit=<n>`** returns only the current track plus up to `n` following items (a lightweight next-track peek; item `position` stays the absolute MPD queue position) — omit it for the full queue.
 
 > **Queue removal** is **by stable song id, not position**: each queue item carries a **`queue_id`** (the MPD `Id`, unchanged when the queue reindexes; `None` for Roon), and **`DELETE /library/queue/{queue_id}?source_id=…`** removes via MPD `deleteid`. This is reindex-safe — removing one track never hits the wrong one even if the queue shifted since it was listed. (The path segment was previously the 0-based `position`.)
@@ -94,7 +96,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
 | PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output). Returns **400** for a co-located (`is_local`) renderer — it receives external casts and duplicates the Local DAC, so it cannot be selected as an output |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
-| GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`uses_local_mpd`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
+| GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
 | POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
 | POST | `/upnp-renderer/{udn}/stop` | Stop |
 | POST | `/upnp-renderer/{udn}/pause` | Pause |
@@ -102,7 +104,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | PUT | `/upnp-renderer/{udn}/volume` | Set volume 0–100 |
 | POST | `/upnp-renderer/{udn}/next` | Skip to next track in the renderer queue — 409 if no queue, at last track, or transition in progress |
 | POST | `/upnp-renderer/{udn}/prev` | Go back to previous track in the renderer queue — 409 if no queue, at first track, or transition in progress |
-| POST | `/upnp-renderer/{udn}/notify` | UPnP SUBSCRIBE/NOTIFY callback (public, no auth) |
+| NOTIFY / POST | `/upnp-renderer/{udn}/notify` | UPnP GENA SUBSCRIBE/NOTIFY callback (public, no auth; sender IP must match the renderer's own IP) |
 
 ### Player — `/player/*`
 | Method | Path | Description |
@@ -324,7 +326,7 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | `services_metrics` | CPU/memory/IO per service |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |
-| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `uses_local_mpd`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token` |
+| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token` |
 
 ---
 
