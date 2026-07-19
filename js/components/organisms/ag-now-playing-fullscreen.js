@@ -25,7 +25,7 @@ import '../molecules/ag-volume-popover.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
-import { subscribePlayerState, subscribeRendererStatus, fetchActiveRendererStatus } from '../../library-store.js';
+import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
@@ -59,8 +59,6 @@ export class AgNowPlayingFullscreen extends LitElement {
         _coverSwapped: { state: true },
         /** All concurrently active sources — drives the dots source-switcher. */
         _sources:          { state: true },
-        /** Latest renderer_status SSE payload — drives the renderer routing badge. */
-        _rendererStatus:   { state: true },
         /** Cover token that failed to load — triggers placeholder fallback. */
         _coverErrorToken:  { state: true },
     };
@@ -98,9 +96,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._prevCoverToken  = null;
         this._pendingColorUrl = null;
         this._licenseStatus     = 'no_license';
-        this._rendererStatus    = null;
         this._controlRecentTime = null;
-        this._unsubscribeRenderer = null;
         this._boundOpen      = (e) => this._openPlayer(e.detail?.source_id ?? null, e.detail?.item ?? null);
         this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
         this._boundTouchStart = this._onTouchStart.bind(this);
@@ -112,23 +108,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         super.connectedCallback();
         window.addEventListener('np-expand', this._boundOpen);
         window.addEventListener('license-status', this._boundLicStatus);
-        this._unsubscribeRenderer = subscribeRendererStatus((data) => {
-            this._rendererStatus = data;
-            // Keep "Up next" in sync with the renderer queue whenever the status
-            // changes — avoids the timing race between the renderer_status SSE and
-            // the player_state SSE that triggers _fetchNextTrack.
-            if (data?.connected && data.queue_total != null) {
-                this._nextTrack = data.queue_next_title != null
-                    ? { title: data.queue_next_title, artist: data.queue_next_artist ?? null, album: data.queue_next_album ?? null, cover_token: data.queue_next_cover_token ?? null }
-                    : null;
-            } else if (!data?.connected) {
-                // Renderer went offline — clear stale "Up next" entry
-                // so the strip does not show a track from a queue that no longer exists.
-                this._nextTrack = null;
-            }
-        });
-        // Fetch initial renderer status so the badge shows immediately on open.
-        fetchActiveRendererStatus().then(d => { if (d) this._rendererStatus = d; });
+        // Renderer routing, queue and "Up next" now come from PlayerState
+        // (outputs[] / queue_next) — single source of truth, no separate
+        // renderer_status subscription (spec decision #2).
         // Restore any backend-armed sleep timer (e.g. set before the app
         // was reloaded / closed). The backend is authoritative.
         this._syncSleepTimer();
@@ -138,7 +120,6 @@ export class AgNowPlayingFullscreen extends LitElement {
         super.disconnectedCallback();
         window.removeEventListener('np-expand', this._boundOpen);
         window.removeEventListener('license-status', this._boundLicStatus);
-        this._unsubscribeRenderer?.();
         this._closeSse();
         // Only clear the local UI timeout — the backend timer must keep running.
         this._clearLocalSleepTimeout();
@@ -182,11 +163,14 @@ export class AgNowPlayingFullscreen extends LitElement {
             can_prev:         item.can_prev ?? false,
             can_seek:         item.can_seek ?? false,
             can_set_volume:   item.can_set_volume ?? false,
+            control_id:       item.control_id ?? null,
+            played_on:        item.played_on ?? null,
             format:           null,
             signal_path:      null,
             output_label:     null,
             output_connector: null,
             sources:          null,
+            outputs:          null,
         };
     }
 
@@ -312,7 +296,14 @@ export class AgNowPlayingFullscreen extends LitElement {
         const trackChanged   = state.title !== this._prevTitle;
         const sourceChanged  = state.source_id !== this._prevSourceId;
         const stationChanged = state.station_logo_token !== this._prevStationToken;
-        if (trackChanged && this._open) this._fetchNextTrack(state);
+        // "Up next": a renderer cast carries its queue in state.queue_next
+        // (live via SSE). Only the local-queue path (MPD) still needs a fetch.
+        const rendererRouting = (state.outputs ?? []).some(o => o.type === 'upnp_renderer' && o.active);
+        if (rendererRouting) {
+            this._nextTrack = state.queue_next ?? null;
+        } else if (trackChanged && this._open) {
+            this._fetchNextTrack(state);
+        }
         if (trackChanged || sourceChanged || stationChanged) this._coverSwapped = false;
         // Reset the cover-error token on track change so a new cover is always
         // attempted, even if a previous track with the same token had a 404.
@@ -462,25 +453,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         const s = state ?? this._state;
         if (!s?.source_id || s.source_id === 'src_hqplayer') return;
 
-        // When the UPnP renderer is active and routing, use the queue info the
-        // backend exposes in renderer_status (updated live via SSE) instead of the
-        // MPD queue — which is always empty when tracks are sent via AVTransport.
-        const rs = this._rendererStatus;
-        if (rs?.connected && rs.queue_next_title != null) {
-            this._nextTrack = {
-                title:       rs.queue_next_title,
-                artist:      rs.queue_next_artist      ?? null,
-                album:       rs.queue_next_album       ?? null,
-                cover_token: rs.queue_next_cover_token ?? null,
-            };
-            return;
-        }
-        if (rs?.connected && rs.queue_total != null) {
-            // Renderer queue active but no next track (end of queue).
-            this._nextTrack = null;
-            return;
-        }
-
+        // Renderer casts never reach here: their queue comes from
+        // state.queue_next in _applyState (the MPD queue is always empty when
+        // tracks are sent via AVTransport). This fetch is the local-MPD path.
         try {
             // Windowed peek (current + next) so the backend doesn't enrich the
             // whole queue just for the one upcoming track we display here.
@@ -522,10 +497,24 @@ export class AgNowPlayingFullscreen extends LitElement {
                 playback_status: !this._state.playing ? 'Playing' : 'Paused',
             };
         }
+        // Optimistic seek: move the progress bar to the target immediately so it
+        // does not appear stuck until the backend confirms the new position
+        // (renderer casts refresh their position out-of-band, ~a poll away).
+        if (action === 'seek' && value !== undefined && this._state) {
+            this._state = { ...this._state, elapsed: value };
+        }
         try {
             const body = { action };
             if (value !== undefined) body.value = value;
             if (this._targetSourceId) body.source_id = this._targetSourceId;
+            // Routing handle (spec §3): send the displayed state's control_id so
+            // the command reaches the device that PLAYS the content. Only when
+            // the displayed state matches the targeted source (avoids routing a
+            // just-switched source through the previous state's handle).
+            if (this._state?.control_id
+                && (!this._targetSourceId || this._state.source_id === this._targetSourceId)) {
+                body.control_id = this._state.control_id;
+            }
             if (action === 'next' || action === 'prev') this._controlRecentTime = Date.now();
             await apiPost('/player/control', body);
         } catch (e) {
@@ -656,33 +645,12 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
     get _rendererActive() {
-        return !!(this._rendererStatus?.connected);
+        return !!this._rendererOut;
     }
 
-    /**
-     * Whether the renderer queue can advance to the next track.
-     * Returns null when no renderer queue is active (caller falls back to player state).
-     * @returns {boolean|null}
-     */
-    get _rendererCanNext() {
-        const rs = this._rendererStatus;
-        if (rs?.connected && rs.queue_total != null) {
-            return rs.queue_next_title != null;
-        }
-        return null;
-    }
-
-    /**
-     * Whether the renderer queue can go back to the previous track.
-     * Returns null when no renderer queue is active (caller falls back to player state).
-     * @returns {boolean|null}
-     */
-    get _rendererCanPrev() {
-        const rs = this._rendererStatus;
-        if (rs?.connected && rs.queue_total != null) {
-            return (rs.queue_position ?? 0) > 0;
-        }
-        return null;
+    /** @returns {object|null} The active network-renderer output entry from PlayerState. */
+    get _rendererOut() {
+        return (this._state?.outputs ?? []).find(o => o.type === 'upnp_renderer' && o.active) ?? null;
     }
 
     // ------------------------------------------------------------------
@@ -780,7 +748,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                         ${!hasSignal && this._rendererActive ? html`
                             <span class="np-renderer-badge npfs-renderer-badge"
                                   title="Routed to UPnP renderer">
-                                → ${this._rendererStatus?.renderer_name ?? 'Renderer'}
+                                → ${this._rendererOut?.name ?? 'Renderer'}
                             </span>
                         ` : nothing}
                     </div>
@@ -949,8 +917,8 @@ export class AgNowPlayingFullscreen extends LitElement {
                     <div class="npfs-controls-row">
                         <ag-playback-controls
                             ?playing=${s?.playing ?? false}
-                            ?can-next=${this._rendererCanNext ?? (s?.can_next ?? false)}
-                            ?can-prev=${this._rendererCanPrev ?? (s?.can_prev ?? false)}
+                            ?can-next=${s?.can_next ?? false}
+                            ?can-prev=${s?.can_prev ?? false}
                             ?repeat=${s?.repeat ?? false}
                             ?shuffle=${s?.shuffle ?? false}
                             @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}

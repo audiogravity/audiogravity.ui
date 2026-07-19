@@ -54,7 +54,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/current` | Current pipeline state + now playing |
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
-| POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) — body `{ source_id, action, volume?/seek_position? }`. `source_id` may be a pipeline source (`src_mpd`…) or a **virtual source**: `src_hqplayer` or **`upnp_renderer`** (an active native UPnP renderer, cast target). |
+| POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) — body `{ source_id, control_id?, action, volume?/seek_position? }`. **`control_id`** is the routing handle from the item (`NowPlayingItem.control_id`) and wins over `source_id`; commands route to the device that **plays** the content (MPD locally, the renderer for a cast, HQPlayer, Roon). Handles: pipeline sources (`src_mpd`…), `src_hqplayer`, `upnp_renderer`. |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
@@ -78,7 +78,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
-> **Virtual now-playing source `upnp_renderer`:** when an active native UPnP renderer (a cast target — Marantz, Linn, a remote AG box) is Playing/Paused, the now-playing list and `player_state.sources` include a virtual item with `source_id: "upnp_renderer"` (alongside the existing `src_hqplayer`), so the mini-player and fullscreen render it like any other source. It is controlled via `POST /audio_pipeline/control` **or** `POST /player/control` with `source_id: "upnp_renderer"` — the latter works even when the renderer is the selected output but **Stopped** (it then appears only in `player_state` with `playback_status: "Stopped"`, `playing: false`). An on-host (local-MPD) renderer is never surfaced this way — it is not selectable as an output.
+> **Renderer cast = content item + output (control contract, spec §3):** every now-playing item carries two separate identities — **`control_id`** (the ROUTING handle: the device/engine that plays the content and receives commands; equals `source_id` for pipeline sources) and display fields (`origin`, `display_name`), plus **`played_on`** (output id where the audio comes out: `"local"` or a renderer UDN — display only, never routes). When content plays on an active native renderer (Marantz, Linn, a remote AG box), the item is badged with the **content identity** — `origin` resolved from the loaded URI (`qobuz`, `library`, `upnp` + server name, or **`external`** when a third-party controller drives the renderer), `display_name` from that origin, `played_on` = the renderer UDN — while `source_id`/`control_id` stay `"upnp_renderer"` as the internal routing handle (never displayed). Controls go through `POST /audio_pipeline/control` or `POST /player/control` with `control_id` (the handle works even when the renderer is the selected output but **Stopped**). A selected-but-stopped renderer no longer yields a synthetic item: it is carried by `player_state.outputs[]` (entry with `transport_state: "STOPPED"`, `active_output_id` pointing at it, and `output_label` kept). An on-host (local-MPD) renderer is never surfaced this way — it is not selectable as an output.
 
 > **Queue items** (`GET /library/queue?source_id=…`) carry an **`origin`** field (`radio`, `qobuz`, `tidal`, `upnp`, `library`…) that mirrors `NowPlayingItem.origin` — the real stream provider, independent of the MPD transport. It lets the queue label by the actual source (e.g. "Radio") rather than the engine ("Local Library"), and a recognised radio stream's `cover_token` is the station logo. Qobuz/Tidal/HIGHRESAUDIO play over the shared MPD engine, so `GET /library/queue?source_id=src_qobuz` (and `src_tidal` / `src_highresaudio`) returns that shared queue with each item's real `origin` — previously it returned an empty queue. When no MPD engine exists yet the endpoint returns an empty queue (200), not an error. An optional **`?limit=<n>`** returns only the current track plus up to `n` following items (a lightweight next-track peek; item `position` stays the absolute MPD queue position) — omit it for the full queue.
 
@@ -109,15 +109,15 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 ### Player — `/player/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/player/state` | SSE stream — live `PlayerState` events |
+| GET | `/player/state` | SSE stream — live `PlayerState` events. Besides track/transport fields, the state carries: **`control_id`** (routing handle of the active item), **`played_on`** (output id: `"local"` or renderer UDN), **`outputs[]`** (`{id, type: "local"\|"upnp_renderer", name, active, transport_state: "PLAYING"\|"PAUSED"\|"STOPPED"\|null}` — the single source of truth for the renderer's transport state), **`active_output_id`**, and **`queue_next`** (`{title, artist, album, cover_token}` — upcoming track of a renderer cast; replaces reading `queue_next_*` from `renderer_status`). `sources[]` entries carry `control_id`/`played_on` too. |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command (`toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`, `set_shuffle`) |
+| POST | `/player/control` | Transport command (`toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`, `set_shuffle`) — body `{ action, value?, source_id?, control_id? }`; `control_id` (routing handle, spec §3) wins over `source_id` |
 | POST | `/player/source` | Select active source |
 | GET | `/player/sleep-timer` | Current sleep timer state |
 | POST | `/player/sleep-timer` | Arm sleep timer (pause after N minutes) |
 | DELETE | `/player/sleep-timer` | Cancel active sleep timer |
 | GET | `/player/origins` | Canonical `origin → label` map (e.g. `"qobuz" → "Qobuz"`). Clients merge this into their static fallback at startup. |
-| GET | `/player/outputs` | All selectable audio outputs: one entry per MPD audio_output block (`type: "mpd_output"`, `output_id: int`) + known UPnP renderers (`type: "upnp_renderer"`). Each entry: `{id, type, name, reachable, active[, output_id]}`. Falls back to a single "Local DAC" entry when MPD is unreachable. |
+| GET | `/player/outputs` | **Selector catalogue** — all selectable audio outputs: one entry per MPD audio_output block (`type: "mpd_output"`, `output_id: int`) + known UPnP renderers (`type: "upnp_renderer"`). Each entry: `{id, type, name, reachable, active[, output_id]}`. Falls back to a single "Local DAC" entry when MPD is unreachable. Distinct from `PlayerState.outputs[]` (the **runtime** list: local chain + selected renderer with live `transport_state`, built from caches). |
 | PUT | `/player/mpd-output/{output_id}` | Enable one MPD audio output exclusively (all others disabled) and disconnect any active UPnP renderer. `output_id` is the MPD `outputid` integer. Returns 404 when `output_id` is not found in MPD. Returns 503 when MPD is unreachable. |
 
 ### HQPlayer — `/hqplayer/*`
@@ -326,7 +326,7 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | `services_metrics` | CPU/memory/IO per service |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |
-| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token` |
+| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token`. **Settings-card scope only** (connection/reachability): the player UI reads the renderer's transport state and queue from `PlayerState.outputs[]` / `queue_next` instead (single source of truth). |
 
 ---
 
