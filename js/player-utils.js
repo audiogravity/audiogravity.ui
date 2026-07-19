@@ -27,6 +27,26 @@ export function inTransition(controlRecentTime) {
  * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat
  * @returns {boolean}
  */
+/**
+ * Transport drivers that manage DSD/volume in their own chain — mirrors the
+ * backend `_SELF_MANAGED_DSD_DRIVERS` set: HQPlayer (own DSP chain) and a
+ * native UPnP renderer (its own DAC/amplifier stage). For these drivers the
+ * UI keeps the volume control available during DSD and hides the DSD lock.
+ * @type {Set<string>}
+ */
+const SELF_MANAGED_DSD_DRIVERS = new Set(['src_hqplayer', 'upnp_renderer']);
+
+/**
+ * Whether an item/state is played by a self-managed transport driver.
+ * Keys on the routing identity (`control_id`, spec §3) — display fields
+ * (origin, display_name) never influence this — with `source_id` fallback.
+ * @param {object|null} itemOrState - NowPlayingItem-like or PlayerState-like object.
+ * @returns {boolean}
+ */
+export function isSelfManagedDriver(itemOrState) {
+    return SELF_MANAGED_DSD_DRIVERS.has(itemOrState?.control_id ?? itemOrState?.source_id);
+}
+
 export function isDsd(fmtOrSourceFormat) {
     if (!fmtOrSourceFormat) return false;
     if (typeof fmtOrSourceFormat === 'string') {

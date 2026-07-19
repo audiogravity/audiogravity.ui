@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -699,13 +699,13 @@ export class AgNowPlaying extends LitElement {
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
                         </button>
                     ` : nothing}
-                    ${item.can_set_volume && (!isDsd(item.source_format) || item.source_id === 'src_hqplayer') ? html`
+                    ${item.can_set_volume && (!isDsd(item.source_format) || isSelfManagedDriver(item)) ? html`
                         <ag-volume-popover
                             .volume=${item.volume ?? 0}
                             @volume-change=${(e) => this._sendControl(item.source_id, 'set_volume', e.detail.volume, item)}
                         ></ag-volume-popover>
                     ` : nothing}
-                    ${isDsd(item.source_format) && item.source_id !== 'src_hqplayer' ? html`<ag-dsd-lock></ag-dsd-lock>` : nothing}
+                    ${isDsd(item.source_format) && !isSelfManagedDriver(item) ? html`<ag-dsd-lock></ag-dsd-lock>` : nothing}
                 </div>
             </div>
             ${item.duration ? html`

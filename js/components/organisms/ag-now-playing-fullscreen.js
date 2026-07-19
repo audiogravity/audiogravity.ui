@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -451,7 +451,9 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     async _fetchNextTrack(state) {
         const s = state ?? this._state;
-        if (!s?.source_id || s.source_id === 'src_hqplayer') return;
+        // HQPlayer has no AG-visible queue — keyed on the routing identity
+        // (control_id, spec §3), not the display identity.
+        if (!s?.source_id || (s.control_id ?? s.source_id) === 'src_hqplayer') return;
 
         // Renderer casts never reach here: their queue comes from
         // state.queue_next in _applyState (the MPD queue is always empty when
@@ -923,7 +925,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                             ?shuffle=${s?.shuffle ?? false}
                             @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
                         ></ag-playback-controls>
-                        ${s?.can_set_volume && (!isDsd(s?.format) || s?.source_id === 'src_hqplayer') ? html`
+                        ${s?.can_set_volume && (!isDsd(s?.format) || isSelfManagedDriver(s)) ? html`
                             <div class="npfs-controls-vol">
                                 <ag-volume-popover
                                     .volume=${s.volume ?? 0}
@@ -931,7 +933,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 ></ag-volume-popover>
                             </div>
                         ` : nothing}
-                        ${isDsd(s?.format) && s?.source_id !== 'src_hqplayer' ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
+                        ${isDsd(s?.format) && !isSelfManagedDriver(s) ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
                     </div>
                     ${this._renderProgress(s)}
                     ${this._renderUpNext()}

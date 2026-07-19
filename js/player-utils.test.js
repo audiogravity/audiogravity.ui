@@ -2,7 +2,7 @@
  * Unit tests for player-utils.js — player helper functions.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { TRANSITION_GUARD_MS, inTransition, isDsd } from './player-utils.js';
+import { TRANSITION_GUARD_MS, inTransition, isDsd, isSelfManagedDriver } from './player-utils.js';
 
 describe('TRANSITION_GUARD_MS', () => {
     it('is 8 seconds', () => {
@@ -41,5 +41,31 @@ describe('isDsd', () => {
         expect(isDsd(null)).toBe(false);
         expect(isDsd(undefined)).toBe(false);
         expect(isDsd('')).toBe(false);
+    });
+});
+
+describe('isSelfManagedDriver', () => {
+    it('true for the HQPlayer driver (control_id)', () => {
+        expect(isSelfManagedDriver({ control_id: 'src_hqplayer', source_id: 'src_hqplayer' })).toBe(true);
+    });
+
+    it('true for a renderer cast even when re-badged (display != routing)', () => {
+        // Phase 2/3 model: displayed as content (origin qobuz/library), driven
+        // by a self-managed device — the routing identity decides.
+        expect(isSelfManagedDriver({ control_id: 'upnp_renderer', source_id: 'upnp_renderer', origin: 'qobuz' })).toBe(true);
+    });
+
+    it('false for local MPD playback', () => {
+        expect(isSelfManagedDriver({ control_id: 'src_mpd', source_id: 'src_mpd' })).toBe(false);
+    });
+
+    it('falls back to source_id when control_id is absent (legacy state)', () => {
+        expect(isSelfManagedDriver({ source_id: 'src_hqplayer' })).toBe(true);
+        expect(isSelfManagedDriver({ source_id: 'src_mpd' })).toBe(false);
+    });
+
+    it('false for null/empty', () => {
+        expect(isSelfManagedDriver(null)).toBe(false);
+        expect(isSelfManagedDriver({})).toBe(false);
     });
 });
