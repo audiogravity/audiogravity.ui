@@ -17,7 +17,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { apiGet, apiPut, apiDelete } from '../../api.js';
+import { apiGet, apiPut, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
 import { iconSliders, iconChevronDown, iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
@@ -157,6 +157,8 @@ class AgHqplayerOutput extends LitElement {
         this._dspExpanded  = false;
         this._useAsOutput  = false;
         localStorage.removeItem('hqplayer_output');
+        // Disconnecting also drops HQPlayer as the output — release the DAC.
+        await this._releaseOutput();
         this.dispatchEvent(new CustomEvent('hqp-disconnected', { bubbles: true }));
     }
 
@@ -252,9 +254,28 @@ class AgHqplayerOutput extends LitElement {
     }
 
     /** Toggle HQPlayer as the active audio output for library plays. */
-    _toggleOutput(e) {
+    async _toggleOutput(e) {
         this._useAsOutput = e.detail.checked;
         localStorage.setItem('hqplayer_output', this._useAsOutput ? 'true' : 'false');
+        if (!this._useAsOutput) await this._releaseOutput();
+    }
+
+    /**
+     * Release the local DAC when HQPlayer stops being the selected output.
+     *
+     * The NAA (networkaudiod) keeps the ALSA device open for as long as
+     * HQPlayer has a stream loaded — even paused. Without an explicit stop the
+     * device stays busy and local playback fails with
+     * `Failed to open ALSA device "hw:X,Y": Device or resource busy`.
+     * Stopping HQPlayer makes the NAA close the device and hands it back to MPD.
+     * Best-effort: a failure here must never block the toggle itself.
+     */
+    async _releaseOutput() {
+        try {
+            await apiPost('/hqplayer/stop');
+        } catch (e) {
+            console.warn('[hqp] could not stop HQPlayer while releasing the output:', e);
+        }
     }
 
     /** Reload connection + DSP options + status from HQPlayer. */

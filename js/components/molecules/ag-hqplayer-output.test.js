@@ -14,7 +14,7 @@ vi.mock('lit', () => ({
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
-vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn() }));
+vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPut: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ loadConnection: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({ iconSliders: '', iconChevronDown: '', iconWifi: '' }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
@@ -212,5 +212,61 @@ describe('AgHqplayerOutput._handleNaaMetrics() — SSE real-time update', () => 
         const ref = el._connection;
         el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'active' } });
         expect(el._connection).toBe(ref); // same object reference — no spurious re-render
+    });
+});
+
+// ---------------------------------------------------------------------------
+// "Use as output" toggle — releasing the local DAC
+// ---------------------------------------------------------------------------
+// Regression: the toggle only wrote localStorage, so switching it OFF left
+// HQPlayer loaded and the NAA holding the ALSA device. Local playback then
+// failed with `Failed to open ALSA device "hw:0,0": Device or resource busy`.
+// Turning it off must stop HQPlayer so the NAA hands the DAC back to MPD.
+
+import { apiPost } from '../../api.js';
+
+describe('AgHqplayerOutput._toggleOutput — DAC release', () => {
+    /** Minimal instance carrying just the toggle behaviour. */
+    function el() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._useAsOutput = false;
+        return c;
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Earlier tests replace global.localStorage with a removeItem-only stub —
+        // install a full in-memory one (same direct-assignment style).
+        const store = new Map();
+        global.localStorage = {
+            getItem:    (k) => (store.has(k) ? store.get(k) : null),
+            setItem:    (k, v) => store.set(k, String(v)),
+            removeItem: (k) => store.delete(k),
+            clear:      () => store.clear(),
+        };
+    });
+
+    it('switching OFF stops HQPlayer so the DAC is released', async () => {
+        const c = el();
+        c._useAsOutput = true;
+        await c._toggleOutput({ detail: { checked: false } });
+        expect(localStorage.getItem('hqplayer_output')).toBe('false');
+        expect(apiPost).toHaveBeenCalledWith('/hqplayer/stop');
+    });
+
+    it('switching ON does not stop HQPlayer', async () => {
+        const c = el();
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(localStorage.getItem('hqplayer_output')).toBe('true');
+        expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('a failing stop never blocks the toggle', async () => {
+        const c = el();
+        c._useAsOutput = true;
+        apiPost.mockRejectedValueOnce(new Error('HQPlayer unreachable'));
+        await expect(c._toggleOutput({ detail: { checked: false } })).resolves.toBeUndefined();
+        expect(c._useAsOutput).toBe(false);
+        expect(localStorage.getItem('hqplayer_output')).toBe('false');
     });
 });
