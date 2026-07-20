@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutputError, outputErrorLabel } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -288,6 +288,18 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._connectSse();
     }
 
+    /**
+     * Keep the seek target on screen until the backend's position catches up.
+     * Delegates to the shared guard in player-utils.
+     * @param {object} state - Incoming PlayerState.
+     * @returns {object} The state, with elapsed overridden while the guard holds.
+     */
+    _applySeekGuard(state) {
+        const result = applySeekGuard(state, this._seekPending);
+        this._seekPending = result.pending;
+        return result.state;
+    }
+
     _applyState(state) {
         // SSE pushes a title-less state during track transitions — keep previous state visible.
         if (!state.title && inTransition(this._controlRecentTime)) return;
@@ -339,6 +351,12 @@ export class AgNowPlayingFullscreen extends LitElement {
             && state.source_id === this._state.source_id) {
             state = { ...state, elapsed: this._state.elapsed };
         }
+        // Hold the seek target until the backend's position catches up. Events
+        // already in flight when the seek was issued still carry the pre-seek
+        // position; letting them through rewinds the bar for a tick. Dropped as
+        // soon as a report lands near the target, or after the guard window —
+        // a seek that genuinely failed must not freeze the bar forever.
+        state = this._applySeekGuard(state);
         this._state             = state;
         this._setPrimaryCover(pickPrimaryCoverToken(state, { swapped: this._coverSwapped }));
     }
@@ -504,6 +522,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         // (renderer casts refresh their position out-of-band, ~a poll away).
         if (action === 'seek' && value !== undefined && this._state) {
             this._state = { ...this._state, elapsed: value };
+            // Remember the target: a state event emitted WHILE the seek is in
+            // flight still carries the old position, and applying it made the
+            // bar snap back before jumping forward — read as "the seek failed",
+            // prompting the user to seek again.
+            this._seekPending = { target: value, at: Date.now(), title: this._state.title ?? null };
         }
         try {
             const body = { action };

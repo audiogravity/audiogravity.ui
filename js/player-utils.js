@@ -22,12 +22,6 @@ export function inTransition(controlRecentTime) {
 }
 
 /**
- * Detect a DSD signal from either a FormatInfo-like object
- * (`{ format?, codec? }`) or a raw NowPlayingItem `source_format` string.
- * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat
- * @returns {boolean}
- */
-/**
  * Transport drivers that manage DSD/volume in their own chain — mirrors the
  * backend `_SELF_MANAGED_DSD_DRIVERS` set: HQPlayer (own DSP chain) and a
  * native UPnP renderer (its own DAC/amplifier stage). For these drivers the
@@ -69,6 +63,46 @@ export function outputErrorLabel(raw) {
         : 'Output unavailable';
 }
 
+/** How long a seek target overrides incoming positions (ms). */
+export const SEEK_GUARD_MS = 3000;
+/** How far a reported position may sit from the target and still count as arrived (s). */
+export const SEEK_ARRIVED_S = 3;
+
+/**
+ * Keep a seek target on screen until the backend's position catches up.
+ *
+ * A state event emitted while the seek was still travelling carries the
+ * pre-seek position; applying it rewinds the progress bar for a tick before it
+ * jumps forward, which reads as "the seek did not work" and invites the user to
+ * seek again. The guard releases as soon as a report lands near the target, on a
+ * track change (a new track resets the position to 0, which would otherwise look
+ * like "not arrived"), and on expiry — so a seek the device actually refused
+ * cannot freeze the bar.
+ *
+ * Pure: callers own the pending value and store whatever comes back.
+ *
+ * @param {object} state - Incoming PlayerState.
+ * @param {{target: number, at: number, title: string|null}|null} pending - Seek in flight.
+ * @param {number} [now] - Injectable clock for tests.
+ * @returns {{state: object, pending: object|null}} State to apply, and the guard to keep.
+ */
+export function applySeekGuard(state, pending, now = Date.now()) {
+    if (!pending) return { state, pending: null };
+    if ((state.title ?? null) !== pending.title) return { state, pending: null };
+    const elapsed = state.elapsed ?? 0;
+    if (Math.abs(elapsed - pending.target) <= SEEK_ARRIVED_S
+        || now - pending.at > SEEK_GUARD_MS) {
+        return { state, pending: null };
+    }
+    return { state: { ...state, elapsed: pending.target }, pending };
+}
+
+/**
+ * Detect a DSD signal from either a FormatInfo-like object
+ * (`{ format?, codec? }`) or a raw NowPlayingItem `source_format` string.
+ * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat
+ * @returns {boolean}
+ */
 export function isDsd(fmtOrSourceFormat) {
     if (!fmtOrSourceFormat) return false;
     if (typeof fmtOrSourceFormat === 'string') {

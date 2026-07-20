@@ -69,3 +69,68 @@ describe('isSelfManagedDriver', () => {
         expect(isSelfManagedDriver({})).toBe(false);
     });
 });
+
+// ---------------------------------------------------------------------------
+// applySeekGuard — the progress bar must not rewind after a seek
+// ---------------------------------------------------------------------------
+// Code review 2026-07-20: a state event emitted while the seek was still in
+// flight carries the pre-seek position. Applying it rewound the bar for a tick
+// before it jumped forward, which reads as "the seek did not work" and prompts
+// the user to seek again.
+
+import { applySeekGuard, SEEK_GUARD_MS } from './player-utils.js';
+
+describe('applySeekGuard', () => {
+    const NOW = 1_000_000;
+    const pending = (over = {}) => ({ target: 180, at: NOW, title: 'A', ...over });
+
+    it('passes the state through when no seek is pending', () => {
+        const state = { elapsed: 31, title: 'A' };
+        const out = applySeekGuard(state, null, NOW);
+        expect(out.state).toBe(state);
+        expect(out.pending).toBeNull();
+    });
+
+    it('holds the target while a stale position arrives', () => {
+        const out = applySeekGuard({ elapsed: 31, title: 'A' }, pending(), NOW);
+        expect(out.state.elapsed).toBe(180);
+        expect(out.pending).not.toBeNull();
+    });
+
+    it('releases as soon as the backend position reaches the target', () => {
+        const out = applySeekGuard({ elapsed: 182, title: 'A' }, pending(), NOW);
+        expect(out.state.elapsed).toBe(182);
+        expect(out.pending).toBeNull();
+    });
+
+    it('expires so a refused seek cannot freeze the bar', () => {
+        const out = applySeekGuard(
+            { elapsed: 31, title: 'A' }, pending(), NOW + SEEK_GUARD_MS + 1);
+        expect(out.state.elapsed).toBe(31);
+        expect(out.pending).toBeNull();
+    });
+
+    it('releases on a track change instead of holding the old target', () => {
+        // A new track resets the position to 0, which would otherwise look like
+        // "not arrived yet" and pin the previous track's target on screen.
+        const out = applySeekGuard({ elapsed: 0, title: 'B' }, pending(), NOW);
+        expect(out.state.elapsed).toBe(0);
+        expect(out.pending).toBeNull();
+    });
+
+    it('treats a missing elapsed as position zero, not as arrival', () => {
+        const out = applySeekGuard({ title: 'A' }, pending(), NOW);
+        expect(out.state.elapsed).toBe(180);
+    });
+
+    it('does not mutate the incoming state object', () => {
+        const state = { elapsed: 31, title: 'A' };
+        applySeekGuard(state, pending(), NOW);
+        expect(state.elapsed).toBe(31);
+    });
+
+    it('tolerates a small drift as arrival rather than fighting the backend', () => {
+        const out = applySeekGuard({ elapsed: 178, title: 'A' }, pending(), NOW);
+        expect(out.pending).toBeNull();
+    });
+});

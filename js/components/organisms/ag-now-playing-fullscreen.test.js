@@ -565,3 +565,4 @@ describe('AgNowPlayingFullscreen — output error', () => {
         expect(outputErrorLabel(state)).toBe('Output unavailable');
     });
 });
+
