@@ -42,6 +42,9 @@ const DEVICE = {
 const STORY_SHOTS = [
     { id: 'organisms-libraryqueue--mixed-sources', selector: 'ag-library-queue', file: 'ios-queue-mixed' },
     { id: 'organisms-nowplayingfullscreen--playing', selector: '.npfs-panel', file: 'ios-fullscreen' },
+    { id: 'organisms-nowplayingfullscreen--cast-to-renderer', selector: '.npfs-panel', file: 'ios-cast-renderer' },
+    { id: 'organisms-nowplayingfullscreen--output-busy', selector: '.npfs-panel', file: 'ios-output-busy' },
+    { id: 'molecules-aghqplayeroutput--used-as-output', selector: 'ag-hqplayer-output', file: 'ios-hqplayer-output' },
     { id: 'organisms-libraryoutputs--default', selector: 'ag-library-outputs', file: 'ios-outputs' },
     { id: 'organisms-librarybrowse--streaming', selector: 'ag-library-browse', file: 'ios-browse' },
     { id: 'pages-audiosoftwarepage--default', selector: 'ag-audio-software-page', file: 'ios-software' },
@@ -51,6 +54,9 @@ const STORY_SHOTS = [
     { id: 'organisms-configpanel--sidebar-open', selector: '.config-modal', file: 'ios-settings' },
     { id: 'molecules-updatebanner--update-available', selector: 'ag-update-banner', file: 'ios-update-banner' },
     { id: 'molecules-networkmountform--open', selector: 'ag-network-mount-form', file: 'ios-network-mount' },
+    { id: 'molecules-systemactions--default', selector: 'ag-system-actions', file: 'ios-system-actions' },
+    { id: 'organisms-networktest--ping-completed', selector: 'ag-network-test', file: 'ios-network-test' },
+    { id: 'molecules-usercard--administrator', selector: 'ag-user-card', file: 'ios-user-card' },
 ];
 
 /** Deterministic hue from a token string. */

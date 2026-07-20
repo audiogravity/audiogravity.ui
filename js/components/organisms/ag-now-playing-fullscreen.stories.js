@@ -88,3 +88,56 @@ export const MultiSource = {
         ],
     }),
 };
+
+/**
+ * A Qobuz album cast to a network speaker.
+ *
+ * The point of the shot: the card is badged with what the music IS (Qobuz),
+ * while the speaker is where it COMES OUT — the renderer is an output, not a
+ * source. `control_id` stays `upnp_renderer` because that is the device the
+ * transport commands must reach.
+ */
+export const CastToRenderer = {
+    render: () => mount({
+        ...PLAYING_STATE,
+        source_id: 'upnp_renderer',
+        control_id: 'upnp_renderer',
+        played_on: 'uuid:marantz',
+        origin: 'qobuz',
+        title: 'Blue in Green',
+        signal_path: [{ label: 'Qobuz' }, { label: 'Marantz SR8015' }],
+        output_label: 'Marantz SR8015',
+        output_connector: null,
+        outputs: [
+            { id: 'local', type: 'local', name: 'Abacus USB DAC', active: false, transport_state: 'STOPPED' },
+            { id: 'uuid:marantz', type: 'upnp_renderer', name: 'Marantz SR8015', active: true, transport_state: 'PLAYING' },
+        ],
+        active_output_id: 'uuid:marantz',
+        queue_next: { title: 'All Blues', artist: 'Miles Davis', cover_token: 'demo:kind-of-blue' },
+    }, {
+        nextTrack: { title: 'All Blues', artist: 'Miles Davis', cover_token: 'demo:kind-of-blue' },
+    }),
+};
+
+/**
+ * The sound card is held by another player, so nothing comes out.
+ *
+ * The reason is shown under the output instead of leaving the user with silence
+ * and no explanation — the engine's exact wording stays available as a tooltip.
+ */
+export const OutputBusy = {
+    render: () => mount({
+        ...PLAYING_STATE,
+        playing: false,
+        elapsed: 0,
+        outputs: [{
+            id: 'local',
+            type: 'local',
+            name: 'Abacus USB DAC',
+            active: true,
+            transport_state: 'PAUSED',
+            error: 'Failed to open ALSA device "hw:0,0": Device or resource busy',
+        }],
+        active_output_id: 'local',
+    }),
+};
