@@ -60,12 +60,12 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/library/queue` | Add/play item — **routed to HQPlayer when it is the selected output** (`use_as_output`, decided server-side so clients never diverge; **501** for a streaming/Roon source, which HQPlayer cannot resolve — it reads items through MPD, so only the local library can be pushed to it today, cf. spec §7.4); HQPlayer failures surface as **503** carrying its own diagnosis. Otherwise routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
+| POST | `/library/queue` | Add/play item — **routed to HQPlayer when it is the selected output** (`use_as_output`, decided server-side so clients never diverge). Destination resolved by one shared router (`core.playback_output`) used by every play path: **501** for a streaming source (Qobuz/Tidal/HRA), which HQPlayer cannot resolve — it reads items through MPD, so only the local library and stream URLs reach it today (cf. spec §7.4); **409** when a network renderer **and** HQPlayer are both selected, since AG will not guess which device you meant; **Roon is never diverted** — a Roon zone is its own output chain and never touches the local DAC HQPlayer replaces. HQPlayer failures surface as **503** carrying its own diagnosis. Otherwise routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
-| POST | `/library/upnp-play` | Play UPnP item — body gains **`duration`** (carried through when the play is routed to HQPlayer, so the now-playing card keeps the track length). Routed to HQPlayer when it is the selected output (failures → **503** with its diagnosis), else to the renderer or MPD |
+| POST | `/library/upnp-play` | Play UPnP item — body gains **`duration`** (carried through when the play is routed to HQPlayer, so the now-playing card keeps the track length). Routed to HQPlayer when it is the selected output, **honouring `action`**: `add` appends to the HQPlayer queue and leaves playback untouched (it used to clear the queue and jump to the track while reporting a successful enqueue). The stream is badged `origin: "upnp"`, not `library`. Same **409** conflict rule as `/library/queue`; failures → **503** with HQPlayer's diagnosis. Otherwise routed to the renderer or MPD |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — **`location` param (was `control_url`)** |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
@@ -264,7 +264,7 @@ confirmation.
 | GET | `/health` | Backend health check |
 | GET | `/sse` | SSE event stream (all real-time updates) |
 | GET/POST/PUT/DELETE | `/audio_app_config/*` | Config file editor |
-| GET/POST/PUT/DELETE | `/radio/*` | Internet radio stations |
+| GET/POST/PUT/DELETE | `/radio/*` | Internet radio stations. **`POST /radio/play` follows the output selection** like every other play path (`core.playback_output`): HQPlayer when it is the selected output (badged `origin: "radio"`), else the active network renderer, else the local MPD. It previously always played to MPD, so a station started while HQPlayer held the DAC failed with `Device or resource busy`. **409** when two outputs are selected at once. |
 | GET/POST/PUT/DELETE | `/packages/*` | Audio software manager |
 | GET/POST/PUT/DELETE | `/license/*` | License management |
 | GET/POST/PUT/DELETE | `/steering/*` | Output steering |
