@@ -123,13 +123,13 @@ describe('AgNowPlaying — auto-follow (_onState)', () => {
     });
 
     it('lifts override and follows new active source after chosen source stops', () => {
-        applyOnState(s, [src('src_mpd', false), src('src_roon', true), src('src_librespot', false)]);
+        applyOnState(s, [src('src_mpd', false), src('src_roon', true), src('src_shairport-sync', false)]);
         s.activeIdx = 1; // user on Roon
         s.userOverride = true;
         // Roon stops; Spotify becomes active
-        applyOnState(s, [src('src_mpd', false), src('src_librespot', true)]);
+        applyOnState(s, [src('src_mpd', false), src('src_shairport-sync', true)]);
         expect(s.userOverride).toBe(false);
-        expect(s.activeIdx).toBe(1); // src_librespot is now index 1
+        expect(s.activeIdx).toBe(1); // src_shairport-sync is now index 1
     });
 
     it('clamping also lifts override when items shrink below user index', () => {

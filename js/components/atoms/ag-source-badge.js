@@ -14,7 +14,7 @@ import { originBadge } from '../library-constants.js';
  * @element ag-source-badge
  *
  * @attr {string} origin - Origin kind from the now-playing payload: `tidal`,
- *   `qobuz`, `roon`, `radio`, `upnp`, `library`, `airplay`, `spotify`,
+ *   `qobuz`, `roon`, `radio`, `upnp`, `library`, `airplay`,
  *   `hqplayer`, `mpris`. Renders nothing when empty/unknown.
  * @attr {string} name - Specific provider name (e.g. a UPnP server like
  *   "MinimServer") that overrides the generic label.

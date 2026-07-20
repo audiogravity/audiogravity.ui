@@ -100,8 +100,8 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
     it('auto-follows across multiple source changes', () => {
         applyState(fs, state('src_roon', true,      [src('src_roon')]));
         expect(fs.targetSourceId).toBe('src_roon');
-        applyState(fs, state('src_librespot', true, [src('src_librespot')]));
-        expect(fs.targetSourceId).toBe('src_librespot');
+        applyState(fs, state('src_shairport-sync', true, [src('src_shairport-sync')]));
+        expect(fs.targetSourceId).toBe('src_shairport-sync');
         expect(fs.connectSseCalls).toBe(2);
     });
 
@@ -151,9 +151,9 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
         switchSource(fs, 'src_roon');
         fs.sources = [src('src_mpd'), src('src_roon')];
         // Roon stops; Spotify becomes active
-        applyState(fs, state('src_librespot', true, [src('src_mpd'), src('src_librespot')]));
+        applyState(fs, state('src_shairport-sync', true, [src('src_mpd'), src('src_shairport-sync')]));
         expect(fs.userOverride).toBe(false);
-        expect(fs.targetSourceId).toBe('src_librespot');
+        expect(fs.targetSourceId).toBe('src_shairport-sync');
     });
 
     it('SSE reconnects once when override is lifted and source switches', () => {

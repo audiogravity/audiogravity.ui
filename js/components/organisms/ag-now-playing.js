@@ -19,7 +19,7 @@ import '../molecules/ag-volume-popover.js';
  * Placed above the footer, it updates `--now-playing-height` on `:root` via
  * ResizeObserver so `.main-content` can adjust its bottom inset automatically.
  *
- * Supported sources: MPD, AirPlay (shairport-sync), Spotify (librespot),
+ * Supported sources: MPD, AirPlay (shairport-sync),
  * Roon Bridge (mono-sgen), UPnP (upmpdcli).
  *
  * Swipe gestures (mobile):

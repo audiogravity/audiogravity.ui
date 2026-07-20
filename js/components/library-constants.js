@@ -48,7 +48,6 @@ export const ORIGIN_LABELS = {
     upnp: 'UPnP',
     library: 'Library',
     airplay: 'AirPlay',
-    spotify: 'Spotify',
     hqplayer: 'HQPlayer',
     mpris: 'Stream',
 };
@@ -62,7 +61,6 @@ export const ORIGIN_ICONS = {
     upnp: originSvg(iconHardDrive, 'UPnP'),
     library: originSvg(iconMusicNote, 'Library'),
     airplay: originSvg(iconWifi, 'AirPlay'),
-    spotify: originSvg(iconMusicNote, 'Spotify'),
     hqplayer: originSvg(iconHeadphones, 'HQPlayer'),
     mpris: originSvg(iconMusicNote, 'Stream'),
 };
