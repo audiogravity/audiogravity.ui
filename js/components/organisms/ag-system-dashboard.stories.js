@@ -58,12 +58,37 @@ const metricsMock = {
 };
 
 const Template = (args) => {
-    // We instantiate and manually set data to avoid apiGet failures in Storybook
+    // Seeding alone is not enough: on mount, the FetchControllers auto-fetch and
+    // connectedCallback re-reads AppState.connected, so the mocked hardware and
+    // the LIVE badge were both overwritten by failed requests — the story looked
+    // fine in Storybook while rendering "Disconnected" with empty hardware lists.
+    // Disable the auto-fetch and re-apply the connection state after mount.
     const el = document.createElement('ag-system-dashboard');
+    el.statusFetch.options.autoFetch = false;
+    el.audioFetch.options.autoFetch  = false;
     el.metrics = args.metrics;
     el.statusFetch.data = args.sysinfo;
     el.audioFetch.data = { cards: args.audioDevices };
     el.isConnected = args.isConnected;
+    // isConnected has three writers: the constructor, an EventEmitter
+    // 'connection-status' handler and a ContextConsumer on appContext. The last
+    // two fire asynchronously after mount, so a plain assignment lost the race
+    // and the LIVE badge rendered "Disconnected". Silence the event handler and
+    // re-apply the value once mounted. (Overriding the property itself breaks
+    // Lit's own accessor and the component renders nothing at all.)
+    el._handleConnectionStatus = () => {};
+    const mounted = el.connectedCallback.bind(el);
+    el.connectedCallback = () => {
+        mounted();
+        el.isConnected = args.isConnected;
+    };
+    // Known limitation: the SSE badge still shows "Disconnected". The third
+    // writer is a ContextConsumer built in the constructor, which fires after
+    // mount and cannot be neutralised from outside — and replacing the property
+    // outright breaks Lit's accessor, leaving the component rendering nothing.
+    // Making this honest needs the component to take its connection state as a
+    // property instead of reaching for a global. The hardware panels, which is
+    // what the story is for, are correct.
     
     // Simulate some history data
     el._historyStore = {

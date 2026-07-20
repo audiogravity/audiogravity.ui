@@ -55,6 +55,8 @@ const STORY_SHOTS = [
     { id: 'molecules-updatebanner--update-available', selector: 'ag-update-banner', file: 'ios-update-banner' },
     { id: 'molecules-networkmountform--open', selector: 'ag-network-mount-form', file: 'ios-network-mount' },
     { id: 'molecules-systemactions--default', selector: 'ag-system-actions', file: 'ios-system-actions' },
+    { id: 'molecules-licensestatus--trial-active', selector: 'ag-license-status', file: 'ios-license' },
+    { id: 'molecules-systeminfo--default', selector: 'ag-system-info', file: 'ios-system-info' },
     { id: 'organisms-networktest--ping-completed', selector: 'ag-network-test', file: 'ios-network-test' },
     { id: 'molecules-usercard--administrator', selector: 'ag-user-card', file: 'ios-user-card' },
 ];
