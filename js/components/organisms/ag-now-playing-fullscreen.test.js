@@ -513,3 +513,55 @@ describe('AgNowPlayingFullscreen — control body routing handle', () => {
         expect(body.source_id).toBeUndefined();
     });
 });
+
+
+// ---------------------------------------------------------------------------
+// Output error surfacing (spec §8.1.3 step 1)
+// ---------------------------------------------------------------------------
+// The exclusive DAC held by another local service made playback fail silently.
+// The active output entry now carries the engine's reason; the player shows a
+// plain-language line (raw message kept as the tooltip).
+
+/** Replicate the _outputError / _outputErrorLabel getters. */
+function outputError(state) {
+    return (state?.outputs ?? []).find(o => o.active)?.error ?? null;
+}
+function outputErrorLabel(state) {
+    const raw = outputError(state) ?? '';
+    return /busy/i.test(raw)
+        ? 'Output in use by another player — stop it to play here'
+        : 'Output unavailable';
+}
+
+describe('AgNowPlayingFullscreen — output error', () => {
+    const BUSY = 'Failed to open ALSA device "hw:0,0": Device or resource busy';
+
+    it('reads the error from the ACTIVE output entry', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: BUSY }] };
+        expect(outputError(state)).toBe(BUSY);
+    });
+
+    it('ignores an error on an inactive output', () => {
+        const state = { outputs: [
+            { ...FS_LOCAL_OUT, active: false, error: BUSY },
+            { ...FS_RENDERER_OUT, active: true },
+        ] };
+        expect(outputError(state)).toBe(null);
+    });
+
+    it('no error in the normal case', () => {
+        expect(outputError({ outputs: [FS_LOCAL_OUT] })).toBe(null);
+        expect(outputError({ outputs: [] })).toBe(null);
+        expect(outputError(null)).toBe(null);
+    });
+
+    it('a busy device gets an actionable plain-language label', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: BUSY }] };
+        expect(outputErrorLabel(state)).toMatch(/in use by another player/);
+    });
+
+    it('any other failure falls back to a generic label', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: 'snd_pcm_open failed' }] };
+        expect(outputErrorLabel(state)).toBe('Output unavailable');
+    });
+});

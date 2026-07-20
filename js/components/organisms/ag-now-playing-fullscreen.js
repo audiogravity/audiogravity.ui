@@ -655,6 +655,27 @@ export class AgNowPlayingFullscreen extends LitElement {
         return (this._state?.outputs ?? []).find(o => o.type === 'upnp_renderer' && o.active) ?? null;
     }
 
+    /**
+     * Raw failure reported by the active output's engine, when it explains the
+     * silence (e.g. the exclusive DAC held by another local service).
+     * @returns {string|null}
+     */
+    get _outputError() {
+        return (this._state?.outputs ?? []).find(o => o.active)?.error ?? null;
+    }
+
+    /**
+     * Plain-language version of _outputError — the raw ALSA/engine string is
+     * shown as a tooltip, not as the primary message.
+     * @returns {string}
+     */
+    get _outputErrorLabel() {
+        const raw = this._outputError ?? '';
+        return /busy/i.test(raw)
+            ? 'Output in use by another player — stop it to play here'
+            : 'Output unavailable';
+    }
+
     // ------------------------------------------------------------------
     // Render helpers
     // ------------------------------------------------------------------
@@ -831,6 +852,9 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 ? html`<ag-connector-badge .connector=${s.output_connector}></ag-connector-badge>`
                                 : nothing}
                         </div>
+                        ${this._outputError
+                            ? html`<span class="npfs-out-error" title=${this._outputError}>${this._outputErrorLabel}</span>`
+                            : nothing}
                     </div>
                 </div>
                 <button class="npfs-switch-btn"

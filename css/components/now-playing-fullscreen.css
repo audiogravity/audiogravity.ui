@@ -444,6 +444,19 @@ body:not(.npfs-open) .topbar {
     gap: var(--spacing-xs);
 }
 
+/* Engine-reported reason why the selected output produces no sound (e.g. the
+   exclusive DAC still held by another local service). The raw message is the
+   title attribute; this line carries the plain-language summary. */
+.npfs-out-error {
+    display: block;
+    margin-top: var(--spacing-xs);
+    font-size: var(--font-size-xxs);
+    color: var(--color-error);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .npfs-switch-btn {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
