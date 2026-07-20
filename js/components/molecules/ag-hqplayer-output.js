@@ -53,7 +53,7 @@ class AgHqplayerOutput extends LitElement {
         this._status      = null;
         this._dspExpanded = false;
         this._applying    = false;
-        this._useAsOutput = localStorage.getItem('hqplayer_output') === 'true';
+        this._useAsOutput = false;  // seeded from the server in _loadConnection()
     }
 
     /** @override Light DOM — inherits global CSS. */
@@ -93,6 +93,9 @@ class AgHqplayerOutput extends LitElement {
     /** Fetch current connection state. DSP options loaded lazily on panel open. */
     async _loadConnection() {
         await loadConnection(this, () => apiGet('/hqplayer/connection'), 'hqplayer');
+        // The "use as output" choice is server-side: adopt whatever it says, so
+        // every client shows the same state (it used to be per-browser).
+        this._useAsOutput = !!this._connection?.use_as_output;
     }
 
     /** Scan the local subnet for HQPlayer instances. */
@@ -143,6 +146,15 @@ class AgHqplayerOutput extends LitElement {
 
     /** Remove the HQPlayer connection. */
     async _disconnect() {
+        // Stop FIRST: deleting the connection clears the host, after which the
+        // backend can no longer reach HQPlayer — its NAA would keep holding the
+        // exclusive sound card and local playback would fail with
+        // `Device or resource busy`.
+        try {
+            await apiPost('/hqplayer/stop');
+        } catch (e) {
+            console.warn('[hqp] could not stop HQPlayer while disconnecting:', e);
+        }
         try {
             await apiDelete('/hqplayer/connection');
         } catch (e) {
@@ -155,10 +167,7 @@ class AgHqplayerOutput extends LitElement {
         this._shapers      = [];
         this._modes        = [];
         this._dspExpanded  = false;
-        this._useAsOutput  = false;
-        localStorage.removeItem('hqplayer_output');
-        // Disconnecting also drops HQPlayer as the output — release the DAC.
-        await this._releaseOutput();
+        this._useAsOutput  = false;   // the backend clears it with the connection
         this.dispatchEvent(new CustomEvent('hqp-disconnected', { bubbles: true }));
     }
 
@@ -253,28 +262,40 @@ class AgHqplayerOutput extends LitElement {
         this._applying = false;
     }
 
-    /** Toggle HQPlayer as the active audio output for library plays. */
+    /** Toggle HQPlayer as the destination for library playback. */
     async _toggleOutput(e) {
-        this._useAsOutput = e.detail.checked;
-        localStorage.setItem('hqplayer_output', this._useAsOutput ? 'true' : 'false');
-        if (!this._useAsOutput) await this._releaseOutput();
+        await this._setUseAsOutput(e.detail.checked);
     }
 
     /**
-     * Release the local DAC when HQPlayer stops being the selected output.
+     * Persist the "use as output" choice on the backend.
      *
-     * The NAA (networkaudiod) keeps the ALSA device open for as long as
-     * HQPlayer has a stream loaded — even paused. Without an explicit stop the
-     * device stays busy and local playback fails with
-     * `Failed to open ALSA device "hw:X,Y": Device or resource busy`.
-     * Stopping HQPlayer makes the NAA close the device and hands it back to MPD.
-     * Best-effort: a failure here must never block the toggle itself.
+     * The setting is server-side so every client agrees on where the music
+     * should go — it used to live in this browser's localStorage, which let a
+     * phone and a laptop disagree. The backend also releases the local sound
+     * card when disabling: its NAA holds the exclusive device for as long as a
+     * track is loaded (even paused), so without that release local playback
+     * would fail with `Device or resource busy`.
+     *
+     * Optimistic, then reconciled with the server's answer.
+     * @param {boolean} enabled - Route library playback through HQPlayer.
      */
-    async _releaseOutput() {
+    async _setUseAsOutput(enabled) {
+        this._useAsOutput = enabled;
         try {
-            await apiPost('/hqplayer/stop');
+            // The response carries ONLY the flag: overwriting _connection from
+            // another endpoint's payload used to drop naa_available, which made
+            // the NAA-offline guard below fire and switch the toggle straight
+            // back off.
+            const state = await apiPut('/hqplayer/use-as-output', { enabled });
+            this._useAsOutput = !!state?.use_as_output;
         } catch (e) {
-            console.warn('[hqp] could not stop HQPlayer while releasing the output:', e);
+            console.warn('[hqp] could not change the HQPlayer output setting:', e);
+            this._useAsOutput = !enabled;   // revert — the server refused
+            if (window.showToast) {
+                window.showToast('error', 'HQPlayer output unchanged',
+                                 e?.message || 'The backend refused the change.', 5000);
+            }
         }
     }
 
@@ -298,8 +319,7 @@ class AgHqplayerOutput extends LitElement {
         if (changedProps.has('_connection') &&
             this._useAsOutput &&
             this._connection?.naa_available === false) {
-            this._useAsOutput = false;
-            localStorage.removeItem('hqplayer_output');
+            this._setUseAsOutput(false);
         }
     }
 
@@ -414,7 +434,16 @@ class AgHqplayerOutput extends LitElement {
                     }
                 </div>
 
-                ${fullyConnected ? html`
+                <!--
+                  Also shown while the setting is ON but HQPlayer is unreachable,
+                  otherwise the user is trapped: the setting lives server-side and
+                  keeps routing every play to an HQPlayer that cannot answer, while
+                  the only control able to turn it off is hidden. The automatic
+                  guard in updated() does not cover this — it watches the LOCAL NAA
+                  service, which stays active when the HQPlayer host goes away.
+                  Still hidden when OFF and unreachable: nothing to act on.
+                -->
+                ${fullyConnected || this._useAsOutput ? html`
                     <div class="lib-hqp-output-toggle">
                         <span class="lib-hqp-output-label">Use as output</span>
                         <ag-switch .checked=${this._useAsOutput} @ag-change=${this._toggleOutput}></ag-switch>

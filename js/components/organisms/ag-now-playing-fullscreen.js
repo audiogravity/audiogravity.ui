@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutputError, outputErrorLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -661,7 +661,7 @@ export class AgNowPlayingFullscreen extends LitElement {
      * @returns {string|null}
      */
     get _outputError() {
-        return (this._state?.outputs ?? []).find(o => o.active)?.error ?? null;
+        return activeOutputError(this._state);
     }
 
     /**
@@ -670,10 +670,7 @@ export class AgNowPlayingFullscreen extends LitElement {
      * @returns {string}
      */
     get _outputErrorLabel() {
-        const raw = this._outputError ?? '';
-        return /busy/i.test(raw)
-            ? 'Output in use by another player — stop it to play here'
-            : 'Output unavailable';
+        return outputErrorLabel(this._outputError);
     }
 
     // ------------------------------------------------------------------

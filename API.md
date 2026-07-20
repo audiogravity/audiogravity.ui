@@ -60,12 +60,12 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/library/queue` | Add/play item — routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
+| POST | `/library/queue` | Add/play item — **routed to HQPlayer when it is the selected output** (`use_as_output`, decided server-side so clients never diverge; **501** for a streaming/Roon source, which HQPlayer cannot resolve — it reads items through MPD, so only the local library can be pushed to it today, cf. spec §7.4); HQPlayer failures surface as **503** carrying its own diagnosis. Otherwise routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
-| POST | `/library/upnp-play` | Play UPnP item — routes to renderer or MPD |
+| POST | `/library/upnp-play` | Play UPnP item — body gains **`duration`** (carried through when the play is routed to HQPlayer, so the now-playing card keeps the track length). Routed to HQPlayer when it is the selected output (failures → **503** with its diagnosis), else to the renderer or MPD |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — **`location` param (was `control_url`)** |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
@@ -123,9 +123,10 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable) + `naa_available` (networkaudiod active) |
+| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer) |
 | PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available` |
-| DELETE | `/hqplayer/connection` | Disconnect |
+| DELETE | `/hqplayer/connection` | Disconnect — also clears `use_as_output` (no connection → cannot be the output) |
+| PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → **`{ use_as_output }`** (deliberately narrow: returning the connection would make the toggle wait on HQPlayer's ~2.5 s Status round-trip, and let a client overwrite its cached connection with a payload missing `naa_available`). **Server-side and persisted**, so every client agrees — it used to be per-browser `localStorage`, letting a phone and a laptop route the same play differently. Disabling also stops HQPlayer so its NAA releases the exclusive local sound card. **503** when enabling while no HQPlayer is configured, or while its NAA is down — routing playback there would produce silence with nothing to explain it. Disabling is always allowed. |
 | GET | `/hqplayer/discover` | Scan local subnet |
 | GET/PUT | `/hqplayer/filter` | Active filter |
 | GET/PUT | `/hqplayer/shaper` | Active shaper |

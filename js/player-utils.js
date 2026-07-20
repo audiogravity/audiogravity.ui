@@ -47,6 +47,28 @@ export function isSelfManagedDriver(itemOrState) {
     return SELF_MANAGED_DSD_DRIVERS.has(itemOrState?.control_id ?? itemOrState?.source_id);
 }
 
+/**
+ * Raw failure reported by the active output's engine, when it explains the
+ * silence (e.g. the exclusive DAC held by another local service).
+ * @param {object|null} state - PlayerState-like object.
+ * @returns {string|null} The engine's own message, or null when the output is fine.
+ */
+export function activeOutputError(state) {
+    return (state?.outputs ?? []).find(o => o.active)?.error ?? null;
+}
+
+/**
+ * Plain-language rendering of {@link activeOutputError} — the raw ALSA/engine
+ * string is only ever shown as a tooltip, never as the primary message.
+ * @param {string|null} raw - Value returned by {@link activeOutputError}.
+ * @returns {string}
+ */
+export function outputErrorLabel(raw) {
+    return /busy/i.test(raw ?? '')
+        ? 'Output in use by another player — stop it to play here'
+        : 'Output unavailable';
+}
+
 export function isDsd(fmtOrSourceFormat) {
     if (!fmtOrSourceFormat) return false;
     if (typeof fmtOrSourceFormat === 'string') {

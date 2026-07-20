@@ -19,7 +19,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
-import { queueItem, queueWithFeedback } from '../../library-api.js';
+import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
@@ -275,12 +275,9 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     async _playAlbum(album) {
-        try {
-            await queueItem(this._albumOpts(album, 'play'));
-            this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }));
-        } catch (e) {
-            console.error('[browse] play album failed:', e);
-        }
+        const ok = await playWithFeedback(() => queueItem(this._albumOpts(album, 'play')));
+        // Only reveal the player when something is actually going to play.
+        if (ok) this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }));
     }
 
     async _addAlbumToQueue(album) {
