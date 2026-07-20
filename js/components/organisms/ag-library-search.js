@@ -16,7 +16,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
-import { queueItem, queueWithFeedback } from '../../library-api.js';
+import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { iconSearch } from '../../ag-icons.js';
 import '../molecules/ag-library-list-row.js';
@@ -118,12 +118,10 @@ export class AgLibrarySearch extends LitElement {
     }
 
     async _play(itemId, itemType, artistId, itemTitle) {
-        try {
-            await queueItem(this._itemOpts(itemId, itemType, artistId, itemTitle, 'play'));
-            this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }));
-        } catch (e) {
-            console.error('[search] play failed:', e);
-        }
+        const ok = await playWithFeedback(
+            () => queueItem(this._itemOpts(itemId, itemType, artistId, itemTitle, 'play')),
+        );
+        if (ok) this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }));
     }
 
     async _addToQueue(itemId, itemType, artistId, itemTitle) {

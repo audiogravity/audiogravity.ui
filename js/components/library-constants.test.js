@@ -37,6 +37,19 @@ describe('originBadge', () => {
             expect(originBadge(origin).label).toBe(ORIGIN_LABELS[origin]);
         }
     });
+
+    it('badges "external" properly instead of showing the raw key', () => {
+        // The backend emits origin='external' whenever a third-party controller
+        // drives the renderer or HQPlayer. The key was missing from both maps,
+        // so the badge rendered the lowercase string with a generic icon.
+        const badge = originBadge('external');
+        expect(badge.label).toBe('External');
+        expect(badge.icon).toBeTruthy();
+    });
+
+    it('gives "external" its own icon, not the generic fallback', () => {
+        expect(originBadge('external').icon).not.toEqual(originBadge('mystery').icon);
+    });
 });
 
 describe('initOriginLabels', () => {

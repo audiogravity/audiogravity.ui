@@ -24,6 +24,8 @@
 
 import { apiGet, buildAuthedUrl } from './api.js';
 import { fetchFavoriteIds, addFavorite, removeFavorite } from './library-api.js';
+import { activeOutputError, outputErrorLabel } from './player-utils.js';
+import { showToast } from './ui-helpers.js';
 
 const TTL_SNAPSHOT   = 30_000;
 const TTL_ROON_ZONES = 60_000;
@@ -40,6 +42,33 @@ let _offlineSnapshotTimer = null;
 
 const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
+
+/**
+ * Last output failure already announced, so the toast fires on the transition
+ * into a failure rather than on every state event (they arrive every second).
+ * @type {string|null}
+ */
+let _announcedOutputError = null;
+
+/**
+ * Raise a toast when the active output starts reporting a failure.
+ *
+ * Without this the reason for the silence is only readable in the fullscreen
+ * player, so pressing play on a busy DAC looks like nothing happened at all.
+ * Edge-triggered on the message itself: a different failure re-announces, the
+ * same one stays quiet, and recovery re-arms it.
+ *
+ * Exported for unit testing — production callers get it through the unfiltered
+ * SSE stream, never directly.
+ *
+ * @param {object|null} state - PlayerState from the active-source stream.
+ */
+export function notifyOutputError(state) {
+    const err = activeOutputError(state);
+    if (err === _announcedOutputError) return;
+    _announcedOutputError = err;
+    if (err) showToast('error', 'Playback blocked', outputErrorLabel(err));
+}
 
 /** sourceId-or-null → Set<callback> */
 const _subscribers = new Map();
@@ -83,6 +112,7 @@ function _openSse(key) {
                 } catch { /* storage quota — non-blocking */ }
             }, OFFLINE_SNAPSHOT_DEBOUNCE_MS);
         }
+        if (key === null) notifyOutputError(state);
         const subs = _subscribers.get(key);
         if (subs) for (const cb of subs) {
             try { cb(state); } catch (err) {

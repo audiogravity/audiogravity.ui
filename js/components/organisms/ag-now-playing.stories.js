@@ -83,16 +83,16 @@ export const Collapsed = {
         el._collapsed = true;
         el._items = [
             {
-                source_id: 'src_librespot',
-                service_name: 'librespot',
-                display_name: 'Spotify Connect',
+                source_id: 'src_shairport-sync',
+                service_name: 'shairport-sync',
+                display_name: 'AirPlay',
                 protocol: 'mpris',
                 title: 'Bohemian Rhapsody',
                 artist: 'Queen',
                 album: 'A Night at the Opera',
                 playback_status: 'Playing',
                 volume: 55,
-                source_format: 'OGG',
+                source_format: 'ALAC',
                 cover_token: null,
                 can_next: true,
                 can_set_volume: true,

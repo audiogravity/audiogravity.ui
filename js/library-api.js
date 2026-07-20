@@ -35,17 +35,8 @@ export function queueItem({
     searchQuery,
     itemTitle,
 }) {
-    // Route through HQPlayer when the user has enabled it as output.
-    // The flag is set by ag-hqplayer-output's "Use as output" toggle.
-    if (localStorage.getItem('hqplayer_output') === 'true') {
-        return apiPost('/hqplayer/play-library', {
-            item_id:   itemId,
-            item_type: itemType,
-            action,
-            source_id: sourceId,
-        });
-    }
-
+    // Routing to HQPlayer, when it is the selected output, is decided by the
+    // BACKEND (it owns that setting) — every client behaves identically.
     return apiPost('/library/queue', {
         source_id:    sourceId,
         zone_id:      zoneId || undefined,
@@ -114,17 +105,14 @@ export function removeFavorite(sourceId, itemId, itemType = 'album') {
  * @param {string} opts.action    - 'play' | 'add'.
  */
 export function upnpPlay({ sourceId, res, title, artUri, duration, serverName, action }) {
-    // Route UPnP play through HQPlayer when the user has enabled it as output.
-    if (localStorage.getItem('hqplayer_output') === 'true') {
-        return apiPost('/hqplayer/play', { uri: res, title, art_uri: artUri || null, duration: duration || null });
-    }
-
+    // HQPlayer routing is decided by the backend (see queueItem).
     return apiPost('/library/upnp-play', {
         source_id:   sourceId,
         res,
         title,
         art_uri:     artUri || null,
         server_name: serverName || null,
+        duration:    duration ?? null,
         action,
     });
 }
@@ -153,5 +141,32 @@ export async function queueWithFeedback(queueFn, label = '') {
     } catch (e) {
         console.error('[library] add to queue failed:', e);
         showToast('error', 'Add failed', e?.message || 'Could not add to queue');
+    }
+}
+
+/**
+ * Run a play action, surfacing a failure as a toast.
+ *
+ * The backend explains precisely why a play was refused — an expired stream, an
+ * unreachable UPnP server, a source that cannot be routed to the current output.
+ * Every play entry point used to drop that explanation into console.error, so a
+ * refused play looked exactly like a click that did nothing. This relays the
+ * server's own wording instead of inventing a second vocabulary for it.
+ *
+ * Failure only: a successful play is already announced by the music starting and
+ * the player opening, so a toast there would be noise.
+ *
+ * @param {Function} playFn - Async function performing the play request.
+ * @returns {Promise<boolean>} True when the play was accepted — callers use it to
+ *                             decide whether to open the now-playing view.
+ */
+export async function playWithFeedback(playFn) {
+    try {
+        await playFn();
+        return true;
+    } catch (e) {
+        console.error('[library] play failed:', e);
+        showToast('error', 'Playback failed', e?.message || 'Could not start playback');
+        return false;
     }
 }

@@ -4,7 +4,7 @@
  */
 
 import { html } from 'lit';
-import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones, iconLibrary } from '../ag-icons.js';
+import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones, iconLibrary, iconExternalLink } from '../ag-icons.js';
 import { apiGet } from '../api.js';
 
 export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
@@ -48,9 +48,11 @@ export const ORIGIN_LABELS = {
     upnp: 'UPnP',
     library: 'Library',
     airplay: 'AirPlay',
-    spotify: 'Spotify',
     hqplayer: 'HQPlayer',
     mpris: 'Stream',
+    // Content AG did not start: a third-party controller is driving the
+    // renderer or HQPlayer. Missing here, the badge showed the raw key.
+    external: 'External',
 };
 
 export const ORIGIN_ICONS = {
@@ -62,9 +64,9 @@ export const ORIGIN_ICONS = {
     upnp: originSvg(iconHardDrive, 'UPnP'),
     library: originSvg(iconMusicNote, 'Library'),
     airplay: originSvg(iconWifi, 'AirPlay'),
-    spotify: originSvg(iconMusicNote, 'Spotify'),
     hqplayer: originSvg(iconHeadphones, 'HQPlayer'),
     mpris: originSvg(iconMusicNote, 'Stream'),
+    external: originSvg(iconExternalLink, 'External'),
 };
 
 /**

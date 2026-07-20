@@ -100,8 +100,8 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
     it('auto-follows across multiple source changes', () => {
         applyState(fs, state('src_roon', true,      [src('src_roon')]));
         expect(fs.targetSourceId).toBe('src_roon');
-        applyState(fs, state('src_librespot', true, [src('src_librespot')]));
-        expect(fs.targetSourceId).toBe('src_librespot');
+        applyState(fs, state('src_shairport-sync', true, [src('src_shairport-sync')]));
+        expect(fs.targetSourceId).toBe('src_shairport-sync');
         expect(fs.connectSseCalls).toBe(2);
     });
 
@@ -151,9 +151,9 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
         switchSource(fs, 'src_roon');
         fs.sources = [src('src_mpd'), src('src_roon')];
         // Roon stops; Spotify becomes active
-        applyState(fs, state('src_librespot', true, [src('src_mpd'), src('src_librespot')]));
+        applyState(fs, state('src_shairport-sync', true, [src('src_mpd'), src('src_shairport-sync')]));
         expect(fs.userOverride).toBe(false);
-        expect(fs.targetSourceId).toBe('src_librespot');
+        expect(fs.targetSourceId).toBe('src_shairport-sync');
     });
 
     it('SSE reconnects once when override is lifted and source switches', () => {
@@ -193,13 +193,17 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Simulate the _rendererActive getter.
- * @param {object|null} rendererStatus
+ * Simulate the _rendererOut/_rendererActive getters — driven by
+ * PlayerState.outputs[] (renderer_status SSE no longer feeds the player).
+ * @param {Array|null} outputs
  * @returns {boolean}
  */
-function rendererActive(rendererStatus) {
-    return !!(rendererStatus?.connected && !rendererStatus?.bypassed);
+function rendererActive(outputs) {
+    return !!(outputs ?? []).find(o => o.type === 'upnp_renderer' && o.active);
 }
+
+const FS_LOCAL_OUT    = { id: 'local', type: 'local', name: 'Heed Abacus', active: true, transport_state: 'PLAYING' };
+const FS_RENDERER_OUT = { id: 'uuid:m', type: 'upnp_renderer', name: 'Marantz', active: true, transport_state: 'PLAYING' };
 
 /**
  * Simulate the hasSignal condition used in _renderMeta.
@@ -211,20 +215,21 @@ function hasSignal(signalPath, outputLabel) {
     return !!(signalPath?.length || outputLabel);
 }
 
-describe('AgNowPlayingFullscreen — _rendererActive + signal path', () => {
-    it('rendererActive: true when connected and not bypassed', () => {
-        expect(rendererActive({ connected: true, bypassed: false })).toBe(true);
+describe('AgNowPlayingFullscreen — _rendererActive + signal path (outputs[]-based)', () => {
+    it('rendererActive: true when an active renderer output is present', () => {
+        expect(rendererActive([{ ...FS_LOCAL_OUT, active: false }, FS_RENDERER_OUT])).toBe(true);
     });
 
-    it('rendererActive: false when bypassed', () => {
-        expect(rendererActive({ connected: true, bypassed: true })).toBe(false);
+    it('rendererActive: false when the renderer entry is inactive (unreachable)', () => {
+        expect(rendererActive([FS_LOCAL_OUT, { ...FS_RENDERER_OUT, active: false, transport_state: null }])).toBe(false);
     });
 
-    it('rendererActive: false when disconnected', () => {
-        expect(rendererActive({ connected: false, bypassed: false })).toBe(false);
+    it('rendererActive: false with local-only outputs', () => {
+        expect(rendererActive([FS_LOCAL_OUT])).toBe(false);
     });
 
-    it('rendererActive: false when no renderer status', () => {
+    it('rendererActive: false when no outputs yet', () => {
+        expect(rendererActive([])).toBe(false);
         expect(rendererActive(null)).toBe(false);
     });
 
@@ -241,12 +246,12 @@ describe('AgNowPlayingFullscreen — _rendererActive + signal path', () => {
         expect(hasSignal(null, null)).toBe(false);
     });
 
-    it('signal path shown when renderer bypassed and signal present', () => {
-        const rs = { connected: true, bypassed: true };
+    it('signal path shown when renderer inactive and signal present', () => {
+        const outs = [FS_LOCAL_OUT, { ...FS_RENDERER_OUT, active: false }];
         const sp = [{ label: 'MPD' }, { label: 'Heed Abacus' }];
         // signal_path from backend already includes complete chain
         expect(hasSignal(sp, null)).toBe(true);
-        expect(rendererActive(rs)).toBe(false);
+        expect(rendererActive(outs)).toBe(false);
     });
 
     it('signal path shown when no renderer and signal present', () => {
@@ -271,17 +276,17 @@ describe('AgNowPlayingFullscreen — _rendererActive + signal path', () => {
     it('idle renderer badge shown when renderer active but signal_path is empty', () => {
         // When active is None on the backend, signal_path is empty — the renderer
         // badge must still appear so the user can see the renderer is routed.
-        const rs = { connected: true, bypassed: false, renderer_name: 'music.#1' };
-        expect(rendererActive(rs)).toBe(true);
+        const outs = [{ ...FS_LOCAL_OUT, active: false }, FS_RENDERER_OUT];
+        expect(rendererActive(outs)).toBe(true);
         expect(hasSignal(null, null)).toBe(false);
         // The source row condition: hasSignal || rendererActive → must be shown
-        expect(hasSignal(null, null) || rendererActive(rs)).toBe(true);
+        expect(hasSignal(null, null) || rendererActive(outs)).toBe(true);
     });
 
-    it('idle renderer badge NOT shown when renderer disconnected and no signal', () => {
-        const rs = { connected: false, bypassed: false };
-        expect(rendererActive(rs)).toBe(false);
-        expect(hasSignal(null, null) || rendererActive(rs)).toBe(false);
+    it('idle renderer badge NOT shown when renderer inactive and no signal', () => {
+        const outs = [FS_LOCAL_OUT, { ...FS_RENDERER_OUT, active: false }];
+        expect(rendererActive(outs)).toBe(false);
+        expect(hasSignal(null, null) || rendererActive(outs)).toBe(false);
     });
 });
 
@@ -420,5 +425,190 @@ describe('AgNowPlayingFullscreen — track number badge (tnLabel)', () => {
 
     it('returns null when state is null (nothing playing)', () => {
         expect(computeTnLabel(null)).toBeNull();
+    });
+});
+
+
+// ---------------------------------------------------------------------------
+// AgNowPlayingFullscreen — "Up next" from PlayerState.queue_next (spec dec. #2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Replicate the _applyState "Up next" resolution: a renderer cast reads
+ * state.queue_next; the local path falls back to the queue fetch.
+ * @param {object} state - PlayerState-like object.
+ * @returns {{nextTrack: object|null, needsFetch: boolean}}
+ */
+function resolveUpNext(state) {
+    const rendererRouting = (state.outputs ?? []).some(o => o.type === 'upnp_renderer' && o.active);
+    if (rendererRouting) return { nextTrack: state.queue_next ?? null, needsFetch: false };
+    return { nextTrack: undefined, needsFetch: true };
+}
+
+describe('AgNowPlayingFullscreen — Up next from PlayerState.queue_next', () => {
+    it('renderer cast: up-next comes from state.queue_next, no fetch', () => {
+        const r = resolveUpNext({
+            outputs: [FS_RENDERER_OUT],
+            queue_next: { title: 'So What', artist: 'Miles Davis' },
+        });
+        expect(r.needsFetch).toBe(false);
+        expect(r.nextTrack.title).toBe('So What');
+    });
+
+    it('renderer cast at end of queue: up-next cleared, no fetch', () => {
+        const r = resolveUpNext({ outputs: [FS_RENDERER_OUT], queue_next: null });
+        expect(r.needsFetch).toBe(false);
+        expect(r.nextTrack).toBe(null);
+    });
+
+    it('local playback: falls back to the queue fetch', () => {
+        const r = resolveUpNext({ outputs: [FS_LOCAL_OUT], queue_next: null });
+        expect(r.needsFetch).toBe(true);
+    });
+});
+
+
+// ---------------------------------------------------------------------------
+// AgNowPlayingFullscreen — control payload carries the routing handle (spec §3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Replicate the _control body construction (routing part only).
+ * @param {string} action
+ * @param {*} value
+ * @param {string|null} targetSourceId
+ * @param {object|null} state - Displayed PlayerState.
+ * @returns {object} POST body
+ */
+function buildFsControlBody(action, value, targetSourceId, state) {
+    const body = { action };
+    if (value !== undefined) body.value = value;
+    if (targetSourceId) body.source_id = targetSourceId;
+    if (state?.control_id && (!targetSourceId || state.source_id === targetSourceId)) {
+        body.control_id = state.control_id;
+    }
+    return body;
+}
+
+describe('AgNowPlayingFullscreen — control body routing handle', () => {
+    it('sends the displayed state control_id when it matches the target', () => {
+        const body = buildFsControlBody('toggle', undefined, 'upnp_renderer',
+            { source_id: 'upnp_renderer', control_id: 'upnp_renderer' });
+        expect(body.control_id).toBe('upnp_renderer');
+        expect(body.source_id).toBe('upnp_renderer');
+    });
+
+    it('does not send a mismatched handle after a source switch', () => {
+        // Target switched to src_mpd but displayed state still the renderer cast.
+        const body = buildFsControlBody('toggle', undefined, 'src_mpd',
+            { source_id: 'upnp_renderer', control_id: 'upnp_renderer' });
+        expect(body.control_id).toBeUndefined();
+        expect(body.source_id).toBe('src_mpd');
+    });
+
+    it('sends control_id with no explicit target (active-source control)', () => {
+        const body = buildFsControlBody('next', undefined, null,
+            { source_id: 'src_mpd', control_id: 'src_mpd' });
+        expect(body.control_id).toBe('src_mpd');
+        expect(body.source_id).toBeUndefined();
+    });
+});
+
+
+// ---------------------------------------------------------------------------
+// Output error surfacing (spec §8.1.3 step 1)
+// ---------------------------------------------------------------------------
+// The exclusive DAC held by another local service made playback fail silently.
+// The active output entry now carries the engine's reason; the player shows a
+// plain-language line (raw message kept as the tooltip).
+
+/** Replicate the _outputError / _outputErrorLabel getters. */
+function outputError(state) {
+    return (state?.outputs ?? []).find(o => o.active)?.error ?? null;
+}
+function outputErrorLabel(state) {
+    const raw = outputError(state) ?? '';
+    return /busy/i.test(raw)
+        ? 'Output in use by another player — stop it to play here'
+        : 'Output unavailable';
+}
+
+describe('AgNowPlayingFullscreen — output error', () => {
+    const BUSY = 'Failed to open ALSA device "hw:0,0": Device or resource busy';
+
+    it('reads the error from the ACTIVE output entry', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: BUSY }] };
+        expect(outputError(state)).toBe(BUSY);
+    });
+
+    it('ignores an error on an inactive output', () => {
+        const state = { outputs: [
+            { ...FS_LOCAL_OUT, active: false, error: BUSY },
+            { ...FS_RENDERER_OUT, active: true },
+        ] };
+        expect(outputError(state)).toBe(null);
+    });
+
+    it('no error in the normal case', () => {
+        expect(outputError({ outputs: [FS_LOCAL_OUT] })).toBe(null);
+        expect(outputError({ outputs: [] })).toBe(null);
+        expect(outputError(null)).toBe(null);
+    });
+
+    it('a busy device gets an actionable plain-language label', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: BUSY }] };
+        expect(outputErrorLabel(state)).toMatch(/in use by another player/);
+    });
+
+    it('any other failure falls back to a generic label', () => {
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: 'snd_pcm_open failed' }] };
+        expect(outputErrorLabel(state)).toBe('Output unavailable');
+    });
+});
+
+
+// ---------------------------------------------------------------------------
+// "Up next" belongs to the item on screen, not to whatever renderer is active
+// ---------------------------------------------------------------------------
+// Code review 2026-07-20: the routing test read the GLOBAL outputs[] list, so
+// with a cast running and the user switched (via the dots) to another
+// concurrently playing source, the AirPlay view showed the RENDERER's queue —
+// state.queue_next travels on every state, including a source-pinned one.
+
+/** Replicate the Up-next routing decision from _applyState. */
+function upNextComesFromRendererQueue(state) {
+    return (state.control_id ?? state.source_id) === 'upnp_renderer';
+}
+
+describe('fullscreen — Up next source selection', () => {
+    const RENDERER_OUTPUTS = [
+        { id: 'local', type: 'local', active: false },
+        { id: 'uuid:m', type: 'upnp_renderer', active: true },
+    ];
+
+    it('uses the renderer queue when the displayed item IS the cast', () => {
+        expect(upNextComesFromRendererQueue({
+            control_id: 'upnp_renderer', source_id: 'upnp_renderer',
+            outputs: RENDERER_OUTPUTS,
+        })).toBe(true);
+    });
+
+    it('does NOT use it for another source while a cast runs elsewhere', () => {
+        // The old global test returned true here and overwrote the AirPlay
+        // view's Up-next with the renderer queue on every tick.
+        expect(upNextComesFromRendererQueue({
+            control_id: 'src_shairport-sync', source_id: 'src_shairport-sync',
+            outputs: RENDERER_OUTPUTS,
+        })).toBe(false);
+    });
+
+    it('falls back to source_id when control_id is absent', () => {
+        expect(upNextComesFromRendererQueue({
+            source_id: 'upnp_renderer', outputs: RENDERER_OUTPUTS,
+        })).toBe(true);
+    });
+
+    it('is false for a plain local source with no outputs listed', () => {
+        expect(upNextComesFromRendererQueue({ source_id: 'src_mpd' })).toBe(false);
     });
 });

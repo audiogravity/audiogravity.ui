@@ -5,6 +5,8 @@
  * - fullyConnected (available + naa_available) → "Connected" indicator, "Use as output" toggle visible
  * - available but naa offline → "NAA offline" indicator, toggle hidden
  * - HQPlayer offline → "Offline" indicator, toggle hidden
+ * - …unless the setting is ON, which must stay switchable off at all times —
+ *   since the automatic clear was removed, the toggle is the ONLY way out.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -14,7 +16,7 @@ vi.mock('lit', () => ({
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
-vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn() }));
+vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPut: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ loadConnection: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({ iconSliders: '', iconChevronDown: '', iconWifi: '' }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
@@ -128,9 +130,44 @@ describe('AgHqplayerOutput._renderCard — connection state display', () => {
             expect(html).not.toContain('Use as output');
         });
     });
+
+    describe('setting is ON but HQPlayer cannot be reached', () => {
+        // Dead end otherwise: the setting is server-side and keeps routing every
+        // play to an unreachable HQPlayer, while the control that turns it off is
+        // hidden. The updated() guard does not save us — it watches the LOCAL NAA,
+        // which stays active when the HQPlayer host goes away.
+        it('keeps the toggle visible when HQPlayer is offline', () => {
+            const el = makeEl({ available: false, naa_available: true });
+            el._useAsOutput = true;
+            const html = renderToString(el._renderCard());
+            expect(html).toContain('Use as output');
+        });
+
+        it('keeps the toggle visible when the NAA is offline', () => {
+            const el = makeEl({ available: true, naa_available: false });
+            el._useAsOutput = true;
+            const html = renderToString(el._renderCard());
+            expect(html).toContain('Use as output');
+        });
+
+        it('still reports the connection as offline — visibility is not connectivity', () => {
+            const el = makeEl({ available: false, naa_available: true });
+            el._useAsOutput = true;
+            const html = renderToString(el._renderCard());
+            expect(html).toContain('Offline');
+            expect(html).not.toMatch(/lib-hqp-card connected/);
+        });
+    });
 });
 
-describe('AgHqplayerOutput.updated() — clears output flag when NAA goes offline', () => {
+describe('AgHqplayerOutput — a view must not mutate the shared setting', () => {
+    // The old updated() hook cleared the flag when the NAA went offline. Once
+    // the setting moved server-side that stopped being a local preference and
+    // became a WRITE to the box: any browser merely displaying this panel while
+    // networkaudiod restarted (the steering restarts it on every ALSA output
+    // switch) turned the output off for every client. The backend owns the
+    // invariant now — it refuses to enable, and refuses to route, without a NAA.
+
     function makeElWithOutput(connectionOverrides = {}) {
         const el = Object.create(AgHqplayerOutput?.prototype ?? {});
         el._connection = { host: '10.0.4.200', port: 4321, available: true, naa_available: true, ...connectionOverrides };
@@ -138,40 +175,29 @@ describe('AgHqplayerOutput.updated() — clears output flag when NAA goes offlin
         return el;
     }
 
-    it('clears _useAsOutput and localStorage when naa_available transitions to false', () => {
-        const el = makeElWithOutput({ naa_available: false });
-        const removed = [];
-        global.localStorage = { removeItem: (k) => removed.push(k) };
-
-        const changed = new Map([['_connection', { naa_available: true }]]);
-        el.updated(changed);
-
-        expect(el._useAsOutput).toBe(false);
-        expect(removed).toContain('hqplayer_output');
+    it('no longer defines an updated() hook that writes the setting', () => {
+        expect(AgHqplayerOutput.prototype.updated).toBeUndefined();
     });
 
-    it('does NOT clear flag when naa_available is undefined (transient fetch failure)', () => {
-        const el = makeElWithOutput();
-        el._connection = null; // fetch failed
-        const removed = [];
-        global.localStorage = { removeItem: (k) => removed.push(k) };
+    it('keeps the setting untouched when the NAA goes offline', () => {
+        const el = makeElWithOutput({ naa_available: false });
+        const calls = [];
+        el._setUseAsOutput = (v) => { calls.push(v); el._useAsOutput = v; };
 
-        const changed = new Map([['_connection', { naa_available: true }]]);
-        el.updated(changed);
+        // Whatever lifecycle runs, nothing may write on an observed NAA drop.
+        el.updated?.(new Map([['_connection', { naa_available: true }]]));
 
+        expect(calls).toEqual([]);
         expect(el._useAsOutput).toBe(true);
-        expect(removed).toHaveLength(0);
     });
 
-    it('does NOT clear flag when _connection was not in changedProps', () => {
-        const el = makeElWithOutput({ naa_available: false });
-        const removed = [];
-        global.localStorage = { removeItem: (k) => removed.push(k) };
-
-        el.updated(new Map()); // no _connection change
-
-        expect(el._useAsOutput).toBe(true);
-        expect(removed).toHaveLength(0);
+    it('leaves the toggle reachable so the user can turn it off themselves', () => {
+        // With the automatic clear gone, the switch is the only way out — it
+        // must stay rendered while the setting is ON even if HQPlayer/NAA is
+        // unreachable, or the user is trapped with failing plays.
+        const el = makeEl({ available: true, naa_available: false });
+        el._useAsOutput = true;
+        expect(renderToString(el._renderCard())).toContain('Use as output');
     });
 });
 
@@ -212,5 +238,120 @@ describe('AgHqplayerOutput._handleNaaMetrics() — SSE real-time update', () => 
         const ref = el._connection;
         el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'active' } });
         expect(el._connection).toBe(ref); // same object reference — no spurious re-render
+    });
+});
+
+// ---------------------------------------------------------------------------
+// "Use as output" toggle — releasing the local DAC
+// ---------------------------------------------------------------------------
+// Regression: the toggle only wrote localStorage, so switching it OFF left
+// HQPlayer loaded and the NAA holding the ALSA device. Local playback then
+// failed with `Failed to open ALSA device "hw:0,0": Device or resource busy`.
+// Turning it off must stop HQPlayer so the NAA hands the DAC back to MPD.
+
+import { apiPost, apiPut } from '../../api.js';
+
+describe('AgHqplayerOutput._toggleOutput — server-side setting', () => {
+    /** Minimal instance carrying just the toggle behaviour. */
+    function el() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._useAsOutput = false;
+        c._connection = null;
+        return c;
+    }
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it('switching ON persists the choice on the backend', async () => {
+        const c = el();
+        apiPut.mockResolvedValueOnce({ use_as_output: true });
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(apiPut).toHaveBeenCalledWith('/hqplayer/use-as-output', { enabled: true });
+        expect(c._useAsOutput).toBe(true);
+    });
+
+    it('never overwrites _connection with the toggle response', async () => {
+        // Regression: assigning the response to _connection dropped
+        // naa_available, so the NAA-offline guard in updated() fired and
+        // switched the toggle straight back off — the feature was unusable.
+        const c = el();
+        c._connection = { host: '10.0.4.200', available: true, naa_available: true };
+        apiPut.mockResolvedValueOnce({ use_as_output: true });
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(c._connection.naa_available).toBe(true);
+        expect(c._connection.available).toBe(true);
+    });
+
+    it('switching OFF persists it too — the backend releases the sound card', async () => {
+        // The stop that frees the exclusive device now lives server-side, so the
+        // UI no longer calls /hqplayer/stop itself on a toggle.
+        const c = el();
+        c._useAsOutput = true;
+        apiPut.mockResolvedValueOnce({ use_as_output: false });
+        await c._toggleOutput({ detail: { checked: false } });
+        expect(apiPut).toHaveBeenCalledWith('/hqplayer/use-as-output', { enabled: false });
+        expect(apiPost).not.toHaveBeenCalledWith('/hqplayer/stop');
+        expect(c._useAsOutput).toBe(false);
+    });
+
+    it('adopts the server answer even if it differs from the request', async () => {
+        const c = el();
+        apiPut.mockResolvedValueOnce({ use_as_output: false });   // backend refused
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(c._useAsOutput).toBe(false);
+    });
+
+    it('reverts the switch when the call fails', async () => {
+        const c = el();
+        apiPut.mockRejectedValueOnce(new Error('backend unreachable'));
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(c._useAsOutput).toBe(false);
+    });
+});
+
+
+describe('AgHqplayerOutput._toggleOutput — one write at a time', () => {
+    // Two quick flips used to race: both PUTs went out and the SLOWER response
+    // won, so the switch could end up showing the opposite of the stored value.
+    function el() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._useAsOutput = false;
+        c._connection = null;
+        return c;
+    }
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it('ignores a second flip while the first is still in flight', async () => {
+        const c = el();
+        let release;
+        apiPut.mockReturnValueOnce(new Promise(r => { release = r; }));
+
+        const first = c._toggleOutput({ detail: { checked: true } });
+        await c._toggleOutput({ detail: { checked: false } });   // must be dropped
+        expect(apiPut).toHaveBeenCalledTimes(1);
+
+        release({ use_as_output: true });
+        await first;
+        expect(c._useAsOutput).toBe(true);
+    });
+
+    it('accepts the next flip once the first has settled', async () => {
+        const c = el();
+        apiPut.mockResolvedValueOnce({ use_as_output: true });
+        await c._toggleOutput({ detail: { checked: true } });
+        apiPut.mockResolvedValueOnce({ use_as_output: false });
+        await c._toggleOutput({ detail: { checked: false } });
+        expect(apiPut).toHaveBeenCalledTimes(2);
+        expect(c._useAsOutput).toBe(false);
+    });
+
+    it('releases the lock even when the call fails', async () => {
+        const c = el();
+        apiPut.mockRejectedValueOnce(new Error('backend down'));
+        await c._toggleOutput({ detail: { checked: true } });
+        apiPut.mockResolvedValueOnce({ use_as_output: true });
+        await c._toggleOutput({ detail: { checked: true } });
+        expect(apiPut).toHaveBeenCalledTimes(2);
     });
 });

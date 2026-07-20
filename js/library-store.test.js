@@ -9,6 +9,14 @@ import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } 
 
 // Stub modules that library-store.js may import transitively.
 vi.mock('./api.js', () => ({ apiGet: vi.fn(), buildAuthedUrl: vi.fn((path) => path) }));
+vi.mock('./ui-helpers.js', () => ({
+    showToast: vi.fn(),
+    showConfirm: vi.fn(),
+    handleError: vi.fn(),
+    getUserFriendlyError: vi.fn(),
+    showPasswordConfirm: vi.fn(),
+    copyToClipboard: vi.fn(),
+}));
 
 // Provide a minimal window mock if not available (jsdom provides it in vitest).
 // The subscribeRendererStatus tests rely on window.dispatchEvent.
@@ -163,5 +171,72 @@ describe('pwa-install-prompt dismiss persistence', () => {
         localStorage.setItem(DISMISS_KEY, String(old));
         const ts = parseInt(localStorage.getItem(DISMISS_KEY), 10);
         expect(Date.now() - ts).toBeGreaterThanOrEqual(TTL_MS);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// notifyOutputError — toast when the active output cannot play
+// ---------------------------------------------------------------------------
+// The reason for the silence used to be readable only in the fullscreen player,
+// so pressing play on a DAC held by another service looked like a no-op.
+
+import { notifyOutputError } from './library-store.js';
+import { showToast } from './ui-helpers.js';
+
+const BUSY = 'Failed to open ALSA device "hw:0,0": Device or resource busy';
+
+/** Build a PlayerState carrying an active output with the given error. */
+function stateWithError(error) {
+    return { outputs: [{ id: 'dac', active: true, error }] };
+}
+
+describe('notifyOutputError', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        notifyOutputError(stateWithError(null)); // re-arm the edge detector
+        vi.clearAllMocks();
+    });
+
+    it('raises a toast when the active output starts failing', () => {
+        notifyOutputError(stateWithError(BUSY));
+        expect(showToast).toHaveBeenCalledTimes(1);
+        const [type, title, message] = showToast.mock.calls[0];
+        expect(type).toBe('error');
+        expect(title).toBe('Playback blocked');
+        expect(message).toMatch(/in use by another player/);
+    });
+
+    it('does not repeat the toast while the same failure persists', () => {
+        // State events arrive every second; only the transition may notify.
+        notifyOutputError(stateWithError(BUSY));
+        notifyOutputError(stateWithError(BUSY));
+        notifyOutputError(stateWithError(BUSY));
+        expect(showToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('announces a different failure even without recovery in between', () => {
+        notifyOutputError(stateWithError(BUSY));
+        notifyOutputError(stateWithError('Failed to open "Heed" (alsa); No such device'));
+        expect(showToast).toHaveBeenCalledTimes(2);
+        expect(showToast.mock.calls[1][2]).toBe('Output unavailable');
+    });
+
+    it('re-arms after recovery so the next failure is announced again', () => {
+        notifyOutputError(stateWithError(BUSY));
+        notifyOutputError(stateWithError(null));   // recovered — no toast
+        notifyOutputError(stateWithError(BUSY));
+        expect(showToast).toHaveBeenCalledTimes(2);
+    });
+
+    it('stays silent when the output is healthy', () => {
+        notifyOutputError(stateWithError(null));
+        notifyOutputError({ outputs: [] });
+        notifyOutputError(null);
+        expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it('ignores an error on an output that is not active', () => {
+        notifyOutputError({ outputs: [{ id: 'dac', active: false, error: BUSY }] });
+        expect(showToast).not.toHaveBeenCalled();
     });
 });

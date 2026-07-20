@@ -22,7 +22,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
-import { upnpPlay } from '../../library-api.js';
+import { upnpPlay, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import '../molecules/ag-upnp-item.js';
 import '../molecules/ag-library-browser-topbar.js';
 import '../molecules/ag-library-breadcrumbs.js';
@@ -117,21 +117,25 @@ export class AgLibraryUpnpBrowser extends LitElement {
     async _play(item, action = 'play') {
         if (!item.res || this._acting) return;
         this._acting = item.id;
+        const send = () => upnpPlay({
+            sourceId:   this.sourceId,
+            res:        item.res,
+            title:      item.title,
+            artUri:     item.art_uri,
+            duration:   item.duration,
+            serverName: this.serverName,
+            action,
+        });
         try {
-            await upnpPlay({
-                sourceId:   this.sourceId,
-                res:        item.res,
-                title:      item.title,
-                artUri:     item.art_uri,
-                duration:   item.duration,
-                serverName: this.serverName,
-                action,
-            });
-            if (action === 'play') {
+            // Enqueueing gets the same feedback as everywhere else in the library
+            // (it used to fail silently here alone); playing only reports failures.
+            if (action !== 'play') {
+                await queueWithFeedback(send, item.title || 'Track');
+                return;
+            }
+            if (await playWithFeedback(send)) {
                 this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }));
             }
-        } catch (e) {
-            console.error('[upnp-browser] play failed:', e);
         } finally {
             this._acting = null;
         }

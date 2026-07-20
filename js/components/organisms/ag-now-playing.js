@@ -1,8 +1,8 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { subscribePlayerState, subscribeRendererStatus, fetchActiveRendererStatus, getOfflinePlayerSnapshot } from '../../library-store.js';
+import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -19,7 +19,7 @@ import '../molecules/ag-volume-popover.js';
  * Placed above the footer, it updates `--now-playing-height` on `:root` via
  * ResizeObserver so `.main-content` can adjust its bottom inset automatically.
  *
- * Supported sources: MPD, AirPlay (shairport-sync), Spotify (librespot),
+ * Supported sources: MPD, AirPlay (shairport-sync),
  * Roon Bridge (mono-sgen), UPnP (upmpdcli).
  *
  * Swipe gestures (mobile):
@@ -52,8 +52,8 @@ export class AgNowPlaying extends LitElement {
         _brokenCovers: { state: true },
         /** @type {string} License status for gating controls */
         _licenseStatus: { state: true },
-        /** @type {object|null} Latest renderer_status SSE payload (null if no renderer) */
-        _rendererStatus: { state: true },
+        /** @type {Array<object>} Runtime outputs from PlayerState (local DAC + selected renderer). */
+        _outputs: { state: true },
         /** @type {boolean} True when the browser has no network connectivity. */
         _offline: { state: true },
     };
@@ -70,7 +70,7 @@ export class AgNowPlaying extends LitElement {
         this._userSourceOverride = false;
         this._bgColors = new Map();
         this._licenseStatus = 'no_license';
-        this._rendererStatus = null;
+        this._outputs = [];
         this._offline = !navigator.onLine;
         this._unsubscribeState = null;
         this._resizeObserver = null;
@@ -121,10 +121,8 @@ export class AgNowPlaying extends LitElement {
 
         document.addEventListener('ag-np-restore', this._boundRestore);
         window.addEventListener('license-status', this._boundLicStatus);
-        this._unsubscribeRenderer = subscribeRendererStatus((data) => { this._rendererStatus = data; });
-        // Fetch initial renderer status so the badge is correct on load,
-        // without waiting for the next SSE heartbeat (up to 30s delay).
-        fetchActiveRendererStatus().then(d => { if (d) this._rendererStatus = d; });
+        // Renderer routing now comes from PlayerState.outputs[] (single source
+        // of truth) — no separate renderer_status subscription needed.
 
         // Online/offline connectivity listeners — drive the offline indicator.
         window.addEventListener('online',  this._boundOnline);
@@ -150,7 +148,6 @@ export class AgNowPlaying extends LitElement {
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         document.removeEventListener('click', this._boundCloseDetail);
         window.removeEventListener('license-status', this._boundLicStatus);
-        this._unsubscribeRenderer?.();
 
         // Options must match the addEventListener call to remove correctly
         this.removeEventListener('touchstart', this._boundTouchStart, { passive: false });
@@ -190,9 +187,14 @@ export class AgNowPlaying extends LitElement {
         return inTransition(this._controlRecentTime);
     }
 
+    /** @returns {object|null} The active network-renderer output entry, if any. */
+    get _rendererOut() {
+        return this._outputs.find(o => o.type === 'upnp_renderer' && o.active) ?? null;
+    }
+
     /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
     get _rendererActive() {
-        return !!(this._rendererStatus?.connected);
+        return !!this._rendererOut;
     }
 
     /**
@@ -202,6 +204,8 @@ export class AgNowPlaying extends LitElement {
      */
     _onState(state) {
         if (!state?.sources) return;
+        // Runtime outputs (local DAC + selected renderer) — drives the routing badge.
+        this._outputs = state.outputs ?? [];
 
         const items = state.sources.filter(s => s.playing).map(s => {
             // For the active source, prefer root state values (fresher than
@@ -305,6 +309,9 @@ export class AgNowPlaying extends LitElement {
         return this._licenseStatus !== 'starter' && this._licenseStatus !== 'version_expired';
     }
 
+    // BACKLOG: the mini-player posts to /audio_pipeline/control while the
+    // fullscreen posts to /player/control with a different payload shape —
+    // unify on one endpoint/contract. See audiogravity.ops/BACKLOG.md.
     async _sendControl(sourceId, action, volume = null, item = null) {
         if (!this._isLicensed()) {
             document.querySelector('ag-tabs')?.selectTab('admin');
@@ -322,6 +329,9 @@ export class AgNowPlaying extends LitElement {
         }
         try {
             const body = { source_id: sourceId, action };
+            // Routing handle (spec §3): commands go to the device that PLAYS
+            // the content. source_id is kept as the backend fallback.
+            if (item?.control_id) body.control_id = item.control_id;
             if (action === 'seek' && volume !== null) {
                 body.seek_position = volume;
             } else if (volume !== null) {
@@ -626,7 +636,7 @@ export class AgNowPlaying extends LitElement {
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
                             : nothing}
                         ${this._rendererActive
-                            ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererStatus.renderer_name ?? 'Renderer'}</span>`
+                            ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererOut.name ?? 'Renderer'}</span>`
                             : nothing}
                         ${this._offline
                             ? html`<span class="np-offline-badge" title="No network — showing last known state">Offline</span>`
@@ -689,13 +699,13 @@ export class AgNowPlaying extends LitElement {
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
                         </button>
                     ` : nothing}
-                    ${item.can_set_volume && (!isDsd(item.source_format) || item.source_id === 'src_hqplayer') ? html`
+                    ${item.can_set_volume && (!isDsd(item.source_format) || isSelfManagedDriver(item)) ? html`
                         <ag-volume-popover
                             .volume=${item.volume ?? 0}
                             @volume-change=${(e) => this._sendControl(item.source_id, 'set_volume', e.detail.volume, item)}
                         ></ag-volume-popover>
                     ` : nothing}
-                    ${isDsd(item.source_format) && item.source_id !== 'src_hqplayer' ? html`<ag-dsd-lock></ag-dsd-lock>` : nothing}
+                    ${isDsd(item.source_format) && !isSelfManagedDriver(item) ? html`<ag-dsd-lock></ag-dsd-lock>` : nothing}
                 </div>
             </div>
             ${item.duration ? html`
