@@ -308,9 +308,15 @@ export class AgNowPlayingFullscreen extends LitElement {
         const trackChanged   = state.title !== this._prevTitle;
         const sourceChanged  = state.source_id !== this._prevSourceId;
         const stationChanged = state.station_logo_token !== this._prevStationToken;
-        // "Up next": a renderer cast carries its queue in state.queue_next
-        // (live via SSE). Only the local-queue path (MPD) still needs a fetch.
-        const rendererRouting = (state.outputs ?? []).some(o => o.type === 'upnp_renderer' && o.active);
+        // "Up next" belongs to the item ON SCREEN, so key it on that item's
+        // routing identity — not on whether some renderer is active somewhere.
+        // With a cast running and the user switched to another concurrently
+        // playing source (the dots), the global test made the AirPlay view show
+        // the renderer's queue: state.queue_next travels on every state,
+        // including a source-pinned one.
+        // A renderer cast carries its queue in state.queue_next (live via SSE);
+        // only the local-queue path (MPD) still needs a fetch.
+        const rendererRouting = (state.control_id ?? state.source_id) === 'upnp_renderer';
         if (rendererRouting) {
             this._nextTrack = state.queue_next ?? null;
         } else if (trackChanged && this._open) {

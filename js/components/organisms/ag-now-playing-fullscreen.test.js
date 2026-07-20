@@ -566,3 +566,49 @@ describe('AgNowPlayingFullscreen — output error', () => {
     });
 });
 
+
+// ---------------------------------------------------------------------------
+// "Up next" belongs to the item on screen, not to whatever renderer is active
+// ---------------------------------------------------------------------------
+// Code review 2026-07-20: the routing test read the GLOBAL outputs[] list, so
+// with a cast running and the user switched (via the dots) to another
+// concurrently playing source, the AirPlay view showed the RENDERER's queue —
+// state.queue_next travels on every state, including a source-pinned one.
+
+/** Replicate the Up-next routing decision from _applyState. */
+function upNextComesFromRendererQueue(state) {
+    return (state.control_id ?? state.source_id) === 'upnp_renderer';
+}
+
+describe('fullscreen — Up next source selection', () => {
+    const RENDERER_OUTPUTS = [
+        { id: 'local', type: 'local', active: false },
+        { id: 'uuid:m', type: 'upnp_renderer', active: true },
+    ];
+
+    it('uses the renderer queue when the displayed item IS the cast', () => {
+        expect(upNextComesFromRendererQueue({
+            control_id: 'upnp_renderer', source_id: 'upnp_renderer',
+            outputs: RENDERER_OUTPUTS,
+        })).toBe(true);
+    });
+
+    it('does NOT use it for another source while a cast runs elsewhere', () => {
+        // The old global test returned true here and overwrote the AirPlay
+        // view's Up-next with the renderer queue on every tick.
+        expect(upNextComesFromRendererQueue({
+            control_id: 'src_shairport-sync', source_id: 'src_shairport-sync',
+            outputs: RENDERER_OUTPUTS,
+        })).toBe(false);
+    });
+
+    it('falls back to source_id when control_id is absent', () => {
+        expect(upNextComesFromRendererQueue({
+            source_id: 'upnp_renderer', outputs: RENDERER_OUTPUTS,
+        })).toBe(true);
+    });
+
+    it('is false for a plain local source with no outputs listed', () => {
+        expect(upNextComesFromRendererQueue({ source_id: 'src_mpd' })).toBe(false);
+    });
+});
