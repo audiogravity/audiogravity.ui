@@ -19,6 +19,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPut, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
+import { showToast } from '../../ui-helpers.js';
 import { iconSliders, iconChevronDown, iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-switch.js';
@@ -264,7 +265,16 @@ class AgHqplayerOutput extends LitElement {
 
     /** Toggle HQPlayer as the destination for library playback. */
     async _toggleOutput(e) {
-        await this._setUseAsOutput(e.detail.checked);
+        // One write at a time: two quick flips used to race, and the SLOWER
+        // response won, leaving the switch showing the opposite of the stored
+        // setting until the next connection reload.
+        if (this._switching) return;
+        this._switching = true;
+        try {
+            await this._setUseAsOutput(e.detail.checked);
+        } finally {
+            this._switching = false;
+        }
     }
 
     /**
@@ -292,10 +302,8 @@ class AgHqplayerOutput extends LitElement {
         } catch (e) {
             console.warn('[hqp] could not change the HQPlayer output setting:', e);
             this._useAsOutput = !enabled;   // revert — the server refused
-            if (window.showToast) {
-                window.showToast('error', 'HQPlayer output unchanged',
-                                 e?.message || 'The backend refused the change.', 5000);
-            }
+            showToast('error', 'HQPlayer output unchanged',
+                      e?.message || 'The backend refused the change.', 5000);
         }
     }
 
@@ -307,21 +315,15 @@ class AgHqplayerOutput extends LitElement {
         }
     }
 
-    /**
-     * Clear the output flag whenever the connection transitions to NAA-offline.
-     * Uses Lit's updated() lifecycle so it fires on every _connection change
-     * regardless of the source (connectedCallback, _refresh, _connect, SSE).
-     * Uses === false (not falsy) to avoid clearing on a transient null connection
-     * (fetch failure) where naa_available is undefined, not confirmed false.
-     * @param {Map} changedProps
-     */
-    updated(changedProps) {
-        if (changedProps.has('_connection') &&
-            this._useAsOutput &&
-            this._connection?.naa_available === false) {
-            this._setUseAsOutput(false);
-        }
-    }
+    // The NAA-offline guard that used to live here (an updated() hook clearing
+    // the flag) was removed: since the setting moved server-side it no longer
+    // cleared a local preference but WROTE to the box, so any browser merely
+    // displaying this panel during a transient networkaudiod restart — the
+    // steering restarts it on every ALSA output switch — silently turned the
+    // output off for every client. A view must not mutate shared state.
+    // The backend now owns the invariant: it refuses to enable without a live
+    // NAA, and refuses to route a play to a dead one (core.playback_output),
+    // explaining why instead of changing the user's choice behind their back.
 
     async _toggleDsp() {
         this._dspExpanded = !this._dspExpanded;
