@@ -36,6 +36,8 @@ describe('queueItem', () => {
         expect(apiPost).toHaveBeenCalledWith('/library/queue', expect.objectContaining({
             source_id: 'src_mpd',
         }));
+        // The core exposes no direct-push route; this guards against a UI
+        // regression that would reintroduce one.
         expect(apiPost).not.toHaveBeenCalledWith('/hqplayer/play-library', expect.anything());
     });
 });
@@ -63,6 +65,7 @@ describe('upnpPlay', () => {
         expect(apiPost).toHaveBeenCalledWith('/library/upnp-play', expect.objectContaining({
             res: 'http://srv/file.wav',
         }));
+        // Same rule as the queueItem test above — no direct push to HQPlayer.
         expect(apiPost).not.toHaveBeenCalledWith('/hqplayer/play', expect.anything());
     });
 });

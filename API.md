@@ -133,8 +133,6 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET/PUT | `/hqplayer/mode` | Active output mode |
 | GET/PUT | `/hqplayer/volume` | Volume (dB) |
 | GET | `/hqplayer/status` | Current DSP status |
-| POST | `/hqplayer/play` | Play URI directly |
-| POST | `/hqplayer/play-library` | Play library item |
 | POST | `/hqplayer/stop` | Stop playback |
 | DELETE | `/hqplayer/dsp` | Reset DSP to HQPlayer defaults |
 
