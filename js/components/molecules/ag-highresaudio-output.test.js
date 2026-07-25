@@ -85,7 +85,9 @@ describe('AgHighresaudioOutput._connect', () => {
         await el._connect({ preventDefault() {} });
         expect(apiPost).toHaveBeenCalledWith('/highresaudio/connection', { username: 'a@b.co', password: 'pw' });
         expect(el._connection.connected).toBe(true);
-        expect(events).toContain('highresaudio-connected');
+        // One event for every source-list change, whatever the provider —
+        // the per-provider events had no listener at all.
+        expect(events).toContain('sources-changed');
     });
 
     it('surfaces the error message on failed login', async () => {

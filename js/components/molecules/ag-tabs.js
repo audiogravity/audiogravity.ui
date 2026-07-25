@@ -37,8 +37,14 @@ const TAB_SVG_ICONS = {
     library:     iconTabLibrary,
 };
 
-/** Tabs that require an active trial or full license. */
-const GATED_TABS = new Set(['systemd', 'performance', 'config', 'pipeline', 'library']);
+/** Tabs that require an active trial or full license.
+ *
+ * `config` is deliberately absent: editing a service's own configuration file
+ * is not a licensed feature, and its endpoints (`/audio_app_config/*`) carry no
+ * licence gate either — keeping the tab grey would have blocked something the
+ * backend allows. Guided provisioning stays out of reach: `/audio-stack/*` is
+ * licence- AND admin-gated on the server. */
+const GATED_TABS = new Set(['systemd', 'performance', 'pipeline', 'library']);
 
 export class AgTabs extends LitElement {
     static properties = {

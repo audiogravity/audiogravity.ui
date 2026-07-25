@@ -1,4 +1,4 @@
-# Audiogravity UI — Core API Contract
+# Audiogravi<sup>ty</sup> UI — Core API Contract
 
 The UI communicates with the core exclusively via:
 - **REST** (JSON over HTTPS) — all endpoints under the base URL
@@ -6,7 +6,7 @@ The UI communicates with the core exclusively via:
 - **WebSocket** — PTY terminal at `/sysinfo/terminal/ws`
 
 Full interactive documentation is available at **`/docs`** (Swagger UI) on a
-running Audiogravity core.
+running Audiogravi<sup>ty</sup> core.
 
 ---
 
@@ -272,7 +272,7 @@ backend refuses the play instead, naming the daemon.
 | POST | `/services/{name}/properties/validate` | Dry-run an override before applying it |
 | POST | `/services/{name}/properties/restore` | Undo the previous override |
 | DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults |
-| POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravity-managed units** (audio engines + core AG services); a non-managed unit is rejected |
+| POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravi<sup>ty</sup>-managed units** (audio engines + core AG services); a non-managed unit is rejected |
 | GET | `/services/{name}/properties` | systemd unit properties |
 | POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
@@ -343,8 +343,9 @@ these today**; see `/docs` for their request/response shape.
 ### Audio Stack — `/audio-stack/*`
 Per-service minimal-config provisioning for the audio stack (mpd, upmpdcli, shairport).
 Consumed by the first-time-setup modal + the editor's **Guided** mode in AUDIO
-SERVICES CONFIGURATION. **Admin-only** — all endpoints require an administrator
-(`require_admin`) on top of a full license.
+SERVICES CONFIGURATION. **Admin-only** — every endpoint requires an
+administrator. **No licence needed**: setting the machine up is not a paid
+feature, so the gate is about the role, not the edition.
 
 | Method | Path | Description |
 |---|---|---|
@@ -374,7 +375,12 @@ SERVICES CONFIGURATION. **Admin-only** — all endpoints require an administrato
 `DELETE /audio-stack/mounts/{slug}?force=` → **204**. Unmounts (verified) and removes the unit files, credentials and mountpoint. **404** for a slug AG does not manage — hand-made mounts are never touched. **409** when the share is mpd's current library or the unmount is busy (files open); retry with `?force=true` to lazy-unmount anyway — the UI drives this with an explicit confirm.
 
 ### Config Validation — `/config_validation/*`
-Structural + semantic validation of the editable audio config files. Full-license gated.
+Structural + semantic validation of the editable audio config files.
+
+`/validate` needs **no licence**: it guards the configuration import, which is itself
+ungated, and the caller imports anyway when validation fails — gating it removed a
+safety check instead of protecting a feature. `/validate-topology` **is** licence-gated
+(**403** on Starter): it serves the Pipeline view.
 
 | Method | Path | Description |
 |---|---|---|
@@ -482,6 +488,8 @@ performs no version comparison and downloads nothing (self-update lands later).
 | POST | `/steering/switch-output` | Point a service at another output |
 
 ### Service config editor — `/audio_app_config/*`
+Editing a service's own configuration file needs **no licence**.
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/audio_app_config/services` | Services whose config file is editable |

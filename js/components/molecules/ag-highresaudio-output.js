@@ -10,8 +10,8 @@
  *
  * @element ag-highresaudio-output
  *
- * @fires highresaudio-connected    - Bubbles when HRA authentication succeeds.
- * @fires highresaudio-disconnected - Bubbles when the HRA connection is removed.
+ * @fires sources-changed - Bubbles when the HRA connection is created or removed.
+ *
  *
  * @dependency css/components/library-sources.css (lib-qb-* and lib-hra-* classes)
  */
@@ -73,7 +73,7 @@ export class AgHighresaudioOutput extends LitElement {
             this._connection = conn;
             this._connecting = false;
             if (conn?.connected) {
-                this.dispatchEvent(new CustomEvent('highresaudio-connected', { bubbles: true }));
+                this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
             }
         } catch (err) {
             this._connecting = false;
@@ -91,7 +91,7 @@ export class AgHighresaudioOutput extends LitElement {
         this._connection = null;
         this._connecting = false;
         this._error = '';
-        this.dispatchEvent(new CustomEvent('highresaudio-disconnected', { bubbles: true }));
+        this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         await this._loadConnection();
     }
 

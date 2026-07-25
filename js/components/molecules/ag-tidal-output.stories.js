@@ -8,8 +8,8 @@ export default {
 const Template = () => {
     const el = document.createElement('ag-tidal-output');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
-    el.addEventListener('tidal-connected',    () => console.log('tidal-connected'));
-    el.addEventListener('tidal-disconnected', () => console.log('tidal-disconnected'));
+    el.addEventListener('sources-changed',    () => console.log('sources-changed'));
+    el.addEventListener('sources-changed', () => console.log('sources-changed'));
     return el;
 };
 

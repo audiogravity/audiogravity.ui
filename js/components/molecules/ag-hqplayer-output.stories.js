@@ -16,8 +16,8 @@ export default {
 const Template = () => {
     const el = document.createElement('ag-hqplayer-output');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
-    el.addEventListener('hqp-connected',    () => console.log('hqp-connected'));
-    el.addEventListener('hqp-disconnected', () => console.log('hqp-disconnected'));
+    el.addEventListener('sources-changed',    () => console.log('sources-changed'));
+    el.addEventListener('sources-changed', () => console.log('sources-changed'));
     return el;
 };
 

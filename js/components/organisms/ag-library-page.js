@@ -241,6 +241,7 @@ export class AgLibraryPage extends LitElement {
         this._artistName      = '';
         this._unsubscribeState = null;
         this._boundLibGoto    = (e) => this._onLibGoto(e);
+        this._boundSourcesChanged = () => this._onSourcesChanged();
     }
 
     connectedCallback() {
@@ -248,6 +249,12 @@ export class AgLibraryPage extends LitElement {
         this._injectStyles();
         this._syncActiveSource();
         window.addEventListener('lib-goto', this._boundLibGoto);
+        // One event for every way the source list can change — a streaming
+        // service connected or disconnected, a UPnP server forgotten. Without
+        // it the list waits for the next player poll (up to 10 s when nothing
+        // plays), and the UPnP half never refreshed at all: its servers are
+        // fetched once, on mount.
+        this.addEventListener('sources-changed', this._boundSourcesChanged);
         // BACKLOG item resolved: subscribe permanently so the library stays in sync
         // even when the fullscreen player is closed.
         this._unsubscribeState = subscribePlayerState(s => this._onPlayerState(s));
@@ -257,6 +264,16 @@ export class AgLibraryPage extends LitElement {
     }
 
     /** Load persisted UPnP servers and merge them into the searchable sources. */
+    /**
+     * Re-read both halves of the source list after something changed it.
+     *
+     * The player snapshot is forced past its cache — the change just happened,
+     * a cached answer would describe the state before it.
+     */
+    async _onSourcesChanged() {
+        await Promise.all([this._syncActiveSource({ force: true }), this._loadUpnpServers()]);
+    }
+
     async _loadUpnpServers() {
         try {
             const servers = await apiGet('/library/upnp-known-servers');
@@ -272,6 +289,7 @@ export class AgLibraryPage extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('lib-goto', this._boundLibGoto);
+        this.removeEventListener('sources-changed', this._boundSourcesChanged);
         if (this._unsubscribeState) {
             this._unsubscribeState();
             this._unsubscribeState = null;
@@ -282,9 +300,9 @@ export class AgLibraryPage extends LitElement {
         injectLibStyles();
     }
 
-    async _syncActiveSource() {
+    async _syncActiveSource({ force = false } = {}) {
         try {
-            const state = await getSnapshot();
+            const state = await getSnapshot({ force });
             if (state?.sources) {
                 this._rawSources = state.sources;
                 this._sources = this._normalizeSources(state.sources);

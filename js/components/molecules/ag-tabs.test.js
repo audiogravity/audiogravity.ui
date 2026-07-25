@@ -84,3 +84,35 @@ describe('ag-tabs — drag transform cleanup', () => {
         });
     });
 });
+
+
+// ---------------------------------------------------------------------------
+// Which tabs a Starter edition may not open
+// ---------------------------------------------------------------------------
+
+describe('ag-tabs — licence gating', () => {
+    const gate = (tabId, status) => {
+        const el = makeEl({ _licenseStatus: status });
+        return AgTabs.prototype._isLocked.call(el, tabId);
+    };
+
+    it('blocks the licensed tabs on Starter', () => {
+        for (const tab of ['systemd', 'performance', 'pipeline', 'library']) {
+            expect(gate(tab, 'starter')).toBe(true);
+        }
+    });
+
+    it('leaves the config tab open on Starter', () => {
+        // Editing a service's own configuration file is not a licensed feature,
+        // and /audio_app_config/* carries no gate on the server either.
+        expect(gate('config', 'starter')).toBe(false);
+        expect(gate('config', 'version_expired')).toBe(false);
+    });
+
+    it('blocks nothing once licensed', () => {
+        for (const tab of ['systemd', 'performance', 'pipeline', 'library', 'config']) {
+            expect(gate(tab, 'lifetime')).toBe(false);
+            expect(gate(tab, 'trial')).toBe(false);
+        }
+    });
+});

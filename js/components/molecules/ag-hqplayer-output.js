@@ -10,8 +10,8 @@
  *
  * @element ag-hqplayer-output
  *
- * @fires hqp-connected    - Bubbles when HQPlayer connection is established.
- * @fires hqp-disconnected - Bubbles when HQPlayer connection is removed.
+ * @fires sources-changed - Bubbles when the HQPlayer connection is created or removed.
+ *
  *
  * @dependency css/components/library-sources.css (lib-hqp-* classes)
  */
@@ -123,7 +123,7 @@ class AgHqplayerOutput extends LitElement {
             if (this._connection.available) {
                 await Promise.all([this._loadDspOptions(), this._loadStatus()]);
             }
-            this.dispatchEvent(new CustomEvent('hqp-connected', { bubbles: true }));
+            this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         } catch (e) {
             console.warn('[hqplayer] Connect failed:', e.message);
         }
@@ -164,7 +164,7 @@ class AgHqplayerOutput extends LitElement {
         this._modes        = [];
         this._dspExpanded  = false;
         this._useAsOutput  = false;   // the backend clears it with the connection
-        this.dispatchEvent(new CustomEvent('hqp-disconnected', { bubbles: true }));
+        this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
     }
 
     /** Fetch filter/shaper/mode lists in parallel. */

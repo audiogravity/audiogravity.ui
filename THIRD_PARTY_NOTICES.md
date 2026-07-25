@@ -131,7 +131,7 @@ with a FAQ at https://openfontlicense.org/ofl-faq.
 ## Trademarks
 
 The UI displays the names and logos of third-party streaming services that
-Audiogravity integrates with. **No code or library from these services is
+Audiogravi<sup>ty</sup> integrates with. **No code or library from these services is
 bundled** — only their brand assets are shown to identify the services
 (nominative use). The user's own active subscription is required.
 
@@ -139,7 +139,7 @@ bundled** — only their brand assets are shown to identify the services
 - **Tidal** — TIDAL and the TIDAL logo.
 - **HIGHRESAUDIO** — HIGHRESAUDIO (HRA) and the HIGHRESAUDIO logo.
 
-These names and logos are trademarks of their respective owners. Audiogravity is
+These names and logos are trademarks of their respective owners. Audiogravi<sup>ty</sup> is
 **not affiliated with, endorsed by, or sponsored by** any of these companies.
 
 ---

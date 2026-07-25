@@ -240,3 +240,40 @@ describe('notifyOutputError', () => {
         expect(showToast).not.toHaveBeenCalled();
     });
 });
+
+
+// ---------------------------------------------------------------------------
+// getSnapshot — the cache must be skippable
+// ---------------------------------------------------------------------------
+// Connecting or disconnecting a source changes the source list on the box. The
+// UI then re-reads it — and a cached-but-stale snapshot would answer with the
+// state from before the change, which is the whole bug this option exists for.
+
+import { getSnapshot } from './library-store.js';
+import { apiGet as _apiGet } from './api.js';
+
+describe('getSnapshot', () => {
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('serves the cached value on a second call', async () => {
+        _apiGet.mockResolvedValue({ sources: [{ source_id: 'src_mpd' }] });
+        await getSnapshot();
+        await getSnapshot();
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('refetches when forced, and returns the new list', async () => {
+        // The cache is warm from the previous test — exactly the situation a
+        // connect/disconnect lands in.
+        _apiGet.mockResolvedValue({
+            sources: [{ source_id: 'src_mpd' }, { source_id: 'src_highresaudio' }],
+        });
+        const cached = await getSnapshot();
+        expect(_apiGet).not.toHaveBeenCalled();          // still the stale one
+        expect(cached.sources.map(s => s.source_id)).not.toContain('src_highresaudio');
+
+        const fresh = await getSnapshot({ force: true });
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+        expect(fresh.sources.map(s => s.source_id)).toContain('src_highresaudio');
+    });
+});

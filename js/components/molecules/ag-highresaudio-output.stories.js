@@ -16,8 +16,8 @@ export default {
 const Template = () => {
     const el = document.createElement('ag-highresaudio-output');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
-    el.addEventListener('highresaudio-connected',    () => console.log('highresaudio-connected'));
-    el.addEventListener('highresaudio-disconnected', () => console.log('highresaudio-disconnected'));
+    el.addEventListener('sources-changed',    () => console.log('sources-changed'));
+    el.addEventListener('sources-changed', () => console.log('sources-changed'));
     return el;
 };
 

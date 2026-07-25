@@ -66,6 +66,18 @@ export class AgLibrarySources extends LitElement {
         super.connectedCallback();
         this._loadKnownUpnpServers();
         this._load();
+        // The connection cards below are OUR children, and connecting or
+        // disconnecting one changes the very list rendered here. Without this
+        // the list was read once, on mount, and never again — so a source
+        // connected from this screen only appeared after leaving and coming
+        // back to it.
+        this._boundSourcesChanged = () => this._load({ force: true });
+        this.addEventListener('sources-changed', this._boundSourcesChanged);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.removeEventListener('sources-changed', this._boundSourcesChanged);
     }
 
     /**
@@ -98,14 +110,23 @@ export class AgLibrarySources extends LitElement {
         if (this._upnpServers.length === 0) this._upnpDiscovered = false;
         try {
             await apiDelete(`/library/upnp-known-servers/${encodeURIComponent(srv.id)}`);
+            this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         } catch (e) {
             console.error('[sources] UPnP remove failed:', e);
         }
     }
 
-    async _load() {
+    /**
+     * Read the source list from the player state.
+     *
+     * @param {object} [opts]
+     * @param {boolean} [opts.force] - Skip the snapshot cache. Required after a
+     *        connection changed the list: a cached answer still describes the
+     *        state from before it.
+     */
+    async _load({ force = false } = {}) {
         await loadWithState(this, async () => {
-            const state = await getSnapshot();
+            const state = await getSnapshot({ force });
             this._nodes = (state?.sources ?? []).map(s => ({
                 id:     s.source_id,
                 name:   s.name,

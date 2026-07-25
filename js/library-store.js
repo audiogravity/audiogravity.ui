@@ -199,9 +199,14 @@ async function fetchInto(entry, path) {
  * Returns the cached value when fresh (kept live by the unfiltered
  * {@link subscribePlayerState} stream when active, or by TTL otherwise);
  * otherwise issues a single fetch deduplicated across concurrent callers.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache. Needed right after something
+ *        changed the source list: a fresh-but-stale snapshot would answer with
+ *        the state from before the change.
  */
-export async function getSnapshot() {
-    if (isFresh(snapshot, TTL_SNAPSHOT)) return snapshot.value;
+export async function getSnapshot({ force = false } = {}) {
+    if (!force && isFresh(snapshot, TTL_SNAPSHOT)) return snapshot.value;
     if (snapshot.inFlight) return snapshot.inFlight;
     return fetchInto(snapshot, '/player/state/snapshot');
 }

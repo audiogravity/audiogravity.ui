@@ -8,8 +8,8 @@
  *
  * @element ag-qobuz-output
  *
- * @fires qobuz-connected    - Bubbles when Qobuz authentication succeeds.
- * @fires qobuz-disconnected - Bubbles when Qobuz connection is removed.
+ * @fires sources-changed - Bubbles when the Qobuz connection is created or removed.
+ *
  *
  * @dependency css/components/library-sources.css (lib-qb-* classes)
  */
@@ -107,7 +107,7 @@ class AgQobuzOutput extends LitElement {
         }
         this._connection = null;
         this._connecting = false;
-        this.dispatchEvent(new CustomEvent('qobuz-disconnected', { bubbles: true }));
+        this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         await this._loadConnection();
     }
 
@@ -125,7 +125,7 @@ class AgQobuzOutput extends LitElement {
                     // alongside the callback's own auto-close).
                     try { this._oauthPopup?.close(); } catch { /* cross-origin/closed */ }
                     this._oauthPopup = null;
-                    this.dispatchEvent(new CustomEvent('qobuz-connected', { bubbles: true }));
+                    this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
                 }
             } catch { /* ignore */ }
         }, 3000);

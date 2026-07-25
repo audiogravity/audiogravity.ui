@@ -2,7 +2,7 @@
 
 > **Note — source-available, early access**
 >
-> Audiogravity UI is published under the MIT licence and you are free to read,
+> Audiogravi<sup>ty</sup> UI is published under the MIT licence and you are free to read,
 > fork, and adapt the code. However, **we are not accepting pull requests at
 > this stage** of the project.
 >
@@ -14,7 +14,7 @@
 ## Prerequisites
 
 - **Node.js** 18+ and **npm**
-- A running **Audiogravity core** (`audiogravity.core`) on port 8000
+- A running **Audiogravi<sup>ty</sup> core** (`audiogravity.core`) on port 8000
   — see the core repo for setup instructions
 
 ## Development setup

@@ -11,8 +11,8 @@
  * `<ag-tidal-output>`.
  *
  * @element ag-tidal-output
- * @fires tidal-connected    - Bubbles when Tidal authentication succeeds.
- * @fires tidal-disconnected - Bubbles when the Tidal connection is removed.
+ *
+ * @fires sources-changed - Bubbles when the Tidal connection is created or removed.
  * @dependency css/components/library-sources.css (lib-qb-*, lib-tidal-* classes)
  */
 
@@ -83,7 +83,7 @@ class AgTidalOutput extends LitElement {
                 this._connection = conn;
                 this._awaiting = false;
                 this._redirect = '';
-                this.dispatchEvent(new CustomEvent('tidal-connected', { bubbles: true }));
+                this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
             } else {
                 this._error = 'Login failed — check the pasted URL and try again.';
             }
@@ -102,7 +102,7 @@ class AgTidalOutput extends LitElement {
         }
         this._connection = null;
         this._awaiting = false;
-        this.dispatchEvent(new CustomEvent('tidal-disconnected', { bubbles: true }));
+        this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         await this._loadConnection();
     }
 
