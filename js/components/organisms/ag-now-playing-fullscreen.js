@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -873,6 +873,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         // speaker selected but stopped looked exactly like one playing.
         const label = outputLabel(s);
         const idle = isOutputStopped(s);
+        const unreachable = isOutputUnreachable(s);
         return html`
             <div class="npfs-output-bar">
                 <div class="npfs-out-info">
@@ -885,7 +886,9 @@ export class AgNowPlayingFullscreen extends LitElement {
                         <span class="npfs-out-label">Output → DAC</span>
                         <div class="npfs-out-value-row">
                             <span class="npfs-out-value">${label}</span>
-                            ${idle ? html`<span class="npfs-out-idle">Stopped</span>` : nothing}
+                            ${unreachable
+                                ? html`<span class="npfs-out-idle">Unreachable</span>`
+                                : idle ? html`<span class="npfs-out-idle">Stopped</span>` : nothing}
                             ${s?.output_connector
                                 ? html`<ag-connector-badge .connector=${s.output_connector}></ag-connector-badge>`
                                 : nothing}

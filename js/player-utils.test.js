@@ -143,7 +143,7 @@ describe('applySeekGuard', () => {
 // flat output_label carries a name and nothing else, so a speaker selected but
 // stopped was indistinguishable from one playing.
 
-import { activeOutput, outputLabel, isOutputStopped, activeOutputError } from './player-utils.js';
+import { activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError } from './player-utils.js';
 
 describe('activeOutput', () => {
     const local = { id: 'local', type: 'local', name: 'Heed Abacus', active: false, transport_state: 'STOPPED' };
@@ -222,5 +222,28 @@ describe('activeOutputError', () => {
     it('returns the message when the active output is the failing one', () => {
         const state = { outputs: [{ id: 'local', name: 'DAC', active: true, error: 'busy' }] };
         expect(activeOutputError(state)).toBe('busy');
+    });
+});
+
+
+describe('isOutputUnreachable', () => {
+    const out = (reachable) => ({
+        outputs: [{ id: 'uuid:m', name: 'Marantz', active: true, reachable, transport_state: null }],
+        active_output_id: 'uuid:m',
+    });
+
+    it('is true for a selected speaker that cannot be contacted', () => {
+        expect(isOutputUnreachable(out(false))).toBe(true);
+    });
+
+    it('is false when it answers', () => {
+        expect(isOutputUnreachable(out(true))).toBe(false);
+    });
+
+    it('is false when the backend does not send the flag', () => {
+        // Never inferred from a missing transport state: "cannot reach it" and
+        // "reached it, it said nothing" are different answers.
+        expect(isOutputUnreachable({ outputs: [{ id: 'local', active: true }] })).toBe(false);
+        expect(isOutputUnreachable({ outputs: [] })).toBe(false);
     });
 });

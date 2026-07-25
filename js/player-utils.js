@@ -87,6 +87,19 @@ export function isOutputStopped(state) {
 }
 
 /**
+ * Whether the selected output cannot be contacted — a speaker that is asleep or
+ * off the network. Read from the output's own flag, not guessed from a missing
+ * transport state: "I cannot reach it" and "I reached it and it said nothing"
+ * are different answers and deserve different words.
+ *
+ * @param {object|null} state - PlayerState-like object.
+ * @returns {boolean}
+ */
+export function isOutputUnreachable(state) {
+    return activeOutput(state)?.reachable === false;
+}
+
+/**
  * Raw failure reported by the active output's engine, when it explains the
  * silence (e.g. the exclusive DAC held by another local service).
  * @param {object|null} state - PlayerState-like object.
