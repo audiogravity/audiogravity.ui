@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -316,8 +316,14 @@ export class AgNowPlayingFullscreen extends LitElement {
         // including a source-pinned one.
         // A renderer cast carries its queue in state.queue_next (live via SSE);
         // only the local-queue path (MPD) still needs a fetch.
-        const rendererRouting = (state.control_id ?? state.source_id) === 'upnp_renderer';
-        if (rendererRouting) {
+        //
+        // Keyed on played_on — the output the audio actually comes out of —
+        // rather than on the internal routing handle: that handle is never
+        // meant to be displayed or tested against in the UI, and matching the
+        // literal 'upnp_renderer' would miss any other network output added
+        // later. Any non-local output pushes its own queue.
+        const playsOnNetworkOutput = !!state.played_on && state.played_on !== 'local';
+        if (playsOnNetworkOutput) {
             this._nextTrack = state.queue_next ?? null;
         } else if (trackChanged && this._open) {
             this._fetchNextTrack(state);
@@ -681,7 +687,8 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     /** @returns {object|null} The active network-renderer output entry from PlayerState. */
     get _rendererOut() {
-        return (this._state?.outputs ?? []).find(o => o.type === 'upnp_renderer' && o.active) ?? null;
+        const out = activeOutput(this._state);
+        return out?.type === 'upnp_renderer' ? out : null;
     }
 
     /**
@@ -861,7 +868,11 @@ export class AgNowPlayingFullscreen extends LitElement {
     }
 
     _renderOutputBar(s) {
-        const label = s?.output_label ?? 'No output selected';
+        // Name and state both come from outputs[] (spec §4): the flat
+        // output_label says nothing about whether that output is running, so a
+        // speaker selected but stopped looked exactly like one playing.
+        const label = outputLabel(s);
+        const idle = isOutputStopped(s);
         return html`
             <div class="npfs-output-bar">
                 <div class="npfs-out-info">
@@ -874,6 +885,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                         <span class="npfs-out-label">Output → DAC</span>
                         <div class="npfs-out-value-row">
                             <span class="npfs-out-value">${label}</span>
+                            ${idle ? html`<span class="npfs-out-idle">Stopped</span>` : nothing}
                             ${s?.output_connector
                                 ? html`<ag-connector-badge .connector=${s.output_connector}></ag-connector-badge>`
                                 : nothing}

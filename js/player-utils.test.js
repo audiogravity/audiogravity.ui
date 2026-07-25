@@ -134,3 +134,93 @@ describe('applySeekGuard', () => {
         expect(out.pending).toBeNull();
     });
 });
+
+
+// ---------------------------------------------------------------------------
+// The output the audio actually goes to (spec §4/§5)
+// ---------------------------------------------------------------------------
+// outputs[] is the single source of truth for what the outputs are doing. The
+// flat output_label carries a name and nothing else, so a speaker selected but
+// stopped was indistinguishable from one playing.
+
+import { activeOutput, outputLabel, isOutputStopped, activeOutputError } from './player-utils.js';
+
+describe('activeOutput', () => {
+    const local = { id: 'local', type: 'local', name: 'Heed Abacus', active: false, transport_state: 'STOPPED' };
+    const marantz = { id: 'uuid:m', type: 'upnp_renderer', name: 'Marantz', active: true, transport_state: 'PLAYING' };
+
+    it('picks the entry named by active_output_id', () => {
+        const out = activeOutput({ outputs: [local, marantz], active_output_id: 'local' });
+        expect(out.id).toBe('local');
+    });
+
+    it('falls back to the active flag when no id is given', () => {
+        expect(activeOutput({ outputs: [local, marantz] }).id).toBe('uuid:m');
+    });
+
+    it('returns null when there are no outputs', () => {
+        expect(activeOutput({ outputs: [] })).toBeNull();
+        expect(activeOutput(null)).toBeNull();
+    });
+});
+
+describe('outputLabel', () => {
+    it('names the active output', () => {
+        const state = { outputs: [{ id: 'uuid:m', name: 'Marantz', active: true }], active_output_id: 'uuid:m' };
+        expect(outputLabel(state)).toBe('Marantz');
+    });
+
+    it('names a selected output that is stopped, instead of claiming none is selected', () => {
+        const state = {
+            outputs: [{ id: 'uuid:m', type: 'upnp_renderer', name: 'Marantz', active: true, transport_state: 'STOPPED' }],
+            active_output_id: 'uuid:m',
+            output_label: null,
+        };
+        expect(outputLabel(state)).toBe('Marantz');
+    });
+
+    it('falls back to the flat label, then to a placeholder', () => {
+        expect(outputLabel({ outputs: [], output_label: 'Legacy DAC' })).toBe('Legacy DAC');
+        expect(outputLabel({ outputs: [] })).toBe('No output selected');
+    });
+});
+
+describe('isOutputStopped', () => {
+    const out = (transport_state) => ({
+        outputs: [{ id: 'uuid:m', name: 'Marantz', active: true, transport_state }],
+        active_output_id: 'uuid:m',
+    });
+
+    it('is true for a selected output sitting idle', () => {
+        expect(isOutputStopped(out('STOPPED'))).toBe(true);
+    });
+
+    it('is false while it plays or pauses', () => {
+        expect(isOutputStopped(out('PLAYING'))).toBe(false);
+        expect(isOutputStopped(out('PAUSED'))).toBe(false);
+    });
+
+    it('is false when the state is unknown — never inferred from a missing item', () => {
+        expect(isOutputStopped(out(null))).toBe(false);
+        expect(isOutputStopped({ outputs: [] })).toBe(false);
+    });
+});
+
+describe('activeOutputError', () => {
+    it('reads the error of the output designated by active_output_id', () => {
+        const state = {
+            outputs: [
+                { id: 'local', name: 'DAC', active: false, error: 'busy' },
+                { id: 'uuid:m', name: 'Marantz', active: true, error: null },
+            ],
+            active_output_id: 'uuid:m',
+        };
+        // The local DAC's failure must not be attributed to the speaker playing.
+        expect(activeOutputError(state)).toBeNull();
+    });
+
+    it('returns the message when the active output is the failing one', () => {
+        const state = { outputs: [{ id: 'local', name: 'DAC', active: true, error: 'busy' }] };
+        expect(activeOutputError(state)).toBe('busy');
+    });
+});

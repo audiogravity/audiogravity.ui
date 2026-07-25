@@ -444,6 +444,16 @@ body:not(.npfs-open) .topbar {
     gap: var(--spacing-xs);
 }
 
+/* The selected output is idle — it stays selected and controllable, so the bar
+   says so rather than looking like it is playing (spec §6, case 3). */
+.npfs-out-idle {
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
 /* Engine-reported reason why the selected output produces no sound (e.g. the
    exclusive DAC still held by another local service). The raw message is the
    title attribute; this line carries the plain-language summary. */

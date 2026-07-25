@@ -4,7 +4,7 @@
  */
 
 import { html } from 'lit';
-import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconHeadphones, iconLibrary, iconExternalLink } from '../ag-icons.js';
+import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconLibrary, iconExternalLink } from '../ag-icons.js';
 import { apiGet } from '../api.js';
 
 export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
@@ -48,7 +48,6 @@ export const ORIGIN_LABELS = {
     upnp: 'UPnP',
     library: 'Library',
     airplay: 'AirPlay',
-    hqplayer: 'HQPlayer',
     mpris: 'Stream',
     // Content AG did not start: a third-party controller is driving the
     // renderer or HQPlayer. Missing here, the badge showed the raw key.
@@ -64,7 +63,6 @@ export const ORIGIN_ICONS = {
     upnp: originSvg(iconHardDrive, 'UPnP'),
     library: originSvg(iconMusicNote, 'Library'),
     airplay: originSvg(iconWifi, 'AirPlay'),
-    hqplayer: originSvg(iconHeadphones, 'HQPlayer'),
     mpris: originSvg(iconMusicNote, 'Stream'),
     external: originSvg(iconExternalLink, 'External'),
 };
@@ -188,16 +186,19 @@ export function resolvePlayingSource(state) {
  * Build the deduplicated list of searchable library sources for the search bar.
  * Combines playback-pipeline sources with known UPnP/DLNA media servers (which
  * are not part of the pipeline). mpris receivers (AirPlay, Spotify, the upmpdcli
- * bridge) are dropped — they expose no library API.
+ * bridge) are dropped — they expose no library API. Entries the backend marks
+ * `selectable: false` are dropped too: a network renderer is an output and
+ * HQPlayer a processor, so they appear among the playing sources for the player
+ * to render but hold no catalogue to browse.
  *
- * @param {Array<{source_id:string, name?:string, protocol?:string}>} rawSources - pipeline sources
+ * @param {Array<{source_id:string, name?:string, protocol?:string, selectable?:boolean}>} rawSources - pipeline sources
  * @param {Array<{id:string, friendly_name?:string, location?:string}>} [upnpServers] - known UPnP servers
  * @returns {Array<{id:string, label:string, group:string, location:string}>}
  */
 export function normalizeSearchSources(rawSources, upnpServers = []) {
     const seen = new Set();
     const sources = (rawSources ?? []).reduce((acc, s) => {
-        if (s.protocol === 'mpris') return acc;
+        if (s.protocol === 'mpris' || s.selectable === false) return acc;
         const meta = SOURCE_META[s.source_id] ?? { label: s.name ?? s.source_id, group: s.source_id };
         if (seen.has(meta.group)) return acc;
         seen.add(meta.group);

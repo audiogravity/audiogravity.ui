@@ -434,21 +434,25 @@ describe('AgNowPlayingFullscreen — track number badge (tnLabel)', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Replicate the _applyState "Up next" resolution: a renderer cast reads
- * state.queue_next; the local path falls back to the queue fetch.
+ * Replicate the _applyState "Up next" resolution: an item playing on a network
+ * output reads state.queue_next (pushed live over SSE); the local path falls
+ * back to the MPD queue fetch.
+ *
+ * Keyed on played_on — the output the audio comes out of — not on the internal
+ * routing handle, which the UI must never test against.
  * @param {object} state - PlayerState-like object.
  * @returns {{nextTrack: object|null, needsFetch: boolean}}
  */
 function resolveUpNext(state) {
-    const rendererRouting = (state.outputs ?? []).some(o => o.type === 'upnp_renderer' && o.active);
-    if (rendererRouting) return { nextTrack: state.queue_next ?? null, needsFetch: false };
+    const playsOnNetworkOutput = !!state.played_on && state.played_on !== 'local';
+    if (playsOnNetworkOutput) return { nextTrack: state.queue_next ?? null, needsFetch: false };
     return { nextTrack: undefined, needsFetch: true };
 }
 
 describe('AgNowPlayingFullscreen — Up next from PlayerState.queue_next', () => {
     it('renderer cast: up-next comes from state.queue_next, no fetch', () => {
         const r = resolveUpNext({
-            outputs: [FS_RENDERER_OUT],
+            played_on: 'uuid:m',
             queue_next: { title: 'So What', artist: 'Miles Davis' },
         });
         expect(r.needsFetch).toBe(false);
@@ -456,13 +460,31 @@ describe('AgNowPlayingFullscreen — Up next from PlayerState.queue_next', () =>
     });
 
     it('renderer cast at end of queue: up-next cleared, no fetch', () => {
-        const r = resolveUpNext({ outputs: [FS_RENDERER_OUT], queue_next: null });
+        const r = resolveUpNext({ played_on: 'uuid:m', queue_next: null });
         expect(r.needsFetch).toBe(false);
         expect(r.nextTrack).toBe(null);
     });
 
     it('local playback: falls back to the queue fetch', () => {
-        const r = resolveUpNext({ outputs: [FS_LOCAL_OUT], queue_next: null });
+        const r = resolveUpNext({ played_on: 'local', queue_next: null });
+        expect(r.needsFetch).toBe(true);
+    });
+
+    it('a local item shown while a cast runs elsewhere keeps its own queue', () => {
+        // state.queue_next travels on every state, including a source-pinned
+        // one: testing "is some renderer active" made the AirPlay view show the
+        // renderer's queue. The item on screen decides.
+        const r = resolveUpNext({
+            played_on: 'local',
+            outputs: [FS_RENDERER_OUT],
+            queue_next: { title: 'Track from the cast' },
+        });
+        expect(r.needsFetch).toBe(true);
+        expect(r.nextTrack).toBeUndefined();
+    });
+
+    it('a state without played_on falls back to the local path', () => {
+        const r = resolveUpNext({ queue_next: { title: 'x' } });
         expect(r.needsFetch).toBe(true);
     });
 });

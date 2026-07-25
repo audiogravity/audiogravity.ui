@@ -147,15 +147,10 @@ class AgHqplayerOutput extends LitElement {
 
     /** Remove the HQPlayer connection. */
     async _disconnect() {
-        // Stop FIRST: deleting the connection clears the host, after which the
-        // backend can no longer reach HQPlayer — its NAA would keep holding the
-        // exclusive sound card and local playback would fail with
-        // `Device or resource busy`.
-        try {
-            await apiPost('/hqplayer/stop');
-        } catch (e) {
-            console.warn('[hqp] could not stop HQPlayer while disconnecting:', e);
-        }
+        // No explicit stop here: the backend stops HQPlayer itself before
+        // clearing the host, because the invariant belongs to it — its NAA holds
+        // the exclusive sound card until then, and any other client (an older
+        // build, a script) would otherwise leave the card stuck.
         try {
             await apiDelete('/hqplayer/connection');
         } catch (e) {
@@ -440,9 +435,9 @@ class AgHqplayerOutput extends LitElement {
                   Also shown while the setting is ON but HQPlayer is unreachable,
                   otherwise the user is trapped: the setting lives server-side and
                   keeps routing every play to an HQPlayer that cannot answer, while
-                  the only control able to turn it off is hidden. The automatic
-                  guard in updated() does not cover this — it watches the LOCAL NAA
-                  service, which stays active when the HQPlayer host goes away.
+                  the only control able to turn it off is hidden. Nothing else
+                  turns it off on their behalf — a view must not mutate shared
+                  state, see the note above _toggleDsp.
                   Still hidden when OFF and unreachable: nothing to act on.
                 -->
                 ${fullyConnected || this._useAsOutput ? html`

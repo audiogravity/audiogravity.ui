@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -54,6 +54,7 @@ export class AgNowPlaying extends LitElement {
         _licenseStatus: { state: true },
         /** @type {Array<object>} Runtime outputs from PlayerState (local DAC + selected renderer). */
         _outputs: { state: true },
+        _activeOutputId: { state: true },
         /** @type {boolean} True when the browser has no network connectivity. */
         _offline: { state: true },
     };
@@ -71,6 +72,7 @@ export class AgNowPlaying extends LitElement {
         this._bgColors = new Map();
         this._licenseStatus = 'no_license';
         this._outputs = [];
+        this._activeOutputId = null;
         this._offline = !navigator.onLine;
         this._unsubscribeState = null;
         this._resizeObserver = null;
@@ -189,7 +191,8 @@ export class AgNowPlaying extends LitElement {
 
     /** @returns {object|null} The active network-renderer output entry, if any. */
     get _rendererOut() {
-        return this._outputs.find(o => o.type === 'upnp_renderer' && o.active) ?? null;
+        const out = activeOutput({ outputs: this._outputs, active_output_id: this._activeOutputId });
+        return out?.type === 'upnp_renderer' ? out : null;
     }
 
     /** @returns {boolean} True when the UPnP renderer is the active audio destination. */
@@ -206,6 +209,7 @@ export class AgNowPlaying extends LitElement {
         if (!state?.sources) return;
         // Runtime outputs (local DAC + selected renderer) — drives the routing badge.
         this._outputs = state.outputs ?? [];
+        this._activeOutputId = state.active_output_id ?? null;
 
         const items = state.sources.filter(s => s.playing).map(s => {
             // For the active source, prefer root state values (fresher than

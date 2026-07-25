@@ -42,13 +42,58 @@ export function isSelfManagedDriver(itemOrState) {
 }
 
 /**
+ * The output entry currently carrying the audio.
+ *
+ * `active_output_id` names it; the `active` flag is the fallback for a state
+ * built before that field existed. Both come from `outputs[]`, which is the
+ * single source of truth for what the outputs are doing (spec §5) — the flat
+ * `output_label` is kept for compatibility but says nothing about their state.
+ *
+ * @param {object|null} state - PlayerState-like object.
+ * @returns {object|null} The active `outputs[]` entry, or null when there is none.
+ */
+export function activeOutput(state) {
+    const outputs = state?.outputs ?? [];
+    return outputs.find(o => o.id === state?.active_output_id)
+        ?? outputs.find(o => o.active)
+        ?? null;
+}
+
+/**
+ * Name of the output the audio goes to, for the output bar.
+ *
+ * Derived from `outputs[]` (spec §4) rather than the flat `output_label`: the
+ * flat field is empty when the topology declares no converter node, which read
+ * as "No output selected" on a box that has a perfectly good DAC.
+ *
+ * @param {object|null} state - PlayerState-like object.
+ * @returns {string} The output name, or a placeholder when nothing is selected.
+ */
+export function outputLabel(state) {
+    return activeOutput(state)?.name ?? state?.output_label ?? 'No output selected';
+}
+
+/**
+ * Whether the selected output is sitting idle — the "selected but stopped"
+ * case (spec §6.3): no item plays, yet the output stays selected and
+ * controllable. Read from the output's own transport state, never inferred
+ * from the absence of a now-playing item.
+ *
+ * @param {object|null} state - PlayerState-like object.
+ * @returns {boolean}
+ */
+export function isOutputStopped(state) {
+    return activeOutput(state)?.transport_state === 'STOPPED';
+}
+
+/**
  * Raw failure reported by the active output's engine, when it explains the
  * silence (e.g. the exclusive DAC held by another local service).
  * @param {object|null} state - PlayerState-like object.
  * @returns {string|null} The engine's own message, or null when the output is fine.
  */
 export function activeOutputError(state) {
-    return (state?.outputs ?? []).find(o => o.active)?.error ?? null;
+    return activeOutput(state)?.error ?? null;
 }
 
 /**

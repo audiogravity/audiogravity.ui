@@ -178,6 +178,21 @@ describe('normalizeSearchSources', () => {
         expect(normalizeSearchSources([airplay])).toEqual([]);
     });
 
+    it('drops entries the backend marks as not selectable', () => {
+        // A renderer cast and an HQPlayer playback appear among the playing
+        // sources so the player can render them, but they are an output and a
+        // processor — neither holds a catalogue to browse.
+        const cast = { source_id: 'upnp_renderer', protocol: 'upnp', selectable: false };
+        const hqp  = { source_id: 'src_hqplayer', protocol: 'hqplayer', selectable: false };
+        expect(normalizeSearchSources([mpd, cast, hqp])).toEqual([
+            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '' },
+        ]);
+    });
+
+    it('keeps sources from a backend that does not send the flag', () => {
+        expect(normalizeSearchSources([mpd])).toHaveLength(1);
+    });
+
     it('appends known UPnP servers with their location URL', () => {
         const out = normalizeSearchSources([mpd], [
             { id: 'upnp:abc', friendly_name: 'MinimServer', location: 'http://srv/device.xml' },
