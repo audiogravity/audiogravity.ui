@@ -2,7 +2,7 @@
 
 The UI communicates with the core exclusively via:
 - **REST** (JSON over HTTPS) — all endpoints under the base URL
-- **SSE** — real-time event stream at `/sse`
+- **SSE** — real-time event stream at `/sse/dashboard`
 - **WebSocket** — PTY terminal at `/sysinfo/terminal/ws`
 
 Full interactive documentation is available at **`/docs`** (Swagger UI) on a
@@ -38,12 +38,12 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/auth/logout` | Invalidate session |
 | GET | `/auth/users` | List users (admin) |
 | POST | `/auth/users` | Create user (admin) |
-| PUT | `/auth/users/{id}` | Update user |
-| DELETE | `/auth/users/{id}` | Delete user |
+| PATCH | `/auth/users/{username}` | Update a user (password, role, enabled) |
+| DELETE | `/auth/users/{username}` | Delete a user |
 | GET | `/auth/users/active` | Current user info |
 | POST | `/auth/webauthn/register/begin` | Start passkey registration |
 | POST | `/auth/webauthn/register/complete` | Complete passkey registration |
-| POST | `/auth/webauthn/login/begin` | Start passkey login — always **200** with authentication options (empty `allowCredentials` when the user is unknown or has no passkeys); it never 404s, so it cannot be used to enumerate usernames |
+| POST | `/auth/webauthn/login/begin` | Start passkey login — always **200** with authentication options (empty `allowCredentials` when the user is unknown or has no passkeys); never 404, whatever the username |
 | POST | `/auth/webauthn/login/complete` | Complete passkey login |
 | GET | `/auth/webauthn/credentials` | List registered passkeys |
 | DELETE | `/auth/webauthn/credentials/{id}` | Remove passkey |
@@ -54,35 +54,93 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/current` | Current pipeline state + now playing |
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
-| POST | `/audio_pipeline/control` | Transport controls (play/pause/next…) — body `{ source_id, control_id?, action, volume?/seek_position? }`. **`control_id`** is the routing handle from the item (`NowPlayingItem.control_id`) and wins over `source_id`; commands route to the device that **plays** the content (MPD locally, the renderer for a cast, HQPlayer, Roon). Handles: pipeline sources (`src_mpd`…), `src_hqplayer`, `upnp_renderer`. |
+| GET | `/audio_pipeline/now-playing` | Every active playback source |
+| GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played |
+| GET | `/audio_pipeline/cover` | Resolve cover art for a now-playing item |
+| POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }` |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/library/queue` | Add/play item — **routed to HQPlayer when it is the selected output** (`use_as_output`, decided server-side so clients never diverge). Destination resolved by one shared router (`core.playback_output`) used by every play path: **501** for a streaming source (Qobuz/Tidal/HRA), which HQPlayer cannot resolve — it reads items through MPD, so only the local library and stream URLs reach it today (cf. spec §7.4); **409** when a network renderer **and** HQPlayer are both selected, since AG will not guess which device you meant; **Roon is never diverted** — a Roon zone is its own output chain and never touches the local DAC HQPlayer replaces. A push HQPlayer refuses outright (undecodable format, exchange failure) surfaces as **503** carrying its own diagnosis. Whether the push produced actual **sound** is not decided here: proving it takes longer than a request may block (a heavy DSD chain starts ~28 s after the push), so the call returns as soon as HQPlayer accepts, and a silent outcome is reported afterwards on `player_state.outputs[].error`. Otherwise routes to the active UPnP renderer when connected and action='play' (streaming **and** local library: a remote renderer pulls local files via the signed stream URL below; the local DAC / on-host renderer stay MPD-direct) |
+| GET | `/library/albums` | List albums — `?source_id=` and optional `?artist_id=` |
+| GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
+| POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action }` |
+| DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
-| POST | `/library/upnp-play` | Play UPnP item — body gains **`duration`** (carried through when the play is routed to HQPlayer, so the now-playing card keeps the track length). Routed to HQPlayer when it is the selected output, **honouring `action`**: `add` appends to the HQPlayer queue and leaves playback untouched (it used to clear the queue and jump to the track while reporting a successful enqueue). The stream is badged `origin: "upnp"`, not `library`. Same **409** conflict rule as `/library/queue`; a refused push → **503** with HQPlayer's diagnosis, while a push that starts no sound is reported on `outputs[].error` (see `/library/queue`). Otherwise routed to the renderer or MPD |
-| GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — **`location` param (was `control_url`)** |
-| GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — **`location` param (was `control_url`)** |
+| POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }` |
+| GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL |
+| GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
 | GET | `/library/upnp-servers` | Scan for new UPnP servers |
 | GET | `/library/roon-zones` | List Roon zones |
+| GET | `/library/roon-browse` | Browse the Roon hierarchy |
+| POST | `/library/roon-action` | Execute a Roon browse action (play, queue…) |
+| DELETE | `/library/upnp-known-servers/{server_id}` | Forget a persisted UPnP server |
+| GET | `/library/qobuz-featured` | Qobuz featured albums |
+| GET | `/library/qobuz-playlists` | Qobuz editorial playlists |
+| GET | `/library/qobuz-playlist-tracks` | Tracks of a Qobuz playlist |
+| GET | `/library/tidal-featured` | Tidal editorial discovery |
+| GET | `/library/tidal-charts` | Tidal charts |
+| GET | `/library/tidal-editorial` | Tidal editorial playlists |
+| GET | `/library/tidal-playlists` | Tidal user playlists |
+| GET | `/library/tidal-playlist-tracks` | Tracks of a Tidal playlist |
 | GET | `/library/highresaudio-discover` | HRA curated album grid ("High-Res Essentials") |
 | GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
+
+**Where a play goes** — `/library/queue`, `/library/upnp-play` and `/radio/play` all
+resolve their destination the same way, and answer with the same statuses:
+
+| Status | Meaning |
+|---|---|
+| **501** | The selected output cannot play this content — a streaming source (Qobuz/Tidal/HRA) while HQPlayer is the output, or a source the backend could not classify |
+| **409** | A network renderer **and** HQPlayer are both selected — turn one off |
+| **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) |
+
+Roon is never diverted: a Roon zone is its own output chain. `action: "add"` appends —
+to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
+a network renderer has no persistent queue, so an `add` stays with MPD. A UPnP stream is
+badged `origin: "upnp"`, a station `origin: "radio"`.
+
+A **200 does not mean sound came out**: whether a push to HQPlayer actually started is
+decided after the response and surfaces on `PlayerState.outputs[].error`.
 
 > Streaming sources are addressed via `source_id`: `/library/albums?source_id=src_highresaudio` (favourites / My Album), `/library/search?source_id=src_highresaudio&q=…`, and `POST /library/queue` with `source_id=src_highresaudio` (`item_type` `album` or `track`). Same pattern as `src_qobuz` / `src_tidal`.
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
-> **Renderer cast = content item + output (control contract, spec §3):** every now-playing item carries two separate identities — **`control_id`** (the ROUTING handle: the device/engine that plays the content and receives commands; equals `source_id` for pipeline sources) and display fields (`origin`, `display_name`), plus **`played_on`** (output id where the audio comes out: `"local"` or a renderer UDN — display only, never routes). When content plays on an active native renderer (Marantz, Linn, a remote AG box), the item is badged with the **content identity** — `origin` resolved from the loaded URI (`qobuz`, `library`, `upnp` + server name, or **`external`** when a third-party controller drives the renderer), `display_name` from that origin, `played_on` = the renderer UDN — while `source_id`/`control_id` stay `"upnp_renderer"` as the internal routing handle (never displayed). Controls go through `POST /audio_pipeline/control` or `POST /player/control` with `control_id` (the handle works even when the renderer is the selected output but **Stopped**). A selected-but-stopped renderer no longer yields a synthetic item: it is carried by `player_state.outputs[]` (entry with `transport_state: "STOPPED"`, `active_output_id` pointing at it, and `output_label` kept); the idle state also carries `control_id: "upnp_renderer"` so the stopped cast stays controllable after a backend restart. **`active` marks the output actually carrying the audio**, not merely a reachable selection: a renderer sitting STOPPED while a local source plays leaves `active` on `local` (otherwise locally-played audio was badged "→ renderer", and since clients read the error of the active output only, a local ALSA failure became invisible). When nothing plays, the selected renderer keeps the active spot. An on-host (local-MPD) renderer is never surfaced this way — it is not selectable as an output. **HQPlayer follows the same model as a PROCESSOR (spec §7)**: its now-playing item is badged with the content identity — `origin: "library"` for AG-pushed tracks, `origin: "external"` (no title — the HQPlayer API does not expose it) when something else drives HQPlayer — with `played_on: "local"` (NAA-gated) and `control_id: "src_hqplayer"` as the routing handle; HQPlayer itself appears as a processor step in `signal_path` when the topology declares it.
+**Item identity — display vs routing.** Every now-playing item carries three separate
+fields:
 
-> **Queue items** (`GET /library/queue?source_id=…`) carry an **`origin`** field (`radio`, `qobuz`, `tidal`, `upnp`, `library`…) that mirrors `NowPlayingItem.origin` — the real stream provider, independent of the MPD transport. It lets the queue label by the actual source (e.g. "Radio") rather than the engine ("Local Library"), and a recognised radio stream's `cover_token` is the station logo. Qobuz/Tidal/HIGHRESAUDIO play over the shared MPD engine, so `GET /library/queue?source_id=src_qobuz` (and `src_tidal` / `src_highresaudio`) returns that shared queue with each item's real `origin` — previously it returned an empty queue. When no MPD engine exists yet the endpoint returns an empty queue (200), not an error. An optional **`?limit=<n>`** returns only the current track plus up to `n` following items (a lightweight next-track peek; item `position` stays the absolute MPD queue position) — omit it for the full queue.
+| Field | Use it for | Never use it for |
+|---|---|---|
+| `origin` (+ `origin_name`) | the badge: `qobuz`, `library`, `radio`, `upnp` + server name, `external` | routing |
+| `played_on` | naming the output: `"local"` or a renderer UDN | routing |
+| `control_id` | routing a transport command | display |
 
-> **Queue removal** is **by stable song id, not position**: each queue item carries a **`queue_id`** (the MPD `Id`, unchanged when the queue reindexes; `None` for Roon), and **`DELETE /library/queue/{queue_id}?source_id=…`** removes via MPD `deleteid`. This is reindex-safe — removing one track never hits the wrong one even if the queue shifted since it was listed. (The path segment was previously the 0-based `position`.)
+A cast is badged with what it **is** — a Qobuz album cast to a speaker reads `origin:
+"qobuz"`, `played_on: "<udn>"` — while `control_id` stays `"upnp_renderer"`, the handle
+commands must be sent to. `external` means a third-party controller drives the device.
+
+A selected-but-stopped renderer yields **no item**: it is carried by
+`PlayerState.outputs[]`, and the state still carries `control_id` so it stays
+controllable. `outputs[].active` marks the output actually carrying the audio, not
+merely a reachable selection.
+
+**Reading the queue** — `GET /library/queue?source_id=…` returns each item with its
+real **`origin`** (`radio`, `qobuz`, `tidal`, `upnp`, `library`…), independent of the MPD
+transport; for a recognised station the item's `cover_token` is the station logo.
+Qobuz/Tidal/HIGHRESAUDIO share the MPD engine, so asking with their `source_id` returns
+that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
+an error. **`?limit=<n>`** returns the current track plus up to `n` following items —
+`position` stays the absolute queue position; omit it for the whole queue.
+
+**Removing from the queue** — `DELETE /library/queue/{queue_id}?source_id=…`, keyed on
+the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not
+on its position.
 
 ### UPnP Renderer — `/upnp-renderer/*`
 
@@ -109,32 +167,72 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 ### Player — `/player/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/player/state` | SSE stream — live `PlayerState` events. Besides track/transport fields, the state carries: **`control_id`** (routing handle of the active item), **`played_on`** (output id: `"local"` or renderer UDN), **`outputs[]`** (`{id, type: "local"\|"upnp_renderer", name, reachable, active, transport_state: "PLAYING"\|"PAUSED"\|"STOPPED"\|null, error}` — the single source of truth for the renderer's transport state; **`reachable`** is `false` when the output cannot be contacted (a selected speaker asleep or off the network) — stated explicitly rather than inferred from a null `transport_state`, which only means "nothing could be read"; **`error`** carries the engine's reason when an output produces no sound, e.g. MPD's `Failed to open ALSA device "hw:0,0": Device or resource busy` when another local service still holds the exclusive DAC. It also carries the verdict of the HQPlayer push watch, which runs after the play request has returned: HQPlayer reporting `playing` with a frozen position, or a track that never leaves pause, both mean no audio is reaching the DAC. `null` normally, self-clearing once playback succeeds or on the next push), **`active_output_id`**, and **`queue_next`** (`{title, artist, album, cover_token}` — upcoming track of a renderer cast; replaces reading `queue_next_*` from `renderer_status`). `sources[]` entries carry `control_id`/`played_on` too, plus **`selectable`** — `false` on an entry that is a routing handle rather than a source (a network renderer is an output, HQPlayer a processor). Such entries are listed so the player can render what is playing, but nothing may offer them as a source to browse or pick from. |
+| GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command (`toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`, `set_shuffle`) — body `{ action, value?, source_id?, control_id? }`; `control_id` (routing handle, spec §3) wins over `source_id` |
-| POST | `/player/source` | Select active source |
-| GET | `/player/sleep-timer` | Current sleep timer state |
-| POST | `/player/sleep-timer` | Arm sleep timer (pause after N minutes) |
-| DELETE | `/player/sleep-timer` | Cancel active sleep timer |
-| GET | `/player/origins` | Canonical `origin → label` map (e.g. `"qobuz" → "Qobuz"`). Clients merge this into their static fallback at startup. An origin is what the CONTENT is, so neither `hqplayer` nor `upnp_renderer` appears here — a processor and an output are not origins; what they play is badged with its own origin, or `external` when a third-party controller drives them. |
-| GET | `/player/outputs` | **Selector catalogue** — all selectable audio outputs: one entry per MPD audio_output block (`type: "mpd_output"`, `output_id: int`) + known UPnP renderers (`type: "upnp_renderer"`). Each entry: `{id, type, name, reachable, active[, output_id]}`. Falls back to a single "Local DAC" entry when MPD is unreachable. Distinct from `PlayerState.outputs[]` (the **runtime** list: local chain + selected renderer with live `transport_state`, built from caches). |
-| PUT | `/player/mpd-output/{output_id}` | Enable one MPD audio output exclusively (all others disabled) and disconnect any active UPnP renderer. `output_id` is the MPD `outputid` integer. Returns 404 when `output_id` is not found in MPD. Returns 503 when MPD is unreachable. |
+| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }` |
+| POST | `/player/source` | Select the active source |
+| GET | `/player/sleep-timer` | Current sleep-timer state |
+| POST | `/player/sleep-timer` | Arm the sleep timer (pause after N minutes) |
+| DELETE | `/player/sleep-timer` | Cancel the sleep timer |
+| GET | `/player/origins` | Canonical `origin → label` map, merged into the client's static fallback at startup |
+| GET | `/player/outputs` | Selector catalogue — every selectable output |
+| PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer |
+
+**Transport actions**: `toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`,
+`set_shuffle`. Route with `control_id` (`source_id` accepted as fallback). Anything
+else → **400**. `seek` and `set_volume` require `value`.
+
+**`PlayerState` — routing and output fields**
+
+| Field | Meaning |
+|---|---|
+| `control_id` | Routing handle of the active item — send it back on `/player/control` |
+| `played_on` | Where the audio comes out: `"local"` or a renderer UDN. Display only |
+| `outputs[]` | Runtime outputs: the local chain + the selected renderer |
+| `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
+| `queue_next` | `{title, artist, album, cover_token}` — upcoming track of a renderer cast |
+| `sources[].selectable` | `false` on an entry that is a routing handle, not a source: listed so the player can render it, never offered as something to browse |
+
+Each `outputs[]` entry: `{id, type: "local"|"upnp_renderer", name, reachable, active,
+transport_state, error}`.
+
+- `transport_state` — `"PLAYING"` | `"PAUSED"` | `"STOPPED"`, or `null` when nothing could be read.
+- `reachable` — `false` when the output cannot be contacted (speaker asleep or off the network).
+- `error` — why this output produces no sound, in the engine's own words (e.g. MPD's
+  `Failed to open ALSA device "hw:0,0": Device or resource busy`). `null` normally, and
+  it clears itself once playback succeeds. **It may appear seconds after a play request
+  has answered `200`**: whether a push to HQPlayer produced actual sound is decided after
+  the response (see `/library/queue`).
+
+`GET /player/outputs` is a **different list**: the full catalogue for *choosing* an
+output (MPD output blocks as `type: "mpd_output"` with an `output_id`, plus known
+renderers), including inactive and unreachable ones. `PlayerState.outputs[]` carries
+only what is running. Same entry shape, different contents.
 
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
 | GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer) |
 | PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available` |
-| DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first** so its NAA releases the exclusive local sound card — once the host is cleared AG can no longer command a stop, and the device would stay busy with no way left to free it. (This used to be a `POST /hqplayer/stop` the UI sent beforehand, so any other client left the DAC stuck.) |
-| PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → **`{ use_as_output }`** (deliberately narrow: returning the connection would make the toggle wait on HQPlayer's ~2.5 s Status round-trip, and let a client overwrite its cached connection with a payload missing `naa_available`). **Server-side and persisted**, so every client agrees — it used to be per-browser `localStorage`, letting a phone and a laptop route the same play differently. Disabling also stops HQPlayer so its NAA releases the exclusive local sound card. **503** when enabling while no HQPlayer is configured, or while its NAA is down — routing playback there would produce silence with nothing to explain it. Disabling is always allowed. The backend is the sole enforcer: clients must never write this setting on their own to "correct" an observed NAA outage (a passive view doing so used to turn the shared output off for every client during a transient `networkaudiod` restart). A play attempted while the NAA is down is refused with **503** naming the daemon, instead of silently changing the user's choice. |
+| DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first**, so its NAA releases the local sound card |
+| PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → `{ use_as_output }` |
 | GET | `/hqplayer/discover` | Scan local subnet |
-| GET/PUT | `/hqplayer/filter` | Active filter |
-| GET/PUT | `/hqplayer/shaper` | Active shaper |
-| GET/PUT | `/hqplayer/mode` | Active output mode |
-| GET/PUT | `/hqplayer/volume` | Volume (dB) |
+| GET | `/hqplayer/filters` | Available interpolation filters (the active one is in `/hqplayer/status`) |
+| PUT | `/hqplayer/filter` | Select a filter by index |
+| GET | `/hqplayer/shapers` | Available noise shapers |
+| PUT | `/hqplayer/shaper` | Select a shaper by index |
+| GET | `/hqplayer/modes` | Available output modes |
+| PUT | `/hqplayer/mode` | Select an output mode by index |
+| PUT | `/hqplayer/volume` | Set volume (dB) |
+| DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection |
 | GET | `/hqplayer/status` | Current DSP status |
 | POST | `/hqplayer/stop` | Stop playback |
-| DELETE | `/hqplayer/dsp` | Reset DSP to HQPlayer defaults |
+
+**`use-as-output`** is server-side and persisted, so every client agrees on where
+library playback goes. Enabling answers **503** when no HQPlayer is configured or its
+NAA is not running; disabling is always allowed and stops HQPlayer, releasing the local
+sound card. Clients must not write this setting to correct an observed NAA outage — the
+backend refuses the play instead, naming the daemon.
 
 ### Tidal — `/tidal/*`
 | Method | Path | Description |
@@ -167,25 +265,49 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/services` | List all managed systemd services |
 | GET | `/services/{name}` | Service details + metrics |
+| POST | `/services/{name}/start` | Start |
+| POST | `/services/{name}/stop` | Stop |
+| POST | `/services/{name}/restart` | Restart |
+| POST | `/services/{name}/reload` | Reload the unit's config |
+| POST | `/services/{name}/properties/validate` | Dry-run an override before applying it |
+| POST | `/services/{name}/properties/restore` | Undo the previous override |
+| DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults |
 | POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravity-managed units** (audio engines + core AG services); a non-managed unit is rejected |
 | GET | `/services/{name}/properties` | systemd unit properties |
-| PUT | `/services/{name}/properties` | Update RT/CPU/IO properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
+| POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
 ### Profiles — `/profiles/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/profiles` | List profiles |
-| POST | `/profiles/{id}/activate` | Activate profile |
+| GET | `/profiles/detailed` | Profiles with their contents |
+| POST | `/profiles/{profile_id}/activate` | Activate a profile |
+| POST | `/profiles/{profile_id}/deactivate` | Deactivate a profile |
+| GET | `/profiles/configuration` | Current configuration snapshot |
+| GET | `/profiles/configuration/export-file` | Download the configuration |
+| POST | `/profiles/configuration/import-file` | Restore a configuration |
 
 ### Performance — `/performance/*`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/performance/latency/start` | Start cyclictest |
-| GET | `/performance/latency/status` | Test status + results |
-| POST | `/performance/network/start` | Start iperf3 / ping test |
-| GET | `/performance/network/status` | Test status + results |
-| GET | `/performance/cpu/governors` | Per-core governor info |
-| PUT | `/performance/cpu/governors` | Set governor |
+| GET | `/performance/cpu/info` | Per-core governor and frequency |
+| POST | `/performance/cpu/governor/set` | Apply a governor now |
+| POST | `/performance/cpu/governor/save` | Persist the current governor |
+| POST | `/performance/cpu/governor/systemd/create` | Reapply it at every boot |
+| GET | `/performance/rt-processes` | Real-time scheduling per audio process |
+
+**Benchmarks** — start a test, then poll it by `{test_id}`. **No UI screen calls
+these today**; see `/docs` for their request/response shape.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/performance/latency/test/start` | Start a latency test (`cyclictest`) |
+| GET | `/performance/latency/test/{test_id}/status` | Progress |
+| GET | `/performance/latency/test/{test_id}/result` | Result |
+| POST | `/performance/latency/test/{test_id}/cancel` | Cancel |
+| POST | `/performance/network/test/start` | Start a network stability test (`iperf3`) |
+| GET | `/performance/network/test/{test_id}/status` | Progress |
+| GET | `/performance/network/test/{test_id}/result` | Result |
+| POST | `/performance/network/test/{test_id}/cancel` | Cancel |
 
 ### Push notifications — `/push/*`
 | Method | Path | Description |
@@ -197,10 +319,20 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 ### System info — `/sysinfo/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/sysinfo` | CPU, memory, disk, network snapshot |
-| GET | `/sysinfo/audio-devices` | ALSA cards + USB interfaces |
+| GET | `/sysinfo/current` | CPU, memory, disk, network snapshot |
+| GET | `/sysinfo/metrics` | Live metrics series |
+| GET | `/sysinfo/system` | Host identity (kernel, distro, uptime) |
+| GET | `/audio-hw/devices` | ALSA cards + USB interfaces (own group, not under `/sysinfo`) |
 | GET | `/sysinfo/logs` | Journalctl logs for a unit |
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
+| GET | `/sysinfo/status` | Aggregated health of the box |
+| GET | `/sysinfo/cpu` | CPU model, cores, frequencies |
+| POST | `/sysinfo/monitoring/start` | Start pushing metrics on SSE |
+| POST | `/sysinfo/monitoring/stop` | Stop pushing them |
+| POST | `/sysinfo/logs/stream/start` | Start streaming a unit's journal on SSE |
+| POST | `/sysinfo/logs/stream/stop` | Stop streaming it |
+| POST | `/sysinfo/actions/reboot` | Reboot the machine |
+| POST | `/sysinfo/actions/restart-backend` | Restart the core |
 | POST | `/sysinfo/actions/update` | Self-update the core to a newer release; admin **password** required |
 | GET | `/sysinfo/update-status` | Current self-update progress (phase) |
 
@@ -256,21 +388,50 @@ connectors are non-blocking `warnings` (the topology only feeds the signal-path 
 runs it before saving from the topology editor — errors block the save, warnings ask for
 confirmation.
 
-### Other
+### Radio — `/radio/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | Backend health check |
-| GET | `/sse` | SSE event stream (all real-time updates) |
-| GET/POST/PUT/DELETE | `/audio_app_config/*` | Config file editor |
-| GET/POST/PUT/DELETE | `/radio/*` | Internet radio stations. **`POST /radio/play` follows the output selection** like every other play path (`core.playback_output`): HQPlayer when it is the selected output (badged `origin: "radio"`), else the active network renderer, else the local MPD. It previously always played to MPD, so a station started while HQPlayer held the DAC failed with `Device or resource busy`. **409** when two outputs are selected at once. |
-| GET/POST/PUT/DELETE | `/packages/*` | Audio software manager |
-| GET/POST/PUT/DELETE | `/license/*` | License management |
-| GET/POST/PUT/DELETE | `/steering/*` | Output steering |
+| GET | `/radio/search` | Search the Radio Browser catalogue |
+| GET | `/radio/library` | Stations saved in My Live Radio |
+| POST | `/radio/library` | Save a catalogue station |
+| POST | `/radio/library/custom` | Save a hand-entered station |
+| DELETE | `/radio/library/{station_uuid}` | Remove a saved station |
+| PUT | `/radio/{station_uuid}` | Edit a saved station in place |
+| GET | `/radio/favorites` | List favourites |
+| POST | `/radio/favorites` | Add a favourite |
+| DELETE | `/radio/favorites/{station_uuid}` | Remove a favourite |
+| POST | `/radio/play` | Resolve a station URL and play it — body `{ station_uuid }` |
 
-### `GET /license/online-status` — remote license verification cache
+`POST /radio/play` follows the output selection like every other play path: same
+destinations and same refusal statuses as `/library/queue` (see above). The stream is
+badged `origin: "radio"`.
 
-Returns the cached result of the last `POST /ls/portal/verify` call against the
-remote license server (refreshed every 24 h, or immediately after activation).
+### Audio software packages — `/packages/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/packages/` | List managed packages |
+| GET | `/packages/{package_id}` | Package details |
+| POST | `/packages/{package_id}/install` | Install |
+| POST | `/packages/{package_id}/uninstall` | Uninstall |
+| POST | `/packages/{package_id}/update` | Update one package |
+| POST | `/packages/update_all` | Update every managed package |
+| GET | `/packages/config/view` | The registry-generated config, as applied |
+| POST | `/packages/config/refresh` | Regenerate that config from the registry |
+
+### License — `/license/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/license/status` | Current licence state |
+| GET | `/license/online-status` | Cached remote verification (detailed below) |
+| GET | `/license/public-config` | Public config served by the licence server |
+| POST | `/license/check` | Validate a key without applying it |
+| POST | `/license/activate` | Self-service activation |
+| POST | `/license/upload` | Upload a licence file |
+| DELETE | `/license/license` | Remove the installed licence |
+
+**`GET /license/online-status`** returns the cached result of the last remote
+verification (refreshed every 24 h, or right after an activation).
+
 
 ```json
 {
@@ -312,11 +473,53 @@ an update applies: `{ "available": true, "latest": "0.9.11", "mandatory": false,
 license server is unconfigured/unreachable. The backend only surfaces this — it
 performs no version comparison and downloads nothing (self-update lands later).
 
+
+### Output steering — `/steering/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/steering/status` | Which service drives which ALSA device |
+| GET | `/steering/outputs` | Outputs a service can be switched to |
+| POST | `/steering/switch-output` | Point a service at another output |
+
+### Service config editor — `/audio_app_config/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/audio_app_config/services` | Services whose config file is editable |
+| GET | `/audio_app_config/{service_id}/config` | Read the config file |
+| POST | `/audio_app_config/{service_id}/config` | Write it (a backup is taken first) |
+| GET | `/audio_app_config/{service_id}/backups` | List backups |
+| POST | `/audio_app_config/{service_id}/backups/{filename}/restore` | Restore a backup |
+
+### Other
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Root — service identity |
+| GET | `/health` | Backend health check |
+| GET | `/status` | Backend status |
+| GET | `/stats/tabs` | Per-tab usage counters |
+| GET | `/monitoring/dashboard` | Same stream as `/sse/dashboard` (alias) |
+| GET | `/sse/dashboard` | SSE stream the UI opens — every real-time update |
+| GET | `/sse/{channel}` | A single channel, when only one subject is wanted |
+
+
+### Routes absent from `/docs`
+
+Four real routes are deliberately kept out of the OpenAPI schema. They are not for the
+UI — they are called by a renderer or by the browser's `<img>`/`<audio>` tag — but they
+exist, so hunting for them in Swagger is a dead end.
+
+| Method | Path | Called by |
+|---|---|---|
+| GET | `/library/stream/{path}?sig=` | A network renderer fetching a local file (HMAC-signed, Range) |
+| GET | `/audio_pipeline/library-cover/{path}?sig=` | A renderer fetching the cover of that file |
+| GET | `/hqplayer/stream/{path}` | HQPlayer fetching a local file over HTTP |
+| POST | `/upnp-renderer/{udn}/notify` | The renderer's own GENA callback |
+
 ---
 
 ## SSE events
 
-The SSE stream at `/sse` emits JSON events. Key event types:
+The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 
 | Event type | Payload |
 |---|---|
@@ -325,7 +528,15 @@ The SSE stream at `/sse` emits JSON events. Key event types:
 | `services_metrics` | CPU/memory/IO per service |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |
-| `renderer_status` | UPnP renderer state — `connected`, `transport_state`, `title`, `artist`, `position`, `volume`, `renderer_name`, `renderer_udn`, `bypassed`, `reachable`, `queue_position`, `queue_total`, `queue_next_title`, `queue_next_artist`, `queue_next_album`, `queue_next_cover_token`. **Settings-card scope only** (connection/reachability): the player UI reads the renderer's transport state and queue from `PlayerState.outputs[]` / `queue_next` instead (single source of truth). |
+| `renderer_status` | UPnP renderer connection state — see below |
+
+---
+
+**`renderer_status`** carries `connected`, `reachable`, `bypassed`, `renderer_name`,
+`renderer_udn`, plus `transport_state`, `title`, `artist`, `position`, `volume`,
+`queue_position`, `queue_total` and `queue_next_*`. **Use it for the connection card
+only**: the player reads the renderer's transport state and upcoming track from
+`PlayerState.outputs[]` and `queue_next`, which are the single source of truth.
 
 ---
 
