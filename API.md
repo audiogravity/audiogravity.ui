@@ -507,7 +507,7 @@ Editing a service's own configuration file needs **no licence**.
 | GET | `/stats/tabs` | Per-tab usage counters |
 | GET | `/monitoring/dashboard` | Same stream as `/sse/dashboard` (alias) |
 | GET | `/sse/dashboard` | SSE stream the UI opens — every real-time update |
-| GET | `/sse/{channel}` | A single channel, when only one subject is wanted |
+| GET | `/sse/{channel}` | One bus channel — `dashboard`, `player`, `system`, `services`, `profiles`, `performance`, `audio_config`, `steering`. **404** on any other name: `{channel}` is a channel, not an event type (`/sse/sysinfo` is not "the `sysinfo` events" — that event rides on `dashboard`) |
 
 
 ### Routes absent from `/docs`
