@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'lit';
+import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 
 /**
  * @module AgPullTab
@@ -71,13 +72,33 @@ export class AgPullTab extends LitElement {
 
     _handleTouchEnd(e) {
         const deltaY = e.changedTouches[0].clientY - this._touchStartY;
-        // Tap (< 10px) or swipe up (> 30px upward)
-        if (Math.abs(deltaY) < 10 || deltaY < -30) {
+        // Anything that is not a deliberate downward drag restores the bar: a tap, a
+        // sloppy tap, or an upward swipe of any length.
+        //
+        // The old rule (`|deltaY| < 10 || deltaY < -30`) left a dead band between 10
+        // and 30 px where nothing happened — which is exactly what a finger produces
+        // on a small target. The @click fallback did not rescue it: the browser
+        // cancels the synthetic click once the finger passes its own slop (~10 px),
+        // so both paths failed together and the gesture had to be retried.
+        if (deltaY < GESTURE_SLOP_PX) {
             e.preventDefault();
             this._restore();
         }
     }
 
+    /**
+     * The outer div is the TOUCH TARGET, not the visible tab.
+     *
+     * It stays anchored at `bottom:0` and aligns its content to `flex-end`, so the
+     * visible 18 px bar keeps touching the screen edge while the extra height lands
+     * ABOVE it — where a finger misses a small target. Both properties are load-
+     * bearing, and breaking either was tried and shipped once: moving the container up
+     * (for a safe-area inset) or aligning to `flex-start` lifts the bar off the edge,
+     * and it stops reading as a tab growing out of the screen — it becomes an orphaned
+     * rectangle floating over the page.
+     *
+     * 44 px is the Apple/Google minimum for a touch target; the tab used to offer 18.
+     */
     render() {
         if (!this._hasItems) return nothing;
 
@@ -88,12 +109,12 @@ export class AgPullTab extends LitElement {
                 role="button"
                 aria-label="Restore Now Playing"
                 title="Restore Now Playing"
-                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:6px 6px 0 0;background:var(--color-warning,#f59e0b);border:1px solid var(--color-warning,#f59e0b);border-bottom:none;cursor:pointer"
+                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:44px;display:flex;align-items:flex-end;justify-content:center;z-index:103;background:none;border:none;padding:0;-webkit-tap-highlight-color:transparent"
                 @click="${this._restore}"
                 @touchstart="${this._handleTouchStart}"
                 @touchend="${this._handleTouchEnd}"
             >
-                <div style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></div>
+                <div style="width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:6px 6px 0 0;background:var(--color-warning,#f59e0b);border:1px solid var(--color-warning,#f59e0b);border-bottom:none;cursor:pointer;pointer-events:none"><div style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></div></div>
             </div>
             ${!window.matchMedia('(pointer: coarse)').matches ? html`
             <button
