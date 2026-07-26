@@ -31,10 +31,10 @@
 import { nothing } from 'lit';
 import { directive, PartType } from 'lit/directive.js';
 import { AsyncDirective } from 'lit/async-directive.js';
-import { isScreenEdgeStart } from './gesture-constants.js';
+import { isScreenEdgeStart, GESTURE_SLOP_PX } from './gesture-constants.js';
 
 const DEFAULT_COMMIT_PX = 140;
-const DEFAULT_SLOP_PX = 8;
+const DEFAULT_SLOP_PX = GESTURE_SLOP_PX;
 
 /** Key for a host with a single swipeable element (no per-row identity). */
 export const SINGLE = Symbol('single-swipe-target');

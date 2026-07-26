@@ -35,6 +35,7 @@ import { toggleSubscription, getPushStatus } from '../../push-manager.js';
 import { getCurrentUser } from '../../auth.js';
 import { isWebAuthnAvailable, registerPasskey } from '../../webauthn.js';
 import '../atoms/ag-switch.js';
+import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { iconSettings, iconClose, iconDownload, iconUpload, iconDsdLock, iconUnlock, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
 
 export class AgConfigPanel extends LitElement {
@@ -267,7 +268,7 @@ export class AgConfigPanel extends LitElement {
     _handleWindowTouchStart(e) {
         if (this.active) return;
         const touch = e.touches[0];
-        if (touch.clientX < window.innerWidth - 25) return;
+        if (touch.clientX < window.innerWidth - PANEL_OPEN_EDGE_PX) return;
 
         this._touchOpening = true;
         this._touchStartX = touch.clientX;
@@ -287,7 +288,7 @@ export class AgConfigPanel extends LitElement {
         const deltaY = e.touches[0].clientY - this._touchStartY;
 
         // If gesture is clearly vertical, cancel edge-swipe and let native scroll proceed
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > GESTURE_SLOP_PX) {
             this._touchOpening = false;
             if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
             if (this._modalEl) {

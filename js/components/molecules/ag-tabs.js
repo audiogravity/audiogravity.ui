@@ -20,6 +20,7 @@ import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-license-badge.js';
+import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 
 const TAB_ICONS = {
     'audio-software': iconHeadphones,
@@ -418,8 +419,8 @@ export class AgTabs extends LitElement {
         this._touchActive = false;
 
         if (this._sidebarHidden) {
-            // Edge swipe to open: only activate within 25px of the left edge
-            if (touch.clientX <= 25) {
+            // Edge swipe to open: only activate within the panel-open band of the left edge
+            if (touch.clientX <= PANEL_OPEN_EDGE_PX) {
                 this._touchOpening = true;
                 this._touchStartX = touch.clientX;
                 this._touchStartY = touch.clientY;
@@ -493,7 +494,7 @@ export class AgTabs extends LitElement {
             const deltaY = e.touches[0].clientY - this._touchStartY;
 
             // If gesture is clearly vertical, cancel edge-swipe and let native scroll proceed
-            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > GESTURE_SLOP_PX) {
                 this._touchOpening = false;
                 this.style.transition = '';
                 if (this._sidebarToggleEl) this._sidebarToggleEl.style.transition = '';

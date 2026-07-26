@@ -31,6 +31,7 @@ import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeO
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
+import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -47,7 +48,7 @@ const SWIPE_OPACITY_MAX = 0.15; // fade up to 15 %
 // Horizontal source-switch tuning
 const SWIPE_SWITCH_COMMIT_PX  = 80;   // horizontal distance to commit a source switch
 const SWIPE_SWITCH_RUBBER_MAX = 40;   // max translateX (px) during the rubberbanded drag
-const SWIPE_DEAD_ZONE_PX      = 8;    // axis-lock dead-zone (shared with mini-player)
+const SWIPE_DEAD_ZONE_PX      = GESTURE_SLOP_PX;  // axis-lock dead-zone, shared app-wide
 
 export class AgNowPlayingFullscreen extends LitElement {
     static properties = {

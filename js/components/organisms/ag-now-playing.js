@@ -10,6 +10,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import '../atoms/ag-source-badge.js';
 import '../molecules/ag-volume-popover.js';
+import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 
 /**
  * @module AgNowPlaying
@@ -428,7 +429,7 @@ export class AgNowPlaying extends LitElement {
 
         // Commit to a gesture type once movement crosses the dead-zone
         if (this._gestureType === null) {
-            if (absDX > 8 || absDY > 8) {
+            if (absDX > GESTURE_SLOP_PX || absDY > GESTURE_SLOP_PX) {
                 if (absDX > absDY) {
                     this._gestureType = this._items.length > 1 ? 'switch' : 'ignore';
                 } else if (deltaY > 0) {

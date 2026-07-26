@@ -6,7 +6,7 @@
  */
 
 import { logger } from './utils.js';
-import { isScreenEdgeStart } from './core/gesture-constants.js';
+import { isScreenEdgeStart, GESTURE_SLOP_PX } from './core/gesture-constants.js';
 
 export class GestureManager {
     constructor() {
@@ -52,9 +52,9 @@ export class GestureManager {
         const dx = Math.abs(e.touches[0].clientX - this.startX);
         const dy = Math.abs(e.touches[0].clientY - this.startY);
 
-        if (dx < 8 && dy < 8) return;
+        if (dx < GESTURE_SLOP_PX && dy < GESTURE_SLOP_PX) return;
 
-        if (dx > dy * 1.5 && dx > 8) {
+        if (dx > dy * 1.5 && dx > GESTURE_SLOP_PX) {
             if (isScreenEdgeStart(this.startX)) return;
             if (this._shouldIgnore(e.target)) return;
             this._committed = true;
