@@ -20,10 +20,11 @@ The core is required at runtime — see [API.md](API.md) for the contract.
 | Role | Technology |
 |---|---|
 | Language | Vanilla JS (ES modules, no framework, no TypeScript) |
-| Components | [Lit 3](https://lit.dev/) — Web Components, Light DOM |
+| Components | [Lit 3](https://lit.dev/) — Web Components, Light DOM, [@lit/context](https://lit.dev/docs/data/context/) for shared state |
 | Build | [Vite 7](https://vitejs.dev/) |
 | Graph | [Cytoscape.js](https://js.cytoscape.org/) + dagre (npm) |
 | Config editor | [CodeMirror 5](https://codemirror.net/) (CDN) |
+| In-app manual | [marked](https://marked.js.org/) — Markdown rendered client-side, loaded on demand |
 | Charts | [Chart.js 4](https://www.chartjs.org/) (CDN) |
 | Tests | [Vitest 4](https://vitest.dev/) |
 | Component dev | [Storybook 10](https://storybook.js.org/) |
