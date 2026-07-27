@@ -77,7 +77,7 @@ export class AgLibraryCover extends LitElement {
                     ${iconSvg || ICONS.list}
                 </svg>
                 ${showImg ? html`
-                    <img class="ag-libcv-img" src=${this.cover} alt="" @error=${this._onError}>
+                    <img class="ag-libcv-img" src=${this.cover} alt="" loading="lazy" @error=${this._onError}>
                 ` : nothing}
             </div>
         `;
