@@ -5,7 +5,9 @@ import { iconSmartphone, iconServer, iconCpu, iconAudioWaveform, iconAudioLines,
 /**
  * Mobile-optimized read-only view of the active audio pipeline.
  * Shows one "now playing" card per active stream + the full signal chain below.
- * Data is fetched from /api/pipeline on the same polling interval as the desktop view.
+ * The state is read once from /audio_pipeline/current, then kept up to date by the
+ * 'audio-pipeline-update' SSE event — the core publishes it only when the pipeline
+ * actually changes, so the tab costs nothing while it sits open.
  */
 export class AgMobilePipeline extends LitElement {
     static properties = {
@@ -31,12 +33,26 @@ ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--c
 ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--color-warning); }
 ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
 ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success); }
-ag-mobile-pipeline .amp-source-dot { width: 6px; height: 6px; border-radius: 50%; animation: amp-pulse 2s infinite; }
-ag-mobile-pipeline .amp-source-dot[data-color="roon"]    { background: var(--color-info); }
-ag-mobile-pipeline .amp-source-dot[data-color="airplay"] { background: var(--color-warning); }
-ag-mobile-pipeline .amp-source-dot[data-color="mpd"]     { background: var(--accent-primary); }
-ag-mobile-pipeline .amp-source-dot[data-color="default"] { background: var(--color-success); }
-@keyframes amp-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+/* The pulse animates the dot's COLOUR, not its opacity or its scale — deliberately.
+ *
+ * opacity and transform are the two properties a browser animates without repainting,
+ * and it pays for that by giving the element its own compositing layer for as long as
+ * the animation runs. Declared infinite, that layer never goes away. There is one dot
+ * per ACTIVE STREAM, so the count grows with the product: every source Audiogravity
+ * gains adds another permanent layer to this screen, on the device least able to
+ * afford it.
+ *
+ * background-color is a paint-only property: no layer, and repainting a 6 px disc
+ * costs nothing. The pulse reads the same — the dot dims instead of shrinking.
+ *
+ * This is a sobriety fix (CLAUDE.md rule 12), not a bug fix: it was tried against the
+ * iOS sidebar-invisibility defect and did NOT resolve it. */
+ag-mobile-pipeline .amp-source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amp-dot); animation: amp-pulse 2s infinite; }
+ag-mobile-pipeline .amp-source-dot[data-color="roon"]    { --amp-dot: var(--color-info); }
+ag-mobile-pipeline .amp-source-dot[data-color="airplay"] { --amp-dot: var(--color-warning); }
+ag-mobile-pipeline .amp-source-dot[data-color="mpd"]     { --amp-dot: var(--accent-primary); }
+ag-mobile-pipeline .amp-source-dot[data-color="default"] { --amp-dot: var(--color-success); }
+@keyframes amp-pulse { 0%, 100% { background-color: var(--amp-dot); } 50% { background-color: color-mix(in srgb, var(--amp-dot) 35%, transparent); } }
 ag-mobile-pipeline .amp-np-title  { font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); line-height: 1.3; margin-bottom: 3px; }
 ag-mobile-pipeline .amp-np-artist { font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: 2px; }
 ag-mobile-pipeline .amp-np-album  { font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: 12px; }
@@ -105,20 +121,44 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         this._loading = true;
         this._steering = null;
         this._switching = false;
-        this._pollInterval = null;
+        this._steeringInterval = null;
+
+        // No throttle here, unlike ag-audio-pipeline: that one guards a heavy SVG
+        // redraw, this one renders a short list. And the core already publishes only
+        // when the pipeline actually CHANGES — it hashes the payload and skips
+        // identical ones — so there is nothing to debounce on this path.
+        this._onPipelineUpdate = (e) => { this._pipeline = e.detail; };
     }
 
     connectedCallback() {
         super.connectedCallback();
         AgMobilePipeline._injectStyles();
-        this._fetch();
+
+        // Listen instead of polling — the same choice ag-audio-pipeline already makes.
+        //
+        // This component used to re-request /audio_pipeline/current every 5 s. Measured
+        // on the box (2026-07-27): that endpoint takes ~570 ms of server time and
+        // returns ~15 KB, so an open pipeline tab cost roughly seven minutes of CPU per
+        // hour — on the machine that plays the music (CLAUDE.md rule 12).
+        //
+        // The core already computes this and publishes it on the dashboard channel, but
+        // only WHEN IT CHANGES, with a 30 s safety refresh. Polling made it redo the
+        // whole computation twelve times a minute whether anything had changed or not.
+        window.addEventListener('audio-pipeline-update', this._onPipelineUpdate);
+        this._fetch();          // initial state, once
         this._fetchSteering();
-        this._pollInterval = setInterval(() => { this._fetch(); this._fetchSteering(); }, 5000);
+
+        // Steering has no event on the dashboard channel (it publishes on its own
+        // channel, which the UI does not subscribe to) and costs ~5 ms, so it stays
+        // polled — at a third of the previous rate, since it only changes on a user
+        // action.
+        this._steeringInterval = setInterval(() => this._fetchSteering(), 15000);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        clearInterval(this._pollInterval);
+        window.removeEventListener('audio-pipeline-update', this._onPipelineUpdate);
+        clearInterval(this._steeringInterval);
     }
 
     async _fetch() {

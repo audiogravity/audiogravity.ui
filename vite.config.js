@@ -26,8 +26,12 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: ['10.0.4.254', 'localhost'],
     https: process.env.VITE_HTTPS === 'true' ? {
-      cert: '/var/www/audiogravity-frontend/ssl/cert.pem',
-      key: '/var/www/audiogravity-frontend/ssl/key.pem',
+      // The deploy directory was renamed audiogravity-frontend -> audiogravity-ui;
+      // this path was not, so VITE_HTTPS=true failed on a missing certificate.
+      // HTTPS matters in dev: iOS installs no service worker over plain HTTP, so a
+      // PWA-shaped problem cannot be reproduced without it.
+      cert: '/var/www/audiogravity-ui/ssl/cert.pem',
+      key: '/var/www/audiogravity-ui/ssl/key.pem',
     } : false,
     hmr: {
       protocol: process.env.VITE_HMR_CLIENT_PORT ? 'wss'
