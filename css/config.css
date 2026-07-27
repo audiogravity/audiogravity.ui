@@ -309,7 +309,7 @@
     display: block;
 }
 
-/* Textarea de fallback (cachée quand CodeMirror est actif) */
+/* Fallback textarea (hidden while CodeMirror is active) */
 .config-editor {
     width: 100%;
     min-height: 400px;
@@ -338,7 +338,7 @@
    CODEMIRROR THEME
    ===================== */
 
-/* Intégration dans le thème Audiogravity */
+/* Integration with the Audiogravity theme */
 /* stylelint-disable selector-class-pattern */
 .config-raw-editor .CodeMirror {
     height: 600px;
@@ -371,7 +371,7 @@
     outline: none;
 }
 
-/* Gouttière (numéros de ligne) */
+/* Gutter (line numbers) */
 .config-raw-editor .CodeMirror-gutters {
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
@@ -386,21 +386,21 @@
     border-left-color: var(--text-primary);
 }
 
-/* Sélection */
+/* Selection */
 .config-raw-editor .CodeMirror-selected {
     background: var(--syntax-selection);
 }
 
-/* ---- Tokens de colorisation ---- */
+/* ---- Syntax colouring tokens ---- */
 
-/* Réutilise les variables --syntax-* déjà définies dans les thèmes */
+/* Reuses the --syntax-* variables the themes already define */
 
 /*
- * Mode "properties" (INI / .conf — UPmpdcli, MPD) :
- *   cm-header  → sections [Section]
- *   cm-def     → clés (avant = ou :)
- *   cm-quote   → valeurs (après = ou :)
- *   cm-comment → commentaires (#, ;, !)
+ * "properties" mode (INI / .conf — UPmpdcli, MPD):
+ *   cm-header  → [Section] sections
+ *   cm-def     → keys (before = or :)
+ *   cm-quote   → values (after = or :)
+ *   cm-comment → comments (#, ;, !)
  */
 .config-raw-editor .cm-header {
     color: var(--syntax-key);
@@ -416,10 +416,10 @@
 }
 
 /*
- * Mode "clike" (libconfig — Shairport-sync) :
- *   cm-keyword → mots-clés
- *   cm-string  → chaînes entre guillemets
- *   cm-comment → commentaires // et /* *\/
+ * "clike" mode (libconfig — Shairport-sync):
+ *   cm-keyword → keywords
+ *   cm-string  → quoted strings
+ *   cm-comment → // and /* *\/ comments
  */
 .config-raw-editor .cm-keyword {
     color: var(--syntax-key);
@@ -431,10 +431,10 @@
 }
 
 /*
- * Mode "xml" (HQPlayer) :
- *   cm-tag       → balises <tag>
- *   cm-attribute → attributs
- *   cm-string    → valeurs d'attributs (déjà couvert ci-dessus)
+ * "xml" mode (HQPlayer):
+ *   cm-tag       → <tag> elements
+ *   cm-attribute → attributes
+ *   cm-string    → attribute values (already covered above)
  */
 .config-raw-editor .cm-tag {
     color: var(--syntax-key);
@@ -445,7 +445,7 @@
     color: var(--syntax-number);
 }
 
-/* Commentaires — commun à tous les modes */
+/* Comments — common to every mode */
 .config-raw-editor .cm-comment {
     color: var(--text-tertiary);
     font-style: italic;

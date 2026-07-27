@@ -13,7 +13,7 @@
    SYSTEMD TILE - SPÉCIFICITÉS
    ===================== */
 
-/* Les styles communs sont dans components/tile.css */
+/* The shared styles live in components/tile.css */
 
 .systemd-tile {
     padding: var(--spacing-lg);

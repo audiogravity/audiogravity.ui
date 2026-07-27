@@ -388,10 +388,10 @@ body.dark-mode .logo-svg {
     /* stylelint-disable-next-line property-no-vendor-prefix */
     -webkit-backdrop-filter: blur(10px);
 
-    /* Pré-promotion GPU : évite le coût de promotion au moment du premier geste */
+    /* GPU pre-promotion: avoids paying for the promotion on the first gesture */
     will-change: transform;
 
-    /* Le sidebar gère tous les gestes touch en JS — le browser n'a pas à spéculer */
+    /* The sidebar drives every touch gesture in JS — the browser must not guess */
     touch-action: none;
 }
 
@@ -487,7 +487,7 @@ body.dark-mode .logo-svg {
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
-/* Logo bar : logo gauche + indicateur connectivité droite */
+/* Logo bar: logo on the left, connectivity indicator on the right */
 .tabs-logo-bar {
     display: none;
 }
@@ -501,7 +501,7 @@ body.dark-mode .logo-svg {
     box-sizing: border-box;
 }
 
-/* Logo dans la sidebar */
+/* Logo inside the sidebar */
 .tabs-logo {
     display: none;
 }
@@ -617,7 +617,7 @@ body:has(.tabs--vertical.tabs--sidebar-hidden) .tab-sidebar-toggle {
     width: 100%;
     box-sizing: border-box;
 
-    /* Isole la zone de contenu pour les View Transitions — topbar/sidebar restent immobiles */
+    /* Isolate the content area for View Transitions — topbar and sidebar stay still */
     view-transition-name: main-content;
 }
 
@@ -811,7 +811,7 @@ body.dark-mode .logo-dark {
         top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-lg));
     }
 
-    /* Contenu : barre horizontale par défaut, toujours pleine largeur sur mobile */
+    /* Content: horizontal bar by default, always full width on mobile */
     .main-content {
         top: 0; /* Ensures content scrolls fully underneath topbar and tabs */
         bottom: 0;
@@ -839,8 +839,8 @@ body.dark-mode .logo-dark {
         padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
     }
 
-    /* En mode vertical sur mobile, la sidebar superpose le contenu :
-       le contenu commence juste sous la topbar (pas de décalage tabs-height) */
+    /* In vertical mode on mobile the sidebar overlays the content:
+       the content starts right below the topbar (no tabs-height offset) */
     body:has(.tabs--vertical) .content-grid,
     body:has(.tabs--vertical) ag-mobile-pipeline {
         padding: var(--spacing-md);
@@ -964,9 +964,9 @@ body.dark-mode .logo-dark {
 }
 
 /* =====================
-   VIEW TRANSITIONS — Navigation entre onglets
-   Seule .main-content anime ; topbar et sidebar restent immobiles.
-   Dégradé gracieux : sans support (iOS < 18, Firefox < 126) = switch instantané.
+   VIEW TRANSITIONS — navigation between tabs
+   Only .main-content animates; topbar and sidebar stay still.
+   Degrades gracefully: without support (iOS < 18, Firefox < 126) the switch is instant.
    ===================== */
 
 @keyframes vtSlideOutLeft {
@@ -997,7 +997,7 @@ body.dark-mode .logo-dark {
     }
 }
 
-/* Navigation vers l'avant (index croissant) */
+/* Forward navigation (increasing index) */
 :root.nav-forward::view-transition-old(main-content) {
     animation: 220ms ease-out vtSlideOutLeft;
 }
@@ -1006,7 +1006,7 @@ body.dark-mode .logo-dark {
     animation: 220ms ease-out vtSlideInRight;
 }
 
-/* Navigation vers l'arrière (index décroissant) */
+/* Backward navigation (decreasing index) */
 :root.nav-backward::view-transition-old(main-content) {
     animation: 220ms ease-out vtSlideOutRight;
 }

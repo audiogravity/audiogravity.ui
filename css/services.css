@@ -40,7 +40,7 @@
    SERVICE TILE - SPÉCIFICITÉS
    ===================== */
 
-/* Les styles communs sont dans components/tile.css */
+/* The shared styles live in components/tile.css */
 
 .service-tile {
     min-height: 160px;

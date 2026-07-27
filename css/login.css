@@ -1,6 +1,6 @@
 /**
  * @module Login Page Styles
- * @description Styles pour la page de connexion
+ * @description Styles for the login page
  */
 
 /* Container principal */
@@ -193,7 +193,7 @@
     transform: none;
 }
 
-/* Spinner dans le bouton */
+/* Spinner inside the button */
 .btn-loader {
     display: none;
     align-items: center;
@@ -405,7 +405,7 @@
     }
 }
 
-/* Animation d'entrée — ajout à la règle principale .login-card ci-dessus */
+/* Entrance animation — added to the main .login-card rule above */
 
 @keyframes fadeInUp {
     from {

@@ -16,7 +16,7 @@ ag-json-config-modal .modal-body {
     overflow: hidden auto;
 }
 
-/* Mobile / iOS : libérer les tailles fixes */
+/* Mobile / iOS: release the fixed sizes */
 @media (width <= 768px) {
     ag-json-config-modal .modal-dialog {
         width: 95%;
@@ -45,7 +45,7 @@ ag-json-config-modal .modal-body {
 
 /* stylelint-disable selector-class-pattern */
 
-/* Intégration dans le thème Audiogravity — height override for this modal */
+/* Integration with the Audiogravity theme — height override for this modal */
 ag-json-config-modal .config-raw-editor .CodeMirror {
     height: 500px;
     min-height: 500px;
@@ -77,7 +77,7 @@ ag-json-config-modal .config-raw-editor .CodeMirror-focused {
     outline: none;
 }
 
-/* Gouttière (numéros de ligne) */
+/* Gutter (line numbers) */
 ag-json-config-modal .config-raw-editor .CodeMirror-gutters {
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
@@ -92,14 +92,14 @@ ag-json-config-modal .config-raw-editor .CodeMirror-cursor {
     border-left-color: var(--text-primary);
 }
 
-/* Sélection */
+/* Selection */
 ag-json-config-modal .config-raw-editor .CodeMirror-selected {
     background: var(--syntax-selection);
 }
 
-/* ---- Tokens de colorisation JSON ---- */
+/* ---- JSON syntax colouring tokens ---- */
 
-/* Réutilise les variables --syntax-* déjà définies dans les thèmes */
+/* Reuses the --syntax-* variables the themes already define */
 
 /* JSON mode (javascript with json: true) */
 ag-json-config-modal .config-raw-editor .cm-property {
@@ -124,7 +124,7 @@ ag-json-config-modal .config-raw-editor .cm-atom {
     color: var(--syntax-null);
 }
 
-/* Commentaires — commun à tous les modes */
+/* Comments — common to every mode */
 ag-json-config-modal .config-raw-editor .cm-comment {
     color: var(--text-tertiary);
     font-style: italic;
