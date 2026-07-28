@@ -217,7 +217,8 @@ export class AgAudioSoftwarePage extends LitElement {
     /**
      * React to package logs pushed via SSE (Phase 3)
      *
-     * Entries carry a `seq` that is monotonic within one operation; tracking the
+     * Entries carry a `seq` that is monotonic per package and never restarts,
+     * not even across operations; tracking the
      * highest one seen is what makes catch-up possible after a missed event.
      *
      * @param {CustomEvent} e - `package-log-update` with `{package_id, entry}`.
