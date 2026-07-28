@@ -55,10 +55,17 @@ export class AgAudioSoftwarePage extends LitElement {
         this._loaded = false;
         this._restartNeeded = new Set(MemoryCache.get('softwareRestartNeeded', []));
 
+        // Log lines arrive as live SSE events; anything missed while the stream was
+        // down is unrecoverable without this cursor. It tracks which package the
+        // modal shows and the highest `seq` displayed, so a catch-up fetch can ask
+        // the core for exactly the missing lines.
+        this._logCursor = { packageId: null, lastSeq: 0 };
+
         this._bindAppVisible = this._handleAppVisible.bind(this);
         this._bindSyncEvent = this._handleSyncEvent.bind(this);
         this._bindPackageState = this._handlePackageStateUpdate.bind(this);
         this._bindPackageLog = this._handlePackageLogUpdate.bind(this);
+        this._bindConnectionStatus = this._handleConnectionStatus.bind(this);
 
         this.packagesFetch = new FetchController(this, {
             autoFetch: false,
@@ -114,6 +121,7 @@ export class AgAudioSoftwarePage extends LitElement {
         window.addEventListener('packages_sync', this._bindSyncEvent);
         window.addEventListener('package-state-update', this._bindPackageState);
         window.addEventListener('package-log-update', this._bindPackageLog);
+        EventEmitter.on('connection-status', this._bindConnectionStatus);
 
         const logsModal = document.getElementById('agLogsModal');
         if (logsModal) {
@@ -134,6 +142,7 @@ export class AgAudioSoftwarePage extends LitElement {
         window.removeEventListener('packages_sync', this._bindSyncEvent);
         window.removeEventListener('package-state-update', this._bindPackageState);
         window.removeEventListener('package-log-update', this._bindPackageLog);
+        EventEmitter.off('connection-status', this._bindConnectionStatus);
 
         EventEmitter.off('app-visible', this._bindAppVisible);
 
@@ -191,7 +200,12 @@ export class AgAudioSoftwarePage extends LitElement {
         const modal = document.getElementById('agLogsModal');
         if (modal && modal.isOpen) {
             this._updateLogsModal(pkg);
-            
+
+            // A state change is the one moment the browser is told the operation
+            // moved on, so it is also the moment to claim any line it missed —
+            // notably the closing burst, which apt emits all at once.
+            this._syncLogsFromServer();
+
             // If operation is finished, update modal actions
             const terminalStates = ['installed', 'not_installed', 'error'];
             if (terminalStates.includes(pkg.status)) {
@@ -202,15 +216,83 @@ export class AgAudioSoftwarePage extends LitElement {
 
     /**
      * React to package logs pushed via SSE (Phase 3)
+     *
+     * Entries carry a `seq` that is monotonic within one operation; tracking the
+     * highest one seen is what makes catch-up possible after a missed event.
+     *
+     * @param {CustomEvent} e - `package-log-update` with `{package_id, entry}`.
      */
     _handlePackageLogUpdate(e) {
         const { package_id, entry } = e.detail;
         if (!package_id || !entry) return;
 
-        // Only append logs if they belong to the package currently being viewed/installed
+        // Only append logs if they belong to the package currently being viewed.
+        // Without this test a concurrent operation on another package bled its
+        // output into the open modal.
+        if (package_id !== this._logCursor.packageId) return;
+
         const modal = document.getElementById('agLogsModal');
         if (modal && modal.isOpen) {
             modal.appendLogs([entry]);
+            this._logCursor.lastSeq = Math.max(this._logCursor.lastSeq, entry.seq ?? 0);
+        }
+    }
+
+    /**
+     * Re-sync the open log modal when the event stream comes back.
+     *
+     * A dropped stream used to leave the modal frozen on the last line it happened
+     * to receive — the operation could complete seconds later and the panel would
+     * never say so, because nothing ever asked the core what it had missed.
+     *
+     * @param {{connected: boolean}} status - Connection status payload.
+     */
+    _handleConnectionStatus(status) {
+        if (!status?.connected) return;
+        this._syncLogsFromServer();
+    }
+
+    /**
+     * Fetch the log lines the browser is missing and append them in order.
+     *
+     * Asks only for entries after the highest `seq` already displayed, so this is
+     * idempotent and never duplicates a line that arrived live. Only ever called
+     * once the operation has started server-side (state change or reconnect) —
+     * calling it earlier would return the previous operation's buffer.
+     *
+     * @returns {Promise<void>} Resolves once the modal is up to date.
+     */
+    async _syncLogsFromServer() {
+        const packageId = this._logCursor.packageId;
+        if (!packageId) return;
+
+        const modal = document.getElementById('agLogsModal');
+        if (!modal || !modal.isOpen) return;
+
+        try {
+            const response = await apiGet(
+                `/packages/${packageId}/logs?after_seq=${this._logCursor.lastSeq}`
+            );
+            // Re-filter against the cursor as it stands *now*, not as it stood when
+            // the request left: live events keep arriving during the round-trip, and
+            // two catch-ups can overlap (a reconnect and a state change fire together).
+            // Both would otherwise append the same lines twice.
+            const entries = (response?.entries || [])
+                .filter(entry => (entry.seq ?? 0) > this._logCursor.lastSeq);
+            if (entries.length) {
+                modal.appendLogs(entries);
+                // Math.max, never a plain assignment: a live event may already have
+                // pushed the cursor past this response, and moving it backwards would
+                // make the next catch-up re-fetch lines already on screen.
+                this._logCursor.lastSeq = Math.max(
+                    this._logCursor.lastSeq,
+                    entries[entries.length - 1].seq ?? 0
+                );
+            }
+        } catch (error) {
+            // A failed catch-up must never break the operation being watched:
+            // the live stream may still be feeding the modal.
+            console.warn('Log catch-up failed:', error);
         }
     }
 
@@ -462,6 +544,13 @@ export class AgAudioSoftwarePage extends LitElement {
         modal.showCancel = true;
         modal.isActive = true;
         modal.isOpen = true;
+
+        // Track the package, but do NOT fetch the log yet: this runs *before* the
+        // action is POSTed, so the server buffer still holds the previous operation
+        // on this package and would be rendered as if it were the new one. The first
+        // `package-state-update` (INSTALLING/…) is published after the server clears
+        // the buffer, and that handler fetches — early enough to miss nothing.
+        this._logCursor = { packageId: pkg.id, lastSeq: 0 };
     }
 
     _updateLogsModal(pkg, logsResponse) {
@@ -506,6 +595,7 @@ export class AgAudioSoftwarePage extends LitElement {
     _handleModalCloseRequest() {
         const modal = document.getElementById('agLogsModal');
         if (modal) modal.isOpen = false;
+        this._logCursor = { packageId: null, lastSeq: 0 };
         this._stopPolling();
     }
 
@@ -513,6 +603,7 @@ export class AgAudioSoftwarePage extends LitElement {
         this._stopPolling();
         const modal = document.getElementById('agLogsModal');
         if (modal) modal.isOpen = false;
+        this._logCursor = { packageId: null, lastSeq: 0 };
         showToast('warning', 'Operation Cancelled', 'Modal closed, but backend may still be processing');
     }
 
