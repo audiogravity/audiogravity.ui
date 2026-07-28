@@ -417,12 +417,15 @@ badged `origin: "radio"`.
 |---|---|---|
 | GET | `/packages/` | List managed packages |
 | GET | `/packages/{package_id}` | Package details |
+| GET | `/packages/{package_id}/logs` | Buffered log of the current/last operation |
 | POST | `/packages/{package_id}/install` | Install |
 | POST | `/packages/{package_id}/uninstall` | Uninstall |
 | POST | `/packages/{package_id}/update` | Update one package |
 | POST | `/packages/update_all` | Update every managed package |
 | GET | `/packages/config/view` | The registry-generated config, as applied |
 | POST | `/packages/config/refresh` | Regenerate that config from the registry |
+
+`GET /packages/{package_id}/logs?after_seq=<n>` → `{ package_id, status, entries: [{ timestamp, level, message, seq }], last_seq }`. Log lines are pushed live as `package_log` SSE events; this route exists so a client that **missed** some — a reconnect, a backgrounded tab, a slow consumer — can recover them instead of staying stuck on the last line it received. `seq` is monotonic **per package and never restarts**, including across operations, so a client holding a stale cursor is never wrongly told it is up to date; pass the highest `seq` held as `after_seq` to fetch only what is missing. `last_seq` is the highest value held server-side, which tells a caught-up client where it stands even when `entries` comes back empty. The buffer holds the **last 500 lines** and is cleared when a new operation starts on that package — so do not call this before the operation has been POSTed, or the previous operation's log is returned. **404** on an unknown package id. `level` is one of `debug`, `info`, `success`, `warning`, `error`; output relayed from apt/dpkg is always `info` (its wording is third-party and says nothing about severity — the verdict is the operation's own result line).
 
 ### License — `/license/*`
 | Method | Path | Description |
