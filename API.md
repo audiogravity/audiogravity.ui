@@ -490,9 +490,15 @@ performs no version comparison and downloads nothing (self-update lands later).
 ### Service config editor — `/audio_app_config/*`
 Editing a service's own configuration file needs **no licence**.
 
+The editable set and each file's location come from the core's service registry, **not**
+from `audio-config.json`: its `appconfigfile` field is ignored. A path can only name one
+directory, and the same file lives in `/etc` on a distro package and `/usr/local/etc` on a
+source build — so whichever value shipped was wrong on the other platform. The core resolves
+across both layouts instead. A service the core does not know has no editable config.
+
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio_app_config/services` | Services whose config file is editable |
+| GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry) |
 | GET | `/audio_app_config/{service_id}/config` | Read the config file |
 | POST | `/audio_app_config/{service_id}/config` | Write it (a backup is taken first) |
 | GET | `/audio_app_config/{service_id}/backups` | List backups |
