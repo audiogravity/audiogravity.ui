@@ -100,6 +100,11 @@ resolve their destination the same way, and answer with the same statuses:
 | **409** | A network renderer **and** HQPlayer are both selected — turn one off |
 | **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) |
 
+`/radio/play` also answers **503** when the station cannot be resolved because the Radio
+Browser catalogue is unreachable or is rate-limiting the box — the detail carries the
+reason. It used to answer **404 "station not found"** there, which blamed the station for
+an outage elsewhere; a 404 now means the catalogue answered and does not know that UUID.
+
 Roon is never diverted: a Roon zone is its own output chain. `action: "add"` appends —
 to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
 a network renderer has no persistent queue, so an `add` stays with MPD. A UPnP stream is
