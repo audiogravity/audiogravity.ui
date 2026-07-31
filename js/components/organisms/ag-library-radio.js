@@ -28,9 +28,17 @@ import {
     radioEditStation, radioPlay,
 } from '../../radio-api.js';
 import { RADIO_COUNTRIES, RADIO_GENRES } from '../library-constants.js';
+import { catalogueErrorMessage } from '../utils-lit.js';
 import '../molecules/ag-radio-card.js';
 
-const _SEARCH_DEBOUNCE_MS = 300;
+/**
+ * Pause before a typed query reaches the catalogue. 300ms was shorter than the
+ * gap between two keystrokes typed with a thumb, so a search left for nearly
+ * every letter: one session's log showed 16 catalogue queries for a handful of
+ * words. Radio Browser is a free community service running on a single machine,
+ * and the box must not be the one hammering it.
+ */
+const _SEARCH_DEBOUNCE_MS = 700;
 
 export class AgLibraryRadio extends LitElement {
     static properties = {
@@ -150,7 +158,7 @@ export class AgLibraryRadio extends LitElement {
             this._stations = stations;
         } catch (e) {
             if (signal.aborted) return;
-            this._error    = 'Search failed';
+            this._error    = catalogueErrorMessage(e, 'Search failed');
             this._stations = [];
         } finally {
             if (!signal.aborted) this._loading = false;

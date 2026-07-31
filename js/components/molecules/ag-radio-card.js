@@ -99,6 +99,10 @@ export class AgRadioCard extends LitElement {
         // and re-uses the existing cover cache.
         const logoUrl = s.favicon ? coverUrl(`url:${s.favicon}`) : '';
 
+        // The three action glyphs are drawn at the same 18px. The pencil used to
+        // be 16px, which made it read as the smallest of the three and the
+        // hardest to aim at — half of what made editing a station awkward
+        // (site#7); the other half was the swipe gesture stealing the tap.
         return html`
             <div class="ag-swipe-wrap lib-radio-card-wrap ${this.swipeable ? 'swipeable' : ''}">
                 ${this.swipeable ? html`
@@ -122,7 +126,7 @@ export class AgRadioCard extends LitElement {
                             : nothing}
                         ${this.editable ? html`
                             <button class="lib-radio-edit" aria-label="Edit station" @click=${this._onEditTap}>
-                                <svg viewBox="0 0 24 24" width="16" height="16"
+                                <svg viewBox="0 0 24 24" width="18" height="18"
                                      fill="none" stroke="currentColor" stroke-width="1.5"
                                      stroke-linecap="round" stroke-linejoin="round">
                                     ${iconPencil}

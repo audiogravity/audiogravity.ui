@@ -52,6 +52,26 @@
     margin-bottom: var(--spacing-md);
 }
 
+/* A field rendered inside a dialog. `.modal-dialog` is itself --bg-primary, so
+   the default fill leaves the input the exact colour of the surface behind it
+   and only a 1px border says it can be typed into. Restores the contrast the
+   password prompt had before its inline styling was removed (site#6). */
+.form-control--dialog {
+    background: var(--bg-secondary);
+}
+
+/* Read-only identifier field (device ID): monospace, dimmed, not editable.
+   Its font-size belongs here and NOT in a `style` attribute — an inline
+   declaration outranks every selector, including the mobile anti-zoom rule in
+   base.css, and a sub-16px field makes mobile Safari zoom the page on focus
+   (site#6). */
+.form-control--readonly-mono {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    cursor: default;
+}
+
 .form-field label, .form-label {
     display: block;
     margin-bottom: var(--spacing-xs);

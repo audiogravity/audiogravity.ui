@@ -126,11 +126,10 @@ export class AgLicenseVerify extends LitElement {
                 <div class="form-field" style="margin-top:var(--spacing-sm)">
                     <label class="form-label">DEVICE ID</label>
                     <input
-                        class="form-control"
+                        class="form-control form-control--readonly-mono"
                         type="text"
                         .value=${this._deviceId || '—'}
                         readonly
-                        style="color:var(--text-secondary);cursor:default;font-family:var(--font-mono,monospace);font-size:var(--font-size-xs)"
                     />
                     <p class="help-text">This device's ID — automatically used for validation.</p>
                 </div>

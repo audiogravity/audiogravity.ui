@@ -1,8 +1,10 @@
 /**
- * Unit tests for getUserFriendlyError — pure error message mapping.
+ * Unit tests for getUserFriendlyError — pure error message mapping — and for the
+ * password-confirm field's styling contract (site#6).
  */
-import { describe, it, expect } from 'vitest';
-import { getUserFriendlyError } from './ui-helpers.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import { render } from 'lit';
+import { getUserFriendlyError, showPasswordConfirm } from './ui-helpers.js';
 
 describe('getUserFriendlyError', () => {
     it('maps "Failed to fetch" to connection error', () => {
@@ -53,5 +55,69 @@ describe('getUserFriendlyError', () => {
     it('returns default for empty error', () => {
         expect(getUserFriendlyError({}))
             .toBe('An unexpected error occurred. Please try again.');
+    });
+});
+
+describe('showPasswordConfirm — field styling contract', () => {
+    afterEach(() => {
+        document.querySelectorAll('ag-confirm-dialog').forEach((d) => d.remove());
+    });
+
+    /**
+     * Render the dialog's message template into a detached container and return
+     * its password field. The custom element is not defined in this environment,
+     * so the template is rendered directly rather than through the component.
+     */
+    const fieldOf = (dialog) => {
+        const container = document.createElement('div');
+        render(dialog.messageTemplate, container);
+        return container.querySelector('input[type="password"]');
+    };
+
+    it('styles the field through .form-control, never an inline font-size', () => {
+        // An inline declaration outranks every selector, so a font-size written
+        // in a `style` attribute escapes the mobile anti-zoom rule in base.css
+        // and makes Safari zoom the page on focus — which pushed the dialog's
+        // Confirm button off-screen (site#6).
+        const promise = showPasswordConfirm('Confirm update', 'Enter your admin password.');
+        const dialog = document.querySelector('ag-confirm-dialog');
+        const field = fieldOf(dialog);
+
+        expect(field).not.toBeNull();
+        expect(field.classList.contains('form-control')).toBe(true);
+        expect(field.getAttribute('style') ?? '').not.toMatch(/font-size/);
+
+        dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
+        return expect(promise).resolves.toBeNull();
+    });
+
+    it('keeps the password affordances the browser needs', () => {
+        const promise = showPasswordConfirm('Confirm', 'message');
+        const dialog = document.querySelector('ag-confirm-dialog');
+        const field = fieldOf(dialog);
+
+        expect(field.getAttribute('autocomplete')).toBe('current-password');
+        expect(field.getAttribute('placeholder')).toBe('Enter your password');
+
+        dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
+        return expect(promise).resolves.toBeNull();
+    });
+});
+
+describe('showPasswordConfirm — dialog contrast', () => {
+    it('carries the dialog variant so the field is not the colour of the modal', () => {
+        // .modal-dialog is --bg-primary and so is .form-control: without the
+        // modifier the input reads as plain text with a hairline around it.
+        const promise = showPasswordConfirm('Confirm', 'message');
+        const dialog = document.querySelector('ag-confirm-dialog');
+        const container = document.createElement('div');
+        render(dialog.messageTemplate, container);
+        const field = container.querySelector('input[type="password"]');
+
+        expect(field.classList.contains('form-control--dialog')).toBe(true);
+
+        dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
+        dialog.remove();
+        return expect(promise).resolves.toBeNull();
     });
 });

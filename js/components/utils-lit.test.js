@@ -7,7 +7,7 @@ import {
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection, svgIcon,
+    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage,
 } from './utils-lit.js';
 
 describe('svgIcon', () => {
@@ -198,5 +198,31 @@ describe('loadConnection', () => {
         const host = { _loading: false, _connection: null };
         await loadConnection(host, async () => { throw new Error('x'); }, 'tag');
         expect(host._loading).toBe(false);
+    });
+});
+
+describe('catalogueErrorMessage', () => {
+    it('relays the core reason when an external catalogue refused the request', () => {
+        const err = Object.assign(new Error('nope'), {
+            status: 503,
+            detail: 'The radio catalogue is limiting how often this box may search — please try again in 30s.',
+        });
+        expect(catalogueErrorMessage(err, 'Search failed')).toContain('try again in 30s');
+    });
+
+    it('has its own wording when a 503 carries no reason', () => {
+        const err = Object.assign(new Error('nope'), { status: 503 });
+        expect(catalogueErrorMessage(err, 'Search failed')).toMatch(/unavailable/i);
+    });
+
+    it('keeps the caller fallback for anything that is not a 503', () => {
+        for (const status of [400, 401, 500, undefined]) {
+            const err = Object.assign(new Error('nope'), { status });
+            expect(catalogueErrorMessage(err, 'Search failed')).toBe('Search failed');
+        }
+    });
+
+    it('does not throw on a null error', () => {
+        expect(catalogueErrorMessage(null, 'Search failed')).toBe('Search failed');
     });
 });

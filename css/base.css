@@ -135,8 +135,17 @@ button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
    `.form-group input` / `.config-field input` (both (0,1,1), and loaded after
    base.css — they would otherwise win the tie and re-introduce a 14px field that
    zooms). It also covers inputs with no explicit `type`. Excludes controls that
-   don't take text (checkbox/radio/range). Mobile only — desktop is unchanged. */
-@media (width <= 768px) {
+   don't take text (checkbox/radio/range).
+
+   Gated on `pointer: coarse`, NOT on a width breakpoint: the condition that
+   makes Safari zoom is a touch device, not a narrow screen. The previous
+   `width <= 768px` gate left every field zooming on a phone held in landscape
+   (~850-930px) and on tablets (768-1024px). Desktop is a fine pointer and stays
+   unchanged.
+
+   An inline `style` attribute outranks this rule whatever its specificity —
+   form controls must take their font-size from a class, never from `style=`. */
+@media (pointer: coarse) {
     /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
        intentional: it raises specificity to (0,3,1) so this wins the (0,1,1) tie.
        The list form :not(a, b, c) would collapse back to (0,1,1) and re-break it. */

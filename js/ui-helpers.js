@@ -180,6 +180,13 @@ export function showTabHUD(label) {
 
 /**
  * Show a confirmation dialog that requires the user to enter their password.
+ *
+ * The field MUST carry its styling through `.form-control`, never an inline
+ * `style` attribute: an inline declaration outranks every selector, so a
+ * font-size written there escapes the mobile anti-zoom rule in base.css and
+ * mobile Safari zooms the page in on focus — which pushes the dialog's Confirm
+ * button off-screen (site#6).
+ *
  * @param {string} title - Dialog title
  * @param {string} message - Dialog message (HTML string)
  * @returns {Promise<string|null>} Resolves with the entered password, or null if cancelled
@@ -195,10 +202,10 @@ export function showPasswordConfirm(title, message) {
             <p style="margin: 0 0 var(--spacing-md);">${unsafeHTML(message)}</p>
             <input
                 id=${inputId}
+                class="form-control form-control--dialog"
                 type="password"
                 placeholder="Enter your password"
                 autocomplete="current-password"
-                style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-secondary); color: var(--text-primary); font-size: var(--font-size-sm); box-sizing: border-box;"
                 @keydown=${(e) => { if (e.key === 'Enter') dialog._handleConfirm?.(); }}
             />
         `;

@@ -267,6 +267,29 @@
     transition: color var(--transition-fast);
 }
 
+/* Touch targets. The buttons are --spacing-xl squares — 32px, and only 24px in
+   compact mode — which is too small to aim a finger at (site#7).
+
+   Grown asymmetrically, on purpose. Height is free: the row is already ~60px
+   tall, so 44px of height is invisible and it is the axis a thumb misses on
+   least predictably. Width is NOT free: the space a user reads between two
+   icons is the gap PLUS the empty half-box on either side of each glyph, so
+   widening the button pushes the icons apart far more than the gap does. Square
+   44px buttons took the visible spacing from 10px to 34px, and only 8 of those
+   34 came from the gap. 36px keeps the row looking as dense as it did while
+   still giving the pencil a target 2.5× the compact-mode area.
+
+   A mouse is precise, so desktop keeps the original geometry. */
+@media (pointer: coarse) {
+    .lib-radio-star,
+    .lib-radio-edit,
+    .lib-radio-lib {
+        width: 36px;
+        height: 44px;
+        border-radius: var(--radius-md);   /* no longer a circle — a rounded slot */
+    }
+}
+
 .lib-radio-star.on { color: var(--accent-primary); }
 .lib-radio-lib.on  { color: var(--color-success); }
 

@@ -305,3 +305,25 @@ export async function loadConnection(host, fetchFn, tag = 'connection') {
     }
     host._loading = false;
 }
+
+/**
+ * Turn a failed catalogue request into a sentence a listener can act on.
+ *
+ * The core answers 503 whenever an EXTERNAL catalogue refused it, and puts the
+ * reason — provider outage, or that provider rate-limiting this box — in the
+ * response detail, already worded for a listener. Showing a bare "failed" for
+ * that case made an outage at the provider look like a fault on the box, and
+ * sent people looking for the problem in the wrong place.
+ *
+ * The 503 detail is shown VERBATIM, so this may only be used on endpoints whose
+ * 503 the core words for a listener. Point it at one that answers 503 with an
+ * internal message and that message lands on screen.
+ *
+ * @param {Error & {status?: number, detail?: string}} err - Error thrown by the API client.
+ * @param {string} fallback - Message for anything that is not a 503.
+ * @returns {string} The message to display.
+ */
+export function catalogueErrorMessage(err, fallback) {
+    if (err?.status !== 503) return fallback;
+    return err.detail || 'The catalogue is unavailable — please try again shortly.';
+}

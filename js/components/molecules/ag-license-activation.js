@@ -228,11 +228,10 @@ export class AgLicenseActivation extends LitElement {
                 <div class="form-field" style="margin-top:var(--spacing-md)">
                     <label class="form-label">DEVICE ID</label>
                     <input
-                        class="form-control"
+                        class="form-control form-control--readonly-mono"
                         type="text"
                         .value=${this._deviceId || '—'}
                         readonly
-                        style="color:var(--text-secondary);cursor:default;font-family:var(--font-mono, monospace);font-size:var(--font-size-xs)"
                     />
                     <p class="help-text">Auto-detected — this machine will be bound to the license.</p>
                 </div>

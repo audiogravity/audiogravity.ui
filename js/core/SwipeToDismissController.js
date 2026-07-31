@@ -10,6 +10,8 @@
  * band is reserved for the panel-open swipes (settings from the right edge, sidebar
  * from the left), so an edge swipe opens the panel without also removing a row; a
  * mouse is exempt (it never opens those panels). See gesture-constants.js. A
+ * gesture that STARTS on an interactive control (a row's action buttons) is
+ * ignored too, so pressing a button never drags the row. A
  * browser-initiated `pointercancel`
  * (vertical scroll / system gesture) never commits. The swiped row is transformed
  * IMPERATIVELY (`el.style.transform`)
@@ -35,6 +37,16 @@ import { isScreenEdgeStart, GESTURE_SLOP_PX } from './gesture-constants.js';
 
 const DEFAULT_COMMIT_PX = 140;
 const DEFAULT_SLOP_PX = GESTURE_SLOP_PX;
+
+/**
+ * Controls that own any gesture starting on them, swipe included. A row's action
+ * buttons are small touch targets, so aiming at one costs a few pixels of drift —
+ * more than the slop, which used to arm the swipe under the finger and drag the
+ * row away while the user was trying to press a button (site#7). The row itself
+ * carries `role="button"` on a `<div>` in several lists, so this matches tags
+ * only: a role attribute must not disable the row's own swipe.
+ */
+const INTERACTIVE_TAGS = 'button, a, input, select, textarea, label';
 
 /** Key for a host with a single swipeable element (no per-row identity). */
 export const SINGLE = Symbol('single-swipe-target');
@@ -89,6 +101,16 @@ export class SwipeToDismissController {
         // WITHOUT also removing this row. A mouse never triggers those panels, so it
         // is exempt and can still start a drag anywhere. See gesture-constants.js.
         if (e.pointerType !== 'mouse' && isScreenEdgeStart(e.clientX)) return;
+        // A gesture that BEGINS on an interactive control belongs to that control.
+        // The match is confined to the swiped row: `closest` walks the whole
+        // ancestor chain, so an unbounded test would let a <label> or <a>
+        // wrapping the list ABOVE the row silently disable swiping for every row
+        // inside it. `closest` and `contains` are probed rather than assumed —
+        // tests drive `start()` with plain objects that are not DOM nodes.
+        const control = typeof e.target?.closest === 'function'
+            ? e.target.closest(INTERACTIVE_TAGS)
+            : null;
+        if (control && (typeof el?.contains !== 'function' || el.contains(control))) return;
         if (this._pointerId !== null) return;                    // a gesture is already in flight
         this._el = el;
         this._key = key;

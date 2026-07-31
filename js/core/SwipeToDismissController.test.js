@@ -179,6 +179,74 @@ describe('SwipeToDismissController', () => {
         });
     });
 
+    describe('interactive-target guard (row action buttons)', () => {
+        /** Fake event target: `closest` matches when `insideControl` is set. */
+        const target = (insideControl) => ({ closest: () => (insideControl ? {} : null) });
+
+        it('ignores a gesture that starts on an action button', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            c.start({ ...ev(200, 'pointerdown'), target: target(true) }, el, 'row1');
+            expect(el.captured).toBe(null);            // never armed → the button keeps its tap
+            c.move(ev(60));                            // a drift that would otherwise commit
+            c.end(ev(60, 'pointerup'));
+            expect(c.swiping).toBe(false);
+            expect(onCommit).not.toHaveBeenCalled();
+            expect(el.style.transform).toBeUndefined();
+        });
+
+        it('still arms when the gesture starts on the row itself', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const el = makeEl();
+            c.start({ ...ev(200, 'pointerdown'), target: target(false) }, el, 'row1');
+            expect(el.captured).toBe(1);
+            c.move(ev(40));                            // dx = -160
+            c.end(ev(40, 'pointerup'));
+            expect(onCommit).toHaveBeenCalledWith('row1');
+        });
+
+        it('ignores an interactive ancestor that sits OUTSIDE the swiped row', () => {
+            // `closest` walks the whole ancestor chain, so a <label> or <a>
+            // wrapping the list would otherwise disable swiping for every row.
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const outsideControl = {};
+            const el = { ...makeEl(), contains: () => false };
+            c.start(
+                { ...ev(200, 'pointerdown'), target: { closest: () => outsideControl } },
+                el, 'row1',
+            );
+            expect(el.captured).toBe(1);           // the row still swipes
+            c.move(ev(40));
+            c.end(ev(40, 'pointerup'));
+            expect(onCommit).toHaveBeenCalledWith('row1');
+        });
+
+        it('still ignores a control that IS inside the swiped row', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const insideControl = {};
+            const el = { ...makeEl(), contains: (node) => node === insideControl };
+            c.start(
+                { ...ev(200, 'pointerdown'), target: { closest: () => insideControl } },
+                el, 'row1',
+            );
+            expect(el.captured).toBe(null);
+            c.move(ev(40));
+            c.end(ev(40, 'pointerup'));
+            expect(onCommit).not.toHaveBeenCalled();
+        });
+
+        it('arms when the event carries no DOM target (synthetic events must not throw)', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const el = makeEl();
+            expect(() => c.start(ev(200, 'pointerdown'), el, 'row1')).not.toThrow();
+            expect(el.captured).toBe(1);
+        });
+    });
+
     describe('multi-touch / pointer isolation', () => {
         it('ignores a second concurrent pointerdown and never mixes their state', () => {
             const onCommit = vi.fn();
