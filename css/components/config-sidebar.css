@@ -200,32 +200,6 @@
     margin-bottom: 0;
 }
 
-/* API Key field */
-.api-key-input {
-    display: flex;
-    gap: var(--spacing-xs);
-    margin-top: 5px;
-}
-
-.api-key-input input {
-    margin-top: 0;
-    flex: 1;
-
-    /* Force system font stack for password inputs to ensure correct rendering ofBullets 
-       even when the main theme font ('Inter') might fail or have loading issues. 
-       This also protects against icon font interference. */
-    /* stylelint-disable-next-line declaration-no-important */
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-}
-
-/* Icon button for visibility toggle (API Key specifically) */
-.api-key-input .icon-btn {
-    background: var(--bg-tertiary);
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-}
-
 /* align-items and padding added to .version-info span above */
 
 .version-wrapper {

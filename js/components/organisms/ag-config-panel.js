@@ -9,7 +9,6 @@
  * @attr {boolean} compactMode - UI compact layout state
  * @attr {boolean} animations - Whether UI animations are enabled
  * @attr {string} theme - Current selected theme ID
- * @attr {string} apiKey - Stored API Key
  * @attr {boolean} pushSubscribed - Push notification status
  * 
  * @dependency ag-switch
@@ -22,13 +21,12 @@
 import { LitElement, html } from 'lit';
 import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
 import { appContext } from '../../core/app-context.js';
-import { AppState, MemoryCache, EventEmitter, API_KEY, THEMES, API_BASE_URL, setApiKey } from '../../common.js';
+import { AppState, MemoryCache, EventEmitter, THEMES, API_BASE_URL } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
 import { showToast, handleError } from '../../ui-helpers.js';
 import { addToHistory } from '../../history.js';
 import { validateAudioConfig, showValidationModal } from '../../validation.js';
-import { connectSSE, loadInitialMetrics } from '../../sse.js';
 import { FetchController } from '../../core/FetchController.js';
 import { logger } from '../../utils.js';
 import { toggleSubscription, getPushStatus } from '../../push-manager.js';
@@ -36,7 +34,7 @@ import { getCurrentUser } from '../../auth.js';
 import { isWebAuthnAvailable, registerPasskey } from '../../webauthn.js';
 import '../atoms/ag-switch.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { iconSettings, iconClose, iconDownload, iconUpload, iconDsdLock, iconUnlock, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
+import { iconSettings, iconClose, iconDownload, iconUpload, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
 
 export class AgConfigPanel extends LitElement {
     static properties = {
@@ -46,8 +44,6 @@ export class AgConfigPanel extends LitElement {
         animations: { type: Boolean },
         lockPortrait: { type: Boolean },
         theme: { type: String },
-        apiKey: { type: String },
-        showApiKey: { type: Boolean },
         bwVersion: { type: String },
         themes: { type: Array },
         pushSubscribed: { type: Boolean },
@@ -58,7 +54,6 @@ export class AgConfigPanel extends LitElement {
     constructor() {
         super();
         this.active = false;
-        this.showApiKey = false;
         this.bwVersion = '--';
         this.pushSubscribed = false;
         this.passkeys = [];
@@ -76,7 +71,6 @@ export class AgConfigPanel extends LitElement {
         this.theme = AppState ? AppState.theme : 'minimal';
 
         // Initialize state
-        this.apiKey = API_KEY || '';
         this.themes = THEMES || [
             { value: 'slate', label: 'Slate (Modern)' },
             { value: 'minimal', label: 'Minimal (Classic)' }
@@ -203,9 +197,6 @@ export class AgConfigPanel extends LitElement {
     }
 
     loadVersions() {
-        if (!this.apiKey && API_KEY) {
-            this.apiKey = API_KEY;
-        }
         return this.versionsFetch.fetch();
     }
 
@@ -225,7 +216,6 @@ export class AgConfigPanel extends LitElement {
                 this.theme = AppState.theme;
                 this.requestUpdate(); // Force Lit to re-evaluate properties
             }
-            if (API_KEY) this.apiKey = API_KEY;
             if (isWebAuthnAvailable()) this._loadPasskeys();
         }
     }
@@ -558,21 +548,6 @@ export class AgConfigPanel extends LitElement {
         }
     }
 
-    _handleApiKeyChange(e) {
-        this.apiKey = e.target.value;
-        setApiKey(this.apiKey);
-        if (MemoryCache) MemoryCache.set('apiKey', this.apiKey);
-
-        // Reconnect SSE 
-        connectSSE();
-        loadInitialMetrics();
-        this.loadVersions();
-    }
-
-    _toggleApiKeyVisibility() {
-        this.showApiKey = !this.showApiKey;
-    }
-
     _handlePushStatus(data) {
         this.pushSubscribed = data.isSubscribed;
     }
@@ -711,22 +686,6 @@ export class AgConfigPanel extends LitElement {
                         <label>Import Configuration</label>
                         <input type="file" id="importFile" accept=".json" style="display: none;" @change=${this._handleImportFile}>
                         <button class="config-btn" @click=${this._triggerImport}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg> Upload JSON</button>
-                    </div>
-
-                    <div class="config-item">
-                        <label>API Key</label>
-                        <div class="api-key-input">
-                            <input type=${this.showApiKey ? 'text' : 'password'}
-                                   class="form-control"
-                                   .value=${this.apiKey}
-                                   @change=${this._handleApiKeyChange}
-                                   placeholder="Enter API Key">
-                            <button class="icon-btn" @click=${this._toggleApiKeyVisibility}>
-                                ${this.showApiKey
-                                    ? html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUnlock}</svg>`
-                                    : html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>`}
-                            </button>
-                        </div>
                     </div>
                     
                     <div class="config-item">

@@ -34,13 +34,29 @@ export const THEMES = [
 ];
 
 // API Security
-// Priority: localStorage (user override) → AG_CONFIG (injected by install.sh) → null
-export let API_KEY = localStorage.getItem('apiKey') || AG_CONFIG.apiKey || (IS_TEST_ENV ? 'mock-test-key' : null);
+//
+// Priority: AG_CONFIG (injected by install.sh) → localStorage → null.
+//
+// The injected key is AUTHORITATIVE — it is the one the core at the other end
+// actually accepts. A copy kept in this browser used to outrank it, so once a
+// wrong value was stored the interface was locked out for good: every upgrade
+// republished the right key and lost to the stale one, with nothing on screen
+// to explain the 403s. Storage is now only a fallback for development, where
+// nothing is injected. A leftover override is dropped rather than kept, so it
+// cannot come back if an install ever ships without a key.
+export let API_KEY = AG_CONFIG.apiKey || localStorage.getItem('apiKey') || (IS_TEST_ENV ? 'mock-test-key' : null);
+
+if (AG_CONFIG.apiKey && localStorage.getItem('apiKey')) {
+    localStorage.removeItem('apiKey');
+}
 
 if (!API_KEY) {
     const isDev = isDevelopment || window.location.port === '5173';
     if (isDev) {
-        // En développement : demander la clé interactivement (une seule fois)
+        // Development only: ask once and keep it in storage. This is the sole
+        // remaining writer — the Settings panel used to offer the same field to
+        // every user on a deployed box, which could only ever break their own
+        // access to a key they already had.
         const devKey = window.prompt(
             '⚠️ Clé API manquante (mode développement)\n\n' +
             'Entrez votre API_KEY (visible dans backend/.env) :'
@@ -52,7 +68,7 @@ if (!API_KEY) {
             console.error('[Audiogravity] API Key manquante. Fonctions API indisponibles.');
         }
     } else {
-        // En production : erreur bloquante — install.sh doit avoir injecté AG_CONFIG
+        // Production: hard error — install.sh must have injected AG_CONFIG.
         console.error(
             '[Audiogravity] ERREUR CRITIQUE : API Key non configurée.\n' +
             'Assurez-vous que install.sh a bien été exécuté et a injecté window.AG_CONFIG.'
@@ -61,19 +77,6 @@ if (!API_KEY) {
 }
 export const API_KEY_HEADER = 'X-API-Key';
 
-
-/**
- * Update the global API Key
- * @param {string} newKey - New API Key
- */
-export function setApiKey(newKey) {
-    API_KEY = newKey;
-    window.API_KEY = newKey; // Sync for legacy code
-    localStorage.setItem('apiKey', newKey);
-}
-
-// Initial sync to window
-window.API_KEY = API_KEY;
 
 // Authentication Control
 export const JWT_ENABLED = true;

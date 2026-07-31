@@ -12,7 +12,7 @@ import { applyOrientationLock } from './orientation-lock.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
-    API_KEY as CONFIG_API_KEY, API_KEY_HEADER, JWT_ENABLED, setApiKey,
+    API_KEY as CONFIG_API_KEY, API_KEY_HEADER, JWT_ENABLED,
     IS_TEST_ENV
 } from './core/config.js';
 
@@ -798,7 +798,6 @@ export {
     UI_VERSION,
     THEMES,
     API_BASE_URL,
-    setApiKey,
 
     // Utility Functions
     MemoryCache,
