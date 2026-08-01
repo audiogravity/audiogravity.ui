@@ -154,10 +154,12 @@ export class AgLibraryRadio extends LitElement {
                 hi_res_only:  this._searchHiRes || undefined,
                 limit:        80,
             });
-            if (signal.aborted) return;
+            // The view check mirrors `_loadLibrary` / `_loadFavorites`: no loader
+            // may write the shared list once it is no longer the one on screen.
+            if (signal.aborted || this._view !== 'search') return;
             this._stations = stations;
         } catch (e) {
-            if (signal.aborted) return;
+            if (signal.aborted || this._view !== 'search') return;
             this._error    = catalogueErrorMessage(e, 'Search failed');
             this._stations = [];
         } finally {
@@ -171,6 +173,17 @@ export class AgLibraryRadio extends LitElement {
 
     _switchView(view) {
         if (this._view === view) return;
+        // A search left behind must not follow the user to the next tab. Both a
+        // pending debounce timer and an in-flight request would otherwise land
+        // after the new tab has drawn and replace its rows with search hits —
+        // rendered under the wrong header, and swipeable, so a swipe would then
+        // fire a removal for a station the list never owned.
+        clearTimeout(this._searchDebounceTimer);
+        this._searchAbort?.abort();
+        // The aborted search returns early and never reaches its own `finally`,
+        // so the flag it raised has to be lowered here or the new tab shows
+        // "Loading…" for ever.
+        this._loading = false;
         this._view = view;
         this._error = '';
         // Close any open custom-station form when leaving My Live Radio.
@@ -236,7 +249,15 @@ export class AgLibraryRadio extends LitElement {
         try {
             await radioPlay(station.uuid);
         } catch (err) {
-            this._error = 'Playback failed — check the MPD output is free';
+            // Deliberately NOT `catalogueErrorMessage`: two unrelated failures
+            // reach this catch as a 503. The catalogue one is worded for a
+            // listener, but the output one carries HQPlayer's own words
+            // ("Device or resource busy"), and that helper shows the detail
+            // verbatim. Naming MPD was worse still — it sent people to inspect
+            // a subsystem that was working — so the message stays neutral until
+            // the core words the output refusal for a listener too.
+            // BACKLOG: core-side wording for the output 503 — see BACKLOG.md.
+            this._error = 'Could not start this station — the catalogue or the selected output did not answer';
         }
     };
 
@@ -286,7 +307,10 @@ export class AgLibraryRadio extends LitElement {
                 }
             }
         } catch (err) {
-            this._error = cfg.errMsg;
+            // Both add endpoints resolve the station through the catalogue and
+            // answer 503 with its reason when that fails — an outage there must
+            // not read as a fault on the box.
+            this._error = catalogueErrorMessage(err, cfg.errMsg);
         } finally {
             pending.delete(station.uuid);
         }
