@@ -14,7 +14,7 @@ tooling — there is **no interactive installer in the repo**.
   `window.AG_CONFIG` (API URL + key).
 - **End-user install** (one-liner from the release):
   ```bash
-  curl -fsSL https://github.com/audiogravity/audiogravity-releases/releases/latest/download/install-frontend.sh | sudo bash
+  curl -fsSL https://github.com/audiogravity/audiogravity.releases/releases/latest/download/install-frontend.sh | sudo bash
   ```
 
 ## Development (Vite dev server)
