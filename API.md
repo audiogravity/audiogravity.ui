@@ -480,14 +480,18 @@ verification (refreshed every 24 h, or right after an activation).
 `announcements` — broadcast messages from the license server, delivered via the
 24 h check-in. Displayed in the AG Admin tab as dismissable banners
 (`ag-announcement-banner`). Empty array when no active announcements exist or
-when the license server is unconfigured.
+when the license server is unconfigured. Delivery is **license-independent**: a
+trial or expired box receives them too (they ride the public config channel, not
+only a valid verification).
 
 `update` — availability of a newer AG release, computed by the license server
-(newer than this backend's version and within the licence `version_scope`). When
+(newer than this backend's version and within the box's major). When
 an update applies: `{ "available": true, "latest": "0.9.11", "mandatory": false,
 "notes_url": "…" }`. Defaults to `{ "available": false }` when up to date or the
-license server is unconfigured/unreachable. The backend only surfaces this — it
-performs no version comparison and downloads nothing (self-update lands later).
+license server is unconfigured/unreachable. **License-independent** like
+`announcements`: a trial or expired box is notified too, bounded to its own major
+(a cross-major jump stays a paid upgrade, never an auto-update). The backend only
+surfaces this — it performs no version comparison and downloads nothing on its own.
 
 
 ### Output steering — `/steering/*`
