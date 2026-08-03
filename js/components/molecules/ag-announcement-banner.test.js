@@ -5,6 +5,7 @@
  * thrown by api.js on import. Mirrors the component's internal behaviour.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { iconRocket, iconPartyPopper, iconTriangleAlert, iconInfo } from '../../ag-icons.js';
 
 // ── Pure logic mirroring the component ───────────────────────────────────────
 
@@ -23,7 +24,7 @@ function saveDismissed(ids) {
 }
 
 function icon(type) {
-    return { version: '🚀', promo: '🎉', alert: '⚠️', info: 'ℹ️' }[type] ?? 'ℹ️';
+    return { version: iconRocket, promo: iconPartyPopper, alert: iconTriangleAlert, info: iconInfo }[type] ?? iconInfo;
 }
 
 function emitBadge(announcements, dismissed) {
@@ -59,17 +60,17 @@ describe('ag-announcement-banner — localStorage helpers', () => {
 });
 
 describe('ag-announcement-banner — _icon', () => {
-    it('returns correct emoji for each known type', () => {
-        expect(icon('version')).toBe('🚀');
-        expect(icon('promo')).toBe('🎉');
-        expect(icon('alert')).toBe('⚠️');
-        expect(icon('info')).toBe('ℹ️');
+    it('returns the matching Lucide icon for each known type', () => {
+        expect(icon('version')).toBe(iconRocket);
+        expect(icon('promo')).toBe(iconPartyPopper);
+        expect(icon('alert')).toBe(iconTriangleAlert);
+        expect(icon('info')).toBe(iconInfo);
     });
 
-    it('falls back to ℹ️ for unknown type', () => {
-        expect(icon('unknown')).toBe('ℹ️');
-        expect(icon('')).toBe('ℹ️');
-        expect(icon(undefined)).toBe('ℹ️');
+    it('falls back to the info icon for unknown type', () => {
+        expect(icon('unknown')).toBe(iconInfo);
+        expect(icon('')).toBe(iconInfo);
+        expect(icon(undefined)).toBe(iconInfo);
     });
 });
 

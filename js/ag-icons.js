@@ -409,6 +409,31 @@ export const iconInfo = svg`
     <path d="M12 16v-4"/>
     <path d="M12 8h.01"/>`;
 
+/** Rocket — new release / version announcement. (Lucide: rocket) */
+export const iconRocket = svg`
+    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"/>
+    <path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/>
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"/>`;
+
+/** Party popper — promotion / offer announcement. (Lucide: party-popper) */
+export const iconPartyPopper = svg`
+    <path d="M5.8 11.3 2 22l10.7-3.79"/>
+    <path d="M4 3h.01"/>
+    <path d="M22 8h.01"/>
+    <path d="M15 2h.01"/>
+    <path d="M22 20h.01"/>
+    <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/>
+    <path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/>
+    <path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/>
+    <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>`;
+
+/** Triangle with exclamation — alert / warning announcement. (Lucide: triangle-alert) */
+export const iconTriangleAlert = svg`
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+    <path d="M12 9v4"/>
+    <path d="M12 17h.01"/>`;
+
 /** Arrow pointing up-right with box — external link. (Lucide: external-link) */
 export const iconExternalLink = svg`
     <path d="M15 3h6v6"/>
