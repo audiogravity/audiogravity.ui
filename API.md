@@ -437,7 +437,7 @@ badged `origin: "radio"`.
 ### License — `/license/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/license/status` | Current licence state |
+| GET | `/license/status` | Current licence state — for a trial, `days_remaining` and `trial_days_total` (built-in floor, or a longer licence-server-signed override) |
 | GET | `/license/online-status` | Cached remote verification (detailed below) |
 | GET | `/license/public-config` | Public config served by the licence server |
 | POST | `/license/check` | Validate a key without applying it |

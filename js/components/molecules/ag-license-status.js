@@ -264,13 +264,16 @@ export class AgLicenseStatus extends LitElement {
 
     _renderProgress() {
         if (this._status?.status !== 'trial') return nothing;
-        const days = this._status.days_remaining ?? 0;
-        const pct  = Math.round((days / 30) * 100);
+        const days  = this._status.days_remaining ?? 0;
+        // Total comes from the core (built-in floor, or a longer server-signed override).
+        // Fall back to 30 for an older core that does not report it.
+        const total = this._status.trial_days_total ?? 30;
+        const pct   = total > 0 ? Math.round((days / total) * 100) : 0;
         return html`
             <div class="license-trial-progress">
                 <div class="license-trial-bar" style="width: ${pct}%"></div>
             </div>
-            <p class="license-days">${days} / 30 days remaining</p>
+            <p class="license-days">${days} / ${total} days remaining</p>
         `;
     }
 
@@ -306,7 +309,7 @@ export class AgLicenseStatus extends LitElement {
         // the rest is a Lit template so every interpolation is auto-escaped.
         const safePortalUrl = /^https?:\/\//i.test(this._portalUrl || '') ? this._portalUrl : null;
         const content = html`
-            <p><strong>Trial license</strong> — 30 days of full access, automatically activated on first run. No action required.</p>
+            <p><strong>Trial license</strong> — ${this._status?.trial_days_total ?? 30} days of full access, automatically activated on first run. No action required.</p>
             <p><strong>Lifetime license</strong> — a single-device <code>.lic</code> file cryptographically tied to this device's hardware fingerprint. One-time payment, no expiry, no subscription.</p>
             <h4 style="margin:1em 0 .4em">How to get a license</h4>
             ${this._renderAcquisitionSteps()}
