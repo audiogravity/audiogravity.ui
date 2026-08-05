@@ -279,7 +279,27 @@ export class AgManualModal extends LitElement {
         });
         root.querySelectorAll('a[href]').forEach((a) => this._rewriteLink(a));
         root.querySelectorAll('img[src]').forEach((img) => this._rewriteImage(img));
+        root.querySelectorAll('table').forEach((t) => this._wrapTable(t));
         return tpl.innerHTML;
+    }
+
+    /**
+     * Give a rendered table its own horizontal scroll container.
+     * A comparison table is the one block that cannot be reflowed for a narrow screen
+     * without destroying what it says, and left alone it widens the reading pane — which
+     * scrolls the whole reader sideways, not just the table. Wrapping keeps the <table>
+     * element intact (so it keeps its role for assistive technology) rather than flattening
+     * it to a block, which is the usual shortcut. Idempotent: a chapter is enhanced once and
+     * cached, but re-enhancing must not nest wrappers.
+     * @param {HTMLTableElement} table - a rendered <table>
+     */
+    _wrapTable(table) {
+        const parent = table.parentNode;
+        if (!parent || (parent.classList && parent.classList.contains('manual-table-scroll'))) return;
+        const box = table.ownerDocument.createElement('div');
+        box.className = 'manual-table-scroll';
+        parent.insertBefore(box, table);
+        box.appendChild(table);
     }
 
     /**

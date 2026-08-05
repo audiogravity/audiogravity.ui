@@ -323,6 +323,37 @@ describe('ag-manual-modal', () => {
             expect(img.getAttribute('src')).toBe(`${MANUAL_BASE}/images/04-queue.png`);
         });
 
+        it('gives every table its own scroll container, keeping the <table> element', () => {
+            const out = el._enhanceHtml('<p>before</p><table><tr><td>a</td></tr></table><p>after</p>');
+            const tpl = document.createElement('template');
+            tpl.innerHTML = out;
+            const table = tpl.content.querySelector('table');
+            expect(table.parentElement.className).toBe('manual-table-scroll');
+            // The element must survive: flattening it to a block would cost its role for
+            // assistive technology, which is the reason for wrapping rather than restyling.
+            expect(table.tagName).toBe('TABLE');
+            // The wrapper takes the table's place in the flow, siblings keep their order.
+            const kids = [...tpl.content.children].map((n) => n.tagName + (n.className ? '.' + n.className : ''));
+            expect(kids).toEqual(['P', 'DIV.manual-table-scroll', 'P']);
+        });
+
+        it('wraps each of several tables exactly once', () => {
+            const out = el._enhanceHtml('<table><tr><td>a</td></tr></table><table><tr><td>b</td></tr></table>');
+            const tpl = document.createElement('template');
+            tpl.innerHTML = out;
+            expect(tpl.content.querySelectorAll('.manual-table-scroll').length).toBe(2);
+            expect(tpl.content.querySelectorAll('table').length).toBe(2);
+        });
+
+        it('is idempotent — re-enhancing does not nest a second wrapper', () => {
+            const once = el._enhanceHtml('<table><tr><td>a</td></tr></table>');
+            const twice = el._enhanceHtml(once);
+            const tpl = document.createElement('template');
+            tpl.innerHTML = twice;
+            expect(tpl.content.querySelectorAll('.manual-table-scroll').length).toBe(1);
+            expect(tpl.content.querySelector('table').parentElement.className).toBe('manual-table-scroll');
+        });
+
         it('stamps GitHub-style slug ids (punctuation, duplicate dedup, unicode)', () => {
             const out = el._enhanceHtml(
                 '<h2>Audio topology (signal-chain map)</h2><h2>Roon</h2><h2>Roon</h2><h3>Réglages</h3>',

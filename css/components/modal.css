@@ -268,12 +268,30 @@
     text-decoration: underline;
 }
 
+/* Screenshots are authored with an explicit width in the Markdown (they are phone captures
+   at their natural size). That width is a lower bound the reading pane cannot go under, so
+   on any screen narrower than it plus the pane's padding, the pane scrolls sideways —
+   which drags the whole reader with it, because a pane with overflow-y: auto computes
+   overflow-x to auto too. Capping the rendered width leaves the authored value as the
+   intrinsic-size hint it should have been, so the space is still reserved before the image
+   arrives. `height: auto` keeps the aspect ratio once the width is capped. */
+.manual-md img {
+    max-width: 100%;
+    height: auto;
+}
+
 .manual-md code {
     padding: 0.1em 0.35em;
     background: var(--bg-tertiary);
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     font-size: 0.9em;
+
+    /* `anywhere`, not `break-word`: both break a long token across lines, but only
+       `anywhere` also lets the element report a smaller min-content width. A command line
+       or a URL in inline code otherwise sets a floor its blockquote or paragraph cannot go
+       under, and that floor is what pushes the pane wider than the screen. */
+    overflow-wrap: anywhere;
 }
 
 .manual-md pre {
@@ -296,9 +314,21 @@
     color: var(--text-tertiary);
 }
 
-.manual-md table {
-    width: 100%;
+/* A manual table can need more width than a phone has, and it is the one block that cannot
+   be reflowed without destroying what it says. It scrolls on its own rather than taking the
+   reading pane with it. The wrapper is added when the chapter is rendered, so the <table>
+   keeps its element — and its role for a screen reader — instead of being flattened to a
+   block. */
+.manual-table-scroll {
     margin: var(--spacing-md) 0;
+    overflow-x: auto;
+}
+
+.manual-md table {
+    /* Fill the pane when it fits, exceed it when the content demands — inside the wrapper,
+       not against the pane. */
+    min-width: 100%;
+    width: max-content;
     border-collapse: collapse;
     font-size: var(--font-size-sm);
 }
