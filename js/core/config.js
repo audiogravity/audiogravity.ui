@@ -65,7 +65,7 @@ if (!API_KEY) {
             API_KEY = devKey.trim();
             localStorage.setItem('apiKey', API_KEY);
         } else {
-            console.error('[Audiogravity] API Key manquante. Fonctions API indisponibles.');
+            console.error('[Audiogravity] API key missing — API calls will fail.');
         }
     } else {
         // Production: hard error — install.sh must have injected AG_CONFIG.

@@ -460,7 +460,12 @@ export class AgLicenseStatus extends LitElement {
                 <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">
                     ${status === 'starter'
                         ? 'Your trial has ended. Purchase a lifetime license to continue.'
-                        : `Lifetime license — one-time payment of ${this._priceDisplay}, no subscription.`}
+                        : this._priceDisplay
+                            // The price arrives from the licence server, so it is empty until the
+                            // first fetch lands — and stays empty if none is configured. Dropping
+                            // the clause keeps a whole sentence; interpolating left "payment of ,".
+                            ? `Lifetime license — one-time payment of ${this._priceDisplay}, no subscription.`
+                            : 'Lifetime license — one-time payment, no subscription.'}
                 </span>
                 <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: var(--spacing-xs) 0 0;">
                     ${this._renderAcquisitionSteps()}
