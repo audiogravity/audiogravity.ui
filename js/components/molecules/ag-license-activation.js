@@ -13,6 +13,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { showToast } from '../../ui-helpers.js';
+import { planLabel } from '../utils-lit.js';
 
 const STORAGE_KEY = 'ag_pending_license_key';
 const KEY_REGEX   = /^AG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -216,7 +217,7 @@ export class AgLicenseActivation extends LitElement {
         }
 
         const r            = this._checkResult;
-        const plan         = r?.plan === 'lifetime' ? 'Perpetual · v1.x' : `Trial · expires ${r?.expires_at || '?'}`;
+        const plan         = planLabel(r?.plan, r?.expires_at, r?.version_scope ?? '1');
         const reactivation = r?.activations_remaining === 0;
 
         return html`
@@ -270,7 +271,7 @@ export class AgLicenseActivation extends LitElement {
     /** @private Step 3 — display the activated license certificate. */
     _renderStep3() {
         const r    = this._result;
-        const plan = r?.plan === 'lifetime' ? 'Perpetual · v1.x' : `Trial · expires ${r?.expires_at || '?'}`;
+        const plan = planLabel(r?.plan, r?.expires_at, r?.version_scope ?? '1');
         return html`
             <div class="lic-act__body">
                 <div class="lic-act__success-banner">

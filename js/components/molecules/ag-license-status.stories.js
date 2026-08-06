@@ -54,12 +54,35 @@ export const Lifetime = () => withMockStatus({
     issued: '2026-04-25T10:00:00+00:00',
 });
 
+/** A licence bought with a term, still running. Same tier as a perpetual one — every Pro
+ *  feature unlocked — but the panel has to say when it ends, or the customer believes he
+ *  bought it outright. */
+export const LicensedWithTerm = () => withMockStatus({
+    status: 'lifetime',
+    days_remaining: null,
+    device_id: 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd',
+    message: 'License active until 2026-12-31.',
+    issued: '2026-01-01T10:00:00+00:00',
+    order_id: 'AG-TERM-0042',
+    plan: 'term',
+    activated_at: '2026-01-01T10:00:00+00:00',
+    expires_at: '2026-12-31',
+    version_scope: '1',
+});
+
+/** The same licence, the day after. It used to land on "tampered" and tell the customer his
+ *  own file was invalid or stolen. */
 export const Expired = () => withMockStatus({
     status: 'expired',
-    days_remaining: 0,
+    days_remaining: null,
     device_id: 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd',
-    message: 'Trial expired. Please purchase a lifetime license.',
-    issued: null,
+    message: 'License ended on 2026-12-31. Audiogravity is running in Starter Edition.',
+    issued: '2026-01-01T10:00:00+00:00',
+    order_id: 'AG-TERM-0042',
+    plan: 'term',
+    activated_at: '2026-01-01T10:00:00+00:00',
+    expires_at: '2026-12-31',
+    version_scope: '1',
 });
 
 export const Tampered = () => withMockStatus({

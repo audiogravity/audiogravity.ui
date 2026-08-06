@@ -21,6 +21,7 @@ import { apiGet } from '../../api.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-license-badge.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
+import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
 const TAB_ICONS = {
     'audio-software': iconHeadphones,
@@ -58,6 +59,7 @@ export class AgTabs extends LitElement {
         _connected: { type: Boolean, state: true },
         _licenseStatus: { type: String, state: true },
         _licenseDaysRemaining: { type: Number, state: true },
+        _licenseExpiresAt: { type: String, state: true },
         _tabStats: { type: Object, state: true },
         _previewTab: { type: String, state: true }, // Tab highlighted during swipe gesture
         _isMobile: { type: Boolean, state: true },
@@ -89,6 +91,7 @@ export class AgTabs extends LitElement {
         this._connected = window.AppState?.connected ?? true;
         this._licenseStatus = 'no_license';
         this._licenseDaysRemaining = null;
+        this._licenseExpiresAt = null;
         this._tabStats = {};
         this._announcementCount = 0;
         this._updateAvailable = false;
@@ -372,13 +375,13 @@ export class AgTabs extends LitElement {
      * @returns {boolean}
      */
     _isLocked(tabId) {
-        return GATED_TABS.has(tabId) && (this._licenseStatus === 'starter' || this._licenseStatus === 'version_expired');
+        return GATED_TABS.has(tabId) && !isLicensed(this._licenseStatus);
     }
 
     selectTab(tabId, { keepOpen = false } = {}) {
         if (this._isLocked(tabId)) {
             this.selectTab('admin', { keepOpen });
-            if (this._licenseStatus === 'starter' && window.EventEmitter)
+            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
                 window.EventEmitter.emit('show-license-modal');
             return;
         }
@@ -712,6 +715,7 @@ export class AgTabs extends LitElement {
             if (data) {
                 this._licenseStatus = data.status ?? 'no_license';
                 this._licenseDaysRemaining = data.days_remaining ?? null;
+                this._licenseExpiresAt = data.expires_at ?? null;
                 window.dispatchEvent(new CustomEvent('license-status', { detail: { status: this._licenseStatus } }));
             }
         } catch (_) {
@@ -725,7 +729,8 @@ export class AgTabs extends LitElement {
                 <img class="tabs-logo" src="pics/audiogravity.svg" alt="Audiogravity">
                 <ag-license-badge
                     status="${this._licenseStatus}"
-                    .daysRemaining="${this._licenseDaysRemaining}">
+                    .daysRemaining="${this._licenseDaysRemaining}"
+                    .expiresAt="${this._licenseExpiresAt}">
                 </ag-license-badge>
                 <ag-status-indicator
                     state=${this._connected ? 'up' : 'down'}

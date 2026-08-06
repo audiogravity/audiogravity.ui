@@ -8,6 +8,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
+import { planLabel } from '../utils-lit.js';
 
 const KEY_REGEX = /^AG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
@@ -69,7 +70,7 @@ export class AgLicenseVerify extends LitElement {
     _renderResult() {
         const r = this._result;
         if (!r) return nothing;
-        const plan = r.plan === 'lifetime' ? 'Perpetual · v1.x' : `Trial · expires ${r.expires_at || '?'}`;
+        const plan = planLabel(r.plan, r.expires_at, r.version_scope ?? '1');
         const statusBadge = {
             available:         html`<span class="badge warning" style="font-size:var(--font-size-xs)">NOT ACTIVATED</span>`,
             already_activated: html`<span class="badge success" style="font-size:var(--font-size-xs)">ACTIVE</span>`,

@@ -13,6 +13,19 @@ import { getAuthToken } from '../../auth.js';
 import { showPasswordConfirm, showToast, copyToClipboard } from '../../ui-helpers.js';
 import '../atoms/ag-license-badge.js';
 import { iconTrash, iconCreditCard, iconExternalLink, iconDownload, iconUpload, iconCopy } from '../../ag-icons.js';
+import { fmtIsoDate, isPast, planLabel } from '../utils-lit.js';
+
+/**
+ * Statuses whose order id, activation date and plan are worth showing.
+ *
+ * An ended term keeps them: that is exactly when the customer needs his order id to renew,
+ * and hiding the panel's contents the day a licence lapses reads as the licence having
+ * vanished rather than run out. `version_expired` likewise — the core populates the same
+ * fields for it, and the upgrade portal flow needs that order id.
+ * A frozen array, not a frozen Set: `Object.freeze` does not stop `Set.prototype.add`.
+ * @type {ReadonlyArray<string>}
+ */
+const LICENSED_OR_ENDED = Object.freeze(['lifetime', 'expired', 'version_expired']);
 
 /**
  * License status panel molecule.
@@ -201,7 +214,12 @@ export class AgLicenseStatus extends LitElement {
             }
 
             this._status = await res.json();
-            showToast('success', 'License activated', 'Your lifetime license is now active.');
+            // Wording follows what was actually installed. Hardcoded "lifetime", it told a
+            // customer renewing a one-year licence that he had just bought a perpetual one.
+            const ends = this._status?.expires_at;
+            showToast('success', 'License activated',
+                ends ? `Your license is active until ${fmtIsoDate(ends)}.`
+                     : 'Your lifetime license is now active.');
         } catch (err) {
             showToast('error', 'Activation failed', err.message || 'Could not activate the license.');
         } finally {
@@ -218,7 +236,8 @@ export class AgLicenseStatus extends LitElement {
     async _handleDeleteLicense() {
         const password = await showPasswordConfirm(
             'Delete License',
-            'This will remove the lifetime license. The system will revert to trial mode. Enter your password to confirm.'
+            'This will remove the installed license. Audiogravity will run in Starter Edition. '
+            + 'Enter your password to confirm.'
         );
         if (!password) return;
 
@@ -229,7 +248,7 @@ export class AgLicenseStatus extends LitElement {
                 body: JSON.stringify({ password }),
             });
             window.dispatchEvent(new CustomEvent('ag:license-changed'));
-            showToast('success', 'License removed', 'The license has been deleted. Trial mode is now active.');
+            showToast('success', 'License removed', 'The license has been deleted. Audiogravity is running in Starter Edition.');
         } catch (err) {
             showToast('error', 'Deletion failed', err.message || 'Could not delete the license.');
         } finally {
@@ -341,6 +360,57 @@ export class AgLicenseStatus extends LitElement {
                             ${this._deleting ? 'Deleting…' : 'Delete license'}
                         </button>
                     </div>
+                </div>
+            `;
+        }
+
+        if (status === 'expired') {
+            return html`
+                <div style="margin-top: var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                    <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">
+                        Your license ran to
+                        ${fmtIsoDate(this._status?.expires_at) || 'its end date'}
+                        and has ended. Audiogravi<sup>ty</sup> keeps running in Starter Edition —
+                        renew to restore the Pro features.
+                    </span>
+                    <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap; align-items: flex-start;">
+                        ${this._paypalUrl ? html`
+                        <button class="btn-action btn-action--ghost compact"
+                                @click=${() => window.open(this._paypalUrl, '_blank', 'noopener,noreferrer')}>
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCreditCard}</svg>
+                            Renew${this._priceDisplay ? ` — ${this._priceDisplay}` : ''}
+                        </button>` : nothing}
+                        ${this._portalUrl ? html`
+                        <a class="btn-action btn-action--ghost compact"
+                           href="${this._portalUrl}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           title="Download the .lic for an order you have already paid for">
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconExternalLink}</svg>
+                            License portal
+                        </a>` : nothing}
+                        <button class="btn-action btn-action--ghost compact"
+                                ?disabled=${this._uploading}
+                                @click=${this._triggerFileInput}>
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg>
+                            ${this._uploading ? 'Uploading…' : 'Upload new license'}
+                        </button>
+                        <div style="margin-left: auto;">
+                            <button class="btn-action btn-action--error compact"
+                                    ?disabled=${this._deleting}
+                                    @click=${this._handleDeleteLicense}>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg>
+                                ${this._deleting ? 'Deleting…' : 'Delete license'}
+                            </button>
+                        </div>
+                    </div>
+                    <!-- The button above is inert without this: _triggerFileInput uses
+                         ?.click(), so a missing input fails silently — and renewing is the
+                         one action this branch exists to offer. -->
+                    <input id="lic-file-input" type="file" accept=".lic"
+                           style="display: none;"
+                           @change=${this._handleFileSelected}>
+                    ${this._renderContactHelp()}
                 </div>
             `;
         }
@@ -467,7 +537,7 @@ export class AgLicenseStatus extends LitElement {
             `;
         }
 
-        const { status, device_id, message, order_id, plan, activated_at } = this._status || {};
+        const { status, device_id, message, order_id, plan, activated_at, expires_at } = this._status || {};
         const shortId = device_id
             ? `${device_id.slice(0, 10)}…${device_id.slice(-8)}`
             : '—';
@@ -480,6 +550,7 @@ export class AgLicenseStatus extends LitElement {
                     <ag-license-badge
                         status="${status}"
                         days-remaining="${this._status?.days_remaining ?? ''}"
+                        expires-at="${this._status?.expires_at ?? ''}"
                         pill>
                     </ag-license-badge>
                     ${this._renderOnlineBadge()}
@@ -502,7 +573,7 @@ export class AgLicenseStatus extends LitElement {
                     </span>
                 </div>
 
-                ${status === 'lifetime' && order_id ? html`
+                ${LICENSED_OR_ENDED.includes(status) && order_id ? html`
                     <div class="profile-info-row" style="margin-top: var(--spacing-xs); align-items: center;">
                         <span class="info-label" style="flex-shrink: 0;">Order ID</span>
                         <span style="display: flex; align-items: center; gap: var(--spacing-sm); margin-left: auto;">
@@ -516,7 +587,7 @@ export class AgLicenseStatus extends LitElement {
                         </span>
                     </div>
                 ` : nothing}
-                ${status === 'lifetime' && activated_at ? html`
+                ${LICENSED_OR_ENDED.includes(status) && activated_at ? html`
                     <div class="profile-info-row" style="margin-top: var(--spacing-xs); align-items: center;">
                         <span class="info-label" style="flex-shrink: 0;">Activated</span>
                         <span style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-left: auto;">
@@ -524,13 +595,19 @@ export class AgLicenseStatus extends LitElement {
                         </span>
                     </div>
                 ` : nothing}
-                ${status === 'lifetime' && plan ? html`
+                ${expires_at ? html`
+                    <div class="profile-info-row" style="margin-top: var(--spacing-xs); align-items: center;">
+                        <span class="info-label" style="flex-shrink: 0;">${isPast(expires_at) ? 'Ended' : 'Expires'}</span>
+                        <span style="font-size: var(--font-size-xs); color: ${isPast(expires_at) ? 'var(--color-warning)' : 'var(--text-secondary)'}; margin-left: auto;">
+                            ${fmtIsoDate(expires_at)}
+                        </span>
+                    </div>
+                ` : nothing}
+                ${LICENSED_OR_ENDED.includes(status) && plan ? html`
                     <div class="profile-info-row" style="margin-top: var(--spacing-xs); align-items: center;">
                         <span class="info-label" style="flex-shrink: 0;">Plan</span>
                         <span style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-left: auto;">
-                            ${plan === 'lifetime'
-                                ? `Perpetual · v${this._status?.version_scope ?? '1'}.x`
-                                : plan}
+                            ${planLabel(plan, expires_at, this._status?.version_scope ?? '1')}
                         </span>
                     </div>
                 ` : nothing}

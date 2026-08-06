@@ -1,14 +1,13 @@
 /**
  * Unit tests for utils-lit.js — pure formatting and utility functions.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect , vi, afterEach} from 'vitest';
 import {
     safeToFixed, formatMemory, formatUptime, formatRate,
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage,
-} from './utils-lit.js';
+    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel } from './utils-lit.js';
 
 describe('svgIcon', () => {
     it('wraps an icon in a sized <svg> with the Lucide stroke convention', () => {
@@ -224,5 +223,86 @@ describe('catalogueErrorMessage', () => {
 
     it('does not throw on a null error', () => {
         expect(catalogueErrorMessage(null, 'Search failed')).toBe('Search failed');
+    });
+});
+
+describe('fmtIsoDate', () => {
+    it('keeps the calendar day whatever the viewer timezone', () => {
+        // The defect: `new Date('2026-12-31').toLocaleDateString()` renders 30/12/2026 in
+        // New York and Honolulu. Parsing the parts in local time cannot shift the day.
+        expect(fmtIsoDate('2026-12-31')).toBe(new Date(2026, 11, 31).toLocaleDateString());
+    });
+
+    it('formats the first of a month without slipping into the previous one', () => {
+        expect(fmtIsoDate('2026-01-01')).toBe(new Date(2026, 0, 1).toLocaleDateString());
+    });
+
+    it('returns nothing for an absent date, so callers can fall back', () => {
+        expect(fmtIsoDate(null)).toBe('');
+        expect(fmtIsoDate(undefined)).toBe('');
+        expect(fmtIsoDate('')).toBe('');
+    });
+
+    it('shows an unrecognised value as authored rather than inventing a day', () => {
+        expect(fmtIsoDate('31/12/2026')).toBe('31/12/2026');
+    });
+});
+
+describe('isPast', () => {
+    afterEach(() => vi.useRealTimers());
+
+    /** Freeze the clock at a UTC instant whose local day differs, to catch a local reading. */
+    const freeze = (utcIso) => vi.setSystemTime(new Date(utcIso));
+
+    it('is false on the expiry day itself — a licence is valid through it', () => {
+        vi.useFakeTimers();
+        freeze('2026-12-31T12:00:00Z');
+        expect(isPast('2026-12-31')).toBe(false);
+    });
+
+    it('is true the day after', () => {
+        vi.useFakeTimers();
+        freeze('2027-01-01T00:30:00Z');
+        expect(isPast('2026-12-31')).toBe(true);
+    });
+
+    it('compares in UTC, matching the core', () => {
+        // 23:30 UTC on the 31st is already the 1st in UTC+13. Read locally, the licence
+        // would look ended here while the core still considers it live.
+        vi.useFakeTimers();
+        freeze('2026-12-31T23:30:00Z');
+        expect(isPast('2026-12-31')).toBe(false);
+    });
+
+    it('is false when there is no date at all', () => {
+        expect(isPast(null)).toBe(false);
+        expect(isPast('')).toBe(false);
+    });
+});
+
+describe('planLabel', () => {
+    it('names a perpetual licence', () => {
+        expect(planLabel('lifetime', null, '1')).toBe('Perpetual · v1.x');
+    });
+
+    it('does not call a paid term a trial', () => {
+        // The licence server stamps "trial" on every document carrying an end date,
+        // including one sold for a year. Relayed raw, three separate screens told a paying
+        // customer his plan was "Trial".
+        expect(planLabel('term', '2026-12-31')).not.toContain('Trial');
+        expect(planLabel('trial', '2026-12-31')).not.toContain('Trial');
+    });
+
+    it('carries the end date, formatted without shifting the day', () => {
+        expect(planLabel('term', '2026-12-31')).toContain(fmtIsoDate('2026-12-31'));
+    });
+
+    it('handles a term with no date rather than printing undefined', () => {
+        expect(planLabel('term', null)).toBe('Time-limited');
+    });
+
+    it('shows an unknown plan as given instead of inventing one', () => {
+        expect(planLabel('enterprise', null)).toBe('enterprise');
+        expect(planLabel(null, null)).toBe('—');
     });
 });

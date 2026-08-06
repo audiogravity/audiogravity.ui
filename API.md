@@ -437,13 +437,45 @@ badged `origin: "radio"`.
 ### License — `/license/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/license/status` | Current licence state — for a trial, `days_remaining` and `trial_days_total` (built-in floor, or a longer licence-server-signed override) |
+| GET | `/license/status` | Current licence state — for a trial, `days_remaining` and `trial_days_total` (built-in floor, or a longer licence-server-signed override); for a licence carrying an end date, `expires_at` (detailed below) |
 | GET | `/license/online-status` | Cached remote verification (detailed below) |
 | GET | `/license/public-config` | Public config served by the licence server |
 | POST | `/license/check` | Validate a key without applying it |
 | POST | `/license/activate` | Self-service activation |
 | POST | `/license/upload` | Upload a licence file |
 | DELETE | `/license/license` | Remove the installed licence |
+
+**`GET /license/status`** — `status` is one of `trial`, `lifetime`, `starter`, `expired`,
+`version_expired`, `tampered`, `no_license`.
+
+Two of them are easy to confuse and mean different things:
+
+- **`expired`** — a licence that carried an end date and reached it. The customer paid; his
+  term is over. The box keeps Starter, exactly like an expired trial. Previously this fell
+  through to `tampered`, which told the customer his own file was *"invalid or bound to a
+  different device"* — read as corrupted or stolen, and worth a support ticket every time.
+- **`version_expired`** — a licence still valid in time, bought for an earlier major version.
+
+**`expires_at`** (ISO date, inclusive) is present whenever a licence carries an end date —
+both while it is still running and after it has ended. It is `null` on a perpetual licence,
+which is the only kind that has no end. Without it the interface reported a time-limited
+licence as *"Lifetime license active"*, so a customer believed he had bought one outright.
+
+The comparison is made in **UTC on both ends**, so a box and the licence server lapse a
+licence at the same instant whatever timezone the box sits in. An `expires_at` present on a
+licence is enforced **whatever its `plan` says** — a document marked perpetual that also
+carried a date would otherwise stay unlocked for ever while the interface, which reads the
+date, announced it as active until a day long past.
+
+A licence still within its term keeps `status: "lifetime"` — the tier and the unlocked
+features are unchanged, and that is what gating reads. Only the wording differs, which is why
+`expires_at` has to travel with it. `version_expired` carries the same details as any other
+licensed state (`expires_at`, `order_id`, `plan`), since a licence can be both version-locked
+and time-limited.
+
+**`plan`** is `"lifetime"` or `"term"` — it is **not** the raw `type` from the .lic file. The
+licence server stamps `"trial"` on every document that carries an end date, including one
+sold for a year, so relaying it unchanged showed a paying customer `Plan: trial`.
 
 **`GET /license/online-status`** returns the cached result of the last remote
 verification (refreshed every 24 h, or right after an activation).

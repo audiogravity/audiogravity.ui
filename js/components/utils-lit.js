@@ -98,6 +98,62 @@ export const pickPrimaryCoverToken = (item, { swapped = false, preferStation = f
 };
 
 /**
+ * Format a bare ISO date (`YYYY-MM-DD`) for display, without shifting the day.
+ *
+ * `new Date('2026-12-31')` is parsed as **UTC midnight**, and `toLocaleDateString()` then
+ * renders it in the viewer's timezone — so it reads 30/12/2026 anywhere west of Greenwich.
+ * The core compares licence expiry against the UTC date, so the interface would have
+ * announced the end a day before the core enforced it.
+ *
+ * @param {string|null|undefined} iso - A date-only string, `YYYY-MM-DD`.
+ * @returns {string} The same calendar day, formatted for the viewer, or '' when absent.
+ */
+export const fmtIsoDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = String(iso).split('-').map(Number);
+    if (!y || !m || !d) return String(iso);      // not a bare date — show it as authored
+    // Constructed in local time from the parts, so the calendar day cannot move.
+    return new Date(y, m - 1, d).toLocaleDateString();
+};
+
+/**
+ * Human label for a licence plan.
+ *
+ * Written out inline in three components, which is why a fix to one of them left the other
+ * two saying "Trial" to a paying customer. The licence server stamps `"trial"` on every
+ * document carrying an end date, including one sold for a year, so the raw value is not a
+ * plan name — the core translates it to `"term"`, and older responses still carry `"trial"`.
+ * Both are handled here so no call site has to know.
+ *
+ * @param {string|null|undefined} plan - `plan` from the core, or the licence server's raw type.
+ * @param {string|null|undefined} expiresAt - The end date, when there is one.
+ * @param {string} [versionScope='1'] - Major version the licence covers.
+ * @returns {string} A label fit to show a customer.
+ */
+export const planLabel = (plan, expiresAt, versionScope = '1') => {
+    if (plan === 'lifetime') return `Perpetual · v${versionScope}.x`;
+    if (plan === 'term' || (plan === 'trial' && expiresAt)) {
+        return expiresAt ? `Time-limited · until ${fmtIsoDate(expiresAt)}` : 'Time-limited';
+    }
+    return plan || '—';
+};
+
+/**
+ * Whether a bare ISO date (`YYYY-MM-DD`) is already past, compared in UTC.
+ *
+ * UTC because that is what the core compares against; a local comparison would disagree with
+ * it for part of every day.
+ *
+ * @param {string|null|undefined} iso - A date-only string, `YYYY-MM-DD`.
+ * @returns {boolean} True when the day has passed.
+ */
+export const isPast = (iso) => {
+    if (!iso) return false;
+    const today = new Date().toISOString().slice(0, 10);
+    return String(iso) < today;
+};
+
+/**
  * Format seconds as M:SS string.
  * Returns '--:--' for null / undefined / NaN inputs.
  * @param {number|null|undefined} secs

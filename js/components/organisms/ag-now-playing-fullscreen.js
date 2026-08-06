@@ -32,6 +32,7 @@ import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
+import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -132,7 +133,7 @@ export class AgNowPlayingFullscreen extends LitElement {
     // ------------------------------------------------------------------
 
     _isLicensed() {
-        return this._licenseStatus !== 'starter' && this._licenseStatus !== 'version_expired';
+        return isLicensed(this._licenseStatus);
     }
 
     /**
@@ -178,7 +179,7 @@ export class AgNowPlayingFullscreen extends LitElement {
     _openPlayer(sourceId = null, item = null) {
         if (!this._isLicensed()) {
             document.querySelector('ag-tabs')?.selectTab('admin');
-            if (this._licenseStatus === 'starter' && window.EventEmitter)
+            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
                 window.EventEmitter.emit('show-license-modal');
             return;
         }

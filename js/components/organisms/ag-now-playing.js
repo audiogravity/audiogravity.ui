@@ -11,6 +11,7 @@ import '../atoms/ag-track-meta.js';
 import '../atoms/ag-source-badge.js';
 import '../molecules/ag-volume-popover.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
+import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
 /**
  * @module AgNowPlaying
@@ -311,7 +312,7 @@ export class AgNowPlaying extends LitElement {
     // ------------------------------------------------------------------
 
     _isLicensed() {
-        return this._licenseStatus !== 'starter' && this._licenseStatus !== 'version_expired';
+        return isLicensed(this._licenseStatus);
     }
 
     // BACKLOG: the mini-player posts to /audio_pipeline/control while the
@@ -320,7 +321,7 @@ export class AgNowPlaying extends LitElement {
     async _sendControl(sourceId, action, volume = null, item = null) {
         if (!this._isLicensed()) {
             document.querySelector('ag-tabs')?.selectTab('admin');
-            if (this._licenseStatus === 'starter' && window.EventEmitter)
+            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
                 window.EventEmitter.emit('show-license-modal');
             return;
         }
