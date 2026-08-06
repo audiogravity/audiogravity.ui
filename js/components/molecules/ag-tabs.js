@@ -734,7 +734,7 @@ export class AgTabs extends LitElement {
                 </ag-license-badge>
                 <ag-status-indicator
                     state=${this._connected ? 'up' : 'down'}
-                    title="${this._connected ? 'Backend connecté' : 'Backend déconnecté'}">
+                    title="${this._connected ? 'Core connected' : 'Core disconnected'}">
                 </ag-status-indicator>
             </div>
             <div class="tabs-user-bar">

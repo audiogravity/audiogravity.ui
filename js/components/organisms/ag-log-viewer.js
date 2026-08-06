@@ -46,7 +46,7 @@ export class AgLogViewer extends LitElement {
 
     constructor() {
         super();
-        this.title = 'Backend Logs';
+        this.title = 'Core Logs';
         this.syslogIdentifier = '';
         this.grepPattern = '';
         this.lines = 50;
@@ -135,7 +135,7 @@ export class AgLogViewer extends LitElement {
         
         if (newEntries.length === 0) return;
         
-        // Filter by syslog identifier (e.g. 'python') or unit (e.g. 'audiogravity-backend.service')
+        // Filter by syslog identifier (e.g. 'python') or unit (e.g. 'ag-core-server.service')
         if (this.syslogIdentifier) {
             const matchesId = syslog_identifier === this.syslogIdentifier;
             const matchesUnit = unit === this.syslogIdentifier || unit.replace('.service', '') === this.syslogIdentifier;
@@ -182,7 +182,10 @@ export class AgLogViewer extends LitElement {
 
     _getStreamParams() {
         const isUnit = this.syslogIdentifier.endsWith('.service');
-        const unit = isUnit ? this.syslogIdentifier : 'audiogravity-backend.service';
+        // ag-core-server.service, not audiogravity-backend.service: that unit no longer
+        // exists, and journalctl answers 200 with an empty log rather than an error — so
+        // the panel simply showed nothing, with no sign that the name was wrong.
+        const unit = isUnit ? this.syslogIdentifier : 'ag-core-server.service';
         const identifier = isUnit ? null : this.syslogIdentifier;
         return { unit, identifier };
     }

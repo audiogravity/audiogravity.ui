@@ -21,7 +21,7 @@ Every request must carry:
 
 | Header | Value |
 |---|---|
-| `X-API-Key` | Static API key (set in backend `.env`) |
+| `X-API-Key` | Static API key (set in the core's `.env`) |
 | `Authorization` | `Bearer <JWT>` (after login) |
 
 JWT tokens are obtained from `POST /auth/login` and stored in
@@ -239,7 +239,7 @@ only what is running. Same entry shape, different contents.
 library playback goes. Enabling answers **503** when no HQPlayer is configured or its
 NAA is not running; disabling is always allowed and stops HQPlayer, releasing the local
 sound card. Clients must not write this setting to correct an observed NAA outage — the
-backend refuses the play instead, naming the daemon.
+core refuses the play instead, naming the daemon.
 
 ### Tidal — `/tidal/*`
 | Method | Path | Description |
@@ -255,7 +255,7 @@ backend refuses the play instead, naming the daemon.
 |---|---|---|
 | GET | `/qobuz/connection` | Connection state |
 | POST | `/qobuz/connection` | Start OAuth2 flow — **502** when the Qobuz app-bundle credentials cannot be fetched (`play.qobuz.com` unreachable / format changed) |
-| GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a backend failure returns the styled **error** page with status **502**, not a raw 500 |
+| GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a core failure returns the styled **error** page with status **502**, not a raw 500 |
 | DELETE | `/qobuz/connection` | Disconnect |
 | GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 

@@ -605,7 +605,7 @@ export class AgAudioSoftwarePage extends LitElement {
         const modal = document.getElementById('agLogsModal');
         if (modal) modal.isOpen = false;
         this._logCursor = { packageId: null, lastSeq: 0 };
-        showToast('warning', 'Operation Cancelled', 'Modal closed, but backend may still be processing');
+        showToast('warning', 'Operation Cancelled', 'Modal closed, but the core may still be processing');
     }
 
     async _refreshConfig() {

@@ -7,11 +7,11 @@ export default {
 };
 
 const serviceMock = {
-    name: 'audiogravity-backend',
+    name: 'ag-core-server',
     description: 'AudioGravity Core Backend',
     active: 'active',
     substate: 'running',
-    unit: 'audiogravity-backend.service'
+    unit: 'ag-core-server.service'
 };
 
 const Template = (args) => html`

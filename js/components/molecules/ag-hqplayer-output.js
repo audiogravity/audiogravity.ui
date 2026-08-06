@@ -298,7 +298,7 @@ class AgHqplayerOutput extends LitElement {
             console.warn('[hqp] could not change the HQPlayer output setting:', e);
             this._useAsOutput = !enabled;   // revert — the server refused
             showToast('error', 'HQPlayer output unchanged',
-                      e?.message || 'The backend refused the change.', 5000);
+                      e?.message || 'The core refused the change.', 5000);
         }
     }
 

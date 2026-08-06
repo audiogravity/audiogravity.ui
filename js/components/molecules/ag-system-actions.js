@@ -37,21 +37,21 @@ export class AgSystemActions extends LitElement {
     }
 
     /**
-     * Restart the audiogravity-backend systemd service.
+     * Restart the ag-core-server systemd service.
      * The endpoint returns immediately; the service restarts ~0.5 s later.
      * @returns {Promise<void>}
      */
     async _handleRestartBackend() {
         const confirmed = await showConfirm(
-            'Restart Backend',
-            'This will restart the audiogravity-backend service. The UI will reconnect automatically. Continue?'
+            'Restart Core',
+            'This will restart the Audiogravity core. The interface reconnects on its own. Continue?'
         );
         if (!confirmed) return;
 
         try {
             this._restartingBackend = true;
             await apiPost('/sysinfo/actions/restart-backend', {});
-            showToast('info', 'Backend Restarting', 'The service is restarting — reconnecting automatically…');
+            showToast('info', 'Core Restarting', 'The core is restarting — reconnecting automatically…');
             this._startReconnectPolling(false);
         } catch (err) {
             this._restartingBackend = false;
@@ -137,8 +137,8 @@ export class AgSystemActions extends LitElement {
                 <div class="system-action-card">
                     <div class="system-action-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></div>
                     <div class="system-action-info">
-                        <div class="system-action-title">Restart Backend</div>
-                        <div class="system-action-desc">Restart the audiogravity-backend service without rebooting the OS. The UI reconnects automatically.</div>
+                        <div class="system-action-title">Restart Core</div>
+                        <div class="system-action-desc">Restart the Audiogravity core without rebooting the OS. The interface reconnects on its own.</div>
                     </div>
                     <button
                         class="btn-action compact ${this._restartingBackend ? 'disabled' : ''}"

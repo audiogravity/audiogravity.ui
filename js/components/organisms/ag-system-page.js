@@ -10,7 +10,7 @@ import '../molecules/ag-terminal.js';
 
 /**
  * @module AgSystemPage
- * @description Page component for the System tab: Vitals, Events log, Backend logs, and System Actions.
+ * @description Page component for the System tab: Vitals, Events log, Core logs, and System Actions.
  *
  * @element ag-system-page
  *
@@ -109,8 +109,8 @@ export class AgSystemPage extends LitElement {
                 { title: 'Audio Hardware', text: 'All connected audio devices with card details, USB interfaces, and available subdevices.' },
                 { title: 'Live Connection', text: 'The LIVE badge indicates active real-time data streaming from the server.' },
                 { title: 'Event Log', text: 'Track system events and SSE messages. Use RUNNING/STOPPED to pause capture, CLEAR to reset.' },
-                { title: 'System Actions (admin)', text: '<strong>Restart Backend</strong> restarts the audiogravity service without rebooting. <strong>Reboot OS</strong> performs a full system reboot (double confirmation required). The UI reconnects automatically in both cases.' },
-                { title: 'Terminal (admin)', text: 'Full interactive bash shell over WebSocket. The session runs as the backend user — use with care.' }
+                { title: 'System Actions (admin)', text: '<strong>Restart Core</strong> restarts the Audiogravity core without rebooting. <strong>Reboot OS</strong> performs a full system reboot (double confirmation required). The UI reconnects automatically in both cases.' },
+                { title: 'Terminal (admin)', text: 'Full interactive bash shell over WebSocket. The session runs as the service user of the core — use with care.' }
             ]
         );
         window.UIComponents.InfoModal.show('About System Monitoring', content);
@@ -161,7 +161,7 @@ export class AgSystemPage extends LitElement {
                 ${!isGuest() ? html`
                 <ag-log-viewer
                     class="backend-logs-zone tab-zone"
-                    title="BACKEND LOGS"
+                    title="CORE LOGS"
                     syslog-identifier="">
                 </ag-log-viewer>
                 ` : nothing}

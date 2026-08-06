@@ -58,8 +58,8 @@ if (!API_KEY) {
         // every user on a deployed box, which could only ever break their own
         // access to a key they already had.
         const devKey = window.prompt(
-            '⚠️ Clé API manquante (mode développement)\n\n' +
-            'Entrez votre API_KEY (visible dans backend/.env) :'
+            '⚠️ API key missing (development mode)\n\n' +
+            'Enter your API_KEY — it is in the .env file of the core:'
         );
         if (devKey && devKey.trim()) {
             API_KEY = devKey.trim();
