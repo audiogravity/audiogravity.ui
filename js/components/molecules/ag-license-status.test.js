@@ -1,13 +1,18 @@
 /**
- * Unit tests for ag-license-status.js security fixes.
+ * Unit tests for ag-license-status.js.
  *
- * Tested in isolation (no LitElement instantiation) by extracting the
- * security-critical logic into pure functions that mirror the component.
+ * Two halves, deliberately. The first tests pure functions that MIRROR the
+ * component's security-critical logic — cheap, and enough for rules about values.
+ * The second renders the component itself, because a mirror is blind to defects
+ * that live in the template: an absent price once left "one-time payment of ,"
+ * on the panel that asks the customer to buy, and no mirror could have seen it.
  *
  * Covers:
  * 1. _portalUrl validation: javascript: / data: URLs are rejected
  * 2. price display: numeric price formatted correctly, non-numeric rejected
- * 3. acquisitionStepsHtml: price is text-interpolated, not raw HTML
+ * 3. the purchase sentence: price is text-interpolated, not raw HTML
+ * 4. rendered: the sentence survives a missing price, and states it only once
+ * 5. rendered: the trial tile states the day count once, not three times
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -18,19 +23,23 @@ function isSafePortalUrl(url) {
     return /^https?:\/\//i.test(url || '');
 }
 
-/** Mirror of _formatPrice from ag-license-status.js. */
-function formatPrice(price, currency = 'EUR') {
-    const num = parseFloat(price);
-    if (isNaN(num)) return '';
-    try {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
-    } catch {
-        return `${num} ${currency}`;
-    }
+/**
+ * Mirror of _formatPrice from ag-license-status.js. It does NOT sanitise: a value
+ * parseFloat cannot read comes back verbatim. What makes that safe is Lit, which
+ * interpolates it as a text node — proved on the rendered component below, since a
+ * mirror can say nothing about escaping.
+ */
+function formatPrice(price) {
+    const amount = parseFloat(price);
+    return isNaN(amount) ? price : `€${amount}`;
 }
 
-/** Mirror of the Lit template string that used to use unsafeHTML. */
-function acquisitionStepsText(priceDisplay) {
+/**
+ * Mirror of the Lit template string that used to use unsafeHTML. The price is now
+ * interpolated in the purchase sentence only — the acquisition step that repeated it
+ * says just "Click Pay with PayPal."
+ */
+function purchaseSentenceText(priceDisplay) {
     // After the fix this is a Lit template — price is a text node, not raw HTML.
     // We test that the price string is text-interpolated (no HTML parsing).
     return `one-time payment of ${priceDisplay}`;
@@ -71,35 +80,25 @@ describe('_portalUrl safety validation', () => {
 
 describe('_priceDisplay — price formatting', () => {
     it('formats a valid numeric price', () => {
-        const display = formatPrice(29.99, 'EUR');
-        expect(display).toContain('29.99');
+        expect(formatPrice(29.99)).toBe('€29.99');
     });
 
-    it('returns empty string for non-numeric price (backend sends garbage)', () => {
-        expect(formatPrice('<script>alert(1)</script>')).toBe('');
-        expect(formatPrice('not-a-price')).toBe('');
+    it('hands back a non-numeric price verbatim — it does not sanitise', () => {
+        // Stated as it is, not as one might wish: the guard against a hostile value
+        // is Lit's text interpolation, exercised on the rendered component below.
+        expect(formatPrice('not-a-price')).toBe('not-a-price');
+        expect(formatPrice('<script>alert(1)</script>')).toBe('<script>alert(1)</script>');
     });
 
-    it('returns empty string for null', () => {
-        expect(formatPrice(null)).toBe('');
+    it('hands back null unchanged', () => {
+        expect(formatPrice(null)).toBe(null);
     });
 });
 
-describe('_renderAcquisitionSteps — price as text node', () => {
-    it('embeds price as plain text, XSS payload is inert', () => {
-        const xssPayload = '<img src=x onerror=alert(1)>';
-        // After the fix, _priceDisplay goes through Lit text interpolation.
-        // Simulate: if price were passed through parseFloat first, XSS is neutralised.
-        const priceDisplay = formatPrice(xssPayload); // returns '' for non-numeric
-        const text = acquisitionStepsText(priceDisplay || '');
-        // The text must not contain executable HTML
-        expect(text).not.toContain('<img');
-        expect(text).not.toContain('onerror');
-    });
-
+describe('the purchase sentence — price as text node', () => {
     it('embeds a valid price string correctly', () => {
-        const priceDisplay = formatPrice(29.99, 'EUR');
-        const text = acquisitionStepsText(priceDisplay);
+        const priceDisplay = formatPrice(29.99);
+        const text = purchaseSentenceText(priceDisplay);
         expect(text).toContain('29.99');
     });
 });
@@ -131,11 +130,13 @@ vi.mock('../../ui-helpers.js', () => ({
 await import('./ag-license-status.js');
 
 /**
- * Render the panel for a running trial and return its full text.
+ * Render the panel and return its full text.
  * @param {Object|undefined} config Public config the licence server would return.
+ * @param {Object} [status] Licence status the core would report; a running trial by default.
  */
-async function panelText(config) {
-    api.status = { status: 'trial', days_remaining: 2, trial_days_total: 45, device_id: 'abc' };
+async function panelText(config, status) {
+    api.status = status
+        ?? { status: 'trial', days_remaining: 2, trial_days_total: 45, device_id: 'abc' };
     api.config = config;
     const el = document.createElement('ag-license-status');
     document.body.appendChild(el);
@@ -157,5 +158,63 @@ describe('the purchase sentence when the licence server gives no price', () => {
     it('states the price when there is one', async () => {
         const text = await panelText({ license_price: '29' });
         expect(text).toContain('one-time payment of €29, no subscription.');
+    });
+
+    it('states the price once, not again in the steps', async () => {
+        const text = await panelText({ license_price: '29', paypal_url: 'https://paypal.me/x' });
+        expect(text).toContain('Click Pay with PayPal.');
+        // split, not match(/g): match returns null on no match, so the assertion that
+        // was meant to report "0 instead of 1" would die on null.length instead.
+        expect(text.split('€29').length - 1).toBe(1);
+    });
+
+    it('renders a hostile price as inert text', async () => {
+        // _formatPrice returns a non-numeric price verbatim, so the only thing standing
+        // between /license/public-config and the DOM is Lit's text interpolation.
+        const el = document.createElement('ag-license-status');
+        api.status = { status: 'trial', days_remaining: 2, trial_days_total: 45, device_id: 'abc' };
+        api.config = { license_price: '<img src=x onerror=alert(1)>' };
+        document.body.appendChild(el);
+        await new Promise(r => setTimeout(r, 0));
+        await el.updateComplete;
+        expect(el.querySelector('img')).toBe(null);
+        expect(el.textContent).toContain('<img src=x onerror=alert(1)>');   // text, not markup
+        el.remove();
+    });
+
+    it('states the price in the steps once the trial has ended', async () => {
+        // The starter wording is about the trial ending and carries no figure, so the
+        // steps must — otherwise the whole panel asks for a purchase without a price.
+        const text = await panelText(
+            { license_price: '29', paypal_url: 'https://paypal.me/x' },
+            { status: 'starter', days_remaining: 0, trial_days_total: 30, device_id: 'abc',
+              message: 'Trial expired.' },
+        );
+        expect(text).toContain('Click Pay with PayPal — one-time payment of €29.');
+    });
+});
+
+/**
+ * The trial tile used to say the same number three times — the badge, a sentence
+ * relayed from the core, and the bar's caption — and the sentence was built from a
+ * template, so it read "27 day(s) remaining".
+ */
+describe('the trial tile says the day count once', () => {
+    const trial = { status: 'trial', days_remaining: 27, trial_days_total: 30, device_id: 'abc',
+                    message: 'Trial license: 27 day(s) remaining.' };
+
+    it('keeps the badge and the bar caption, drops the relayed sentence', async () => {
+        const text = await panelText({}, trial);
+        expect(text).toContain('27 of 30 trial days left');
+        expect(text).not.toContain('Trial license: 27 day(s) remaining.');
+        expect(text).not.toContain('day(s)');
+    });
+
+    it('still relays the message for a state the tile does not otherwise explain', async () => {
+        const text = await panelText({}, {
+            status: 'starter', days_remaining: 0, trial_days_total: 30, device_id: 'abc',
+            message: 'Trial expired. Audiogravity is running in Starter Edition.',
+        });
+        expect(text).toContain('Trial expired. Audiogravity is running in Starter Edition.');
     });
 });

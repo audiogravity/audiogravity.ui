@@ -38,11 +38,24 @@ const withMockStatus = (statusPayload, online = { status: 'valid' }) => {
     return el;
 };
 
+// No `message`: the tile drops the core's relayed sentence for a trial, because the
+// badge and the bar caption already state the day count. `trial_days_total` is the
+// server-signed trial length the caption reads — without it the caption silently
+// falls back to 30 and the story would never exercise a lengthened trial.
 export const TrialActive = () => withMockStatus({
     status: 'trial',
     days_remaining: 22,
+    trial_days_total: 30,
     device_id: 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd',
-    message: 'Trial license: 22 day(s) remaining.',
+    issued: null,
+});
+
+/** A trial the licence server extended past the built-in 30 days. */
+export const TrialExtended = () => withMockStatus({
+    status: 'trial',
+    days_remaining: 22,
+    trial_days_total: 45,
+    device_id: 'abc123def456abc123def456abc123def456abc123def456abc123def456abcd',
     issued: null,
 });
 

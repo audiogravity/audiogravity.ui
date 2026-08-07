@@ -292,16 +292,25 @@ export class AgLicenseStatus extends LitElement {
             <div class="license-trial-progress">
                 <div class="license-trial-bar" style="width: ${pct}%"></div>
             </div>
-            <p class="license-days">${days} / ${total} days remaining</p>
+            <p class="license-days">${days} of ${total} trial days left</p>
         `;
     }
 
-    /** @returns {import('lit').TemplateResult} */
-    _renderAcquisitionSteps() {
+    /**
+     * The three steps to owning a licence. Shared by the purchase panel and the
+     * "About Licensing" modal, which is why the price is a parameter rather than a
+     * removal: the panel states it in the sentence right above these steps, so
+     * repeating it there is noise — but the modal has no other figure, and a starter
+     * box's panel has none either.
+     * @param {boolean} [withPrice=true] - State the amount in the payment step.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderAcquisitionSteps(withPrice = true) {
         return html`
             <ol style="margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:.4em">
                 ${this._paypalPaymentUrl ? html`
-                    <li>Click <strong>Pay with PayPal</strong> — one-time payment of ${this._priceDisplay}.</li>
+                    <li>Click <strong>Pay with PayPal</strong>${withPrice && this._priceDisplay
+                        ? html` — one-time payment of ${this._priceDisplay}` : ''}.</li>
                 ` : ''}
                 <li>You will receive your license key <strong>by email</strong> within seconds.</li>
                 <li>Click <strong>License Key</strong>, enter your key and click <strong>Activate this machine</strong> — no restart required.</li>
@@ -468,7 +477,10 @@ export class AgLicenseStatus extends LitElement {
                             : 'Lifetime license — one-time payment, no subscription.'}
                 </span>
                 <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: var(--spacing-xs) 0 0;">
-                    ${this._renderAcquisitionSteps()}
+                    <!-- The sentence above states the price for every status but starter,
+                         whose wording is about the trial having ended — so there, and only
+                         there, the steps carry it. -->
+                    ${this._renderAcquisitionSteps(status === 'starter')}
                 </div>
                 <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap; align-items: flex-start;">
                     ${this._paypalPaymentUrl ? html`
@@ -551,7 +563,12 @@ export class AgLicenseStatus extends LitElement {
             ${this._renderHeader(true)}
 
             <div class="system-tile" style="margin-bottom: var(--spacing-xl); max-width: 100%;">
-                <div class="profile-info-row" style="margin-bottom: var(--spacing-md);">
+                <!-- flex-start, against .profile-info-row's space-between: this row holds
+                     badges that belong together on the left, not a label/value pair. With
+                     only two of them — a trial states its days in the bar below, so no
+                     sentence follows — space-between threw one to each edge. -->
+                <div class="profile-info-row"
+                     style="margin-bottom: var(--spacing-md); justify-content: flex-start;">
                     <ag-license-badge
                         status="${status}"
                         days-remaining="${this._status?.days_remaining ?? ''}"
@@ -559,7 +576,8 @@ export class AgLicenseStatus extends LitElement {
                         pill>
                     </ag-license-badge>
                     ${this._renderOnlineBadge()}
-                    <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">${message}</span>
+                    ${status === 'trial' ? nothing : html`
+                        <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">${message}</span>`}
                 </div>
 
                 ${this._renderProgress()}
