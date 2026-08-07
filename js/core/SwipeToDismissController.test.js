@@ -312,6 +312,166 @@ describe('SwipeToDismissController', () => {
             expect(c.swiping).toBe(false);
         });
     });
+
+    /**
+     * The red "Remove" backdrop must exist only while a swipe is being made. A row
+     * left transformed sits on its own compositing layer over that backdrop, which
+     * on iOS showed as a red frame around the row, long after the gesture (site#12).
+     */
+    describe('resting state — nothing red under an untouched row', () => {
+        beforeEach(() => vi.useFakeTimers());
+        afterEach(() => vi.useRealTimers());
+
+        /** Is the red backdrop of this wrap uncovered? */
+        const revealShown = (wrap) =>
+            wrap.querySelector('.ag-swipe-reveal').style.visibility === 'visible';
+
+        /** A real wrap/backdrop/row trio, as the four consumers build it. */
+        const makeRow = () => {
+            const wrap = document.createElement('div');
+            wrap.className = 'ag-swipe-wrap';
+            wrap.innerHTML = '<div class="ag-swipe-reveal">Remove</div>';
+            const row = document.createElement('div');
+            row.className = 'ag-swipe-row';
+            wrap.appendChild(row);
+            document.body.appendChild(wrap);
+            return { wrap, row };
+        };
+
+        afterEach(() => { document.body.innerHTML = ''; });
+
+        it('reveals the backdrop while dragging and hides it once the row is back', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            expect(revealShown(wrap)).toBe(false);   // not yet armed
+            c.move(ev(150));
+            expect(revealShown(wrap)).toBe(true);
+            c.end(ev(150, 'pointerup'));
+            vi.runAllTimers();
+            expect(revealShown(wrap)).toBe(false);
+        });
+
+        it('clears the inline transform once the snap-back has run', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(150));
+            c.end(ev(150, 'pointerup'));
+            expect(row.style.transform).toBe('translateX(0px)');   // animating back
+            vi.runAllTimers();
+            expect(row.style.transform).toBe('');                  // no compositing layer left
+            expect(row.style.transition).toBe('');
+        });
+
+        it('leaves no trace at all after a plain tap', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.end(ev(200, 'pointerup'));      // never crossed the slop
+            expect(row.style.transform).toBe('');
+            expect(row.style.transition).toBe('');
+            expect(revealShown(wrap)).toBe(false);
+        });
+
+        it('does not strip a row a new gesture has already taken over', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(150));
+            c.end(ev(150, 'pointerup'));
+            c.start(ev(200, 'pointerdown'), row, 'row1');   // grabbed again mid-snap-back
+            c.move(ev(120));
+            vi.runAllTimers();                             // the first gesture's timer fires
+            expect(row.style.transform).toBe('translateX(-80px)');
+        });
+
+        it('cleans up per row: a gesture on another row does not strand the first', () => {
+            // One controller serves every row of a list. A single cleanup slot meant
+            // that swiping row A and then merely TAPPING row B cancelled A's cleanup
+            // and left A composited over a visible backdrop for the session.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const a = makeRow();
+            const b = makeRow();
+            c.start(ev(200, 'pointerdown'), a.row, 'a');
+            c.move(ev(150));
+            c.end(ev(150, 'pointerup'));          // A: snap-back running, cleanup pending
+            c.start(ev(200, 'pointerdown'), b.row, 'b');
+            c.end(ev(200, 'pointerup'));          // B: a plain tap
+            vi.runAllTimers();
+            expect(a.row.style.transform).toBe('');
+            expect(a.row.style.transition).toBe('');
+            expect(revealShown(a.wrap)).toBe(false);
+        });
+
+        it('hides the backdrop at once on a commit, before the wrap is reused', () => {
+            // The consumers map their lists, so a wrap is recycled by position: the
+            // next item would arrive on a red rectangle it never uncovered.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(300, 'pointerdown'), row, 'row1');
+            c.move(ev(100));                      // -200px, past the 140px threshold
+            c.end(ev(100, 'pointerup'));
+            expect(revealShown(wrap)).toBe(false);
+            expect(row.style.transform).toBe('translateX(0px)');   // still animates out
+        });
+
+        it('does not reveal the backdrop for a rightward drag', () => {
+            // Arming crosses the slop in EITHER direction, but the row is clamped to 0
+            // going right — a still row over a red rectangle is the arrangement iOS
+            // draws a seam around.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(260));                      // dx = +60
+            expect(revealShown(wrap)).toBe(false);
+            expect(row.style.transform).toBe('translateX(0px)');
+        });
+
+        it('rests a row still animating when the host goes away', () => {
+            // These hosts render into light DOM, so a disconnect is often a MOVE: the
+            // subtree comes back, and would come back composited over a backdrop.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(150));
+            c.end(ev(150, 'pointerup'));
+            c.hostDisconnected();                 // inside the snap-back window
+            expect(row.style.transform).toBe('');
+            expect(revealShown(wrap)).toBe(false);
+        });
+
+        it('release() frees a row un-wired mid-gesture, and the controller with it', () => {
+            // A row can stop being swipeable with the finger down (the queue recomputes
+            // it per render). No pointer event can reach end() afterwards.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { wrap, row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(120));
+            c.release(row);
+            expect(row.style.transform).toBe('');
+            expect(revealShown(wrap)).toBe(false);
+            const other = makeRow();              // the controller must not stay wedged
+            c.start(ev(200, 'pointerdown'), other.row, 'row2');
+            c.move(ev(150));
+            expect(other.row.style.transform).toBe('translateX(-50px)');
+        });
+
+        it('keeps `swiping` true for a fresh drag started during the trailing click', () => {
+            // The previous gesture's 0 ms timer used to survive into the new drag and
+            // flip `swiping` false under the moving finger, re-opening the click guard
+            // every consumer uses to suppress the trailing click.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(150));
+            c.end(ev(150, 'pointerup'));
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(120));
+            vi.runAllTimers();
+            expect(c.swiping).toBe(true);
+        });
+    });
 });
 
 // ---------------------------------------------------------------------------

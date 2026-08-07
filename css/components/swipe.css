@@ -41,4 +41,11 @@
     text-transform: uppercase;
     letter-spacing: 0.12em;
     pointer-events: none;
+
+    /* Hidden until a row is actually dragged left over it — the controller flips this
+       imperatively, as it does the row's transform (SwipeToDismissController._setActive).
+       A row at rest therefore has nothing red underneath it at all: on iOS a row left
+       on its own compositing layer showed a seam of this backdrop as a red frame around
+       itself, and it stayed drawn long after the gesture ended. */
+    visibility: hidden;
 }

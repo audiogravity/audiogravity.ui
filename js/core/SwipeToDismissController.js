@@ -38,6 +38,12 @@ import { isScreenEdgeStart, GESTURE_SLOP_PX } from './gesture-constants.js';
 const DEFAULT_COMMIT_PX = 140;
 const DEFAULT_SLOP_PX = GESTURE_SLOP_PX;
 
+/** Duration of the snap-back animation; the inline styles are cleared after it. */
+const SNAP_BACK_MS = 180;
+
+/** The backdrop uncovered by a left swipe; `visibility: hidden` at rest (swipe.css). */
+const REVEAL_SELECTOR = '.ag-swipe-reveal';
+
 /**
  * Controls that own any gesture starting on them, swipe included. A row's action
  * buttons are small touch targets, so aiming at one costs a few pixels of drift —
@@ -71,13 +77,95 @@ export class SwipeToDismissController {
         this._dx = 0;
         this._active = false;
         this._clearTimer = null;
+        // Rows whose snap-back is still running. One controller serves EVERY row of a
+        // list, so this cannot be a single field: swiping row A and then merely tapping
+        // row B would cancel A's cleanup and strand A composited over a visible red
+        // backdrop — the very state this exists to clear. Keyed by element, drained by
+        // `_rest`, so a row that is removed mid-animation simply never comes back.
+        this._pendingRest = new Map();
         host.addController(this);
     }
 
     hostDisconnected() {
         if (this._clearTimer !== null) { clearTimeout(this._clearTimer); this._clearTimer = null; }
+        // Rest every row still animating: the hosts render into light DOM, so a
+        // disconnect is often a MOVE — the subtree comes back, and would come back
+        // composited over a visible backdrop if left as it is.
+        for (const el of [...this._pendingRest.keys()]) this._rest(el);
+        if (this._el) this._rest(this._el);
         this._el = null; this._key = null; this._pointerId = null;
         this._startX = 0; this._dx = 0; this._active = false;
+    }
+
+    /**
+     * Show or hide the red backdrop this row uncovers as it slides.
+     *
+     * Written straight onto the backdrop, not via a class on the row or its wrap. The
+     * backdrop is a PRECEDING sibling of the row, so a class on the row cannot select
+     * it without `:has()`; and a class on the wrap would sit on an attribute the
+     * consumers bind (`class="ag-swipe-wrap … ${swipeable ? 'swipeable' : ''}"`),
+     * which lit-html rewrites wholesale whenever that value flips — wiping the class
+     * mid-drag. The backdrop itself carries no binding, so this survives a re-render,
+     * and a genuinely new backdrop element starts hidden, which is what a fresh row
+     * should be. The row's transform is already driven imperatively for the same
+     * reason: a drag must not re-render its host.
+     *
+     * Every step is probed rather than assumed: tests drive the controller with plain
+     * objects that are not DOM nodes, and a host may omit the wrapper entirely — in
+     * which case there is no backdrop, and nothing to do.
+     *
+     * @param {HTMLElement} el - The swiped row.
+     * @param {boolean} on
+     */
+    _setActive(el, on) {
+        const wrap = typeof el.closest === 'function' ? el.closest('.ag-swipe-wrap') : null;
+        const reveal = wrap?.querySelector?.(REVEAL_SELECTOR);
+        if (!reveal?.style) return;
+        reveal.style.visibility = on ? 'visible' : '';
+    }
+
+    /**
+     * Return a row to its resting state: no inline transform (so it stops being a
+     * compositing layer) and no active class (so the red backdrop is hidden again).
+     * Cancels any cleanup still pending for it, and is safe to call more than once.
+     * @param {HTMLElement} el
+     */
+    _rest(el) {
+        const pending = this._pendingRest.get(el);
+        if (pending !== undefined) { clearTimeout(pending); this._pendingRest.delete(el); }
+        el.style.transition = '';
+        el.style.transform = '';
+        this._setActive(el, false);
+    }
+
+    /**
+     * Abandon any gesture on `el` and return it to rest. Called by the directive when a
+     * row is un-wired, which can happen with the finger still down — after that no
+     * pointer event can reach `end()`, so nothing else would ever clear the row's
+     * transform, its backdrop, or the controller's hold on the pointer.
+     * @param {HTMLElement} el
+     */
+    release(el) {
+        if (this._el === el) {
+            this._el = null; this._key = null; this._pointerId = null;
+            this._startX = 0; this._dx = 0; this._active = false;
+        }
+        this._rest(el);
+    }
+
+    /**
+     * Schedule {@link _rest} for one row once its snap-back has run. Per row, not per
+     * controller: a list shares one controller, and a gesture on another row must not
+     * cancel this one's cleanup.
+     * @param {HTMLElement} el
+     */
+    _restLater(el) {
+        const prev = this._pendingRest.get(el);
+        if (prev !== undefined) clearTimeout(prev);   // supersede this row's earlier cleanup
+        this._pendingRest.set(el, setTimeout(() => {
+            this._pendingRest.delete(el);
+            if (this._el !== el) this._rest(el);   // a new gesture on this row owns it now
+        }, SNAP_BACK_MS + 20));
     }
 
     /**
@@ -112,6 +200,10 @@ export class SwipeToDismissController {
             : null;
         if (control && (typeof el?.contains !== 'function' || el.contains(control))) return;
         if (this._pointerId !== null) return;                    // a gesture is already in flight
+        // The previous gesture's trailing-click suppression is over the moment a new
+        // one begins; leaving its 0 ms timer to fire mid-drag flipped `swiping` false
+        // and re-opened every consumer's click guard under the moving finger.
+        if (this._clearTimer !== null) { clearTimeout(this._clearTimer); this._clearTimer = null; }
         this._el = el;
         this._key = key;
         this._pointerId = e.pointerId;
@@ -127,6 +219,12 @@ export class SwipeToDismissController {
         if (this._pointerId === null || e.pointerId !== this._pointerId) return;
         const dx = e.clientX - this._startX;
         if (!this._active && Math.abs(dx) > this._slopPx) this._active = true;
+        // Uncover the backdrop only once the row has actually moved LEFT. Arming alone
+        // is not enough: a rightward drag, and the horizontal drift of a vertical
+        // flick, both cross the slop while the row stays clamped at 0 — which would
+        // put a still row on a compositing layer over a red rectangle, the exact
+        // arrangement this hides at rest to avoid.
+        if (this._active && this._el && dx < 0) this._setActive(this._el, true);
         if (this._active) {
             this._dx = Math.min(0, dx);   // left only — clamp rightward drag to 0
             if (this._el) this._el.style.transform = `translateX(${this._dx}px)`;
@@ -146,8 +244,22 @@ export class SwipeToDismissController {
         const committed = wasActive && e.type !== 'pointercancel' && this._dx <= -this._commitPx;
         try { el && el.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
         if (el) {
-            el.style.transition = 'transform 180ms ease-out';   // animate the snap-back
-            el.style.transform = 'translateX(0px)';
+            if (wasActive) {
+                el.style.transition = `transform ${SNAP_BACK_MS}ms ease-out`;   // animate the snap-back
+                el.style.transform = 'translateX(0px)';
+                // A committed swipe removes the row and its wrap is reused for the next
+                // item — the consumers map their lists, so wraps are recycled by
+                // position. Hide the backdrop at once rather than at the end of an
+                // animation the row will not outlive, or the next item arrives sitting
+                // on a red rectangle it never uncovered.
+                if (committed) this._setActive(el, false);
+                // Then drop the inline styles. Leaving them set kept every touched row
+                // on its own compositing layer over a red rectangle, for the rest of
+                // the session.
+                this._restLater(el);
+            } else {
+                this._rest(el);   // a tap: nothing moved, nothing to animate back
+            }
         }
         this._el = null; this._key = null; this._pointerId = null; this._startX = 0; this._dx = 0;
         if (committed && this._onCommit) this._onCommit(key);
@@ -237,6 +349,14 @@ export class SwipeRowDirective extends AsyncDirective {
             el.classList.remove('no-swipe', 'ag-swipe-row');
             el.style.touchAction = '';
             el.style.userSelect = '';
+            // Un-wiring mid-gesture is real: a row can stop being swipeable while the
+            // finger is down (the queue recomputes it per render, the radio list on a
+            // search). `end()` can never run once the listeners are gone, so release
+            // the gesture here — otherwise the row stays displaced over a visible
+            // backdrop, having just lost the `ag-swipe-row` positioning that kept it
+            // painted above that backdrop, and the controller stays wedged on a
+            // pointer id that will never be released.
+            this._ctrl?.release?.(el);
         }
         this._handlers = null;
     }
