@@ -505,17 +505,28 @@ body.no-animations .animate-stagger {
     justify-content: flex-start !important;
 }
 
+/* Sits immediately beside a `.btn-action.compact` (the start/stop button), so it takes
+   that button's box: same padding, type size and letter-spacing, and a height derived
+   from the padding rather than the fixed `--size-sm`. It used to be shorter and set in
+   a different family, which made the pair read as two mismatched controls. The family
+   is the UI one, not mono: this is an uppercase label, and mono is both wider and
+   against the house rule for badges. */
 .service-status-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: var(--size-sm);
-    padding: 0 var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-md);
     border-radius: var(--radius-xs);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     font-weight: 700;
-    font-family: var(--font-mono);
+    font-family: var(--font-family);
     text-transform: uppercase;
+    letter-spacing: 0.3px;
+
+    /* A <div> inherits the page's line-height where the <button> beside it uses the
+       browser's `normal` — 16.5px against ~13px at this type size, which is most of
+       the height difference the padding alone does not explain. */
+    line-height: normal;
     min-width: 85px;
     text-align: center;
     box-sizing: border-box;
