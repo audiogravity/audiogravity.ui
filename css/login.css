@@ -3,6 +3,25 @@
  * @description Styles for the login page
  */
 
+/*
+ * The login page is pinned to Inter, which css/fonts.css serves from disk.
+ *
+ * The selector is `body.login-page` and not `.login-page`, and that is the
+ * whole point of this rule. js/login.js stamps data-theme onto <body> — the
+ * very element that carries .login-page — and the minimal theme redefines
+ * --font-family there as a system stack (css/themes/minimal.css). A bare
+ * .login-page would tie with [data-theme="minimal"] at specificity (0,1,0),
+ * leaving the @import order in main.css as the only tiebreaker: reorder those
+ * imports and the login screen silently reverts to the OS font. The added type
+ * selector takes it to (0,1,1) and settles it regardless of order.
+ *
+ * Pinning the token rather than font-family keeps every descendant that reads
+ * var(--font-family) on Inter too.
+ */
+body.login-page {
+    --font-family: 'Inter', sans-serif;
+}
+
 /* Container principal */
 .login-page {
     margin: 0;

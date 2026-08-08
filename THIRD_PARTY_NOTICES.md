@@ -115,7 +115,7 @@ Same MIT terms as above.
 
 ---
 
-## Fonts loaded via Google Fonts CDN
+## Fonts
 
 ### Inter
 **Copyright** © 2016 The Inter Project Authors  
@@ -123,8 +123,21 @@ Same MIT terms as above.
 **Source** https://rsms.me/inter  
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
-This license is copied at https://openfontlicense.org and is also available
-with a FAQ at https://openfontlicense.org/ofl-faq.
+It is copied at https://openfontlicense.org, and is also available with a FAQ
+at https://openfontlicense.org/ofl-faq.
+
+Inter reaches the browser two ways. The login page is served the font by the
+box itself — `fonts/inter-latin.woff2` and `fonts/inter-latin-ext.woff2`,
+variable weights 400-700, redistributed unmodified from the Google Fonts v20
+build. Every other page still loads it from the Google Fonts CDN.
+
+Because the box redistributes those binaries over HTTP, OFL 1.1 §2 requires the
+license to travel with them. The full text is therefore kept in
+`public/fonts/OFL.txt` — inside Vite's publicDir, so it is copied verbatim into
+`_site/` and served at **`/fonts/OFL.txt`** on every installation. Keeping the
+text outside publicDir would leave it in the source tree only: the UI package
+ships nothing but `_site/`. An inline `/*!` legal comment in `css/fonts.css` is
+not an alternative — Vite's esbuild CSS minifier strips it from the bundle.
 
 ---
 
