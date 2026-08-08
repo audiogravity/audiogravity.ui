@@ -18,6 +18,9 @@ import { monoFontFamily } from '../../common.js';
 const XTERM_CDN    = 'https://cdn.jsdelivr.net/npm/xterm@4.19.0';
 const XTERM_FIT_CDN = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js';
 
+/** Cell size for the terminal. Shared so the face is preloaded at the size it is drawn. */
+const TERMINAL_FONT_SIZE = 13;
+
 export class AgTerminal extends LitElement {
     static properties = {
         _status: { type: String, state: true }, // 'idle' | 'connecting' | 'connected' | 'error' | 'closed'
@@ -102,16 +105,32 @@ export class AgTerminal extends LitElement {
     }
 
     _mountTerminal(ws) {
-        this.updateComplete.then(() => {
+        this.updateComplete.then(async () => {
             const container = this.querySelector('.ag-terminal-viewport');
             if (!container) return;
+
+            const fontFamily = monoFontFamily();
+
+            // xterm measures one character cell when open() is called, and never
+            // measures again unless the container resizes. The monospace family
+            // is a webfont declared font-display: swap, so if it has not arrived
+            // by then xterm sizes its whole grid against the fallback and stays
+            // misaligned for the life of the session — a problem the locally
+            // installed Courier New could not have. Waiting for the face costs
+            // nothing once it is cached, and a failure here must not stop the
+            // terminal from opening.
+            try {
+                await document.fonts.load(`${TERMINAL_FONT_SIZE}px ${fontFamily}`);
+            } catch {
+                /* unparsable or unavailable face — xterm falls back on its own */
+            }
 
             const term = new window.Terminal({
                 cursorBlink: true,
                 // xterm.js draws to a canvas and cannot read a CSS custom
                 // property, so the value is resolved here rather than declared.
-                fontFamily: monoFontFamily(),
-                fontSize: 13,
+                fontFamily,
+                fontSize: TERMINAL_FONT_SIZE,
                 theme: {
                     background: '#0d1117',
                     foreground: '#e6edf3',

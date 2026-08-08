@@ -33,6 +33,9 @@ const CACHE_URLS = [
     '/login.html',
     '/offline.html',
     '/site.webmanifest',
+    // Runs before the first paint; a cache miss here would put the white flash
+    // back on exactly the cold loads this file exists to fix.
+    '/theme-boot.js',
     '/pics/apple-touch-icon.png',
     '/pics/favicon-32x32.png',
     '/pics/favicon-16x16.png',
@@ -150,7 +153,8 @@ self.addEventListener('fetch', (event) => {
     // Without this, the browser may kill the SW before cache.put() completes.
     let _swrRefresh = null;
     if (!isHashedAsset && !isCDNImmutable &&
-        (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/fonts/'))) {
+        (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/fonts/') ||
+         url.pathname === '/theme-boot.js')) {
         _swrRefresh = fetch(request).then(async res => {
             if (!res.ok) return;
             const c = await caches.open(CACHE_NAME);
@@ -178,7 +182,12 @@ self.addEventListener('fetch', (event) => {
             }
         }
 
-        // ── Strategy 2: Stale-while-revalidate (Google Fonts, /pics/, /fonts/) ─
+        // ── Strategy 2: Stale-while-revalidate (/pics/, /fonts/, theme-boot) ──
+        //
+        // theme-boot.js belongs here and not in network-first: it is a
+        // render-blocking <head> script, so serving it from the network would
+        // put a round trip in front of every paint — the delay this file exists
+        // to remove. Cached first, refreshed behind.
         // Background refresh already in flight via _swrRefresh + event.waitUntil().
         if (_swrRefresh !== null) {
             const cached = await caches.match(request);

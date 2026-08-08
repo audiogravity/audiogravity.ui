@@ -1,7 +1,8 @@
 /**
  * Guards the login page against the four faults the UI guidelines exist to
- * prevent (design/UI_GUIDELINES.md, rules 6, 8, 15, 16). All four were present
- * at once, and none of them is visible by looking at the page on a good screen:
+ * prevent — rules 6, 8, 15 and 16 of audiogravity.design/UI_GUIDELINES.md,
+ * which lives in the design repo, not this one. All four were present at once,
+ * and none is visible by looking at the page on a good screen:
  *
  *   - three tokens the stylesheet asked for were defined nowhere. A CSS custom
  *     property that does not resolve does not warn; it either falls back to a

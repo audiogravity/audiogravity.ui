@@ -21,6 +21,12 @@
         base-uri 'self';
         form-action 'self';
     ">
+
+    <!-- Stamps the stored theme and dark mode on the root element before the
+         first paint. Must stay a separate file loaded synchronously: the policy
+         above allows no inline script, and a deferred or module script would run
+         after the page has already been drawn. -->
+    <script src="/theme-boot.js"></script>
     <title>Login - Audiogravity</title>
 
     <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
