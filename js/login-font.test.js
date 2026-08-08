@@ -144,8 +144,10 @@ describe('login page font — served from disk', () => {
         const text = fs.readFileSync(license, 'utf8');
         expect(text).toContain('SIL OPEN FONT LICENSE Version 1.1');
         expect(text).toContain('The Inter Project Authors');
-        // The stylesheet must point at the path the box actually serves it on;
-        // an inline `/*!` comment is no substitute, esbuild strips it.
+        // Source-level pointer only, for whoever edits the stylesheet next: this
+        // header does not ship, esbuild strips every comment from the bundle.
+        // The notice that actually reaches the box is the served file asserted
+        // above — nothing in the emitted CSS carries it.
         expect(FONTS_CSS).toContain('/fonts/OFL.txt');
     });
 });

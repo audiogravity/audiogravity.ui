@@ -74,7 +74,7 @@ body.login-page {
 .login-subtitle {
     margin: var(--spacing-sm) 0 0;
     font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
@@ -115,12 +115,17 @@ body.login-page {
 
 .form-group label [class^="icon-"] {
     font-size: var(--font-size-md);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
 }
 
 .form-group input {
     width: 100%;
-    padding: 12px 14px;
+
+    /* Padding on the spacing scale, plus a floor for the touch target: the
+       scale's steps alone would leave the field under the 44px a finger needs.
+       Where the two constraints disagree, the accessibility floor wins. */
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 44px;
     font-size: var(--font-size-md);
     color: var(--text-primary);
     background: var(--bg-primary);
@@ -139,19 +144,33 @@ body.login-page {
 }
 
 .form-group input::placeholder {
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
 }
 
-/* Message d'erreur */
+/* Message d'erreur
+ *
+ * The red carries the alarm through the border and the tinted ground; the text
+ * itself is --text-primary. --status-error is 3.76:1 on the light theme's white,
+ * under the 4.5:1 an error message has to clear — and an error nobody can read
+ * is the one message on this page that must never be decorative. As a border it
+ * only owes 3:1, which it clears. The icon beside the text is the second signal,
+ * so the meaning survives without colour at all.
+ *
+ * The tokens are --color-error/--color-error-bg, not the --status-error aliases
+ * this rule used to read. Those aliases exist in two themes out of three, and
+ * the hard-coded fallbacks beside them were hiding it: drop the fallback and the
+ * alert loses its red entirely under Gravity. This class is not login's own —
+ * main.css imports this file, and ag-card-grid renders the same class — so the
+ * gap reached the whole application, not just this page. */
 .error-message {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: 12px 14px;
-    background: var(--status-error-bg, rgb(239 68 68 / 0.1));
-    border: 1px solid var(--status-error, #ef4444);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-error-bg);
+    border: 1px solid var(--color-error);
     border-radius: var(--radius-md);
-    color: var(--status-error, #ef4444);
+    color: var(--text-primary);
     font-size: var(--font-size-sm);
     animation: shake 0.4s ease-in-out;
 }
@@ -186,13 +205,15 @@ body.login-page {
 /* Login Button - Uses application's action-btn.primary style with login-specific overrides */
 .login-form .action-btn {
     width: 100%;
-    padding: 14px 20px;
+
+    /* On the spacing scale; the padding alone now clears the 44px touch target,
+       so the arbitrary min-height it used to need is gone. */
+    padding: var(--spacing-md) var(--spacing-lg);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
     position: relative;
-    min-height: 50px;
     transition: all var(--transition-fast);
 }
 
@@ -223,7 +244,10 @@ body.login-page {
     width: 16px;
     height: 16px;
     border: 2px solid var(--spinner-track);
-    border-top-color: #ffffff;
+
+    /* The lit arc is the button's own text colour — white here, but the theme
+       decides that, not this file. */
+    border-top-color: currentcolor;
     border-radius: 50%;
     animation: spin var(--animation-spin) linear infinite;
 }
@@ -248,7 +272,7 @@ body.login-page {
 .auto-passkey-meta {
     margin: 0;
     font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
@@ -259,8 +283,8 @@ body.login-page {
     justify-content: center;
     width: 140px;
     height: 140px;
-    border: 1.5px solid var(--text-primary);
-    border-radius: var(--border-radius-md);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-md);
     background: none;
     cursor: pointer;
     color: var(--text-primary);
@@ -311,7 +335,7 @@ body.login-page {
 .auto-passkey-status {
     margin: 0;
     font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
@@ -321,13 +345,24 @@ body.login-page {
 }
 
 .auto-passkey-status .status-dot.connected {
-    color: var(--color-success, #38a169);
+    /* Decorative: the wording beside it already says the state, so the dot is
+       redundant rather than load-bearing, and the green is not asked to carry
+       the meaning on its own. */
+    color: var(--color-success);
 }
 
+/* Same treatment as .error-message — two error displays on one screen that
+   looked nothing alike. It also read `var(--error-color, ...)`, a token defined
+   nowhere in the stylesheet, so the hard-coded fallback was what always
+   rendered: a red at 4.13:1 on white, on eleven-pixel text. */
 .auto-passkey-error {
     margin: 0;
-    font-size: var(--font-size-xs);
-    color: var(--error-color, #e53e3e);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-error-bg);
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
     text-align: center;
 }
 
@@ -335,7 +370,7 @@ body.login-page {
     background: none;
     border: none;
     padding: 0;
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: var(--font-size-sm);
     cursor: pointer;
     text-decoration: underline;
@@ -356,12 +391,14 @@ body.login-page {
 
 .login-footer .version {
     margin: 0;
-    font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
+
+    /* Not an uppercase label — it is read, so it stays off the 11px step. */
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 .login-footer .version a.version-link {
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
 }
 
 /* Passkey setup offer */
@@ -397,7 +434,7 @@ body.login-page {
     align-items: center;
     gap: var(--spacing-sm);
     margin: var(--spacing-sm) 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--font-size-sm);
 }
 
