@@ -169,6 +169,9 @@ body:not(.npfs-open) .topbar {
     color: var(--text-secondary);
 }
 
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-corner {
     position: absolute;
     bottom: 8px;
@@ -188,6 +191,10 @@ body:not(.npfs-open) .topbar {
 }
 
 /* Source badge — top-left, matches HI-RES visual weight. */
+
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-source {
     position: absolute;
     top: 8px;
@@ -518,6 +525,10 @@ body:not(.npfs-open) .topbar {
 .npfs-header-btn.active { color: var(--accent-primary); }
 
 /* ── Hi-res badge on cover ── */
+
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-hires {
     position: absolute;
     top: 8px;

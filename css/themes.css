@@ -227,10 +227,14 @@
     * nowhere — the colours never followed the theme. Declared here at their
     * former values: nothing changes on screen, and a theme can now override
     * them. Minimal in particular paints a monochrome pipeline and will want to.
+    * Two border alphas, not one: the output node was outlined at 0.2 and the
+    * processing node at 0.1, and folding them onto a single token silently
+    * doubled the second.
     */
    --pipeline-node-output: #ef4444;
    --pipeline-node-proc: #8b5cf6;
    --pipeline-node-border: rgb(255 255 255 / 0.2);
+   --pipeline-node-border-soft: rgb(255 255 255 / 0.1);
 
 }
 

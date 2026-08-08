@@ -143,7 +143,7 @@ body:has(.tabs--vertical) .nav-menu {
     right: 0;
     height: 32px;
     background: var(--color-warning);
-    color: #12141c;
+    color: var(--text-on-warning);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -385,6 +385,7 @@ body.dark-mode .logo-svg {
     background: var(--bg-secondary);
     background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
     backdrop-filter: blur(10px);
+
     /* stylelint-disable-next-line property-no-vendor-prefix */
     -webkit-backdrop-filter: blur(10px);
 
@@ -566,12 +567,15 @@ body:has(.tabs--vertical) .tab-sidebar-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #000000;
-    border: 1px solid #000000;
+
+    /* Inverted chip: the theme's ink becomes the ground and vice versa, which
+       is what black-on-white was imitating with two literals. */
+    background: var(--text-primary);
+    border: 1px solid var(--text-primary);
     border-left: none;
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     padding: var(--spacing-sm) 6px;
-    color: #ffffff;
+    color: var(--bg-primary);
     cursor: pointer;
     font-size: var(--font-size-sm);
     transition: transform var(--transition-normal), color var(--transition-fast);
@@ -584,7 +588,7 @@ body:has(.tabs--vertical) .tab-sidebar-toggle:hover {
 body.dark-mode:has(.tabs--vertical) .tab-sidebar-toggle {
     background: #ffffff;
     border-color: #ffffff;
-    color: #000000;
+    color: var(--bg-primary);
 }
 
 .tabs--vertical.tabs--sidebar-hidden {

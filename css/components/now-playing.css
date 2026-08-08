@@ -142,12 +142,12 @@ ag-now-playing {
 
 .np-tracklist-item--active {
     background: var(--accent-primary);
-    color: #ffffff;
+    color: var(--text-on-accent);
 }
 
 .np-tracklist-item--active .np-tracklist-num,
 .np-tracklist-item--active .np-tracklist-dur {
-    color: rgb(255 255 255 / 0.75);
+    color: color-mix(in srgb, var(--text-on-accent) 75%, transparent);
 }
 
 .np-tracklist-num {
@@ -168,7 +168,7 @@ ag-now-playing {
 }
 
 .np-tracklist-item--active .np-tracklist-title {
-    color: #ffffff;
+    color: var(--text-on-accent);
 }
 
 .np-tracklist-dur {

@@ -1032,7 +1032,7 @@ export class AgAudioPipeline extends LitElement {
                         const dotColor = isOnThisPort ? (svc.flow_color || '#10b981') : '#4b5563';
                         return html`
                             <div class="steering-service-row">
-                                <div class="steering-svc-dot" style="background: ${dotColor};"></div>
+                                <div class="steering-svc-dot" style="background: ${dotFill};"></div>
                                 <span class="steering-svc-label">${svc.label}</span>
                                 ${isLoading
                                     ? html`<span class="steering-svc-loading">steering…</span>`
@@ -1090,7 +1090,8 @@ export class AgAudioPipeline extends LitElement {
     _renderNodeDetailPanel() {
         // Always use fresh pipeline data
         const node = (this.pipeline?.nodes || []).find(n => n.id === this._selectedNode.id) || this._selectedNode;
-        const statusColor = node.status === 'active' ? 'var(--color-success)' : 'var(--text-tertiary)';
+        // Dot background: a graphic.
+        const statusFill = node.status === 'active' ? 'var(--color-success)' : 'var(--text-tertiary)';
         const subtitle = node.type === 'device'
             ? `${node.manufacturer || ''} ${node.model || ''}`.trim()
             : node.type;
@@ -1098,7 +1099,7 @@ export class AgAudioPipeline extends LitElement {
         return html`
             <div class="node-detail-panel" @mousedown=${(e) => e.stopPropagation()}>
                 <div class="ndp-header">
-                    <div class="ndp-dot" style="background: ${statusColor}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusColor + ';' : ''}"></div>
+                    <div class="ndp-dot" style="background: ${statusFill}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusColor + ';' : ''}"></div>
                     <span class="ndp-name" title="${node.name}">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>
@@ -1122,12 +1123,12 @@ export class AgAudioPipeline extends LitElement {
                     <div class="ndp-section-title">Services</div>
                     ${services.map(svc => {
                         const np = snp[svc.id];
-                        const dotColor = svc.status === 'active' ? (svc.flow_color || 'var(--color-success)') : 'var(--text-tertiary)';
+                        const dotFill = svc.status === 'active' ? (svc.flow_color || 'var(--color-success)') : 'var(--text-tertiary)';
                         const fmtInfo = np ? (np.format || (np.sample_bits && np.sample_rate ? `${np.sample_bits}bit/${(np.sample_rate/1000).toFixed(0)}kHz` : null)) : null;
                         return html`
                             <div class="ndp-svc-item">
                                 <div class="ndp-svc-header">
-                                    <div class="ndp-dot" style="background: ${dotColor};"></div>
+                                    <div class="ndp-dot" style="background: ${dotFill};"></div>
                                     <span>${svc.label}</span>
                                     ${svc.protocol ? html`<span style="color: var(--text-tertiary); font-size: 9px; font-weight: 400;">· ${svc.protocol}</span>` : ''}
                                 </div>
@@ -1207,7 +1208,8 @@ export class AgAudioPipeline extends LitElement {
 
     _renderServiceDetail(node) {
         const meta = node.metadata || {};
-        const statusColors = { 'Playing': 'var(--color-success)', 'Paused': 'var(--color-warning)', 'Stopped': 'var(--text-tertiary)' };
+        // Painted as the colour of a word, so the reading variants.
+        const statusColors = { 'Playing': 'var(--color-success-text)', 'Paused': 'var(--color-warning-text)', 'Stopped': 'var(--text-tertiary)' };
         const statusColor = statusColors[meta.playback_status] || 'var(--text-tertiary)';
 
         return html`
@@ -1272,9 +1274,11 @@ export class AgAudioPipeline extends LitElement {
         else if (link.latency_us >= 200) latencyColor = 'var(--histogram-average)';
         else if (link.latency_us >= 50) latencyColor = 'var(--histogram-good)';
 
-        let bufferColor = 'var(--color-success)';
-        if (link.buffer_fill_percent >= 90) bufferColor = 'var(--color-error)';
-        else if (link.buffer_fill_percent >= 80) bufferColor = 'var(--color-warning)';
+        // Reading variants: this value is drawn as text, and the base tokens are
+        // 1.7:1 to 3.8:1 on a light theme.
+        let bufferColor = 'var(--color-success-text)';
+        if (link.buffer_fill_percent >= 90) bufferColor = 'var(--color-error-text)';
+        else if (link.buffer_fill_percent >= 80) bufferColor = 'var(--color-warning-text)';
 
         return html`
             <div class="link-bubble" style="left: ${popX}px; top: ${popY}px;"

@@ -74,6 +74,10 @@ ag-library-add-btn {
 }
 
 /* Card overlay variant: 24×24 dark pill anchored bottom-right of a cover */
+
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .lib-ac-add {
     position: absolute;
     bottom: 6px;
@@ -133,6 +137,9 @@ ag-library-add-btn {
     flex-shrink: 0;
 }
 
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .lib-ac-fav {
     position: absolute;
     bottom: 6px;
@@ -166,7 +173,7 @@ ag-library-add-btn {
 /* A favorited album shows its star at all times, not only on hover. The overlay
    sits on a FIXED dark pill, so it uses a theme-independent gold (the universal
    "favorite" star) rather than --accent-primary, which is #000 in the light
-   theme and would be near-invisible here. */
+   theme and would be near-invisible here (guidelines, rule 6 exception). */
 .lib-ac-fav.on {
     opacity: 1;
     color: #ffcf4d;

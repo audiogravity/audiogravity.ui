@@ -47,12 +47,12 @@ ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--c
  *
  * This is a sobriety fix (CLAUDE.md rule 12), not a bug fix: it was tried against the
  * iOS sidebar-invisibility defect and did NOT resolve it. */
-ag-mobile-pipeline .amp-source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amp-dot); animation: amp-pulse 2s infinite; }
-ag-mobile-pipeline .amp-source-dot[data-color="roon"]    { --amp-dot: var(--color-info); }
-ag-mobile-pipeline .amp-source-dot[data-color="airplay"] { --amp-dot: var(--color-warning); }
-ag-mobile-pipeline .amp-source-dot[data-color="mpd"]     { --amp-dot: var(--accent-primary); }
-ag-mobile-pipeline .amp-source-dot[data-color="default"] { --amp-dot: var(--color-success); }
-@keyframes amp-pulse { 0%, 100% { background-color: var(--amp-dot); } 50% { background-color: color-mix(in srgb, var(--amp-dot) 35%, transparent); } }
+ag-mobile-pipeline .amp-source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amp-dot-fill); animation: amp-pulse 2s infinite; }
+ag-mobile-pipeline .amp-source-dot[data-color="roon"]    { --amp-dot-fill: var(--color-info); }
+ag-mobile-pipeline .amp-source-dot[data-color="airplay"] { --amp-dot-fill: var(--color-warning); }
+ag-mobile-pipeline .amp-source-dot[data-color="mpd"]     { --amp-dot-fill: var(--accent-primary); }
+ag-mobile-pipeline .amp-source-dot[data-color="default"] { --amp-dot-fill: var(--color-success); }
+@keyframes amp-pulse { 0%, 100% { background-color: var(--amp-dot-fill); } 50% { background-color: color-mix(in srgb, var(--amp-dot-fill) 35%, transparent); } }
 ag-mobile-pipeline .amp-np-title  { font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); line-height: 1.3; margin-bottom: 3px; }
 ag-mobile-pipeline .amp-np-artist { font-size: var(--font-size-sm); color: var(--text-secondary); margin-bottom: 2px; }
 ag-mobile-pipeline .amp-np-album  { font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: 12px; }

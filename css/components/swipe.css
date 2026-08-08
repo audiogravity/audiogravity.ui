@@ -34,7 +34,9 @@
     justify-content: flex-end;
     padding-right: var(--spacing-md);
     background: var(--color-error);
-    color: #ffffff;
+
+    /* On the error fill, not on the page: the ground decides. */
+    color: var(--text-on-error);
     font-family: var(--font-family);
     font-size: var(--font-size-xxs);
     font-weight: 700;

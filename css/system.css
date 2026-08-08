@@ -105,6 +105,8 @@
     text-transform: uppercase;
 }
 
+/* On the overlay's black scrim (rgb(0 0 0 / 0.8)), not on the page — the
+   same ground no palette describes (guidelines, rule 6 exception). */
 .system-reboot-subtitle {
     font-size: var(--font-size-sm);
     color: rgb(255 255 255 / 0.6);

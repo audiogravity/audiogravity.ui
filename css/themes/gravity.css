@@ -121,6 +121,16 @@
     --color-warning-text: #8F5C06;
     --color-info-text: #096E9C;
 
+
+    /* Text drawn ON a semantic fill, not on the page. Its legibility is decided
+       by the fill underneath — the theme's own red, amber or accent — so it
+       cannot come from the palette above: white on the red, near-black on the
+       amber. One token per fill is the minimum that works.
+       Measured against this theme's fills; see js/colors.test.js. */
+    --text-on-error: #111111;
+    --text-on-warning: #111111;
+    --text-on-accent: #FFFFFF;
+
 }
 
 /* DARK MODE */
@@ -216,5 +226,11 @@
     --color-error-text: #ff4d6d;
     --color-warning-text: #ffb703;
     --color-info-text: #00f2fe;
+
+
+    /* Text on a semantic fill — see the note in the light block. */
+    --text-on-error: #111111;
+    --text-on-warning: #111111;
+    --text-on-accent: #111111;
 
 }

@@ -96,18 +96,23 @@ export class AgTerminal extends LitElement {
         // a network round trip — so frames are collected from the instant the
         // socket exists and replayed once xterm can accept them. Without this the
         // banner is lost and the viewport stays blank until the user types.
-        this._pending = [];
+        //
+        // The buffer belongs to this connection and lives in this closure, not on
+        // the component. Held as a field, a disconnect during that window cleared
+        // whatever the *next* socket had already collected — losing the banner of
+        // the reconnection, which is the one thing this exists to keep.
+        const pending = [];
         ws.onmessage = (e) => {
             // Bounded: what matters here is the banner and the first prompt, which
             // come first, so the cap drops the newest rather than the oldest. A
             // shell that talks for a whole font fetch must not grow this without
             // limit — the box is an audio machine before it is a web server.
-            if (this._pending.length < PENDING_FRAME_CAP) this._pending.push(e.data);
+            if (pending.length < PENDING_FRAME_CAP) pending.push(e.data);
         };
 
         ws.onopen = () => {
             this._status = 'connected';
-            this._mountTerminal(ws);
+            this._mountTerminal(ws, pending);
         };
 
         ws.onclose = (e) => {
@@ -123,12 +128,12 @@ export class AgTerminal extends LitElement {
         };
     }
 
-    _mountTerminal(ws) {
+    _mountTerminal(ws, pending) {
         this.updateComplete.then(async () => {
-            /** Give up on this socket and stop collecting for it. */
+            /** Give up on this socket and release what it collected. */
             const abandon = () => {
                 ws.onmessage = null;
-                this._pending = [];
+                pending.length = 0;
             };
 
             const container = this.querySelector('.ag-terminal-viewport');
@@ -197,8 +202,8 @@ export class AgTerminal extends LitElement {
 
             // Everything the shell said while the terminal was being built, in
             // order, before the socket is handed over.
-            for (const raw of this._pending) write(raw);
-            this._pending = [];
+            for (const raw of pending) write(raw);
+            pending.length = 0;
 
             // PTY output → xterm
             ws.onmessage = (e) => write(e.data);

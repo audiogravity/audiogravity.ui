@@ -323,7 +323,7 @@ export class AgLicenseActivation extends LitElement {
                 ${steps.map(({ n, label }) => {
                     const done    = this._step > n;
                     const current = this._step === n;
-                    const color   = done ? 'var(--color-success)' : current ? 'var(--text-primary)' : 'var(--text-secondary)';
+                    const color   = done ? 'var(--color-success-text)' : current ? 'var(--text-primary)' : 'var(--text-secondary)';
                     const barBg   = done ? 'var(--color-success)' : current ? 'var(--text-primary)' : 'var(--border-color)';
                     return html`
                         <div style="display:flex;flex-direction:column;gap:4px">

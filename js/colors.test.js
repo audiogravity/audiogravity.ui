@@ -105,29 +105,73 @@ function contrast(a, b) {
 }
 
 /**
- * Hex tokens a theme resolves in one mode: the shared defaults first, then the
- * theme's light block, then its dark block — the order main.css imports them.
+ * CSS specificity of a simple selector, as [ids, classes, types].
+ * @param {string} selector
+ * @returns {number[]}
+ */
+function specificity(selector) {
+    const ids = (selector.match(/#[\w-]+/g) || []).length;
+    const classes = (selector.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) || []).length;
+    const types = (selector.match(/(?:^|[\s>+~])[a-z][\w-]*/gi) || []).length;
+    return [ids, classes, types];
+}
+
+/**
+ * Lexicographic comparison of [ids, classes, types, sourceOrder]: specificity
+ * first, source order only as the tie-break, exactly as the cascade does it.
+ * @param {number[]} a
+ * @param {number[]} b
+ * @returns {boolean} true when a wins
+ */
+function outranks(a, b) {
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return a[i] > b[i];
+    }
+    return true;
+}
+
+/**
+ * Hex tokens a theme resolves in one mode, on <body> — the element every
+ * component reads them from.
+ *
+ * Order alone is not the answer, and getting this wrong is easy: reading
+ * themes.css then the theme file lets the theme's LIGHT block overwrite the
+ * shared body.dark-mode defaults, and the check then measures Slate's amber as
+ * #F59E0B when the page paints #FBBF24. Specificity decides first — a theme's
+ * `[data-theme="X"].dark-mode` is (0,2,0) against the shared block's (0,1,1) —
+ * and source order only breaks ties.
+ *
  * @param {string} theme
  * @param {"light"|"dark"} mode
  * @returns {Record<string,string>}
  */
 function resolve(theme, mode) {
-    const out = {};
+    const best = {};
+    let order = 0;
     for (const file of ['themes.css', path.join('themes', `${theme}.css`)]) {
         let css = strip(fs.readFileSync(path.join(CSS_ROOT, file), 'utf8'));
         css = css.replace(/@media[^{]*\{[^{}]*\}/g, '');   // nested at-rules aside
-        for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-            const isDark = selector.includes('dark-mode');
-            if (isDark && mode === 'light') continue;
-            const scoped = selector.includes(':root') || isDark
-                || selector.includes(`[data-theme="${theme}"]`);
-            if (!scoped) continue;
-            for (const [, k, v] of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)) {
-                out[k] = v;
+        for (const [, selectorList, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+            order += 1;
+            for (const selector of selectorList.split(',').map(x => x.trim())) {
+                const isDark = selector.includes('dark-mode');
+                if (isDark && mode === 'light') continue;
+                const scoped = selector.includes(':root') || isDark
+                    || selector.includes(`[data-theme="${theme}"]`);
+                if (!scoped) continue;
+                // A rule naming another theme never applies here.
+                const named = [...selector.matchAll(/\[data-theme="(\w+)"\]/g)].map(x => x[1]);
+                if (named.length && !named.includes(theme)) continue;
+
+                const weight = [...specificity(selector), order];
+                for (const [, k, v] of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)) {
+                    const prev = best[k];
+                    if (!prev || outranks(weight, prev.weight)) best[k] = { weight, value: v };
+                }
             }
         }
     }
-    return out;
+    return Object.fromEntries(Object.entries(best).map(([k, x]) => [k, x.value]));
 }
 
 describe('colours — every text token clears the floor (règle 8)', () => {
@@ -164,6 +208,34 @@ describe('colours — every text token clears the floor (règle 8)', () => {
     });
 });
 
+/** Fills that carry text, and the token that writes on each. */
+const ON_FILL = [
+    ['--color-error', '--text-on-error'],
+    ['--color-warning', '--text-on-warning'],
+    ['--accent-primary', '--text-on-accent'],
+];
+
+describe('colours — text on a fill, not on the page', () => {
+    for (const theme of THEMES) {
+        for (const mode of ['light', 'dark']) {
+            it(`${theme} ${mode}`, () => {
+                const tokens = resolve(theme, mode);
+                const failing = [];
+                for (const [fill, ink] of ON_FILL) {
+                    expect(tokens[ink], `${theme} ${mode} : ${ink} manquant`).toBeDefined();
+                    const ratio = contrast(tokens[ink], tokens[fill]);
+                    // 4.4 rather than 4.5: on the indigo two themes use as their
+                    // accent, white reaches 4.47 and nothing reads better. Raising
+                    // it means changing the accent, which is a design decision and
+                    // not this test's to force.
+                    if (ratio < 4.4) failing.push(`${ink} on ${fill} ${ratio.toFixed(2)}:1`);
+                }
+                expect(failing, `sous le seuil : ${failing.join(' · ')}`).toEqual([]);
+            });
+        }
+    }
+});
+
 describe('colours — components read roles, never values (règle 6)', () => {
     it('declares no colour literal as a var() fallback', () => {
         // `var(--x, #hex)` renders the literal when --x resolves nowhere, so a
@@ -184,6 +256,75 @@ describe('colours — components read roles, never values (règle 6)', () => {
             }
         }
         expect(offenders, `couleurs en repli :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('keeps the base semantic tokens out of JavaScript, whatever route they take', () => {
+        // The `color:` sweep only sees what is written in the declaration. Two
+        // usages hid behind a local — `let bufferColor = 'var(--color-error)'`,
+        // then `color: ${bufferColor}` — and read as clean.
+        //
+        // So in JavaScript the base tokens are refused outright, and a graphics
+        // use has to say so on the same line: a stroke, a fill, a background or a
+        // border. That is the discipline the CSS files already keep by writing
+        // the property name next to the value.
+        // A curve, a plate, an outline: the graphic uses of a semantic colour.
+        // `metric`/`chart` cover the sparkline components, whose `color`
+        // attribute names the line — see the backlog note on ag-metric-detail,
+        // which also paints its value label with it.
+        const GRAPHICS = /stroke|fill|background|border|shadow|outline|chart|metric|sparkline/i;
+        const DECLARES = /\b(?:const|let|var)\s+\w+\s*=/;
+        const offenders = [];
+        for (const file of COMPONENTS) {
+            if (!file.endsWith('.js')) continue;
+            const lines = strip(fs.readFileSync(file, 'utf8'))
+                .replace(/^\s*\/\/.*$/gm, '').split('\n');
+            for (const [i, line] of lines.entries()) {
+                for (const n of SEMANTIC) {
+                    if (!line.includes(`var(--color-${n})`)) continue;
+                    if (GRAPHICS.test(line)) continue;
+                    // The intent may sit on the statement that opens the block —
+                    // `const connectorStrokes = {` above a table of entries. Walk
+                    // up to the nearest declaration rather than guessing a window
+                    // size: a table can be any length.
+                    let owner = '';
+                    for (let k = i; k >= 0 && i - k < 40; k--) {
+                        if (DECLARES.test(lines[k])) { owner = lines[k]; break; }
+                    }
+                    if (GRAPHICS.test(owner)) continue;
+                    offenders.push(`${path.relative(ROOT, file)} — ${line.trim().slice(0, 64)}`);
+                }
+            }
+        }
+        expect(offenders, `jeton de base en JavaScript :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('explains every text colour still written as a value', () => {
+        // Eleven remain, and all eleven are legitimate: white on the black scrim
+        // laid over album art, the splash screen that paints before a theme
+        // exists, the reboot overlay, and print. What they have in common is a
+        // ground no palette describes — an arbitrary image, or paper.
+        //
+        // The guidelines allow that, on one condition: say why, in a comment. So
+        // the rule enforced here is not "no literals" but "no unexplained
+        // literal" — a new one appears the day someone writes it without a
+        // reason, which is exactly the day it should be questioned.
+        const offenders = [];
+        for (const file of COMPONENTS) {
+            if (!file.endsWith('.css')) continue;
+            const raw = fs.readFileSync(file, 'utf8');
+            for (const m of raw.matchAll(/(?<![-\w])color\s*:\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))/g)) {
+                // A comment anywhere in the 600 characters above it counts as the
+                // explanation: the rule block's own header, or the group's.
+                // The marker has to be explicit. Requiring merely "a comment
+                // nearby" passes on almost every rule in the codebase — verified
+                // by putting a literal back and watching the guard shrug.
+                const before = raw.slice(Math.max(0, m.index - 600), m.index);
+                if (/rule 6 exception/.test(before)) continue;
+                const line = raw.slice(0, m.index).split('\n').length;
+                offenders.push(`${path.relative(ROOT, file)}:${line} — ${m[1]}`);
+            }
+        }
+        expect(offenders, `valeurs sans explication :\n  ${offenders.join('\n  ')}`).toEqual([]);
     });
 
     it('paints text with a text-safe token, never a base semantic one', () => {
