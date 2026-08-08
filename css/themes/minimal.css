@@ -81,7 +81,14 @@
     --btn-secondary: #FFFFFF;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: #f97316;
-    --font-family: -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+
+    /* No --font-family here on purpose. Minimal is the default theme, so what it
+       renders is what almost every installation renders: it takes Inter from
+       :root in themes.css, served by the box. It used to substitute a system
+       stack, which meant the interface shipped a font it downloaded and then
+       discarded, and looked different on every operating system.
+       A theme that genuinely wants another face declares --font-family here —
+       see the contract beside the token in themes.css. */
 
     /* Minimal Theme: Strictly Clean & Square */
     --radius-sm: 0;
@@ -100,12 +107,6 @@
     --focus-color-dark: #FFFFFF;
 
     /* White  — consistent with minimal dark theme */
-
-    /* Login: error message component */
-    --status-error: #ef4444;
-
-    /* Keep explicit red for error (--color-error is #000 in minimal) */
-    --status-error-bg: rgb(239 68 68 / 0.1);
 
     /* Sparkline: SVG grid line (subtle separator inside chart) */
     --chart-grid: rgb(0 0 0 / 0.08);
@@ -252,12 +253,6 @@
     --accent-primary: #FFFFFF;
     --accent-primary-alpha: rgb(255 255 255 / 0.15);
     --accent-hover: #CCCCCC;
-
-    /* Login: error message component — Dark Mode */
-    --status-error: #f87171;
-
-    /* Lighter red for dark backgrounds */
-    --status-error-bg: rgb(248 113 113 / 0.1);
 
     /* Sparkline: SVG grid line — Dark Mode */
     --chart-grid: rgb(255 255 255 / 0.06);

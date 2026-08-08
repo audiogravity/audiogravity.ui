@@ -1,38 +1,47 @@
 /**
  * @module Fonts
- * @description Self-hosted Inter. Loaded by login.html only.
+ * @description Self-hosted Inter (interface) and JetBrains Mono (anything read
+ * character by character). Imported by main.css, so both reach every surface at
+ * once: the application, the login page and Storybook (whose preview.js imports
+ * the same manifest).
  *
- * The login screen must render in Inter without touching the network. Three
- * reasons, each sufficient on its own:
- *   - it is the very first paint of the PWA, before any cache is warm;
+ * Nothing here is fetched from the network. Three reasons, each sufficient on
+ * its own:
+ *   - the first paint of the PWA happens before any cache is warm;
  *   - the box runs on a LAN that may have no route to the internet at all;
- *   - login.html declares `font-src 'self' data:`, which blocks
+ *   - login.html declares `font-src 'self' data:`, which blocked
  *     fonts.gstatic.com outright — a remote @font-face could never have
  *     applied there, whatever the <link> said.
  *
- * One variable file per subset covers weights 400-700, the exact range
- * index.html requests from Google Fonts, so both pages render identically.
+ * One variable file per subset covers weights 400-700, the range the CDN used
+ * to be asked for, so nothing about the rendering changes.
  *
- * DECLARATION ORDER IS LOAD-BEARING, and is Google's own. The two subsets
- * overlap on three combining marks (U+0304, U+0308, U+0329), and when two
- * faces of one family both cover a codepoint, CSS font matching takes the one
- * declared LAST. latin must therefore come last, or those three marks would be
- * served by the 85 KB latin-ext file and drag it onto the wire on a page that
- * needs nothing but ASCII. Everywhere else `unicode-range` does its job and
- * latin-ext stays unfetched.
+ * Declaring a face costs nothing until a rule asks for it: a page showing no
+ * monospace never fetches JetBrains Mono. That is why this belongs in the
+ * manifest rather than behind a per-page <link>.
+ *
+ * DECLARATION ORDER IS LOAD-BEARING within each family, and is Google's own.
+ * The two subsets overlap on three combining marks (U+0304, U+0308, U+0329),
+ * and when two faces of one family both cover a codepoint, CSS font matching
+ * takes the one declared LAST. latin must therefore come last in each pair, or
+ * those three marks would be served by the latin-ext file and drag it onto the
+ * wire on a page that needs nothing but ASCII. Everywhere else `unicode-range`
+ * does its job and latin-ext stays unfetched.
  *
  * The files are referenced by relative url() so Vite fingerprints them into
  * assets/ at build time, which in turn puts them in the Workbox precache
  * (see injectManifest.globPatterns in vite.config.js).
  *
- * The license text lives in public/fonts/ instead of next to the binaries, and
- * is served at /fonts/OFL.txt. OFL 1.1 §2 requires it to travel with the fonts
- * the box redistributes, and the UI package ships nothing but _site/ — only
- * publicDir is copied there verbatim. Note that a `/*!` legal comment does NOT
- * work as a substitute here: Vite's esbuild CSS minifier strips it, verified on
- * the built bundle, so the served .txt is the only notice that actually ships.
+ * The license texts live in public/fonts/ instead of next to the binaries, and
+ * are served at /fonts/OFL-Inter.txt and /fonts/OFL-JetBrains-Mono.txt. Both
+ * families are under SIL OFL 1.1, whose §2 requires the license to travel with
+ * the fonts the box redistributes, and the UI package ships nothing but _site/ —
+ * only publicDir is copied there verbatim. Note that a `/*!` legal comment does
+ * NOT work as a substitute: Vite's esbuild CSS minifier strips it, verified on
+ * the built bundle, so the served .txt files are the only notices that ship.
  *
- * Source: Inter v20, Google Fonts build. See THIRD_PARTY_NOTICES.md.
+ * Source: Inter v20 and JetBrains Mono v24, Google Fonts builds.
+ * See THIRD_PARTY_NOTICES.md.
  */
 
 @font-face {
@@ -53,6 +62,30 @@
     font-weight: 400 700;
     font-display: swap;
     src: url('../fonts/inter-latin.woff2') format('woff2');
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+        U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+        U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('../fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+        U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+        U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('../fonts/jetbrains-mono-latin.woff2') format('woff2');
     unicode-range:
         U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
         U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,

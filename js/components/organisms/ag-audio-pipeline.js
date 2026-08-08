@@ -223,7 +223,10 @@ export class AgAudioPipeline extends LitElement {
             color: var(--text-secondary);
             min-width: 35px;
             text-align: center;
-            font-family: monospace;
+
+            /* Monospace so the box does not resize as the percentage changes —
+               and the theme's own face, not the browser's generic one. */
+            font-family: var(--font-mono, monospace);
         }
 
         .toggle-label {

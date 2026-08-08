@@ -70,13 +70,17 @@ const preview = {
       const { theme, darkMode } = context.globals;
       const body = document.body;
 
-      // Reset
+      // Reset. The attribute goes on <html> as well as <body>, exactly as
+      // js/common.js and js/login.js do it: no :root rule declares a colour, so
+      // an <html> matching no theme leaves html{background:var(--bg-primary)}
+      // unresolved and every story sits on a white backdrop, dark mode included.
       body.setAttribute('data-theme', theme || 'slate');
-      if (darkMode === 'dark') {
-        body.classList.add('dark-mode');
-      } else {
-        body.classList.remove('dark-mode');
-      }
+      document.documentElement.setAttribute('data-theme', theme || 'slate');
+      // Same for the dark-mode class: js/common.js, js/login.js and the config
+      // panel all set it on both elements, and a theme's dark block is written
+      // `[data-theme="X"].dark-mode` — which matches <html>, not <body>.
+      document.documentElement.classList.toggle('dark-mode', darkMode === 'dark');
+      body.classList.toggle('dark-mode', darkMode === 'dark');
 
       // Instead of relying on a real AppState, we mock what AppContext Provider needs
       if (!window.__storybookContextProvider) {

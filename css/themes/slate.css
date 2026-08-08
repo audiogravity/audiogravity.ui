@@ -1,7 +1,17 @@
 /* =====================
-   THEME: SLATE (DEFAULT)
-   ===================== */
-:root,
+   THEME: SLATE
+   =====================
+
+   Scoped to its own selector, like every other theme. It used to open on
+   `:root, [data-theme="slate"]`, which made it two things at once: a theme a
+   user can pick, and the palette every other theme silently inherited from.
+   Editing one value here changed it under Minimal and Gravity too — the
+   opposite of what a contributor working on this theme would expect, and the
+   opposite of the contract stated in themes.css.
+
+   Fifteen tokens Gravity depended on and never declared (toast fills,
+   validation borders, button hover washes, the chart grid) now live in
+   themes.css as shared defaults, which is where a default belongs. */
 [data-theme="slate"] {
     /* Soft Light Theme - Slate Based */
     --bg-primary: #F8F9FA;
@@ -78,10 +88,6 @@
     --chart-disk-bg: rgb(236 72 153 / 0.15);
 
     /* Component Specific: Toasts */
-    --toast-success: #10B981;
-    --toast-error: #EF4444;
-    --toast-warning: #F59E0B;
-    --toast-info: #3B82F6;
 
     /* UI Colors */
     --border-color: #E2E8F0;
@@ -117,13 +123,6 @@
 
     /* Sky-400 — visible on dark backgrounds  */
 
-    /* Login: error message component */
-    --status-error: var(--color-error);
-    --status-error-bg: var(--color-error-bg);
-
-    /* Sparkline: SVG grid line (subtle separator inside chart) */
-    --chart-grid: rgb(0 0 0 / 0.08);
-
     /* Syntax Highlighting (JSON viewer) */
     --syntax-key: #2563EB;
 
@@ -143,28 +142,6 @@
     --syntax-selection: rgb(99 102 241 / 0.15);
 
     /* indigo with alpha — CodeMirror selection */
-
-    /* Validation States - Borders */
-    --validation-success-border: rgb(16 185 129 / 0.3);
-
-    /* emerald-500 with alpha */
-    --validation-error-border: rgb(239 68 68 / 0.3);
-
-    /* red-500 with alpha */
-    --validation-warning-border: rgb(245 158 11 / 0.3);
-
-    /* amber-500 with alpha */
-    --validation-info-border: rgb(59 130 246 / 0.3);
-
-    /* blue-500 with alpha */
-
-    /* Button Hover States */
-    --btn-success-hover-bg: rgb(16 185 129 / 0.1);
-    --btn-success-hover-shadow: rgb(16 185 129 / 0.3);
-    --btn-error-hover-bg: rgb(239 68 68 / 0.1);
-    --btn-error-hover-shadow: rgb(239 68 68 / 0.3);
-    --btn-warning-hover-bg: rgb(245 158 11 / 0.1);
-    --btn-warning-hover-shadow: rgb(245 158 11 / 0.3);
 
     /* Misc */
     --bg-hover: var(--bg-tertiary);
@@ -192,7 +169,6 @@
     --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
 }
 
-body.dark-mode,
 [data-theme="slate"].dark-mode,
 [data-theme="slate"] body.dark-mode {
     /* Soft Dark Theme - Slate Based */
@@ -228,19 +204,10 @@ body.dark-mode,
     --switch-active-bg: var(--accent-primary);
     --switch-notification-bg: var(--color-warning);
 
-    /* Status Colors (Adjusted for Dark Mode) */
-    --color-success: #34D399;
-
-    /* Emerald-400 */
-    --color-error: #F87171;
-
-    /* Red-400 */
-    --color-warning: #FBBF24;
-
-    /* Amber-400 */
-    --color-info: #60A5FA;
-
-    /* Blue-400 */
+    /* Status Colors (Adjusted for Dark Mode) — success and warning are shared
+       dark defaults now, see themes.css */
+    --color-error: #F87171; /* Red-400 */
+    --color-info: #60A5FA; /* Blue-400 */
 
     /* Alpha-based status backgrounds (Dark Mode) */
     --color-success-bg: rgb(52 211 153 / 0.15);
@@ -276,24 +243,6 @@ body.dark-mode,
 
     /* red-400     — high activity  */
 
-    /* Sparkline chart colors — Dark Mode (lighter shades for contrast) */
-    --chart-cpu: #60A5FA;
-    --chart-cpu-bg: rgb(96 165 250 / 0.15);
-    --chart-memory: #A78BFA;
-    --chart-memory-bg: rgb(167 139 250 / 0.15);
-    --chart-temperature: #FBBF24;
-    --chart-temperature-bg: rgb(251 191 36 / 0.15);
-    --chart-network: #34D399;
-    --chart-network-bg: rgb(52 211 153 / 0.15);
-    --chart-disk: #F472B6;
-    --chart-disk-bg: rgb(244 114 182 / 0.15);
-
-    /* Component Specific: Toasts */
-    --toast-success: #34D399;
-    --toast-error: #F87171;
-    --toast-warning: #FBBF24;
-    --toast-info: #60A5FA;
-
     /* Accent Colors (for buttons, links, etc.) */
     --accent-primary: #818CF8;
 
@@ -302,9 +251,6 @@ body.dark-mode,
     --accent-hover: #A5B4FC;
 
     /* Indigo-300 */
-
-    /* Sparkline: SVG grid line — Dark Mode */
-    --chart-grid: rgb(255 255 255 / 0.06);
 
     /* Syntax Highlighting — Dark Mode */
     --syntax-key: #60A5FA;
@@ -325,28 +271,6 @@ body.dark-mode,
     --syntax-selection: rgb(129 140 248 / 0.2);
 
     /* indigo-400 with alpha — CodeMirror selection (dark mode) */
-
-    /* Validation States - Borders — Dark Mode */
-    --validation-success-border: rgb(52 211 153 / 0.4);
-
-    /* emerald-400 with alpha (more visible) */
-    --validation-error-border: rgb(248 113 113 / 0.4);
-
-    /* red-400 with alpha */
-    --validation-warning-border: rgb(251 191 36 / 0.4);
-
-    /* amber-400 with alpha */
-    --validation-info-border: rgb(96 165 250 / 0.4);
-
-    /* blue-400 with alpha */
-
-    /* Button Hover States — Dark Mode */
-    --btn-success-hover-bg: rgb(52 211 153 / 0.15);
-    --btn-success-hover-shadow: rgb(52 211 153 / 0.4);
-    --btn-error-hover-bg: rgb(248 113 113 / 0.15);
-    --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
-    --btn-warning-hover-bg: rgb(251 191 36 / 0.15);
-    --btn-warning-hover-shadow: rgb(251 191 36 / 0.4);
 
     /* Misc — Dark Mode */
     --bg-hover: var(--bg-tertiary);

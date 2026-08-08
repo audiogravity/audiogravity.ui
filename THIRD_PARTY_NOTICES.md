@@ -126,18 +126,35 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 It is copied at https://openfontlicense.org, and is also available with a FAQ
 at https://openfontlicense.org/ofl-faq.
 
-Inter reaches the browser two ways. The login page is served the font by the
-box itself — `fonts/inter-latin.woff2` and `fonts/inter-latin-ext.woff2`,
-variable weights 400-700, redistributed unmodified from the Google Fonts v20
-build. Every other page still loads it from the Google Fonts CDN.
+Inter is served by the installation itself, on every page: `fonts/inter-latin.woff2`
+and `fonts/inter-latin-ext.woff2`, variable weights 400-700. Both are
+redistributed **unmodified**, as published in the Google Fonts v20 build of the
+typeface — that is their provenance, and no part of the interface fetches a font
+over the network.
 
-Because the box redistributes those binaries over HTTP, OFL 1.1 §2 requires the
-license to travel with them. The full text is therefore kept in
-`public/fonts/OFL.txt` — inside Vite's publicDir, so it is copied verbatim into
-`_site/` and served at **`/fonts/OFL.txt`** on every installation. Keeping the
-text outside publicDir would leave it in the source tree only: the UI package
-ships nothing but `_site/`. An inline `/*!` legal comment in `css/fonts.css` is
-not an alternative — Vite's esbuild CSS minifier strips it from the bundle.
+Redistributing those binaries over HTTP is what OFL 1.1 §2 requires the license
+to accompany, so the full text is served at **`/fonts/OFL-Inter.txt`** on every
+installation, from `public/fonts/` in the source tree.
+
+---
+
+### JetBrains Mono
+**Copyright** © 2020 The JetBrains Mono Project Authors  
+**License** SIL Open Font License 1.1  
+**Source** https://github.com/JetBrains/JetBrainsMono  
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+It is copied at https://openfontlicense.org, and is also available with a FAQ
+at https://openfontlicense.org/ofl-faq.
+
+The interface's monospace face — used wherever a value is read character by
+character: identifiers, addresses, the terminal, figures that refresh in place.
+Served by the installation itself, as `fonts/jetbrains-mono-latin.woff2` and
+`fonts/jetbrains-mono-latin-ext.woff2`, variable weights 400-700, redistributed
+**unmodified** as published in the Google Fonts v24 build.
+
+Its license is served at **`/fonts/OFL-JetBrains-Mono.txt`**, for the same
+reason and from the same place as Inter's.
 
 ---
 

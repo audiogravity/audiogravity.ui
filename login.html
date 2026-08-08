@@ -172,13 +172,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="pics/favicon-32.png">
     <link rel="manifest" href="site.webmanifest">
 
-    <!-- CSS MANIFEST -->
-    <!-- Inter is served from disk, not from Google Fonts: this page's CSP is
-         font-src 'self' data:, and the box may have no internet route at all.
-         Order relative to main.css is immaterial — @font-face registers a face
-         for the whole document, not for the rules that follow it — and the
-         bundler does not preserve it anyway. -->
-    <link rel="stylesheet" href="css/fonts.css">
+    <!-- CSS MANIFEST — main.css imports css/fonts.css, which serves Inter from
+         the box. This page needs no <link> of its own for it. -->
     <link rel="stylesheet" href="css/main.css">
 
 </head>

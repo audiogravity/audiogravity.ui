@@ -13,6 +13,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { iconTerminal } from '../../ag-icons.js';
 import { getAuthToken } from '../../auth.js';
+import { monoFontFamily } from '../../common.js';
 
 const XTERM_CDN    = 'https://cdn.jsdelivr.net/npm/xterm@4.19.0';
 const XTERM_FIT_CDN = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js';
@@ -107,7 +108,9 @@ export class AgTerminal extends LitElement {
 
             const term = new window.Terminal({
                 cursorBlink: true,
-                fontFamily: '"Courier New", monospace',
+                // xterm.js draws to a canvas and cannot read a CSS custom
+                // property, so the value is resolved here rather than declared.
+                fontFamily: monoFontFamily(),
                 fontSize: 13,
                 theme: {
                     background: '#0d1117',

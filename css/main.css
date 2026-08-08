@@ -3,11 +3,22 @@
  * @description Master CSS Manifest. Imports all styles in the correct cascade order.
  */
 
+/* 0. FONTS (self-hosted @font-face — must precede anything that names the family) */
+@import 'fonts.css';
+
 /* 1. ATOMS & BASE (Resets, HTML Base) */
 @import 'base.css';
 
-/* 2. DESIGN TOKENS (Variables, Themes) */
+/* 2. DESIGN TOKENS (Variables, then Themes — order matters) */
 @import 'themes.css';
+
+/* Themes come after the defaults on purpose: `:root` and `[data-theme="…"]`
+   weigh the same (0,1,0), so nothing but source order decides between them.
+   Last wins, which is what lets a theme — including one a contributor adds —
+   override any token across the whole interface. */
+@import 'themes/slate.css';
+@import 'themes/gravity.css';
+@import 'themes/minimal.css';
 @import 'responsive.css';
 
 /* 3. SHARED COMPONENTS (Core UI Atoms) */

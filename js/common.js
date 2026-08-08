@@ -202,6 +202,25 @@ document.addEventListener('logout-click', async () => {
 
 
 /**
+ * Resolve the monospace family the active theme asks for.
+ *
+ * For the rare consumer that cannot read a CSS custom property itself — a
+ * canvas, a terminal emulator, an inline style object — everything else must
+ * write `var(--font-mono)` and never call this.
+ *
+ * Read from documentElement rather than from the calling element: the theme is
+ * stamped on <html> and on <body>, and a component in a shadow root would
+ * otherwise resolve against its own scope.
+ *
+ * @returns {string} A CSS font-family value, falling back to the generic
+ *   keyword if the token is unset (a stylesheet that failed to load).
+ */
+function monoFontFamily() {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue('--font-mono').trim() || 'monospace';
+}
+
+/**
  * OPTIMIZATION: Throttling function to limit the execution rate
  * PERFORMANCE OPTIMIZATION (Phase 3): Low Power Mode aware.
  * Doubles the effective limit when Low Power Mode is enabled.
@@ -710,7 +729,7 @@ if (import.meta.env.DEV) {
             padding: '4px 10px',
             background: '#f59e0b',
             color: '#000',
-            fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || 'monospace',
+            fontFamily: monoFontFamily(),
             fontSize: '10px',
             fontWeight: '700',
             letterSpacing: '0.14em',
@@ -801,6 +820,7 @@ export {
 
     // Utility Functions
     MemoryCache,
+    monoFontFamily,
     throttle,
     AgTimerManager,
 
