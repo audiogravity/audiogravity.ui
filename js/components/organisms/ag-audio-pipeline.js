@@ -1133,7 +1133,7 @@ export class AgAudioPipeline extends LitElement {
                                 </div>
                                 ${np?.title ? html`
                                     <div class="ndp-svc-track">${np.title}${np.artist ? ` — ${np.artist}` : ''}
-                                        ${fmtInfo ? html`<span style="color: var(--color-success);"> · ${fmtInfo}</span>` : ''}
+                                        ${fmtInfo ? html`<span style="color: var(--color-success-text);"> · ${fmtInfo}</span>` : ''}
                                     </div>
                                 ` : ''}
                                 ${svc.current_output ? html`
@@ -1180,7 +1180,7 @@ export class AgAudioPipeline extends LitElement {
                         const isWifi = (ni.connector || '').toLowerCase() === 'antenna';
                         return html`
                             <div style="${idx > 0 ? 'margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.04);' : ''}">
-                                <div style="font-size: 10px; font-weight: 600; color: ${ni.active ? 'var(--color-success)' : 'var(--text-secondary)'}; margin-bottom: 3px;">
+                                <div style="font-size: 10px; font-weight: 600; color: ${ni.active ? 'var(--color-success-text)' : 'var(--text-secondary)'}; margin-bottom: 3px;">
                                     ${ni.label}${ni.active ? '' : ' ·inactive'}
                                 </div>
                                 <div class="ndp-row"><span class="ndp-label">IP</span><span class="ndp-value">${fmt(ni.ip_address)}</span></div>
@@ -1199,7 +1199,7 @@ export class AgAudioPipeline extends LitElement {
                     <div class="ndp-section-title">Now Playing</div>
                     <div style="font-size: 11px; color: var(--text-primary); margin-bottom: 2px;">${node.metadata.now_playing.title}</div>
                     ${node.metadata.now_playing.artist ? html`<div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">${node.metadata.now_playing.artist}</div>` : ''}
-                    ${node.metadata.now_playing.format ? html`<div style="font-size: 9px; color: var(--color-success); margin-top: 3px;">${node.metadata.now_playing.format}</div>` : ''}
+                    ${node.metadata.now_playing.format ? html`<div style="font-size: 9px; color: var(--color-success-text); margin-top: 3px;">${node.metadata.now_playing.format}</div>` : ''}
                 </div>
             ` : ''}
         `;
@@ -1228,7 +1228,7 @@ export class AgAudioPipeline extends LitElement {
                     <div style="font-size: 11px; color: var(--text-primary); margin-bottom: 2px;">${meta.title}</div>
                     ${meta.artist ? html`<div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">${meta.artist}</div>` : ''}
                     ${meta.album ? html`<div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">${meta.album}</div>` : ''}
-                    ${meta.source_format ? html`<div style="font-size: 9px; color: var(--color-success);">${meta.source_format}</div>` : ''}
+                    ${meta.source_format ? html`<div style="font-size: 9px; color: var(--color-success-text);">${meta.source_format}</div>` : ''}
                 </div>
             ` : ''}
         `;
@@ -1284,10 +1284,10 @@ export class AgAudioPipeline extends LitElement {
                     <button @click=${() => { this._linkBubble = null; }}>×</button>
                 </div>
                 ${link.service_name ? html`<div class="link-bubble-row"><span>Service</span><span>${link.service_name}</span></div>` : ''}
-                <div class="link-bubble-row"><span>Status</span><span style="color: ${link.active ? 'var(--color-success)' : 'var(--text-tertiary)'};">${link.active ? 'Active' : 'Inactive'}</span></div>
-                ${link.active && link.is_bit_perfect ? html`<div class="link-bubble-row"><span>Quality</span><span style="color: var(--color-success);">BIT-PERFECT</span></div>` : ''}
-                ${formatStr ? html`<div class="link-bubble-row"><span>Format</span><span style="color: var(--color-success);">${formatStr}</span></div>` : ''}
-                ${link.resampling_info ? html`<div class="link-bubble-row"><span>Resampling</span><span style="color: var(--color-error);">${link.resampling_info}</span></div>` : ''}
+                <div class="link-bubble-row"><span>Status</span><span style="color: ${link.active ? 'var(--color-success-text)' : 'var(--text-tertiary)'};">${link.active ? 'Active' : 'Inactive'}</span></div>
+                ${link.active && link.is_bit_perfect ? html`<div class="link-bubble-row"><span>Quality</span><span style="color: var(--color-success-text);">BIT-PERFECT</span></div>` : ''}
+                ${formatStr ? html`<div class="link-bubble-row"><span>Format</span><span style="color: var(--color-success-text);">${formatStr}</span></div>` : ''}
+                ${link.resampling_info ? html`<div class="link-bubble-row"><span>Resampling</span><span style="color: var(--color-error-text);">${link.resampling_info}</span></div>` : ''}
                 ${link.latency_us != null ? html`<div class="link-bubble-row"><span>Latency</span><span style="color: ${latencyColor};">${link.latency_us.toFixed(0)}µs</span></div>` : ''}
                 ${link.buffer_fill_percent != null ? html`<div class="link-bubble-row"><span>Buffer</span><span style="color: ${bufferColor};">${link.buffer_fill_percent.toFixed(0)}%</span></div>` : ''}
             </div>
@@ -1791,7 +1791,7 @@ export class AgAudioPipeline extends LitElement {
                             <div class="legend-grid">
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: var(--color-success); box-shadow: 0 0 5px var(--color-success);"></div>
-                                    <span>Audio — bit-perfect · badge: <strong style="color: var(--color-success); font-size: 7px;">BIT-PERFECT · 24bit / 96kHz</strong></span>
+                                    <span>Audio — bit-perfect · badge: <strong style="color: var(--color-success-text); font-size: 7px;">BIT-PERFECT · 24bit / 96kHz</strong></span>
                                 </div>
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: repeating-linear-gradient(90deg, var(--color-success) 0px, var(--color-success) 8px, transparent 8px, transparent 12px);"></div>
@@ -1852,10 +1852,10 @@ export class AgAudioPipeline extends LitElement {
                         <div class="legend-section">
                             <div class="legend-section-title">Active Link Badges</div>
                             <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.6;">
-                                • <strong style="color: var(--color-success);">32bit / 96kHz</strong> — sample format on the link<br>
+                                • <strong style="color: var(--color-success-text);">32bit / 96kHz</strong> — sample format on the link<br>
                                 • <strong style="color: var(--histogram-excellent);">XXXµs</strong> — ALSA latency<br>
                                 &nbsp;&nbsp;Green &lt;50µs · Blue 50–200µs · Yellow 200–500µs · Red ≥500µs<br>
-                                • <strong style="color: var(--color-success);">XX%</strong> — buffer fill (warning ≥80% · critical ≥90%)<br>
+                                • <strong style="color: var(--color-success-text);">XX%</strong> — buffer fill (warning ≥80% · critical ≥90%)<br>
                                 • Animated particles — real-time audio flow, speed ∝ sample rate
                             </div>
                         </div>

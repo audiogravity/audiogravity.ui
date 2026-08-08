@@ -29,10 +29,10 @@ ag-mobile-pipeline .amp-section-label { font-size: var(--font-size-xxs); font-we
 ag-mobile-pipeline .amp-streams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 ag-mobile-pipeline .amp-np-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; }
 ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px; }
-ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--color-info); }
-ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--color-warning); }
+ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--color-info-text); }
+ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--color-warning-text); }
 ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
-ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success); }
+ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success-text); }
 /* The pulse animates the dot's COLOUR, not its opacity or its scale — deliberately.
  *
  * opacity and transform are the two properties a browser animates without repainting,
@@ -58,7 +58,7 @@ ag-mobile-pipeline .amp-np-artist { font-size: var(--font-size-sm); color: var(-
 ag-mobile-pipeline .amp-np-album  { font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: 12px; }
 ag-mobile-pipeline .amp-np-idle   { font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: 12px; font-style: italic; }
 ag-mobile-pipeline .amp-format-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--spacing-md); }
-ag-mobile-pipeline .amp-fmt-chip { font-size: var(--font-size-xxs); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); letter-spacing: 0.4px; background: var(--color-success-bg); color: var(--color-success); }
+ag-mobile-pipeline .amp-fmt-chip { font-size: var(--font-size-xxs); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); letter-spacing: 0.4px; background: var(--color-success-bg); color: var(--color-success-text); }
 ag-mobile-pipeline .amp-fmt-chip.dim { background: var(--accent-primary-alpha); color: var(--accent-primary); }
 ag-mobile-pipeline .amp-chain-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; margin-bottom: 10px; }
 ag-mobile-pipeline .amp-chain { display: flex; flex-direction: column; }
@@ -72,25 +72,25 @@ ag-mobile-pipeline .amp-device-icon span { font-size: var(--font-size-sm); }
 /* Per-device-type icon tints: a deliberate decorative palette (converter/amplifier/
    controller have no semantic AG token) — kept literal on purpose (UI rule 6 exception). */
 ag-mobile-pipeline .amp-device-icon.controller { background: rgba(245,158,11,0.15); color: #f59e0b; }
-ag-mobile-pipeline .amp-device-icon.server     { background: var(--color-info-bg);  color: var(--color-info); }
+ag-mobile-pipeline .amp-device-icon.server     { background: var(--color-info-bg);  color: var(--color-info-text); }
 ag-mobile-pipeline .amp-device-icon.streamer   { background: var(--accent-primary-alpha);  color: var(--accent-primary); }
 ag-mobile-pipeline .amp-device-icon.converter  { background: rgba(139,92,246,0.15);  color: #a78bfa; }
 ag-mobile-pipeline .amp-device-icon.amplifier  { background: rgba(236,72,153,0.15);  color: #f472b6; }
-ag-mobile-pipeline .amp-device-icon.output     { background: var(--color-success-bg);  color: var(--color-success); }
-ag-mobile-pipeline .amp-device-icon.source     { background: var(--color-info-bg);  color: var(--color-info); }
+ag-mobile-pipeline .amp-device-icon.output     { background: var(--color-success-bg);  color: var(--color-success-text); }
+ag-mobile-pipeline .amp-device-icon.source     { background: var(--color-info-bg);  color: var(--color-info-text); }
 ag-mobile-pipeline .amp-device-info { flex: 1; min-width: 0; }
 ag-mobile-pipeline .amp-device-name { font-size: var(--font-size-sm); font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 ag-mobile-pipeline .amp-device-sub  { font-size: var(--font-size-xxs); color: var(--text-tertiary); margin-top: 1px; }
 ag-mobile-pipeline .amp-svc-badges  { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; flex-shrink: 0; }
 ag-mobile-pipeline .amp-svc-badge   { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-sm); padding: 2px 7px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 ag-mobile-pipeline .amp-svc-badge .dot { width: 5px; height: 5px; border-radius: 50%; }
-ag-mobile-pipeline .amp-svc-badge[data-color="roon"]    { background: var(--color-info-bg); color: var(--color-info); }
+ag-mobile-pipeline .amp-svc-badge[data-color="roon"]    { background: var(--color-info-bg); color: var(--color-info-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="roon"] .dot { background: var(--color-info); }
-ag-mobile-pipeline .amp-svc-badge[data-color="airplay"] { background: var(--color-warning-bg); color: var(--color-warning); }
+ag-mobile-pipeline .amp-svc-badge[data-color="airplay"] { background: var(--color-warning-bg); color: var(--color-warning-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="airplay"] .dot { background: var(--color-warning); }
 ag-mobile-pipeline .amp-svc-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary); }
 ag-mobile-pipeline .amp-svc-badge[data-color="mpd"] .dot { background: var(--accent-primary); }
-ag-mobile-pipeline .amp-svc-badge[data-color="default"] { background: var(--color-success-bg); color: var(--color-success); }
+ag-mobile-pipeline .amp-svc-badge[data-color="default"] { background: var(--color-success-bg); color: var(--color-success-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="default"] .dot { background: var(--color-success); }
 ag-mobile-pipeline .amp-connector-row   { display: flex; align-items: center; padding: 0 0 0 3px; height: 22px; gap: 0; }
 ag-mobile-pipeline .amp-connector-line  { width: 2px; height: 100%; margin-left: 3px; flex-shrink: 0; opacity: 0.35; }
@@ -103,7 +103,7 @@ ag-mobile-pipeline .amp-output-switcher { display: flex; align-items: center; ga
 ag-mobile-pipeline .amp-output-switcher::-webkit-scrollbar { display: none; }
 ag-mobile-pipeline .amp-output-pill { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; white-space: nowrap; padding: 5px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-color); background: var(--bg-secondary); font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-tertiary); cursor: pointer; transition: all 0.15s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
 ag-mobile-pipeline .amp-output-pill:active { opacity: 0.7; }
-ag-mobile-pipeline .amp-output-pill.active { border-color: var(--color-success); background: var(--color-success-bg); color: var(--color-success); }
+ag-mobile-pipeline .amp-output-pill.active { border-color: var(--color-success); background: var(--color-success-bg); color: var(--color-success-text); }
 ag-mobile-pipeline .amp-output-pill.switching { opacity: 0.5; pointer-events: none; }
 ag-mobile-pipeline .amp-output-pill .amp-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-color); flex-shrink: 0; }
 ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--color-success); }

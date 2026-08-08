@@ -186,9 +186,9 @@ export class AgLicenseActivation extends LitElement {
                         spellcheck="false"
                     />
                     ${this._checkError ? html`
-                        <p class="help-text" style="color:var(--color-error)">${this._checkError}</p>
+                        <p class="help-text" style="color:var(--color-error-text)">${this._checkError}</p>
                     ` : keyValid ? html`
-                        <p class="help-text" style="color:var(--color-success)">✓ Valid format</p>
+                        <p class="help-text" style="color:var(--color-success-text)">✓ Valid format</p>
                     ` : html`
                         <p class="help-text">Format: AG-XXXX-XXXX-XXXX-XXXX</p>
                     `}
@@ -249,7 +249,7 @@ export class AgLicenseActivation extends LitElement {
                     />
                 </div>
                 ${this._activateError ? html`
-                    <p class="help-text" style="color:var(--color-error);margin-top:var(--spacing-xs)">${this._activateError}</p>
+                    <p class="help-text" style="color:var(--color-error-text);margin-top:var(--spacing-xs)">${this._activateError}</p>
                 ` : nothing}
                 <div style="display:flex;gap:var(--spacing-sm);margin-top:var(--spacing-sm)">
                     <button

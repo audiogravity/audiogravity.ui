@@ -291,12 +291,12 @@
 }
 
 .lib-radio-star.on { color: var(--accent-primary); }
-.lib-radio-lib.on  { color: var(--color-success); }
+.lib-radio-lib.on  { color: var(--color-success-text); }
 
 @media (hover: hover) {
     .lib-radio-star:hover,
     .lib-radio-edit:hover,
     .lib-radio-lib:hover { color: var(--text-primary); }
     .lib-radio-star.on:hover { color: var(--accent-primary); }
-    .lib-radio-lib.on:hover  { color: var(--color-success); }
+    .lib-radio-lib.on:hover  { color: var(--color-success-text); }
 }

@@ -247,7 +247,7 @@ export class AgSparkline extends LitElement {
                 ${this.showGrid ? svg`
                     <g class="sparkline-grid">
                         ${gridLines.map(y => svg`
-                            <line x1="0" y1="${y}" x2="${this.width}" y2="${y}" stroke="var(--chart-grid, rgba(0,0,0,0.08))" stroke-width="1" />
+                            <line x1="0" y1="${y}" x2="${this.width}" y2="${y}" stroke="var(--chart-grid)" stroke-width="1" />
                         `)}
                     </g>
                 ` : ''}

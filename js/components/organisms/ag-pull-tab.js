@@ -114,7 +114,7 @@ export class AgPullTab extends LitElement {
                 @touchstart="${this._handleTouchStart}"
                 @touchend="${this._handleTouchEnd}"
             >
-                <div style="width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:6px 6px 0 0;background:var(--color-warning,#f59e0b);border:1px solid var(--color-warning,#f59e0b);border-bottom:none;cursor:pointer;pointer-events:none"><div style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></div></div>
+                <div style="width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:6px 6px 0 0;background:var(--color-warning);border:1px solid var(--color-warning);border-bottom:none;cursor:pointer;pointer-events:none"><div style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></div></div>
             </div>
             ${!window.matchMedia('(pointer: coarse)').matches ? html`
             <button

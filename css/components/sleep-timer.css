@@ -37,7 +37,7 @@
 @media (hover: hover) {
     .ag-st-opt:hover { background: var(--bg-tertiary); }
 }
-.ag-st-opt.cancel { color: var(--color-error, #ef4444); }
+.ag-st-opt.cancel { color: var(--color-error-text); }
 
 .ag-st-countdown {
     font-size: var(--font-size-xxs);

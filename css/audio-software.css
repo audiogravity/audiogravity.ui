@@ -130,7 +130,7 @@
 }
 
 .software-status-indicator.installed {
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .software-status-indicator.not-installed {
@@ -140,11 +140,11 @@
 .software-status-indicator.installing,
 .software-status-indicator.updating,
 .software-status-indicator.uninstalling {
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .software-status-indicator.error {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .software-status-indicator.not-supported {

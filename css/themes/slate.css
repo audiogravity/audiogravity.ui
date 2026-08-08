@@ -20,12 +20,17 @@
     --text-primary: #1E293B;
 
     /* Slate-800 */
-    --text-secondary: #64748B;
+    --text-secondary: #4F5B6D;
 
-    /* Slate-500 */
-    --text-tertiary: #94A3B8;
+    /* Darkened: it cleared 4.5:1 on white but not on --bg-tertiary, and a
+       token has to hold on every ground its own theme paints — and far enough
+       from --text-tertiary to stay a level above it. Raising both to the floor
+       had flattened the two into one grey, which is the accessibility fix
+       quietly costing a rung of the hierarchy. */
+    --text-tertiary: #5C6F8A;
 
-    /* Slate-400 */
+    /* Darkened to clear the 4.5:1 floor on every ground this theme paints;
+       it is read text on 117 declarations, not decoration. */
 
     /* Status Colors */
     --color-success: #10B981;
@@ -167,6 +172,19 @@
     --pipeline-link: #94A3B8; /* Slate-400 */
     --pipeline-link-active: #F59E0B; /* Amber-500 */
     --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
+
+    /* Text-safe variants of the semantic colours.
+       --color-success and friends serve three jobs at once: a border (owes 3:1),
+       a tinted fill (owes nothing) and the text on top (owes 4.5:1). One value
+       cannot satisfy all three — a red dark enough to read is too dark for the
+       border it was chosen for. These are the reading variants, same hue, and
+       the only ones a `color:` declaration may use. Values that already cleared
+       the floor are repeated verbatim so every theme states its own. */
+    --color-success-text: #0B7C56;
+    --color-error-text: #DE1313;
+    --color-warning-text: #996206;
+    --color-info-text: #0F66F4;
+
 }
 
 [data-theme="slate"].dark-mode,
@@ -185,12 +203,15 @@
     --text-primary: #F1F5F9;
 
     /* Slate-100 */
-    --text-secondary: #94A3B8;
+    --text-secondary: #C8D0DA;
+
+    /* Lightened for the same reason, on the dark grounds. */
 
     /* Slate-400 */
-    --text-tertiary: #64748B;
+    --text-tertiary: #A3ADBD;
 
-    /* Slate-500 */
+    /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
+       value sat under it, which is the direction nobody checks. */
 
     --border-color: #334155;
 
@@ -292,4 +313,11 @@
     --pipeline-link: #64748B; /* Slate-500 */
     --pipeline-link-active: #FBBF24; /* Amber-400 */
     --pipeline-link-bitperfect: #34D399; /* Emerald-400 */
+
+    /* Text-safe variants — see the note in the light block. */
+    --color-success-text: #34D399;
+    --color-error-text: #F98E8E;
+    --color-warning-text: #FBBF24;
+    --color-info-text: #74B0FB;
+
 }

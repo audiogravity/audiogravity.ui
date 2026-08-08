@@ -95,7 +95,7 @@
 
 .lib-out-badge.ok {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .lib-out-badge.neutral {

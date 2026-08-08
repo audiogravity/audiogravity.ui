@@ -125,7 +125,7 @@
 
 .package-update-note {
     margin-top: var(--spacing-md);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .validation-question {

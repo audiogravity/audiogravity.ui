@@ -219,6 +219,19 @@
    --btn-error-hover-shadow: rgb(239 68 68 / 0.3);
    --btn-warning-hover-bg: rgb(245 158 11 / 0.1);
    --btn-warning-hover-shadow: rgb(245 158 11 / 0.3);
+
+   /**
+    * @group Audio pipeline diagram (shared defaults)
+    * @description Node fills the diagram needs and no theme declared, so the
+    * component carried them as hard-coded fallbacks behind tokens that resolved
+    * nowhere — the colours never followed the theme. Declared here at their
+    * former values: nothing changes on screen, and a theme can now override
+    * them. Minimal in particular paints a monochrome pipeline and will want to.
+    */
+   --pipeline-node-output: #ef4444;
+   --pipeline-node-proc: #8b5cf6;
+   --pipeline-node-border: rgb(255 255 255 / 0.2);
+
 }
 
 

@@ -549,7 +549,7 @@ export class AgLicenseStatus extends LitElement {
             return html`
                 ${this._renderHeader(true)}
                 <div class="system-tile" style="margin-bottom: var(--spacing-xl); max-width: 100%;">
-                    <p style="color: var(--color-error); margin: 0;">${this._error}</p>
+                    <p style="color: var(--color-error-text); margin: 0;">${this._error}</p>
                 </div>
             `;
         }
@@ -621,7 +621,7 @@ export class AgLicenseStatus extends LitElement {
                 ${expires_at ? html`
                     <div class="profile-info-row" style="margin-top: var(--spacing-xs); align-items: center;">
                         <span class="info-label" style="flex-shrink: 0;">${isPast(expires_at) ? 'Ended' : 'Expires'}</span>
-                        <span style="font-size: var(--font-size-xs); color: ${isPast(expires_at) ? 'var(--color-warning)' : 'var(--text-secondary)'}; margin-left: auto;">
+                        <span style="font-size: var(--font-size-xs); color: ${isPast(expires_at) ? 'var(--color-warning-text)' : 'var(--text-secondary)'}; margin-left: auto;">
                             ${fmtIsoDate(expires_at)}
                         </span>
                     </div>

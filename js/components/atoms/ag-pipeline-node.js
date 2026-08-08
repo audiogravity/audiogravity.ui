@@ -391,15 +391,15 @@ export const renderPipelineNode = (node) => {
         return svg`
             <g class="pipeline-node output" data-node-id="${node.id}" transform="translate(${x}, ${y})">
                 <circle class="node-circle ${isActive ? 'active' : ''}" cx="0" cy="0" r="${radius}"
-                    style="fill: var(--pipeline-node-output, #ef4444); stroke: var(--pipeline-node-border, rgba(255,255,255,0.2)); stroke-width: 2;" />
+                    style="fill: var(--pipeline-node-output); stroke: var(--pipeline-node-border); stroke-width: 2;" />
                 <g transform="translate(-12, -12)"><path d="${volumePath}" fill="#fff" /></g>
 
                 <!-- Unified Badge (Dynamic width) -->
                 <g transform="translate(${badgeOffset}, 40)">
-                    <rect width="${badgeWidth}" height="34" rx="4" style="fill: var(--bg-tertiary, #f1f5f9); stroke: var(--border-color, #e2e8f0); stroke-width: 1;" />
-                    <g transform="translate(8, 8) scale(0.7)"><path d="${volumePath}" fill="var(--color-info, #3b82f6)" /></g>
-                    <text x="30" y="21" style="fill: var(--text-secondary, #475569); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${deviceName}</text>
-                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--text-accent, #3b82f6); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
+                    <rect width="${badgeWidth}" height="34" rx="4" style="fill: var(--bg-tertiary); stroke: var(--border-color); stroke-width: 1;" />
+                    <g transform="translate(8, 8) scale(0.7)"><path d="${volumePath}" fill="var(--color-info)" /></g>
+                    <text x="30" y="21" style="fill: var(--text-secondary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${deviceName}</text>
+                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--accent-primary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
                 </g>
             </g>
         `;
@@ -475,7 +475,7 @@ export const renderPipelineNode = (node) => {
                opacity="${opacity}">
                 <g transform="translate(${badgeOffset}, ${-badgeHeight/2})">
                     <rect width="${badgeWidth}" height="${badgeHeight}" rx="4"
-                        style="fill: var(--bg-tertiary, #f1f5f9); stroke: ${isPaused ? '#f59e0b' : 'var(--border-color, #3b82f6)'}; stroke-width: ${isActive ? 2 : 1};" />
+                        style="fill: var(--bg-tertiary); stroke: ${isPaused ? '#f59e0b' : 'var(--border-color)'}; stroke-width: ${isActive ? 2 : 1};" />
 
                     <!-- Icon/Indicator (Play/Pause/Volume) -->
                     <g transform="translate(8, 8) scale(0.7)">
@@ -483,17 +483,17 @@ export const renderPipelineNode = (node) => {
                     </g>
 
                     <!-- Service Name & Volume -->
-                    <text x="30" y="20" style="fill: var(--text-primary, #1e293b); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${name}</text>
-                    <text x="${badgeWidth - 8}" y="20" style="fill: var(--color-info, #3b82f6); font-size: 9px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
+                    <text x="30" y="20" style="fill: var(--text-primary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${name}</text>
+                    <text x="${badgeWidth - 8}" y="20" style="fill: var(--color-info); font-size: 9px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
 
                     ${title ? svg`
                         <!-- Metadata: Track info -->
-                        <text x="30" y="32" style="fill: var(--text-secondary, #475569); font-size: 9px; font-style: italic;">${displayTrackText}</text>
+                        <text x="30" y="32" style="fill: var(--text-secondary); font-size: 9px; font-style: italic;">${displayTrackText}</text>
                         <!-- Quality Info -->
-                        <text x="30" y="42" style="fill: var(--text-accent, #3b82f6); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="42" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     ` : svg`
                         <!-- Quality Info (if no title) -->
-                        <text x="30" y="30" style="fill: var(--text-accent, #3b82f6); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="30" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     `}
 
                     <!-- Software Output Port (Green circle on the right) -->
@@ -510,7 +510,7 @@ export const renderPipelineNode = (node) => {
     return svg`
         <g class="pipeline-node processing" transform="translate(${x - width/2}, ${y - height/2})">
             <rect class="node-rect ${isActive ? 'active' : ''}" width="${width}" height="${height}" rx="${rx}" 
-                style="fill: var(--pipeline-node-proc, #8b5cf6); stroke: var(--pipeline-node-border, rgba(255,255,255,0.1)); stroke-width: 2;" />
+                style="fill: var(--pipeline-node-proc); stroke: var(--pipeline-node-border); stroke-width: 2;" />
             <text class="node-text" x="${width/2}" y="${height/2 + 4}" style="fill: #fff; font-size: 11px; font-weight: bold; text-anchor: middle;">${name}</text>
         </g>
     `;

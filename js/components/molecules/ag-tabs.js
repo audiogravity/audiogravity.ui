@@ -773,10 +773,10 @@ export class AgTabs extends LitElement {
                         ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
                         ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
-                            <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
+                            <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning-text);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
                         ` : ''}
                         ${!locked && tab.id === 'admin' && this._updateAvailable ? html`
-                            <span aria-label="Update available" title="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
+                            <span aria-label="Update available" title="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning-text)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
                         ` : ''}
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`

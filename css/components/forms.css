@@ -74,7 +74,12 @@
 .form-control--identifier {
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
-    color: var(--text-secondary);
+
+    /* Full text colour, not the dimmed one. A device ID is real data and
+       often the most important thing on the screen; dimming it says "this
+       does not count", which is what `disabled` means, not `read-only`.
+       The flat ground and the cursor are what mark it unmodifiable. */
+    color: var(--text-primary);
     cursor: default;
 }
 

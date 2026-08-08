@@ -153,7 +153,7 @@
     flex-shrink: 0;
 }
 
-.lib-src-status.up   { color: var(--color-success); }
+.lib-src-status.up   { color: var(--color-success-text); }
 .lib-src-status.down { color: var(--text-tertiary); }
 
 .lib-src-dot {
@@ -632,7 +632,7 @@
 
 .lib-tidal-err {
     font-size: var(--font-size-xxs);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* HRA email/password login form (reuses the lib-qb card; form block is new) */
@@ -668,7 +668,7 @@
 .lib-hra-err {
     margin: 0;
     font-size: var(--font-size-xxs);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* ── UPnP Renderer — volume popover aligned with action buttons ── */

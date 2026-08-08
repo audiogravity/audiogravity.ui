@@ -129,7 +129,7 @@
 }
 
 .config-footer-logout:hover {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* The generic .version-info is also styled by audio-software.css (imported later),
@@ -300,7 +300,7 @@
 }
 
 .passkey-chip-delete:hover {
-    color: var(--color-error, #ee5555);
+    color: var(--color-error-text);
 }
 
 /* Passkeys section (legacy, kept for safety) */

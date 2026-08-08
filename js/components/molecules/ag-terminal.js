@@ -21,6 +21,9 @@ const XTERM_FIT_CDN = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xt
 /** Cell size for the terminal. Shared so the face is preloaded at the size it is drawn. */
 const TERMINAL_FONT_SIZE = 13;
 
+/** Frames held while the terminal is being built. Generous for a banner, finite. */
+const PENDING_FRAME_CAP = 500;
+
 export class AgTerminal extends LitElement {
     static properties = {
         _status: { type: String, state: true }, // 'idle' | 'connecting' | 'connected' | 'error' | 'closed'
@@ -94,7 +97,13 @@ export class AgTerminal extends LitElement {
         // socket exists and replayed once xterm can accept them. Without this the
         // banner is lost and the viewport stays blank until the user types.
         this._pending = [];
-        ws.onmessage = (e) => this._pending.push(e.data);
+        ws.onmessage = (e) => {
+            // Bounded: what matters here is the banner and the first prompt, which
+            // come first, so the cap drops the newest rather than the oldest. A
+            // shell that talks for a whole font fetch must not grow this without
+            // limit — the box is an audio machine before it is a web server.
+            if (this._pending.length < PENDING_FRAME_CAP) this._pending.push(e.data);
+        };
 
         ws.onopen = () => {
             this._status = 'connected';
@@ -116,8 +125,14 @@ export class AgTerminal extends LitElement {
 
     _mountTerminal(ws) {
         this.updateComplete.then(async () => {
+            /** Give up on this socket and stop collecting for it. */
+            const abandon = () => {
+                ws.onmessage = null;
+                this._pending = [];
+            };
+
             const container = this.querySelector('.ag-terminal-viewport');
-            if (!container) return;
+            if (!container) { abandon(); return; }
 
             const fontFamily = monoFontFamily();
 
@@ -134,6 +149,15 @@ export class AgTerminal extends LitElement {
             } catch {
                 /* unparsable or unavailable face — xterm falls back on its own */
             }
+
+            // Everything above is asynchronous, and the font wait is a network
+            // round trip on a cold cache. The panel can be left, or reconnected,
+            // inside that window: _destroy() would have run with _term still
+            // null, and the continuation would then build a terminal and a
+            // ResizeObserver nobody holds a reference to — invisible, undisposed,
+            // and stacking one more on every reconnection. _ws is the marker:
+            // _destroy() clears it, a new connection replaces it.
+            if (this._ws !== ws) { abandon(); return; }
 
             const term = new window.Terminal({
                 cursorBlink: true,

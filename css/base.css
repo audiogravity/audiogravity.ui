@@ -213,7 +213,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-    outline: 3px solid var(--focus-color, #00a8e8);
+    outline: 3px solid var(--focus-color);
     outline-offset: 2px;
     border-radius: var(--radius-sm, 4px);
 }
@@ -224,7 +224,7 @@ body.dark-mode input:focus-visible,
 body.dark-mode select:focus-visible,
 body.dark-mode textarea:focus-visible,
 body.dark-mode [tabindex]:focus-visible {
-    outline-color: var(--focus-color-dark, #4fc3f7);
+    outline-color: var(--focus-color-dark);
 }
 
 /* =====================
@@ -234,9 +234,9 @@ body.dark-mode [tabindex]:focus-visible {
 /* stylelint-disable-next-line declaration-no-important */
 .hidden { display: none !important; }
 
-.text-success { color: var(--color-success); }
-.text-error { color: var(--color-error); }
-.text-warning { color: var(--color-warning); }
+.text-success { color: var(--color-success-text); }
+.text-error { color: var(--color-error-text); }
+.text-warning { color: var(--color-warning-text); }
 
 /* ROLE RESTRICTIONS */
 /* stylelint-disable-next-line declaration-no-important */

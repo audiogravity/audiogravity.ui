@@ -197,7 +197,7 @@ export class AgUpdateBanner extends LitElement {
                 }
                 ag-update-banner .ag-upd-banner.mandatory { border-left-color: var(--color-warning); }
                 ag-update-banner .ag-upd-icon  { color: var(--accent-primary); flex-shrink: 0; display: flex; }
-                ag-update-banner .ag-upd-banner.mandatory .ag-upd-icon { color: var(--color-warning); }
+                ag-update-banner .ag-upd-banner.mandatory .ag-upd-icon { color: var(--color-warning-text); }
                 ag-update-banner .ag-upd-body  { flex: 1; }
                 ag-update-banner .ag-upd-title {
                     font-size: var(--font-size-sm);

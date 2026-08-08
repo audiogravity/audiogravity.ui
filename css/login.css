@@ -341,7 +341,7 @@
     /* Decorative: the wording beside it already says the state, so the dot is
        redundant rather than load-bearing, and the green is not asked to carry
        the meaning on its own. */
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 /* Same treatment as .error-message — two error displays on one screen that

@@ -91,7 +91,7 @@
 }
 
 .ag-audio-output .icon-volume-medium {
-    color: var(--color-info);
+    color: var(--color-info-text);
     font-size: 12px;
 }
 
@@ -608,8 +608,8 @@
     font-weight: 700;
 }
 
-.diff-stat-add { color: var(--color-success); }
-.diff-stat-remove { color: var(--color-error); }
+.diff-stat-add { color: var(--color-success-text); }
+.diff-stat-remove { color: var(--color-error-text); }
 
 .config-diff-body {
     overflow-x: auto;
@@ -690,7 +690,7 @@
 
 .diff-old {
     font-family: var(--font-mono);
-    color: var(--color-error);
+    color: var(--color-error-text);
     background: var(--color-error-bg);
     border-radius: var(--radius-xs);
     padding: 0 4px;
@@ -698,7 +698,7 @@
 
 .diff-new {
     font-family: var(--font-mono);
-    color: var(--color-success);
+    color: var(--color-success-text);
     background: var(--color-success-bg);
     border-radius: var(--radius-xs);
     padding: 0 4px;
@@ -794,13 +794,13 @@ body.compact-mode .config-field {
 
 .config-raw-editor .validation-message.validation-error {
     background: var(--color-error-bg);
-    color: var(--color-error);
+    color: var(--color-error-text);
     border-left: 3px solid var(--color-error);
 }
 
 .config-raw-editor .validation-message.validation-success {
     background: var(--color-success-bg);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border-left: 3px solid var(--color-success);
 }
 

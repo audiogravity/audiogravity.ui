@@ -49,7 +49,7 @@
     font-size: var(--font-size-xs);
 }
 
-.health-count.running { color: var(--color-success); }
+.health-count.running { color: var(--color-success-text); }
 .health-count.idle    { color: var(--text-secondary); }
-.health-count.failed  { color: var(--color-error); }
+.health-count.failed  { color: var(--color-error-text); }
 .health-count-sep     { color: var(--text-tertiary); }

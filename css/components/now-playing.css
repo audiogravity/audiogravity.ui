@@ -341,7 +341,7 @@ ag-now-playing {
     font-weight: 500;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     opacity: 0.8;
 }
 

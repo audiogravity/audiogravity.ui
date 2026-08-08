@@ -90,7 +90,7 @@
     transition: color var(--transition-fast);
 }
 
-.service-boot-icon.enabled  { color: var(--color-success); }
+.service-boot-icon.enabled  { color: var(--color-success-text); }
 .service-boot-icon.disabled { color: var(--text-tertiary); }
 
 .service-last-action {

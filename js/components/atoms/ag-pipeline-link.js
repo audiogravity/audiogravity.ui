@@ -73,20 +73,24 @@ export const renderPipelineLink = (link, sourceNode) => {
         'antenna': 'var(--color-info)'    // Blue
     };
 
+    // `stroke`, not `color`: these paint SVG lines. The field was called
+    // `color`, which reads as text to anyone — and to any tool sweeping the
+    // codebase for text colours. The base tokens are the ones chosen for
+    // graphics, and the legend swatches read the same ones.
     const linkStyles = {
-        'software': { color: 'var(--color-info)', width: 2, dashArray: '4 4' },
-        'alsa': { color: 'var(--color-success)', width: 2.5, dashArray: '' },
-        'physical': { color: connectorColors[connector?.toLowerCase()] || 'var(--color-warning)', width: 3, dashArray: '' },
-        'internal': { color: 'var(--text-secondary)', width: 1.5, dashArray: '2 2' },
-        'network': { color: 'var(--color-success)', width: 2, dashArray: '8 4' },
-        'control': { color: 'var(--color-warning)', width: 1.5, dashArray: '5 3' },
+        'software': { stroke: 'var(--color-info)', width: 2, dashArray: '4 4' },
+        'alsa': { stroke: 'var(--color-success)', width: 2.5, dashArray: '' },
+        'physical': { stroke: connectorColors[connector?.toLowerCase()] || 'var(--color-warning)', width: 3, dashArray: '' },
+        'internal': { stroke: 'var(--text-secondary)', width: 1.5, dashArray: '2 2' },
+        'network': { stroke: 'var(--color-success)', width: 2, dashArray: '8 4' },
+        'control': { stroke: 'var(--color-warning)', width: 1.5, dashArray: '5 3' },
     };
 
-    const linkStyle = linkStyles[link_type] || { color: 'var(--color-warning)', width: 3, dashArray: '' };
+    const linkStyle = linkStyles[link_type] || { stroke: 'var(--color-warning)', width: 3, dashArray: '' };
     // Analog connectors carry no digital service identity — use neutral color, ignore flow_color
     const ANALOG_CONNECTORS = ['rca', 'din', 'banana', 'xlr', 'jack', 'spk', 'air'];
     const isAnalog = ANALOG_CONNECTORS.some(c => (connector || '').toLowerCase().includes(c));
-    const baseColor = isAnalog ? 'var(--text-secondary)' : (flow_color || linkStyle.color);
+    const baseColor = isAnalog ? 'var(--text-secondary)' : (flow_color || linkStyle.stroke);
     // Inactive links: gray color instead of nearly invisible
     const strokeColor = active ? baseColor : 'var(--text-tertiary)';
     const strokeWidth = active ? linkStyle.width : 2;

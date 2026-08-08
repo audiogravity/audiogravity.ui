@@ -15,7 +15,10 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -2px rgb(0 0 0 / 0.04);
     --text-primary: #0f172a;
     --text-secondary: #475569; /* Slate-600 */
-    --text-tertiary: #94a3b8;  /* Slate-400 */
+    --text-tertiary: #566881;
+
+    /* Darkened to clear the 4.5:1 floor on every ground this theme paints;
+       it is read text on 117 declarations, not decoration. */
 
     /* Status Colors - Vibrant but balanced */
     --color-success: #10b981;
@@ -105,10 +108,30 @@
     --pipeline-link: #475569; /* Slate-600 */
     --pipeline-link-active: #F59E0B; /* Amber-500 */
     --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
+
+    /* Text-safe variants of the semantic colours.
+       --color-success and friends serve three jobs at once: a border (owes 3:1),
+       a tinted fill (owes nothing) and the text on top (owes 4.5:1). One value
+       cannot satisfy all three — a red dark enough to read is too dark for the
+       border it was chosen for. These are the reading variants, same hue, and
+       the only ones a `color:` declaration may use. Values that already cleared
+       the floor are repeated verbatim so every theme states its own. */
+    --color-success-text: #0A7753;
+    --color-error-text: #D00C2E;
+    --color-warning-text: #8F5C06;
+    --color-info-text: #096E9C;
+
 }
 
 /* DARK MODE */
-[data-theme="gravity"].dark-mode {
+
+/* Both forms, as minimal and slate declare them. The first alone happens to
+   suffice — common.js stamps data-theme on <body> as well as <html>, so it
+   matches there at (0,2,0) and outranks the shared body.dark-mode defaults
+   at (0,1,1). The second removes the dependency on that continuing to be
+   true, and makes the three themes read alike. */
+[data-theme="gravity"].dark-mode,
+[data-theme="gravity"] body.dark-mode {
     /* Deep Cosmic Dark - Gravity */
     --bg-primary: #0a0b10;
     --bg-secondary: #12141c;
@@ -122,7 +145,10 @@
     --shadow-lg: 0 8px 16px rgb(0 0 0 / 0.6);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --text-tertiary: #64748b;
+    --text-tertiary: #76869D;
+
+    /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
+       value sat under it, which is the direction nobody checks. */
     --border-color: #21262d;
     --shadow-color: rgb(0 0 0 / 0.5);
     --topbar-bg: #12141c; /* Changed to solid color for iOS Notch perfection */
@@ -184,4 +210,11 @@
     --pipeline-link: #475569;
     --pipeline-link-active: #FFB703;
     --pipeline-link-bitperfect: #00F5D4;
+
+    /* Text-safe variants — see the note in the light block. */
+    --color-success-text: #00f5d4;
+    --color-error-text: #ff4d6d;
+    --color-warning-text: #ffb703;
+    --color-info-text: #00f2fe;
+
 }

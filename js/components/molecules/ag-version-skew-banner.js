@@ -91,7 +91,7 @@ export class AgVersionSkewBanner extends LitElement {
                     border-left: var(--spacing-xs) solid var(--color-warning);
                     font-size: var(--font-size-sm);
                 }
-                ag-version-skew-banner .ag-skew-icon { color: var(--color-warning); flex-shrink: 0; display: flex; }
+                ag-version-skew-banner .ag-skew-icon { color: var(--color-warning-text); flex-shrink: 0; display: flex; }
                 ag-version-skew-banner .ag-skew-title { color: var(--text-primary); margin-bottom: var(--spacing-xs); }
                 ag-version-skew-banner .ag-skew-text { color: var(--text-secondary); font-size: var(--font-size-xs); }
             </style>

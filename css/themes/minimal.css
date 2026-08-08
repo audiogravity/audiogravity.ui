@@ -7,7 +7,10 @@
     --bg-tertiary: #F0F0F0;
     --text-primary: #000000;
     --text-secondary: #555555;
-    --text-tertiary: #888888;
+    --text-tertiary: #6C6C6C;
+
+    /* Darkened to clear the 4.5:1 floor on every ground this theme paints;
+       it is read text on 117 declarations, not decoration. */
 
     /* Status Colors */
     --color-success: #22c55e;
@@ -175,6 +178,19 @@
     --pipeline-link: #888888;
     --pipeline-link-active: #F59E0B;
     --pipeline-link-bitperfect: #22C55E;
+
+    /* Text-safe variants of the semantic colours.
+       --color-success and friends serve three jobs at once: a border (owes 3:1),
+       a tinted fill (owes nothing) and the text on top (owes 4.5:1). One value
+       cannot satisfy all three — a red dark enough to read is too dark for the
+       border it was chosen for. These are the reading variants, same hue, and
+       the only ones a `color:` declaration may use. Values that already cleared
+       the floor are repeated verbatim so every theme states its own. */
+    --color-success-text: #157B3B;
+    --color-error-text: #D91313;
+    --color-warning-text: #945F06;
+    --color-info-text: #000000;
+
 }
 
 [data-theme="minimal"].dark-mode,
@@ -184,7 +200,10 @@
     --bg-tertiary: #151515;
     --text-primary: #FFFFFF;
     --text-secondary: #AAAAAA;
-    --text-tertiary: #777777;
+    --text-tertiary: #7F7F7F;
+
+    /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
+       value sat under it, which is the direction nobody checks. */
     --border-color: #2A2A2A;
     --shadow-color: rgb(255 255 255 / 0.08);
     --topbar-bg: #000000;
@@ -317,4 +336,11 @@
     --pipeline-link: #777777;
     --pipeline-link-active: #FBBF24;
     --pipeline-link-bitperfect: #4ADE80;
+
+    /* Text-safe variants — see the note in the light block. */
+    --color-success-text: #34D399;
+    --color-error-text: #f87171;
+    --color-warning-text: #FBBF24;
+    --color-info-text: #FFFFFF;
+
 }
