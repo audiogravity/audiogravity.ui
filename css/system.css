@@ -611,7 +611,9 @@
     margin: 4px 0 0;
     color: var(--color-success);
     opacity: 0.85;
-    font-family: var(--font-mono);
+
+    /* Prose. Monospace slows a sentence down and buys nothing here. */
+    font-family: var(--font-family);
     font-size: var(--font-size-xs);
 }
 
@@ -659,7 +661,8 @@
 }
 
 .lic-act__spinner-title {
-    font-family: var(--font-mono);
+    /* A title, not a value to be transcribed. */
+    font-family: var(--font-family);
     font-size: var(--font-size-sm);
     color: var(--text-primary);
     letter-spacing: 0.5px;

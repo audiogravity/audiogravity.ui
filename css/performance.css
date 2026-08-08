@@ -202,7 +202,10 @@
     border: 1px solid var(--color-warning);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-mono);
+
+    /* Uppercase label, not a value read character by character: the
+       interface face, per rule 3 of the UI guidelines. */
+    font-family: var(--font-family);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     animation: blinkWarning 1s ease-in-out 3;
@@ -742,7 +745,10 @@ body.no-animations .animate-stagger {
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-mono);
+
+    /* Uppercase label, not a value read character by character: the
+       interface face, per rule 3 of the UI guidelines. */
+    font-family: var(--font-family);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     white-space: nowrap;

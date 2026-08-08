@@ -86,6 +86,16 @@ export class AgTerminal extends LitElement {
         ws.binaryType = 'arraybuffer';
         this._ws = ws;
 
+        // The PTY writes its banner and first prompt the moment it opens, and a
+        // WebSocket frame that arrives with no handler attached is dropped, not
+        // queued. Building the terminal is asynchronous — it waits for the render
+        // to settle and for the monospace face to load, which on a first visit is
+        // a network round trip — so frames are collected from the instant the
+        // socket exists and replayed once xterm can accept them. Without this the
+        // banner is lost and the viewport stays blank until the user types.
+        this._pending = [];
+        ws.onmessage = (e) => this._pending.push(e.data);
+
         ws.onopen = () => {
             this._status = 'connected';
             this._mountTerminal(ws);
@@ -155,13 +165,19 @@ export class AgTerminal extends LitElement {
             this._term = term;
             this._fitAddon = fitAddon;
 
+            /**
+             * Write one PTY frame, whatever form it arrived in.
+             * @param {ArrayBuffer|string} raw
+             */
+            const write = (raw) => term.write(raw instanceof ArrayBuffer ? new Uint8Array(raw) : raw);
+
+            // Everything the shell said while the terminal was being built, in
+            // order, before the socket is handed over.
+            for (const raw of this._pending) write(raw);
+            this._pending = [];
+
             // PTY output → xterm
-            ws.onmessage = (e) => {
-                const data = e.data instanceof ArrayBuffer
-                    ? new Uint8Array(e.data)
-                    : e.data;
-                term.write(data);
-            };
+            ws.onmessage = (e) => write(e.data);
 
             // xterm input → PTY
             term.onData((data) => {

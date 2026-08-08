@@ -290,6 +290,44 @@ describe('typography — the theme layer owns the family, and always wins', () =
         expect(offenders, `polices écrites en dur :\n  ${offenders.join('\n  ')}`).toEqual([]);
     });
 
+    it('never sets an uppercase label in the monospace face', () => {
+        // The testable half of rule 3. Monospace is for values transcribed
+        // character by character; a label in capitals is read as a shape, and
+        // the interface face is what the repo's own CSS conventions ask for
+        // there. Six rules had drifted — three status badges among them.
+        //
+        // The other half of rule 3 — "is this content actually read digit by
+        // digit?" — is a judgement about meaning and cannot be asserted here.
+        const offenders = [];
+        for (const file of listCss(CSS_ROOT)) {
+            const css = stripCssComments(fs.readFileSync(file, 'utf8'));
+            for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+                if (!/--font-mono/.test(body)) continue;
+                if (!/text-transform:\s*uppercase/.test(body)) continue;
+                offenders.push(`${path.relative(ROOT, file)} — ${selector.trim().split('\n').pop()}`);
+            }
+        }
+        expect(offenders, `capitales en monospace :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('never lets waiting for a face swallow what arrived meanwhile', () => {
+        // Waiting for the monospace face before opening the terminal is right —
+        // xterm measures its cell once and would otherwise size the grid against
+        // the fallback. But the wait is a network round trip on a cold cache, and
+        // it was placed after the socket was already open and before its message
+        // handler existed: a WebSocket frame with no handler is dropped, not
+        // queued, so the shell's banner and first prompt vanished.
+        //
+        // The handler must therefore be attached before the wait begins. Source
+        // order is the whole guarantee, so source order is what is asserted.
+        const term = read('js', 'components', 'molecules', 'ag-terminal.js');
+        const firstHandler = term.indexOf('ws.onmessage');
+        const fontWait = term.indexOf('document.fonts.load');
+        expect(firstHandler, 'aucun gestionnaire de message').toBeGreaterThan(-1);
+        expect(fontWait, "aucune attente de police — xterm mesurerait le repli").toBeGreaterThan(-1);
+        expect(firstHandler, "l'attente de la police précède le gestionnaire").toBeLessThan(fontWait);
+    });
+
     it('resolves the token in one place for the consumers that cannot read CSS', () => {
         // Second occurrence triggers extraction, per the repo's DRY rule: the dev
         // badge and the terminal both needed it.

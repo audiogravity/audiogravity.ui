@@ -199,7 +199,9 @@
     background: var(--bg-primary);
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
-    font-family: var(--font-mono);
+
+    /* Names the kind of error; it is read, not transcribed. */
+    font-family: var(--font-family);
     opacity: 0.7;
 }
 
