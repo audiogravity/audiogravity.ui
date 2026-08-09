@@ -36,7 +36,7 @@
 }
 
 .system-action-icon {
-    font-size: 1.4rem;
+    font-size: var(--font-size-xl);
     color: var(--text-tertiary);
     flex-shrink: 0;
     width: 28px;
@@ -98,7 +98,7 @@
 }
 
 .system-reboot-title {
-    font-size: 1.2rem;
+    font-size: var(--font-size-xl);
     font-weight: 700;
     color: var(--color-warning-text);
     letter-spacing: 2px;
@@ -176,7 +176,7 @@
 }
 
 .system-tile .metric-large {
-    font-size: 1.8rem;
+    font-size: var(--font-size-xxl);
 }
 
 /* Rest handled by components/metrics.css (.metric-large alias) */
@@ -211,7 +211,7 @@
 }
 
 .connection-text-large {
-    font-size: 1rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -251,7 +251,7 @@
 /* Compact variant - smaller button */
 .event-toggle-btn.compact {
     padding: 4px var(--spacing-xs);
-    font-size: 9px;
+    font-size: var(--font-size-xxs);
     letter-spacing: 0.3px;
     min-height: 22px;
     min-width: 58px;
@@ -350,7 +350,7 @@
 }
 
 .network-status-icon {
-    font-size: 8px;
+    font-size: var(--font-size-xxs);
 }
 
 .network-interface-name.network-up {
@@ -380,7 +380,7 @@
 
 .network-ip.ipv6 {
     color: var(--text-secondary);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
 }
 
 /* Remove scroll trap on System tab events list */
@@ -436,7 +436,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
-    font-size: 9px;
+    font-size: var(--font-size-xxs);
     font-weight: 700;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -564,7 +564,7 @@
 .log-time {
     flex-shrink: 0;
     color: var(--text-tertiary);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     white-space: nowrap;
 }
 

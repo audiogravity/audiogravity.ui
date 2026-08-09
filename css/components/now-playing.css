@@ -113,7 +113,7 @@ ag-now-playing {
 }
 
 .np-detail-tracks-title {
-    font-size: 10px;
+    font-size: var(--font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -151,7 +151,7 @@ ag-now-playing {
 }
 
 .np-tracklist-num {
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     min-width: 16px;
     text-align: right;
@@ -172,7 +172,7 @@ ag-now-playing {
 }
 
 .np-tracklist-dur {
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     flex-shrink: 0;
 }
@@ -210,7 +210,7 @@ ag-now-playing {
 }
 
 .np-detail-label {
-    font-size: 10px;
+    font-size: var(--font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -246,6 +246,11 @@ ag-now-playing {
     background: var(--bg-tertiary, var(--bg-primary));
     border-radius: 3px;
     color: var(--text-tertiary);
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 22px;
 }
 
@@ -278,7 +283,7 @@ ag-now-playing {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     padding: 0;
     transition: color var(--transition-fast);
     flex-shrink: 0;
@@ -386,7 +391,7 @@ ag-now-playing {
 }
 
 .np-format {
-    font-size: 10px;
+    font-size: var(--font-size-xxs);
     color: var(--text-tertiary);
     letter-spacing: 0.03em;
     white-space: nowrap;
@@ -419,6 +424,11 @@ ag-now-playing {
     display: flex;
     align-items: center;
     justify-content: center;
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 20px;
     transition: background var(--transition-fast), color var(--transition-fast);
     flex-shrink: 0;

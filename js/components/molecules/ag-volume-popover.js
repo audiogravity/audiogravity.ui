@@ -36,6 +36,10 @@ ag-volume-popover { display: block; }
     display: flex;
     align-items: center;
     justify-content: center;
+    /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+    so the value is the geometry of a control rather than typography. The page scale has
+    no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+    two and the largest grew 17 percent. See css/components/playback-controls.css. */
     font-size: 20px;
     transition: background var(--transition-fast, .15s), color var(--transition-fast, .15s);
     flex-shrink: 0;
@@ -94,6 +98,10 @@ ag-volume-popover { display: block; }
     gap: 6px;
     flex-shrink: 0;
 }
+/* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+so the value is the geometry of a control rather than typography. The page scale has
+no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+two and the largest grew 17 percent. See css/components/playback-controls.css. */
 .avp-icon { font-size: 18px; color: var(--text-secondary); }
 .avp-val {
     font-size: var(--font-size-sm);
@@ -110,7 +118,7 @@ ag-volume-popover { display: block; }
 .avp-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
+    font-size: var(--font-size-xxs);
     color: var(--text-tertiary);
     user-select: none;
     padding: 0 2px;
@@ -127,6 +135,10 @@ ag-volume-popover { display: block; }
     border: none;
     background: var(--bg-tertiary);
     color: var(--text-primary);
+    /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+    so the value is the geometry of a control rather than typography. The page scale has
+    no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+    two and the largest grew 17 percent. See css/components/playback-controls.css. */
     font-size: 18px;
     line-height: 1;
     cursor: pointer;

@@ -75,11 +75,30 @@
     */
    --font-family: 'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
    --font-mono: 'JetBrains Mono', monospace;
+
+   /* Seven steps, closed, declared here and nowhere else.
+    *
+    * They used to be declared twice: xs..xl here, and xxs/xxl/xxxl in a "Font Sizes
+    * (Extended)" group a hundred and ten lines below. That distance is how the scale came
+    * to hold eight names for seven values — --font-size-xxl was 20px, exactly what
+    * --font-size-xl already was, so two steps rendered identically on every desktop and
+    * only came apart under the 768px media query. Two usages asked for a step that did not
+    * exist as a step. xxl now carries what xxxl carried, and xxxl is gone.
+    *
+    * xxs is 10px and is for labels that are identified rather than read — a badge, a unit,
+    * a format tag. Anything a reader actually reads starts at xs.
+    *
+    * The audio pipeline's SVG text is NOT on this scale and must not be put on it: those
+    * sizes are chosen to fit inside a drawn node at a given viewBox, so they answer to the
+    * geometry of the diagram rather than to the typography of the page. See
+    * js/sizes.test.js. */
+   --font-size-xxs: 10px;
    --font-size-xs: 11px;
    --font-size-sm: 13px;
    --font-size-md: 14px;
    --font-size-lg: 16px;
    --font-size-xl: 20px;
+   --font-size-xxl: 28px;
 
 
    /**
@@ -178,19 +197,6 @@
 
    /* Chart heights */
 
-   /**
-    * @group Font Sizes (Extended)
-    * @description Additional font sizes for edge cases
-    */
-   --font-size-xxs: 10px;
-
-   /* Very small text (badges, compact mode) */
-   --font-size-xxl: 20px;
-
-   /* Large headings */
-   --font-size-xxxl: 28px;
-
-   /* Extra large (modals, special headings) */
 
    /* Breakpoints */
    --breakpoint-sm: 480px;

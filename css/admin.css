@@ -74,7 +74,7 @@ ag-license-status {
 }
 
 .passkey-date {
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
 }
 

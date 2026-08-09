@@ -156,6 +156,8 @@ body:has(.tabs--vertical) .nav-menu {
     pointer-events: none;
 }
 
+/* rule 12 exception — em, not a step: this is a glyph beside a label and has to scale
+   with it. A fixed step detaches the two the moment the label changes. */
 .offline-banner span[class^="icon-"] {
     font-size: 1.2em;
 }
@@ -165,7 +167,7 @@ body:has(.tabs--vertical) .nav-menu {
     border: 1px solid rgb(0 0 0 / 0.2);
     padding: 2px 8px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: var(--font-size-xxs);
     cursor: pointer;
     text-transform: uppercase;
     font-weight: 700;
@@ -423,6 +425,8 @@ body.dark-mode .logo-svg {
     opacity: 1;
 }
 
+/* rule 12 exception — em, not a step: this is a glyph beside a label and has to scale
+   with it. A fixed step detaches the two the moment the label changes. */
 .tab-icon {
     margin-right: var(--spacing-sm);
     font-size: 0.85em;
@@ -908,7 +912,7 @@ body.dark-mode .logo-dark {
 
     .metric-value {
         min-width: auto;
-        font-size: var(--font-size-xxs);
+        font-size: var(--font-size-xs);
     }
 
     .metric {

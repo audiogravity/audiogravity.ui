@@ -433,7 +433,7 @@ export class AgLatencyTest extends LitElement {
                             <button class="btn-action compact error" @click=${this._cancelTest}>CANCEL</button>
                         ` : ''}
                         <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                            <label class="form-label compact" style="margin-bottom: 0; font-size: 10px; letter-spacing: 0.05rem;">EXPERT</label>
+                            <label class="form-label compact" style="margin-bottom: 0; font-size: var(--font-size-xxs); letter-spacing: 0.05rem;">EXPERT</label>
                             <ag-switch .checked=${this.expertMode} @ag-change=${this._handleExpertMode}></ag-switch>
                         </div>
                     </div>

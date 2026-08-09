@@ -76,7 +76,7 @@
 
 .lib-out-desc {
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     letter-spacing: 0.04em;
 }

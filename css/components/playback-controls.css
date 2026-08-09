@@ -45,6 +45,11 @@
     background: var(--text-primary);
     color: var(--bg-primary);
     border-radius: 50%;
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 24px;
 }
 
@@ -54,10 +59,20 @@
 
 .ag-pc-ctrl.nav {
     padding: 8px;
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 22px;
 }
 
 .ag-pc-ctrl.small {
     padding: 8px;
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 18px;
 }

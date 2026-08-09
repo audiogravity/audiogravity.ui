@@ -150,7 +150,7 @@
 /* log-badges are now mapped to subtle badges */
 .log-badge {
     padding: 1px 4px; border-radius: var(--radius-xs);
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    font-size: var(--font-size-xxs); font-weight: 700; text-transform: uppercase;
 }
 
 .log-badge-info {

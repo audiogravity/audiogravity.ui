@@ -155,7 +155,7 @@ export class AgUserCard extends LitElement {
                 <!-- Footer Actions -->
                 <div class="admin-user-footer" style="display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-sm); margin-top: auto; padding-top: var(--spacing-sm); border-top: 1px solid var(--border-color);">
                     <div class="persistence-toggle-footer" style="display: flex; align-items: center; gap: 6px;" title="Session Persistante : si activé, la session reste valide 12h même après fermeture du navigateur">
-                        <span class="metric-label" style="font-size: 10px; margin: 0; opacity: 0.8;">PERSIST</span>
+                        <span class="metric-label" style="font-size: var(--font-size-xxs); margin: 0; opacity: 0.8;">PERSIST</span>
                         <ag-switch
                             .compact=${true}
                             .checked=${this.user.persistent_auth !== false}

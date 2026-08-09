@@ -75,7 +75,7 @@ h1, h2, h3, h4, h5, h6 {
     line-height: 1.2;
 }
 
-h1 { font-size: var(--font-size-xxxl); }
+h1 { font-size: var(--font-size-xxl); }
 
 h2 {
     font-size: var(--font-size-xl);
@@ -152,6 +152,11 @@ button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
     select,
     textarea {
+        /* rule 12 exception — 16px here is a Safari constant, not a step: iOS zooms the
+           page in when a field smaller than that takes focus and does not zoom back out.
+           js/anti-zoom.test.js requires the literal, and caught a sweep that expressed it
+           as --font-size-lg — the same rendered value, but a step someone could then
+           "tidy" into the scale. */
         font-size: 16px;
     }
 }

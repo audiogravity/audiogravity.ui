@@ -40,9 +40,9 @@ export const LICENSE_TERMS_HTML = `
         <li><strong>Player</strong> — unified playback control across all sources (MPD, Roon, AirPlay, UPnP): transport controls, seek, volume, cover art and real-time Hi-Fi format readout (PCM / DSD / MQA, sample rate, bit depth, bitrate)</li>
         <li><strong>Library</strong> — high-resolution music library for Roon, MPD, UPnP servers (MinimServer, upmpdcli), Qobuz and Tidal: album browsing, full-text search, queue management and output zone selection. Qobuz and Tidal require an active subscription to their respective services.</li>
     </ul>
-    <p style="margin:.6em 0 0;font-size:.8rem;color:inherit;opacity:.7">Recommended platform: Linux Debian / DietPi. Other Linux distributions may work but are not officially supported.</p>
+    <p style="margin:.6em 0 0;font-size: var(--font-size-sm);color:inherit;opacity:.7">Recommended platform: Linux Debian / DietPi. Other Linux distributions may work but are not officially supported.</p>
 
-    <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:1.4em">
+    <table style="width:100%;border-collapse:collapse;font-size: var(--font-size-sm);margin-top:1.4em">
         <thead>
             <tr style="border-bottom:1px solid currentColor">
                 <th style="text-align:left;padding:.4em .6em"></th>
@@ -53,14 +53,14 @@ export const LICENSE_TERMS_HTML = `
         </thead>
         <tbody>
             <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.3em .6em;font-size:.7rem;text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">General</td>
+                <td style="padding:.3em .6em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">General</td>
             </tr>
             <tr><td style="padding:.3em .6em">Cost</td><td style="text-align:center">Free</td><td style="text-align:center">Free</td><td style="text-align:center">One-time</td></tr>
             <tr><td style="padding:.3em .6em">Duration</td><td style="text-align:center">30 days</td><td style="text-align:center">Unlimited</td><td style="text-align:center">Unlimited</td></tr>
             <tr><td style="padding:.3em .6em">Activation</td><td style="text-align:center">Automatic</td><td style="text-align:center">Automatic</td><td style="text-align:center">Manual</td></tr>
             <tr><td style="padding:.3em .6em">Updates</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">v1.x included</td></tr>
             <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.6em .6em .3em;font-size:.7rem;text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Starter features</td>
+                <td style="padding:.6em .6em .3em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Starter features</td>
             </tr>
             <tr><td style="padding:.3em .6em">Profiles</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Services</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
@@ -68,7 +68,7 @@ export const LICENSE_TERMS_HTML = `
             <tr><td style="padding:.3em .6em">System</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Users</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.6em .6em .3em;font-size:.7rem;text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Pro features</td>
+                <td style="padding:.6em .6em .3em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Pro features</td>
             </tr>
             <tr><td style="padding:.3em .6em">Player</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Library</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
@@ -93,6 +93,8 @@ export const LICENSE_TERMS_HTML = `
     <p>By downloading, installing, or using this software, you agree to the following terms.
     If you do not accept them, you must not install or use the software.</p>
 
+    <!-- rule 12 exception — sized against the modal body rather than from the scale;
+         see the note on .package-version-info in css/utilities.css. -->
     <p style="font-size:.85em;color:inherit;opacity:.8">
     <strong>"Software"</strong> — Audiogravi<sup>ty</sup> and all its components.
     <strong>"Starter Edition"</strong> — the free tier activated after trial expiry.

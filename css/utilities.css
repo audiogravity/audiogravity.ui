@@ -119,6 +119,10 @@
 }
 
 .package-version-info {
+    /* rule 12 exception — sized against its container rather than from the scale, and kept
+       that way for now on purpose: what it resolves to depends on a parent this file does
+       not state, so converting it would be a guess dressed as a decision. This and the
+       EULA definitions paragraph are the two to look at during the visual pass. */
     font-size: 0.85em;
     color: var(--text-tertiary);
 }

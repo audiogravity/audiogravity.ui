@@ -39,7 +39,7 @@
 }
 
 .config-file-mtime {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     margin-top: var(--spacing-xs);
     opacity: 0.7;
@@ -92,7 +92,7 @@
 
 .ag-audio-output .icon-volume-medium {
     color: var(--color-info-text);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
 }
 
 /* =====================
@@ -253,6 +253,8 @@
     line-height: 1.5;
 }
 
+/* rule 12 exception — em, not a step: this is a glyph beside a label and has to scale
+   with it. A fixed step detaches the two the moment the label changes. */
 .version-icon {
     margin-left: 6px;
     font-size: 0.9em;

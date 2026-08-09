@@ -328,8 +328,7 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
   --font-size-md:   14px;
   --font-size-lg:   16px;
   --font-size-xl:   20px;
-  --font-size-xxl:  20px;
-  --font-size-xxxl: 28px;
+  --font-size-xxl:  28px;
 
   /* Border radius */
   --radius-none: 0;
