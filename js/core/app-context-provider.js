@@ -1,4 +1,4 @@
-import { ContextProvider } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextProvider } from '@lit/context';
 import { appContext } from './app-context.js';
 import { EventBus, AppState } from './event-bus.js';
 import { getCurrentUser } from '../auth.js';

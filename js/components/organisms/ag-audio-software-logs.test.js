@@ -31,7 +31,7 @@ vi.mock('../../common.js', () => ({
 vi.mock('../../auth.js', () => ({ isGuest: () => false, isAdmin: () => true }));
 vi.mock('../../core/FetchController.js', () => ({ FetchController: class { fetch() {} } }));
 vi.mock('../../core/app-context.js', () => ({ appContext: Symbol('app') }));
-vi.mock('https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm', () => ({
+vi.mock('@lit/context', () => ({
     ContextConsumer: class { constructor() { this.value = undefined; } },
 }));
 vi.mock('../atoms/ag-filter-bar.js', () => ({}));

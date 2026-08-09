@@ -1,5 +1,5 @@
 import { LitElement, html } from 'lit';
-import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, EventEmitter } from '../../common.js';
 import { classMap } from 'lit/directives/class-map.js';

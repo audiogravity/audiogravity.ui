@@ -47,7 +47,7 @@ window.fetch = (url, options) => {
 };
 
 import '../css/main.css';
-import { ContextProvider } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextProvider } from '@lit/context';
 import { appContext } from '../js/core/app-context.js';
 
 
