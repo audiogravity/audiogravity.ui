@@ -25,10 +25,22 @@ import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
 import '../atoms/ag-library-fav-btn.js';
 import '../molecules/ag-library-list-row.js';
+import { ROON_IDS } from '../library-constants.js';
 
 const PAGE_SIZE = 50;
 
+// Local-library pills map to a server-side `sort`, not to client-side juggling.
+// Pagination is server-side — 50 albums a page — so anything the client sorts orders a
+// window, not the library. 'Recent' was worse than redundant: it sliced the first 50
+// alphabetically and labelled them recent.
+//
+// MPD only. Roon browses its own library through its own paged API, so the core never
+// holds the full list and cannot order it; there is no add-date either. Offering these
+// pills there gave three buttons that could not work — which is the defect being fixed,
+// reproduced on another source.
 const MPD_PILLS    = [['all', 'All'], ['recent', 'Recent'], ['az', 'A–Z']];
+/** Local-library pill → the `sort` the core applies over the whole library before paging. */
+const MPD_SORT     = { all: 'title', az: 'title', recent: 'added' };
 const QOBUZ_PILLS  = [
     ['favorites',    'Favorites'],
     ['new-releases', 'New Releases'],
@@ -86,6 +98,8 @@ export class AgLibraryBrowse extends LitElement {
         this._hasMore     = false;
         this._error       = null;
         this._offset      = 0;
+        /** Generation counter: a page that resolves under an older token is dropped. */
+        this._loadToken   = 0;
         this._observer    = null;
     }
 
@@ -97,6 +111,9 @@ export class AgLibraryBrowse extends LitElement {
 
     /** @returns {boolean} Whether the active source is HIGHRESAUDIO. */
     get _isHighresaudio() { return this.sourceId === 'src_highresaudio'; }
+
+    /** @returns {boolean} Whether the active source is Roon (paged and ordered by Roon). */
+    get _isRoon() { return ROON_IDS.has(this.sourceId); }
 
     /** @returns {boolean} Whether the active source is a streaming service (pills-driven). */
     get _isStreaming() { return this._isQobuz || this._isTidal || this._isHighresaudio; }
@@ -122,12 +139,20 @@ export class AgLibraryBrowse extends LitElement {
     async _load() {
         if (!this.sourceId) return;
         this._detachObserver();
-        this._albums  = [];
-        this._offset  = 0;
-        this._hasMore = false;
+        // Every load opens a new generation. A page requested under the previous sort can
+        // still be in flight — switching pill now reloads on MPD too, which it did not
+        // before — and it would append onto the fresh list, mixing two orders and pushing
+        // _offset past albums nobody ever fetched. The token is checked after each await,
+        // where the result comes back, not before it is asked for.
+        const token = ++this._loadToken;
+        this._albums      = [];
+        this._offset      = 0;
+        this._hasMore     = false;
+        this._loadingMore = false;   // a stale in-flight page must not hold the gate shut
         if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — star state fills in
         await loadWithState(this, async () => {
-            const page    = await this._fetchPage(0);
+            const page = await this._fetchPage(0);
+            if (token !== this._loadToken) return;   // superseded while we waited
             this._albums  = page;
             this._offset  = page.length;
             this._hasMore = page.length === PAGE_SIZE;
@@ -137,15 +162,17 @@ export class AgLibraryBrowse extends LitElement {
     async _loadMore() {
         if (this._loadingMore || !this._hasMore) return;
         this._loadingMore = true;
+        const token = this._loadToken;
         try {
-            const page    = await this._fetchPage(this._offset);
+            const page = await this._fetchPage(this._offset);
+            if (token !== this._loadToken) return;   // a reload happened; this page is stale
             this._albums  = [...this._albums, ...page];
             this._offset += page.length;
             this._hasMore = page.length === PAGE_SIZE;
         } catch (e) {
             console.error('[browse] load more failed:', e);
         } finally {
-            this._loadingMore = false;
+            if (token === this._loadToken) this._loadingMore = false;
         }
     }
 
@@ -169,6 +196,7 @@ export class AgLibraryBrowse extends LitElement {
             source_id: this.sourceId,
             offset:    String(offset),
             limit:     String(PAGE_SIZE),
+            ...(this._isRoon ? {} : { sort: MPD_SORT[this._filter] ?? 'title' }),
         });
         if (this.zoneId) params.set('zone_id', this.zoneId);
         return apiGet(`/library/albums?${params}`);
@@ -238,8 +266,10 @@ export class AgLibraryBrowse extends LitElement {
     // ------------------------------------------------------------------
 
     _syncObserver() {
-        const noScroll = !this._isQobuz && this._filter === 'recent';
-        const active = this._hasMore && !noScroll;
+        // 'Recent' used to cap the list at 50 and disable infinite scroll, because it was
+        // a slice rather than an order. It is a sort over the whole library now, so every
+        // pill scrolls through everything.
+        const active = this._hasMore;
         if (!active) { this._detachObserver(); return; }
         if (this._observer) return;
         const sentinel = this.querySelector('#lib-browse-sentinel');
@@ -293,8 +323,14 @@ export class AgLibraryBrowse extends LitElement {
 
     _setFilter(f) {
         if (f === this._filter) return;
+        const previous = this._filter;
         this._filter = f;
-        if (this._isStreaming) this._load();
+        // Streaming pills hit different endpoints, so they always reloaded. MPD pills used
+        // to reorder whatever was already in memory, which is why 'All' and 'A–Z' looked
+        // identical (the core already sorts by title) and 'Recent' showed the alphabetical
+        // head. They are server-side sorts now, so they reload too — but only when the sort
+        // actually changes, so All ⇄ A–Z costs nothing.
+        if (this._isStreaming || (!this._isRoon && MPD_SORT[previous] !== MPD_SORT[f])) this._load();
     }
 
     // ------------------------------------------------------------------
@@ -345,12 +381,10 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     _filtered() {
-        const { _albums, _filter } = this;
-        if (!this._isStreaming) {
-            if (_filter === 'recent') return _albums.slice(0, 50);
-            if (_filter === 'az')     return [..._albums].sort((a, b) => a.title.localeCompare(b.title));
-        }
-        return _albums;
+        // Nothing to do: the core returns the pages already ordered by the requested sort.
+        // Re-sorting here would only reorder the pages held in memory — the defect this
+        // replaced.
+        return this._albums;
     }
 
     /** @private Section header label based on the active streaming pill (or artist). */
@@ -375,12 +409,12 @@ export class AgLibraryBrowse extends LitElement {
         const pills        = this._isQobuz ? QOBUZ_PILLS
             : this._isTidal ? TIDAL_PILLS
             : this._isHighresaudio ? HRA_PILLS
+            : this._isRoon ? []
             : MPD_PILLS;
         const filtered     = this._filtered();
         const recent       = filtered.slice(0, 10);
         const more         = filtered.slice(10);
-        const noScroll     = !this._isQobuz && _filter === 'recent';
-        const showSentinel = _hasMore && !noScroll;
+        const showSentinel = _hasMore;
 
         return html`
             <div class="lib-filters">

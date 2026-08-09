@@ -63,7 +63,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/library/albums` | List albums — `?source_id=` and optional `?artist_id=` |
+| GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added` |
 | GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
 | POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action }` |
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
@@ -116,6 +116,17 @@ A **200 does not mean sound came out**: whether a push to HQPlayer actually star
 decided after the response and surfaces on `PlayerState.outputs[].error`.
 
 > Streaming sources are addressed via `source_id`: `/library/albums?source_id=src_highresaudio` (favourites / My Album), `/library/search?source_id=src_highresaudio&q=…`, and `POST /library/queue` with `source_id=src_highresaudio` (`item_type` `album` or `track`). Same pattern as `src_qobuz` / `src_tidal`.
+
+> **Album ordering — `?sort=` (MPD sources only).** `title` (default) is alphabetical;
+> `added` puts the most recently added to the library first, using MPD 0.24's `Added`
+> field, exposed on each album as `added` (ISO-8601 UTC, `null` where the source cannot
+> report one). The ordering is applied by the core **over the whole library before
+> paging**, which is the point: pagination is server-side, so a client can only ever sort
+> the page it holds. Each album carries `{ id, title, artist, year, added, cover_token }`,
+> and `added` is the field this ordering reads. It is compared **by day** — an import pass spreads its albums
+> over minutes, and ordering on the exact second reproduces disk-traversal order; within a
+> day the alphabetical order stands. Streaming sources ignore the parameter: their order
+> belongs to the provider.
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
