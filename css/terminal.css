@@ -74,7 +74,7 @@
 }
 
 .ag-terminal-placeholder-icon {
-    font-size: 2rem;
+    font-size: var(--font-size-xxl);
     opacity: 0.4;
 }
 

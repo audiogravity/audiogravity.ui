@@ -140,6 +140,10 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .empty-icon {
+            /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+            so the value is the geometry of a control rather than typography. The page scale has
+            no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+            two and the largest grew 17 percent. See css/components/playback-controls.css. */
             font-size: 48px;
             margin-bottom: var(--spacing-md);
             opacity: 0.3;
@@ -176,7 +180,7 @@ export class AgAudioPipeline extends LitElement {
             border: none;
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 14px;
+            font-size: var(--font-size-md);
             line-height: 1;
             padding: 0;
             align-self: flex-end;
@@ -208,7 +212,7 @@ export class AgAudioPipeline extends LitElement {
             border-radius: 4px;
             color: var(--text-primary);
             cursor: pointer;
-            font-size: 16px;
+            font-size: var(--font-size-lg);
             font-weight: bold;
             transition: all 0.2s;
         }
@@ -219,7 +223,7 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .zoom-value {
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             color: var(--text-secondary);
             min-width: 35px;
             text-align: center;
@@ -230,7 +234,7 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .toggle-label {
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             font-weight: 500;
             color: var(--text-secondary);
             margin-right: 8px;
@@ -322,7 +326,7 @@ export class AgAudioPipeline extends LitElement {
 
         .legend-header h4 {
             margin: 0;
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-primary);
@@ -331,7 +335,7 @@ export class AgAudioPipeline extends LitElement {
         .close-legend {
             cursor: pointer;
             color: var(--text-tertiary);
-            font-size: 14px;
+            font-size: var(--font-size-md);
         }
 
         .legend-section {
@@ -343,7 +347,7 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .legend-section-title {
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             font-weight: bold;
             color: var(--text-tertiary);
             margin-bottom: var(--spacing-xs);
@@ -360,7 +364,7 @@ export class AgAudioPipeline extends LitElement {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             color: var(--text-secondary);
         }
 
@@ -446,7 +450,7 @@ export class AgAudioPipeline extends LitElement {
             padding: 8px 12px;
             background: rgba(99,102,241,0.12);
             border-bottom: 1px solid rgba(99,102,241,0.2);
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             font-weight: 700;
             color: #a5b4fc;
             letter-spacing: 0.5px;
@@ -458,7 +462,7 @@ export class AgAudioPipeline extends LitElement {
             border: none;
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 16px;
+            font-size: var(--font-size-lg);
             line-height: 1;
             padding: 0 2px;
         }
@@ -476,7 +480,7 @@ export class AgAudioPipeline extends LitElement {
             align-items: center;
             gap: 8px;
             padding: 6px 12px;
-            font-size: 12px;
+            font-size: var(--font-size-sm);
         }
 
         .steering-service-row:hover {
@@ -493,7 +497,7 @@ export class AgAudioPipeline extends LitElement {
         .steering-svc-label {
             flex: 1;
             color: var(--text-primary);
-            font-size: 12px;
+            font-size: var(--font-size-sm);
         }
 
         .steering-svc-btn {
@@ -501,7 +505,7 @@ export class AgAudioPipeline extends LitElement {
             border: 1px solid rgba(99,102,241,0.4);
             border-radius: 4px;
             color: #a5b4fc;
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             font-weight: 600;
             padding: 3px 8px;
             cursor: pointer;
@@ -520,7 +524,7 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .steering-svc-loading {
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             color: var(--text-tertiary);
             font-style: italic;
         }
@@ -529,7 +533,7 @@ export class AgAudioPipeline extends LitElement {
             margin: 4px 12px 6px;
             padding: 5px 8px;
             border-radius: 4px;
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             font-weight: 600;
         }
 
@@ -554,12 +558,12 @@ export class AgAudioPipeline extends LitElement {
             box-shadow: var(--shadow-lg);
             padding: 10px 12px;
             min-width: 180px;
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             pointer-events: auto;
         }
 
         .network-popover-title {
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             font-weight: 700;
             color: var(--accent-primary);
             text-transform: uppercase;
@@ -579,12 +583,12 @@ export class AgAudioPipeline extends LitElement {
 
         .network-popover-row span:first-child {
             color: var(--text-tertiary);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
         }
 
         .network-popover-row span:last-child {
             font-family: var(--font-mono, monospace);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             color: var(--text-primary);
         }
 
@@ -624,7 +628,7 @@ export class AgAudioPipeline extends LitElement {
 
         .ndp-name {
             flex: 1;
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             font-weight: 700;
             color: var(--text-primary);
             white-space: nowrap;
@@ -637,6 +641,10 @@ export class AgAudioPipeline extends LitElement {
             border: none;
             color: var(--text-tertiary);
             cursor: pointer;
+            /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+            so the value is the geometry of a control rather than typography. The page scale has
+            no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+            two and the largest grew 17 percent. See css/components/playback-controls.css. */
             font-size: 18px;
             line-height: 1;
             padding: 0 2px;
@@ -660,7 +668,7 @@ export class AgAudioPipeline extends LitElement {
         .ndp-section:last-child { border-bottom: none; }
 
         .ndp-section-title {
-            font-size: 9px;
+            font-size: var(--font-size-xxs);
             font-weight: 700;
             color: var(--text-tertiary);
             text-transform: uppercase;
@@ -678,14 +686,14 @@ export class AgAudioPipeline extends LitElement {
 
         .ndp-label {
             color: var(--text-tertiary);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             flex-shrink: 0;
         }
 
         .ndp-value {
             color: var(--text-primary);
             font-family: var(--font-mono, monospace);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             text-align: right;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -697,7 +705,7 @@ export class AgAudioPipeline extends LitElement {
             align-items: center;
             gap: 6px;
             padding: 3px 0;
-            font-size: 11px;
+            font-size: var(--font-size-xs);
         }
 
         .ndp-port-dot {
@@ -718,7 +726,7 @@ export class AgAudioPipeline extends LitElement {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             font-weight: 600;
             color: var(--text-primary);
         }
@@ -726,7 +734,7 @@ export class AgAudioPipeline extends LitElement {
         .ndp-svc-track {
             margin-top: 2px;
             padding-left: 14px;
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             color: var(--text-secondary);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -743,12 +751,12 @@ export class AgAudioPipeline extends LitElement {
             box-shadow: var(--shadow-lg);
             padding: 10px 13px;
             min-width: 200px;
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             pointer-events: auto;
         }
 
         .link-bubble-title {
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             font-weight: 700;
             color: var(--accent-primary);
             text-transform: uppercase;
@@ -766,7 +774,7 @@ export class AgAudioPipeline extends LitElement {
             border: none;
             color: var(--text-tertiary);
             cursor: pointer;
-            font-size: 16px;
+            font-size: var(--font-size-lg);
             line-height: 1;
             padding: 0 2px;
         }
@@ -782,12 +790,12 @@ export class AgAudioPipeline extends LitElement {
 
         .link-bubble-row span:first-child {
             color: var(--text-tertiary);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
         }
 
         .link-bubble-row span:last-child {
             font-family: var(--font-mono, monospace);
-            font-size: 10px;
+            font-size: var(--font-size-xxs);
             color: var(--text-primary);
         }
     `;
@@ -1024,7 +1032,7 @@ export class AgAudioPipeline extends LitElement {
                 </div>
                 <div class="steering-popover-body">
                     ${services.length === 0 ? html`
-                        <div class="steering-service-row" style="color: var(--text-tertiary); font-size: 11px;">No services</div>
+                        <div class="steering-service-row" style="color: var(--text-tertiary); font-size: var(--font-size-xs);">No services</div>
                     ` : services.map(svc => {
                         const isLoading = loading === svc.id;
                         // Green dot = service is configured for THIS specific output port
@@ -1103,7 +1111,7 @@ export class AgAudioPipeline extends LitElement {
                     <span class="ndp-name" title="${node.name}">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>
-                ${subtitle ? html`<div class="ndp-section" style="padding: 5px 12px; font-size: 10px; color: var(--text-tertiary);">${subtitle}</div>` : ''}
+                ${subtitle ? html`<div class="ndp-section" style="padding: 5px 12px; font-size: var(--font-size-xxs); color: var(--text-tertiary);">${subtitle}</div>` : ''}
                 ${node.type === 'device' ? this._renderDeviceDetail(node) : this._renderServiceDetail(node)}
             </div>
         `;
@@ -1130,7 +1138,7 @@ export class AgAudioPipeline extends LitElement {
                                 <div class="ndp-svc-header">
                                     <div class="ndp-dot" style="background: ${dotFill};"></div>
                                     <span>${svc.label}</span>
-                                    ${svc.protocol ? html`<span style="color: var(--text-tertiary); font-size: 9px; font-weight: 400;">· ${svc.protocol}</span>` : ''}
+                                    ${svc.protocol ? html`<span style="color: var(--text-tertiary); font-size: var(--font-size-xxs); font-weight: 400;">· ${svc.protocol}</span>` : ''}
                                 </div>
                                 ${np?.title ? html`
                                     <div class="ndp-svc-track">${np.title}${np.artist ? ` — ${np.artist}` : ''}
@@ -1150,24 +1158,24 @@ export class AgAudioPipeline extends LitElement {
                 <div class="ndp-section">
                     <div class="ndp-section-title">Ports</div>
                     ${inputs.length > 0 ? html`
-                        <div style="font-size: 9px; color: var(--text-tertiary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Inputs</div>
+                        <div style="font-size: var(--font-size-xxs); color: var(--text-tertiary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Inputs</div>
                         ${inputs.map(port => html`
                             <div class="ndp-port-item">
                                 <div class="ndp-port-dot" style="background: ${port.active ? 'var(--color-success)' : 'var(--text-tertiary)'};"></div>
-                                <span style="color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; width: 44px; flex-shrink: 0;">${port.connector || ''}</span>
-                                <span style="flex: 1; color: var(--text-primary); font-size: 11px;">${port.label}</span>
-                                ${port.services?.length ? html`<span style="font-size: 9px; color: var(--text-tertiary);">${port.services.join(', ')}</span>` : ''}
+                                <span style="color: var(--text-tertiary); font-size: var(--font-size-xxs); text-transform: uppercase; width: 44px; flex-shrink: 0;">${port.connector || ''}</span>
+                                <span style="flex: 1; color: var(--text-primary); font-size: var(--font-size-xs);">${port.label}</span>
+                                ${port.services?.length ? html`<span style="font-size: var(--font-size-xxs); color: var(--text-tertiary);">${port.services.join(', ')}</span>` : ''}
                             </div>
                         `)}
                     ` : ''}
                     ${outputs.length > 0 ? html`
-                        <div style="font-size: 9px; color: var(--text-tertiary); margin: ${inputs.length ? 6 : 0}px 0 4px; text-transform: uppercase; letter-spacing: 0.5px;">Outputs</div>
+                        <div style="font-size: var(--font-size-xxs); color: var(--text-tertiary); margin: ${inputs.length ? 6 : 0}px 0 4px; text-transform: uppercase; letter-spacing: 0.5px;">Outputs</div>
                         ${outputs.map(port => html`
                             <div class="ndp-port-item">
                                 <div class="ndp-port-dot" style="background: ${port.active ? (port.flow_color || 'var(--color-success)') : 'var(--text-tertiary)'};"></div>
-                                <span style="color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; width: 44px; flex-shrink: 0;">${port.connector || ''}</span>
-                                <span style="flex: 1; color: var(--text-primary); font-size: 11px;">${port.label}</span>
-                                ${port.services?.length ? html`<span style="font-size: 9px; color: var(--text-tertiary);">${port.services.join(', ')}</span>` : ''}
+                                <span style="color: var(--text-tertiary); font-size: var(--font-size-xxs); text-transform: uppercase; width: 44px; flex-shrink: 0;">${port.connector || ''}</span>
+                                <span style="flex: 1; color: var(--text-primary); font-size: var(--font-size-xs);">${port.label}</span>
+                                ${port.services?.length ? html`<span style="font-size: var(--font-size-xxs); color: var(--text-tertiary);">${port.services.join(', ')}</span>` : ''}
                             </div>
                         `)}
                     ` : ''}
@@ -1181,7 +1189,7 @@ export class AgAudioPipeline extends LitElement {
                         const isWifi = (ni.connector || '').toLowerCase() === 'antenna';
                         return html`
                             <div style="${idx > 0 ? 'margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.04);' : ''}">
-                                <div style="font-size: 10px; font-weight: 600; color: ${ni.active ? 'var(--color-success-text)' : 'var(--text-secondary)'}; margin-bottom: 3px;">
+                                <div style="font-size: var(--font-size-xxs); font-weight: 600; color: ${ni.active ? 'var(--color-success-text)' : 'var(--text-secondary)'}; margin-bottom: 3px;">
                                     ${ni.label}${ni.active ? '' : ' ·inactive'}
                                 </div>
                                 <div class="ndp-row"><span class="ndp-label">IP</span><span class="ndp-value">${fmt(ni.ip_address)}</span></div>
@@ -1198,9 +1206,9 @@ export class AgAudioPipeline extends LitElement {
             ${node.metadata?.now_playing?.title ? html`
                 <div class="ndp-section">
                     <div class="ndp-section-title">Now Playing</div>
-                    <div style="font-size: 11px; color: var(--text-primary); margin-bottom: 2px;">${node.metadata.now_playing.title}</div>
-                    ${node.metadata.now_playing.artist ? html`<div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">${node.metadata.now_playing.artist}</div>` : ''}
-                    ${node.metadata.now_playing.format ? html`<div style="font-size: 9px; color: var(--color-success-text); margin-top: 3px;">${node.metadata.now_playing.format}</div>` : ''}
+                    <div style="font-size: var(--font-size-xs); color: var(--text-primary); margin-bottom: 2px;">${node.metadata.now_playing.title}</div>
+                    ${node.metadata.now_playing.artist ? html`<div style="font-size: var(--font-size-xxs); color: var(--text-secondary); margin-bottom: 2px;">${node.metadata.now_playing.artist}</div>` : ''}
+                    ${node.metadata.now_playing.format ? html`<div style="font-size: var(--font-size-xxs); color: var(--color-success-text); margin-top: 3px;">${node.metadata.now_playing.format}</div>` : ''}
                 </div>
             ` : ''}
         `;
@@ -1217,7 +1225,7 @@ export class AgAudioPipeline extends LitElement {
                 ${meta.playback_status ? html`
                     <div class="ndp-row">
                         <span class="ndp-label">Status</span>
-                        <span style="color: ${statusColor}; font-size: 10px; font-weight: 600;">${meta.playback_status}</span>
+                        <span style="color: ${statusColor}; font-size: var(--font-size-xxs); font-weight: 600;">${meta.playback_status}</span>
                     </div>
                 ` : ''}
                 ${node.volume != null ? html`
@@ -1227,10 +1235,10 @@ export class AgAudioPipeline extends LitElement {
             ${meta.title ? html`
                 <div class="ndp-section">
                     <div class="ndp-section-title">Now Playing</div>
-                    <div style="font-size: 11px; color: var(--text-primary); margin-bottom: 2px;">${meta.title}</div>
-                    ${meta.artist ? html`<div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 2px;">${meta.artist}</div>` : ''}
-                    ${meta.album ? html`<div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">${meta.album}</div>` : ''}
-                    ${meta.source_format ? html`<div style="font-size: 9px; color: var(--color-success-text);">${meta.source_format}</div>` : ''}
+                    <div style="font-size: var(--font-size-xs); color: var(--text-primary); margin-bottom: 2px;">${meta.title}</div>
+                    ${meta.artist ? html`<div style="font-size: var(--font-size-xxs); color: var(--text-secondary); margin-bottom: 2px;">${meta.artist}</div>` : ''}
+                    ${meta.album ? html`<div style="font-size: var(--font-size-xxs); color: var(--text-tertiary); margin-bottom: 4px;">${meta.album}</div>` : ''}
+                    ${meta.source_format ? html`<div style="font-size: var(--font-size-xxs); color: var(--color-success-text);">${meta.source_format}</div>` : ''}
                 </div>
             ` : ''}
         `;
@@ -1591,17 +1599,17 @@ export class AgAudioPipeline extends LitElement {
                         <button class="zoom-btn" @click=${this._zoomIn} title="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
                         <span class="zoom-value">${Math.round(this.zoom * 100)}%</span>
                         <button class="zoom-btn" @click=${this._zoomOut} title="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
-                        <button class="zoom-btn" @click=${this._zoomToFit} title="Zoom to fit" style="font-size: 8px; font-weight: 700;">FIT</button>
+                        <button class="zoom-btn" @click=${this._zoomToFit} title="Zoom to fit" style="font-size: var(--font-size-xxs); font-weight: 700;">FIT</button>
                         <button class="zoom-btn" @click=${this._resetView} title="Reset Zoom/Pan">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconCrosshair}</svg>
                         </button>
                     </div>
 
                     <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; flex-wrap: wrap; gap: 2px;">
-                        <button class="zoom-btn" @click=${this._resetLayout} title="Reset Layout" style="flex: 1 1 calc(50% - 1px); font-size: 7px;">RESET</button>
-                        <button class="zoom-btn" @click=${this._toggleLegend} title="Legend" style="flex: 1 1 calc(50% - 1px); font-size: 7px; background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
-                        <button class="zoom-btn" @click=${this._toggleMinimap} title="Minimap" style="flex: 1 1 calc(50% - 1px); font-size: 7px; background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
-                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} title="Network links" style="flex: 1 1 calc(50% - 1px); font-size: 7px; background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
+                        <button class="zoom-btn" @click=${this._resetLayout} title="Reset Layout" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs);">RESET</button>
+                        <button class="zoom-btn" @click=${this._toggleLegend} title="Legend" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
+                        <button class="zoom-btn" @click=${this._toggleMinimap} title="Minimap" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
+                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} title="Network links" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
                     </div>
 
                     <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 8px;">
@@ -1795,7 +1803,7 @@ export class AgAudioPipeline extends LitElement {
                             <div class="legend-grid">
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: var(--color-success); box-shadow: 0 0 5px var(--color-success);"></div>
-                                    <span>Audio — bit-perfect · badge: <strong style="color: var(--color-success-text); font-size: 7px;">BIT-PERFECT · 24bit / 96kHz</strong></span>
+                                    <span>Audio — bit-perfect · badge: <strong style="color: var(--color-success-text); font-size: var(--font-size-xxs);">BIT-PERFECT · 24bit / 96kHz</strong></span>
                                 </div>
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: repeating-linear-gradient(90deg, var(--color-success) 0px, var(--color-success) 8px, transparent 8px, transparent 12px);"></div>
@@ -1844,7 +1852,7 @@ export class AgAudioPipeline extends LitElement {
 
                         <div class="legend-section">
                             <div class="legend-section-title">Device Nodes</div>
-                            <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.6;">
+                            <div style="font-size: var(--font-size-xxs); color: var(--text-secondary); line-height: 1.6;">
                                 • <strong>Colored border</strong> — device active<br>
                                 • <strong>Service dot</strong> — green = running · gray = stopped<br>
                                 • <strong>Port circle</strong> — colored = active port · gray = inactive<br>
@@ -1855,7 +1863,7 @@ export class AgAudioPipeline extends LitElement {
 
                         <div class="legend-section">
                             <div class="legend-section-title">Active Link Badges</div>
-                            <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.6;">
+                            <div style="font-size: var(--font-size-xxs); color: var(--text-secondary); line-height: 1.6;">
                                 • <strong style="color: var(--color-success-text);">32bit / 96kHz</strong> — sample format on the link<br>
                                 • <strong style="color: var(--histogram-excellent);">XXXµs</strong> — ALSA latency<br>
                                 &nbsp;&nbsp;Green &lt;50µs · Blue 50–200µs · Yellow 200–500µs · Red ≥500µs<br>

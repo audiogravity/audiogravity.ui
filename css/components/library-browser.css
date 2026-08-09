@@ -54,7 +54,7 @@
     padding: 6px 20px;
     overflow-x: auto;
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     letter-spacing: 0.08em;
     color: var(--text-tertiary);
     border-bottom: 1px solid var(--border-color);
@@ -123,7 +123,7 @@
 
 .lib-browser-st {
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;

@@ -666,7 +666,7 @@ body.no-animations .animate-stagger {
 
 .test-history-table td:first-child {
     color: var(--text-tertiary);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
 }
 
 .test-history-badge {
@@ -784,7 +784,7 @@ body.no-animations .animate-stagger {
     background: var(--bg-tertiary);
     padding: 1px 4px;
     border-radius: var(--radius-xs);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
 }
 
 /* =====================

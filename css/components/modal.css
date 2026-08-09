@@ -78,7 +78,7 @@
 .modal-close {
     background: none;
     border: none;
-    font-size: var(--font-size-xxxl);
+    font-size: var(--font-size-xxl);
     color: var(--text-secondary);
     cursor: pointer;
     line-height: 1;
@@ -244,6 +244,12 @@
 
 .manual-md h1 {
     margin: 0 0 var(--spacing-md);
+
+    /* The document title, a step above its section headings. It asked for --font-size-xxl
+       before this pass and got 20px, because that token had been given the same value as
+       --font-size-xl — so the title and the h2 below it rendered identically on desktop and
+       came apart only under the 768px query. xxl is a real step now, and this is what the
+       declaration was reaching for. */
     font-size: var(--font-size-xxl);
 }
 
@@ -285,6 +291,10 @@
     background: var(--bg-tertiary);
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
+
+    /* rule 12 exception — em, and deliberately: a monospace face renders optically larger
+       than the text around it at the same pixel size, so inline code is set a notch below
+       whatever prose encloses it. A step would fix it to one prose size. */
     font-size: 0.9em;
 
     /* `anywhere`, not `break-word`: both break a long token across lines, but only
@@ -400,7 +410,7 @@
 
 /* Health/Activity badges in info modals */
 .info-badge {
-    font-size: 9px;
+    font-size: var(--font-size-xxs);
     padding: 0 6px;
     height: 18px;
     line-height: 18px;
@@ -432,6 +442,6 @@
     padding: var(--spacing-sm);
     background: rgb(255 255 255 / 0.05);
     border-radius: 4px;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     line-height: 1.4;
 }

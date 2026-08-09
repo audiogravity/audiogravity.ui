@@ -190,7 +190,7 @@ export class AgLibraryRoonBrowser extends LitElement {
                         ? html`<button class="lib-lr-add" ?disabled=${isBusy}
                                 @click=${(e) => { e.stopPropagation(); !isBusy && this._onItemTap(item); }}>
                                 ${isBusy
-                                    ? html`<span style="font-size:10px;font-family:var(--font-mono)">…</span>`
+                                    ? html`<span style="font-size: var(--font-size-xxs);font-family:var(--font-mono)">…</span>`
                                     : html`<svg viewBox="0 0 24 24" width="14" height="14"
                                             fill="currentColor" stroke="none">
                                             ${iconPlay}

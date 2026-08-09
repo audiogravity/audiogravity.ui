@@ -74,11 +74,11 @@ export class AgHistoryPanel extends LitElement {
                 <div class="history-zone tab-zone" style="width: 32px; min-width: 32px; padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; overflow: hidden;">
                     <button
                         class="clear-btn compact"
-                        style="width: 24px; height: 24px; padding: 0; font-size: 14px; display: flex; align-items: center; justify-content: center;"
+                        style="width: 24px; height: 24px; padding: 0; font-size: var(--font-size-md); display: flex; align-items: center; justify-content: center;"
                         title="Expand panel"
                         @click=${this._toggleCollapse}
                     >›</button>
-                    <span style="writing-mode: vertical-rl; transform: rotate(180deg); color: var(--text-tertiary); font-size: 9px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; margin-top: 4px;">${this.title}</span>
+                    <span style="writing-mode: vertical-rl; transform: rotate(180deg); color: var(--text-tertiary); font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 1px; white-space: nowrap; margin-top: 4px;">${this.title}</span>
                 </div>
             `;
         }

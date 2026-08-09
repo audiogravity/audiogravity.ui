@@ -76,7 +76,7 @@ ag-progress-bar { display: block; }
     display: flex;
     justify-content: space-between;
     margin-top: 4px;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
 }

@@ -120,7 +120,7 @@ export class AgPullTab extends LitElement {
             <button
                 aria-label="Restore Now Playing"
                 title="Restore Now Playing"
-                style="position:fixed;right:0;bottom:var(--footer-height,0px);z-index:103;display:flex;align-items:center;justify-content:center;background:#000;border:1px solid #000;border-right:none;border-radius:var(--radius-sm,4px) 0 0 0;padding:var(--spacing-sm,6px) 6px;color:#fff;cursor:pointer;font-size:var(--font-size-sm,12px)"
+                style="position:fixed;right:0;bottom:var(--footer-height,0px);z-index:103;display:flex;align-items:center;justify-content:center;background:#000;border:1px solid #000;border-right:none;border-radius:var(--radius-sm,4px) 0 0 0;padding:var(--spacing-sm,6px) 6px;color:#fff;cursor:pointer;font-size:var(--font-size-sm)"
                 @click="${this._restore}"
             >∧</button>` : nothing}
         `;

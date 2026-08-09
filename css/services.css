@@ -84,7 +84,7 @@
 }
 
 .service-boot-icon {
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     margin-left: 6px;
     vertical-align: middle;
     transition: color var(--transition-fast);
@@ -254,7 +254,7 @@ body.compact-mode .service-metrics {
 /* Ensure tooltips don't overflow on small screens */
 @media (width <= 480px) {
     .metric-tooltip {
-        font-size: var(--font-size-xxs);
+        font-size: var(--font-size-xs);
         padding: 4px 6px;
     }
 
@@ -318,7 +318,7 @@ body.compact-mode .service-metrics {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: var(--font-size-xxl);
+    font-size: var(--font-size-xl);
     line-height: 1;
     cursor: pointer;
     padding: 0;

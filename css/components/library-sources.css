@@ -66,7 +66,7 @@
 .lib-src-zone-row.loading,
 .lib-src-zone-row.empty {
     color: var(--text-tertiary);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     cursor: default;
 }
 
@@ -332,7 +332,7 @@
 }
 
 .lib-hqp-desc {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     letter-spacing: 0.04em;
 }
@@ -530,7 +530,7 @@
 .lib-rdr-time {
     display: flex;
     justify-content: space-between;
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     margin-top: 4px;
 }
@@ -602,7 +602,7 @@
 }
 
 .lib-qb-desc {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     letter-spacing: 0.04em;
 }
@@ -626,12 +626,12 @@
 }
 
 .lib-tidal-hint {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
 }
 
 .lib-tidal-err {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--color-error-text);
 }
 
@@ -661,13 +661,13 @@
 
 .lib-hra-note {
     margin: 0;
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
 }
 
 .lib-hra-err {
     margin: 0;
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--color-error-text);
 }
 

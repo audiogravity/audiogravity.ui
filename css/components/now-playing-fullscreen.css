@@ -314,6 +314,9 @@ body:not(.npfs-open) .topbar {
 }
 
 .npfs-meta .ag-tm-title {
+    /* rule 12 exception — a fluid size, which a fixed scale cannot express: this title
+       tracks the viewport between two bounds so it fills the full-screen player on a
+       phone and does not overrun it on a desktop. */
     font-size: clamp(18px, 5vw, 22px);
     font-weight: 700;
     color: var(--text-primary);
@@ -338,7 +341,7 @@ body:not(.npfs-open) .topbar {
     flex-wrap: wrap;
     gap: 4px;
     width: 100%;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
 }
 
@@ -358,7 +361,7 @@ body:not(.npfs-open) .topbar {
 
 .npfs-sp-arrow {
     color: var(--text-tertiary);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
 }
 
 /* ── Controls ── */
@@ -454,7 +457,7 @@ body:not(.npfs-open) .topbar {
 /* The selected output is idle — it stays selected and controllable, so the bar
    says so rather than looking like it is playing (spec §6, case 3). */
 .npfs-out-idle {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     letter-spacing: .06em;
     text-transform: uppercase;
@@ -467,7 +470,7 @@ body:not(.npfs-open) .topbar {
 .npfs-out-error {
     display: block;
     margin-top: var(--spacing-xs);
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-xs);
     color: var(--color-error-text);
     white-space: nowrap;
     overflow: hidden;
@@ -511,6 +514,11 @@ body:not(.npfs-open) .topbar {
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-sm);
+
+    /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
+       1em, so this value is the geometry of a control, and the page's type scale has no
+       step between 20 and 28: put on it, the three transport sizes (24/22/18) collapsed
+       into two and the largest grew by 17 percent. Same boundary as the pipeline diagram. */
     font-size: 18px;
     transition: color .15s, background .15s;
 }
@@ -613,7 +621,7 @@ body:not(.npfs-open) .topbar {
 }
 
 .npfs-up-next-artist {
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     white-space: nowrap;
     overflow: hidden;

@@ -78,7 +78,7 @@ export class AgUpnpItem extends LitElement {
                                     ?disabled=${acting}
                                     @click=${(e) => this._play(e, 'play')}>
                                     ${acting
-                                        ? html`<span style="font-size:10px;font-family:var(--font-mono)">…</span>`
+                                        ? html`<span style="font-size: var(--font-size-xxs);font-family:var(--font-mono)">…</span>`
                                         : html`<svg viewBox="0 0 24 24" width="14" height="14"
                                                 fill="currentColor" stroke="none">
                                                 ${iconPlay}

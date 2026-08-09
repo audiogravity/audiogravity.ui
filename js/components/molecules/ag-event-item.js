@@ -78,7 +78,7 @@ export class AgEventItem extends LitElement {
                 <div class="history-item-time">${time}</div>
                 <div class="history-item-action">${message}</div>
                 ${detail ? html`
-                    <div class="history-item-detail" style="font-size: 10px; color: var(--text-tertiary);">
+                    <div class="history-item-detail" style="font-size: var(--font-size-xxs); color: var(--text-tertiary);">
                         ${detail}
                     </div>
                 ` : nothing}

@@ -115,6 +115,10 @@ export class AgFooter extends LitElement {
                     <div class="has-tooltip">
                         <button class="icon-btn" id="footerApiDocsBtn" title="API Documentation"
                             @click="${this._openApiDocs}"
+                            /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+                            so the value is the geometry of a control rather than typography. The page scale has
+                            no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+                            two and the largest grew 17 percent. See css/components/playback-controls.css. */
                             style="width: 32px; height: 32px; font-size: 18px;">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
                         </button>

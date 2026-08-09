@@ -74,7 +74,7 @@
    (guidelines, rule 6 exception). */
 .splash-wordmark {
     font-family: var(--font-family, 'Inter', sans-serif);
-    font-size: 22px;
+    font-size: var(--font-size-xl);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -88,7 +88,7 @@
    (guidelines, rule 6 exception). */
 .splash-tagline {
     font-family: var(--font-family, 'Inter', sans-serif);
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
