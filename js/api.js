@@ -1,6 +1,9 @@
 import { API_BASE_URL, API_KEY_HEADER, API_KEY } from './core/config.js';
 import { AppState, updateConnectionStatus } from './common.js';
 import { getAuthToken } from './auth.js';
+import { hasCoreCredentials, isKeylessLocked, recordKeylessVerdict } from './core/credentials.js';
+
+export { hasCoreCredentials };
 
 // =====================
 // API UTILITIES
@@ -46,7 +49,59 @@ export async function apiCallWithRetry(endpoint, options = {}, maxRetries = 3) {
     throw lastError;
 }
 
+/**
+ * Endpoints the core serves without any key — mirrored from core/auth.py PUBLIC_PATHS.
+ * The version-skew banner reads /status and the push manager registers subscriptions
+ * from keyless contexts; refusing those locally would break features the server
+ * explicitly left open.
+ */
+const PUBLIC_ENDPOINTS = new Set([
+    '/status', '/health',
+    '/push/vapid-public-key', '/push/subscribe', '/push/unsubscribe',
+]);
+
+let _authMissingSignalled = false;
+
+function _signalLocked() {
+    if (_authMissingSignalled) return;
+    _authMissingSignalled = true;
+    console.error('[api] No API key and the core requires one — requests are suppressed.');
+    updateConnectionStatus(false);
+    window.dispatchEvent(new CustomEvent('ag-auth-missing'));
+}
+
+function _recordVerdict(verdict) {
+    recordKeylessVerdict(verdict);
+    if (verdict === 'locked') _signalLocked();
+}
+
+/**
+ * Refuse doomed requests locally; let one keyless request through as the probe.
+ *
+ * A client whose key was gone used to send everything anyway — 598 rejected cover
+ * fetches in one measured day, each costing the box a request cycle and a journal line.
+ * The box has a resource budget; the client does not. But a flat refusal would brick a
+ * core running SECURITY_ENABLED=false, which legitimately answers keyless clients. So:
+ * public endpoints always pass, and the FIRST protected request goes out as the probe —
+ * its response settles the verdict in apiCall (403 → locked, anything else → open).
+ * Worst case is one burst per tab, not hundreds of rejections per day.
+ *
+ * @param {string} endpoint - As passed to apiCall, without the base URL.
+ * @throws {Error} with `.status = 401` (final for the retry layer) once locked.
+ */
+function keylessGate(endpoint) {
+    if (API_KEY) return;
+    if (PUBLIC_ENDPOINTS.has(endpoint.split('?')[0])) return;
+    if (isKeylessLocked()) {
+        _signalLocked();
+        const error = new Error('No API key configured — request not sent');
+        error.status = 401;
+        throw error;
+    }
+}
+
 export async function apiCall(endpoint, options = {}) {
+    keylessGate(endpoint);
     try {
         // Préparer les headers de base
         const headers = {
@@ -67,6 +122,13 @@ export async function apiCall(endpoint, options = {}) {
         };
 
         const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+
+        // The keyless probe's answer settles the verdict: 403 is the middleware's
+        // "Invalid or missing API key"; anything else means the core does not gate on
+        // a key (SECURITY_ENABLED=false) and keyless traffic is legitimate.
+        if (!API_KEY && !PUBLIC_ENDPOINTS.has(endpoint.split('?')[0])) {
+            _recordVerdict(response.status === 403 ? 'locked' : 'open');
+        }
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
@@ -115,9 +177,16 @@ export async function apiCall(endpoint, options = {}) {
  *
  * @param {string} path - Endpoint path (must start with `/`).
  * @param {object} [extraParams] - Additional query params (string values).
- * @returns {string} Absolute URL.
+ * @returns {string|null} Absolute URL, or null when no usable credential exists —
+ *     callers must not connect in that case.
  */
 export function buildAuthedUrl(path, extraParams = {}) {
+    // No usable credential → no URL at all. A bare URL here handed EventSource a
+    // guaranteed 403 to reconnect against for the life of the tab; callers treat null
+    // as "do not connect", which the client can afford and the box cannot. A JWT alone
+    // does NOT open the gate: the middleware checks only the API key (verified against
+    // core/auth.py), JWT or not.
+    if (!hasCoreCredentials()) return null;
     const url = new URL(`${API_BASE_URL}${path}`, window.location.origin);
     if (API_KEY) url.searchParams.append('api_key', API_KEY);
     const token = getAuthToken();

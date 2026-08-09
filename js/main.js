@@ -24,7 +24,7 @@ import './ui-components.js';
 // Authentication and common functions (base dependencies)
 import './auth.js';
 import './common.js';
-import { showTabHUD } from './ui-helpers.js';
+import { showTabHUD, showToast } from './ui-helpers.js';
 
 // PWA Install Prompt Manager
 import './pwa-install-prompt.js';
@@ -191,6 +191,15 @@ initPushManager().then(() => {
 
 // Initialize Gestures
 gestures.init();
+
+// A keyless client whose core requires a key: api.js suppresses the doomed traffic and
+// fires this once per page life. Without a listener the suppression was silent — the app
+// just looked dead. One toast names the actual problem; the connection indicator has
+// already been switched off by the same signal.
+window.addEventListener('ag-auth-missing', () => {
+    showToast('error', 'Not connected',
+        'This interface has no API key and the core requires one. Reinstall the interface or restore its configuration (ag-config.js).');
+});
 
 // HUD for Tab switching
 document.addEventListener('tab-changed', (e) => {

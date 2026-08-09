@@ -4,6 +4,7 @@
  */
 import { html } from 'lit';
 import { API_BASE_URL, API_KEY } from '../core/config.js';
+import { hasCoreCredentials } from '../core/credentials.js';
 
 /**
  * Run an async function while toggling `host._loading` (and resetting
@@ -62,10 +63,16 @@ export const emit = (el, type, detail) => {
  */
 export const coverUrl = (token) => {
     if (!token) return '';
+    // Without a usable credential this used to serialise `api_key=null` — the literal
+    // string — and every rendered cover grid fired its full burst at the box for a
+    // guaranteed 403. An empty src is handled by every caller already (same path as a
+    // missing token). On a core proven open (SECURITY_ENABLED=false) the URL is built
+    // without the key, which that server accepts.
+    if (!hasCoreCredentials()) return '';
     // encodeURIComponent leaves ' unencoded; encode it to %27 so it doesn't
     // break CSS url('...') strings when the token contains apostrophes.
     const encoded = encodeURIComponent(token).replace(/'/g, '%27');
-    return `${API_BASE_URL}/audio_pipeline/cover?token=${encoded}&api_key=${API_KEY}`;
+    return `${API_BASE_URL}/audio_pipeline/cover?token=${encoded}${API_KEY ? `&api_key=${API_KEY}` : ''}`;
 };
 
 /**

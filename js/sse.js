@@ -129,6 +129,14 @@ const throttledServicesMetrics = throttle((data) => {
 
 export function connectSSE() {
     const sseUrl = buildAuthedUrl('/sse/dashboard');
+    if (!sseUrl) {
+        // No usable credential: a worker connected anyway would collect a 403 and
+        // reconnect every few seconds for the life of the tab. Returning (rather than
+        // throwing on .toString(), as this used to) also keeps the caller's sequence
+        // alive — loadInitialMetrics() and startUptimeUpdates() run after this call.
+        console.warn('[SSE] No credentials — dashboard stream not opened.');
+        return;
+    }
     console.log('[SSE] Connecting to:', sseUrl);
 
     if (!sseWorker) {

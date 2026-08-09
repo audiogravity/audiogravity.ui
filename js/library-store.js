@@ -83,7 +83,14 @@ const RECONNECT_MAX_MS = 30_000;
 const _backoff = new Map();
 
 function _openSse(key) {
-    const es = new EventSource(buildAuthedUrl('/player/state', key ? { source_id: key } : {}));
+    const url = buildAuthedUrl('/player/state', key ? { source_id: key } : {});
+    if (!url) {
+        // No credentials: an EventSource opened anyway would collect a 401 and let the
+        // browser reconnect against it for as long as the tab lives. The keyless state is
+        // signalled once by api.js; here we simply stay silent.
+        return;
+    }
+    const es = new EventSource(url);
     _connections.set(key, es);
 
     es.addEventListener('state', (e) => {
