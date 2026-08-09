@@ -1029,7 +1029,7 @@ export class AgAudioPipeline extends LitElement {
                         const isLoading = loading === svc.id;
                         // Green dot = service is configured for THIS specific output port
                         const isOnThisPort = svc.current_output === portId;
-                        const dotColor = isOnThisPort ? (svc.flow_color || '#10b981') : '#4b5563';
+                        const dotFill = isOnThisPort ? (svc.flow_color || '#10b981') : '#4b5563';
                         return html`
                             <div class="steering-service-row">
                                 <div class="steering-svc-dot" style="background: ${dotFill};"></div>
@@ -1099,7 +1099,7 @@ export class AgAudioPipeline extends LitElement {
         return html`
             <div class="node-detail-panel" @mousedown=${(e) => e.stopPropagation()}>
                 <div class="ndp-header">
-                    <div class="ndp-dot" style="background: ${statusFill}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusColor + ';' : ''}"></div>
+                    <div class="ndp-dot" style="background: ${statusFill}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusFill + ';' : ''}"></div>
                     <span class="ndp-name" title="${node.name}">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>
