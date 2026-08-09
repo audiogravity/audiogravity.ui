@@ -95,7 +95,7 @@
 .tile-action-btn.start,
 .tile-action-btn.activate {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 /* Error variant: .btn-action--error */
@@ -104,7 +104,7 @@
 .tile-action-btn.stop,
 .tile-action-btn.deactivate {
     border-color: var(--color-error);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .btn-action--error:hover,
@@ -121,7 +121,7 @@
 .btn-action.warning,
 .tile-action-btn.warning {
     border-color: var(--color-warning);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .btn-action.warning:hover,
@@ -135,7 +135,7 @@
 /* Info variant */
 .btn-action.info {
     border-color: var(--color-info);
-    color: var(--color-info);
+    color: var(--color-info-text);
 }
 
 .btn-action.info:hover {
@@ -214,7 +214,7 @@
 /* Success : bouton de confirmation/sauvegarde */
 .action-btn.success {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .action-btn.success:hover {

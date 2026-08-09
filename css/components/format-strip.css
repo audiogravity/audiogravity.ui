@@ -25,7 +25,7 @@ ag-format-strip { display: contents; }
     min-width: 0;
 }
 
-.ag-fms-cell.hi { border-color: var(--accent-primary, #6366f1); }
+.ag-fms-cell.hi { border-color: var(--accent-primary); }
 
 .ag-fms-label {
     font-size: var(--font-size-xxs);
@@ -41,4 +41,4 @@ ag-format-strip { display: contents; }
     color: var(--text-primary);
 }
 
-.ag-fms-cell.hi .ag-fms-value { color: var(--accent-primary, #6366f1); }
+.ag-fms-cell.hi .ag-fms-value { color: var(--accent-primary); }

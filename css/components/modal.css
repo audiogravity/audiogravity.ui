@@ -415,15 +415,15 @@
 
 /* Activity level badges (for Services tab) */
 .info-badge.activity-low {
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .info-badge.activity-medium {
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .info-badge.activity-high {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* Reference box for technical details */

@@ -124,8 +124,8 @@ export class AgAnnouncementBanner extends LitElement {
                 ag-announcement-banner .ag-ann-icon  { flex-shrink: 0; line-height: 0; color: var(--text-tertiary); }
                 ag-announcement-banner .ag-ann-icon svg { width: var(--font-size-lg); height: var(--font-size-lg); }
                 ag-announcement-banner .ag-ann-banner.version .ag-ann-icon { color: var(--accent-primary); }
-                ag-announcement-banner .ag-ann-banner.promo   .ag-ann-icon { color: var(--color-success); }
-                ag-announcement-banner .ag-ann-banner.alert   .ag-ann-icon { color: var(--color-warning); }
+                ag-announcement-banner .ag-ann-banner.promo   .ag-ann-icon { color: var(--color-success-text); }
+                ag-announcement-banner .ag-ann-banner.alert   .ag-ann-icon { color: var(--color-warning-text); }
                 ag-announcement-banner .ag-ann-banner.info    .ag-ann-icon { color: var(--text-tertiary); }
                 ag-announcement-banner .ag-ann-body  { flex: 1; }
                 ag-announcement-banner .ag-ann-title { font-size: var(--font-size-sm); color: var(--text-primary); margin-bottom: var(--spacing-xs); }

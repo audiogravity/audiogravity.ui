@@ -25,7 +25,7 @@ import {
 } from '../../common.js';
 import { isGuest } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
-import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
 import '../../components/molecules/ag-rt-monitor.js';

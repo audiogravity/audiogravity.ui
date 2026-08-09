@@ -70,8 +70,8 @@
 /* PENDING State (Orange pulsing — activating/deactivating) */
 .service-state-dot.pending,
 .profile-status-dot.pending {
-    background: var(--color-warning, #f59e0b);
-    box-shadow: 0 0 8px var(--color-warning, #f59e0b);
+    background: var(--color-warning);
+    box-shadow: 0 0 8px var(--color-warning);
     animation: blinkFast 1s infinite ease-in-out;
 }
 
@@ -100,7 +100,7 @@ body.no-animations .profile-status-dot.pending {
 /* UP Text (Green) */
 .service-state-text.up,
 .profile-status-text.up {
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 /* DOWN Text (Gray) */
@@ -112,5 +112,5 @@ body.no-animations .profile-status-dot.pending {
 /* PENDING Text (Orange) */
 .service-state-text.pending,
 .profile-status-text.pending {
-    color: var(--color-warning, #f59e0b);
+    color: var(--color-warning-text);
 }

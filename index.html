@@ -1,5 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- data-theme is stamped in the markup below, not left to js/common.js to set
+     once the main bundle evaluates. No :root rule declares a colour any more —
+     every palette belongs to its theme, by design — so a root element matching
+     no theme resolves background:var(--bg-primary) and color:var(--text-primary)
+     to nothing at all: an unstyled page until 468 KB of JavaScript has parsed,
+     and no palette at all if it never does. Minimal is the default common.js
+     falls back to, so stamping it costs nothing, and login.html does the same.
+     /theme-boot.js, loaded further down, then replaces it with the stored theme
+     before anything is drawn — this attribute is what covers the window before
+     that file runs, and what stands if it fails. -->
+<html lang="en" data-theme="minimal">
 
 <head>
     <script src="/ag-config.js"></script>
@@ -17,9 +27,9 @@
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
-        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
         img-src 'self' data: blob: https://audiogravity.app;
-        font-src 'self' data: https://fonts.gstatic.com;
+        font-src 'self' data:;
         connect-src 'self' ws: wss: * http://*:* https://*:*;
         frame-src 'self' * http://*:* https://*:*;
         child-src 'self' * http://*:* https://*:*;
@@ -27,6 +37,12 @@
         base-uri 'self';
         form-action 'self';
     ">
+
+    <!-- Stamps the stored theme and dark mode on the root element before the
+         first paint. Must stay a separate file loaded synchronously: the policy
+         above allows no inline script, and a deferred or module script would run
+         after the page has already been drawn. -->
+    <script src="/theme-boot.js"></script>
     <title>Audiogravity - Audio Device Management</title>
 
     <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
@@ -172,9 +188,9 @@
         href="pics/splash/apple-splash-2732-2048.png">
 
     <!-- Performance Optimizations: Resource Hints -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Inter is served by the box, declared in css/fonts.css and pulled in by
+         css/main.css below. No resource hint for a font host is wanted here:
+         there is no third party left to connect to. -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 

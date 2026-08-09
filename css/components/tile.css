@@ -83,7 +83,7 @@
  * @description Activating/deactivating in progress — orange border animation.
  */
 .profile-tile.pending {
-    border-color: var(--color-warning, #f59e0b);
+    border-color: var(--color-warning);
     border-width: 2px;
     padding: calc(var(--spacing-lg) - 1px);
     opacity: 0.85;
@@ -222,7 +222,7 @@
 
 .license-trial-bar {
     height: 100%;
-    background: var(--color-warning, #f59e0b);
+    background: var(--color-warning);
     border-radius: var(--radius-sm);
     transition: width 0.3s ease;
 }
@@ -281,12 +281,12 @@ body.compact-mode .systemd-tile {
 /* Specific overrides for badges when used as buttons in tiles */
 .service-enabled-badge.clickable.success {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .service-enabled-badge.clickable.error {
     border-color: var(--color-error);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .service-enabled-badge.clickable.secondary {

@@ -42,10 +42,10 @@
     font-weight: 600;
 }
 
-.ag-terminal-status.connecting { color: var(--color-warning); }
-.ag-terminal-status.connected  { color: var(--color-success); }
+.ag-terminal-status.connecting { color: var(--color-warning-text); }
+.ag-terminal-status.connected  { color: var(--color-success-text); }
 .ag-terminal-status.closed     { color: var(--text-tertiary); }
-.ag-terminal-status.error      { color: var(--color-error); }
+.ag-terminal-status.error      { color: var(--color-error-text); }
 
 /* ===== VIEWPORT ===== */
 

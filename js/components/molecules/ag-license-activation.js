@@ -186,9 +186,9 @@ export class AgLicenseActivation extends LitElement {
                         spellcheck="false"
                     />
                     ${this._checkError ? html`
-                        <p class="help-text" style="color:var(--color-error)">${this._checkError}</p>
+                        <p class="help-text" style="color:var(--color-error-text)">${this._checkError}</p>
                     ` : keyValid ? html`
-                        <p class="help-text" style="color:var(--color-success)">✓ Valid format</p>
+                        <p class="help-text" style="color:var(--color-success-text)">✓ Valid format</p>
                     ` : html`
                         <p class="help-text">Format: AG-XXXX-XXXX-XXXX-XXXX</p>
                     `}
@@ -229,7 +229,7 @@ export class AgLicenseActivation extends LitElement {
                 <div class="form-field" style="margin-top:var(--spacing-md)">
                     <label class="form-label">DEVICE ID</label>
                     <input
-                        class="form-control form-control--readonly-mono"
+                        class="form-control form-control--identifier"
                         type="text"
                         .value=${this._deviceId || '—'}
                         readonly
@@ -249,7 +249,7 @@ export class AgLicenseActivation extends LitElement {
                     />
                 </div>
                 ${this._activateError ? html`
-                    <p class="help-text" style="color:var(--color-error);margin-top:var(--spacing-xs)">${this._activateError}</p>
+                    <p class="help-text" style="color:var(--color-error-text);margin-top:var(--spacing-xs)">${this._activateError}</p>
                 ` : nothing}
                 <div style="display:flex;gap:var(--spacing-sm);margin-top:var(--spacing-sm)">
                     <button
@@ -323,7 +323,7 @@ export class AgLicenseActivation extends LitElement {
                 ${steps.map(({ n, label }) => {
                     const done    = this._step > n;
                     const current = this._step === n;
-                    const color   = done ? 'var(--color-success)' : current ? 'var(--text-primary)' : 'var(--text-secondary)';
+                    const color   = done ? 'var(--color-success-text)' : current ? 'var(--text-primary)' : 'var(--text-secondary)';
                     const barBg   = done ? 'var(--color-success)' : current ? 'var(--text-primary)' : 'var(--border-color)';
                     return html`
                         <div style="display:flex;flex-direction:column;gap:4px">

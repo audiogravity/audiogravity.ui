@@ -1,4 +1,4 @@
-import { createContext } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { createContext } from '@lit/context';
 
 /**
  * Global Application Context using @lit/context

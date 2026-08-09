@@ -13,9 +13,16 @@
 import { LitElement, html, nothing } from 'lit';
 import { iconTerminal } from '../../ag-icons.js';
 import { getAuthToken } from '../../auth.js';
+import { monoFontFamily } from '../../common.js';
 
 const XTERM_CDN    = 'https://cdn.jsdelivr.net/npm/xterm@4.19.0';
 const XTERM_FIT_CDN = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js';
+
+/** Cell size for the terminal. Shared so the face is preloaded at the size it is drawn. */
+const TERMINAL_FONT_SIZE = 13;
+
+/** Frames held while the terminal is being built. Generous for a banner, finite. */
+const PENDING_FRAME_CAP = 500;
 
 export class AgTerminal extends LitElement {
     static properties = {
@@ -82,9 +89,30 @@ export class AgTerminal extends LitElement {
         ws.binaryType = 'arraybuffer';
         this._ws = ws;
 
+        // The PTY writes its banner and first prompt the moment it opens, and a
+        // WebSocket frame that arrives with no handler attached is dropped, not
+        // queued. Building the terminal is asynchronous — it waits for the render
+        // to settle and for the monospace face to load, which on a first visit is
+        // a network round trip — so frames are collected from the instant the
+        // socket exists and replayed once xterm can accept them. Without this the
+        // banner is lost and the viewport stays blank until the user types.
+        //
+        // The buffer belongs to this connection and lives in this closure, not on
+        // the component. Held as a field, a disconnect during that window cleared
+        // whatever the *next* socket had already collected — losing the banner of
+        // the reconnection, which is the one thing this exists to keep.
+        const pending = [];
+        ws.onmessage = (e) => {
+            // Bounded: what matters here is the banner and the first prompt, which
+            // come first, so the cap drops the newest rather than the oldest. A
+            // shell that talks for a whole font fetch must not grow this without
+            // limit — the box is an audio machine before it is a web server.
+            if (pending.length < PENDING_FRAME_CAP) pending.push(e.data);
+        };
+
         ws.onopen = () => {
             this._status = 'connected';
-            this._mountTerminal(ws);
+            this._mountTerminal(ws, pending);
         };
 
         ws.onclose = (e) => {
@@ -100,15 +128,48 @@ export class AgTerminal extends LitElement {
         };
     }
 
-    _mountTerminal(ws) {
-        this.updateComplete.then(() => {
+    _mountTerminal(ws, pending) {
+        this.updateComplete.then(async () => {
+            /** Give up on this socket and release what it collected. */
+            const abandon = () => {
+                ws.onmessage = null;
+                pending.length = 0;
+            };
+
             const container = this.querySelector('.ag-terminal-viewport');
-            if (!container) return;
+            if (!container) { abandon(); return; }
+
+            const fontFamily = monoFontFamily();
+
+            // xterm measures one character cell when open() is called, and never
+            // measures again unless the container resizes. The monospace family
+            // is a webfont declared font-display: swap, so if it has not arrived
+            // by then xterm sizes its whole grid against the fallback and stays
+            // misaligned for the life of the session — a problem the locally
+            // installed Courier New could not have. Waiting for the face costs
+            // nothing once it is cached, and a failure here must not stop the
+            // terminal from opening.
+            try {
+                await document.fonts.load(`${TERMINAL_FONT_SIZE}px ${fontFamily}`);
+            } catch {
+                /* unparsable or unavailable face — xterm falls back on its own */
+            }
+
+            // Everything above is asynchronous, and the font wait is a network
+            // round trip on a cold cache. The panel can be left, or reconnected,
+            // inside that window: _destroy() would have run with _term still
+            // null, and the continuation would then build a terminal and a
+            // ResizeObserver nobody holds a reference to — invisible, undisposed,
+            // and stacking one more on every reconnection. _ws is the marker:
+            // _destroy() clears it, a new connection replaces it.
+            if (this._ws !== ws) { abandon(); return; }
 
             const term = new window.Terminal({
                 cursorBlink: true,
-                fontFamily: '"Courier New", monospace',
-                fontSize: 13,
+                // xterm.js draws to a canvas and cannot read a CSS custom
+                // property, so the value is resolved here rather than declared.
+                fontFamily,
+                fontSize: TERMINAL_FONT_SIZE,
                 theme: {
                     background: '#0d1117',
                     foreground: '#e6edf3',
@@ -133,13 +194,19 @@ export class AgTerminal extends LitElement {
             this._term = term;
             this._fitAddon = fitAddon;
 
+            /**
+             * Write one PTY frame, whatever form it arrived in.
+             * @param {ArrayBuffer|string} raw
+             */
+            const write = (raw) => term.write(raw instanceof ArrayBuffer ? new Uint8Array(raw) : raw);
+
+            // Everything the shell said while the terminal was being built, in
+            // order, before the socket is handed over.
+            for (const raw of pending) write(raw);
+            pending.length = 0;
+
             // PTY output → xterm
-            ws.onmessage = (e) => {
-                const data = e.data instanceof ArrayBuffer
-                    ? new Uint8Array(e.data)
-                    : e.data;
-                term.write(data);
-            };
+            ws.onmessage = (e) => write(e.data);
 
             // xterm input → PTY
             term.onData((data) => {

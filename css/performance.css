@@ -151,17 +151,17 @@
 }
 
 .cpu-temp.cool {
-    color: var(--color-success);
+    color: var(--color-success-text);
     background: var(--color-success-bg);
 }
 
 .cpu-temp.warm {
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     background: var(--color-warning-bg);
 }
 
 .cpu-temp.hot {
-    color: var(--color-error);
+    color: var(--color-error-text);
     background: var(--color-error-bg);
 }
 
@@ -198,11 +198,14 @@
     padding: 2px 6px;
     border-radius: var(--radius-xs);
     background: var(--color-warning-bg);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     border: 1px solid var(--color-warning);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-mono);
+
+    /* Uppercase label, not a value read character by character: the
+       interface face, per rule 3 of the UI guidelines. */
+    font-family: var(--font-family);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     animation: blinkWarning 1s ease-in-out 3;
@@ -534,7 +537,7 @@ body.no-animations .animate-stagger {
 
 .service-status-badge.active {
     background: var(--color-success-bg);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border: 1px solid var(--color-success);
 }
 
@@ -547,13 +550,13 @@ body.no-animations .animate-stagger {
 
 .service-status-badge.failed {
     background: var(--color-error-bg);
-    color: var(--color-error);
+    color: var(--color-error-text);
     border: 1px solid var(--color-error);
 }
 
 .service-status-badge.loading {
     background: var(--color-info-bg);
-    color: var(--color-info);
+    color: var(--color-info-text);
     border: 1px solid var(--color-info);
     animation: blinkInfo 1.5s infinite;
 }
@@ -689,7 +692,7 @@ body.no-animations .animate-stagger {
 }
 
 .test-history-clear:hover {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* =====================
@@ -742,7 +745,10 @@ body.no-animations .animate-stagger {
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs);
     font-weight: 700;
-    font-family: var(--font-mono);
+
+    /* Uppercase label, not a value read character by character: the
+       interface face, per rule 3 of the UI guidelines. */
+    font-family: var(--font-family);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     white-space: nowrap;
@@ -750,13 +756,13 @@ body.no-animations .animate-stagger {
 
 .rt-badge.rt {
     background: var(--color-success-bg);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border: 1px solid var(--color-success);
 }
 
 .rt-badge.non-rt {
     background: var(--color-error-bg);
-    color: var(--color-error);
+    color: var(--color-error-text);
     border: 1px solid var(--color-error);
 }
 

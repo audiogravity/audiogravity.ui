@@ -72,6 +72,9 @@
 }
 
 /* Print styles */
+
+/* Paper, not a screen: black on white whatever the theme, which is the one
+   ground no palette describes (guidelines, rule 6 exception). */
 @media print {
     .no-print { display: none !important; }
     

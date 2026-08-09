@@ -60,7 +60,10 @@ export const renderPipelineLink = (link, sourceNode) => {
     }
 
     // Link styling based on type and connector - using CSS variables for theme support
-    const connectorColors = {
+    // Stroke colours per physical connector. Named for what they paint: these
+    // are lines in a diagram, and the base tokens are the ones chosen for
+    // graphics — a text-safe variant here would not match the legend.
+    const connectorStrokes = {
         'toslink': '#22d3ee', // Cyan
         'optical': '#22d3ee',
         'rca': 'var(--color-error)',      // Rose/Red
@@ -73,25 +76,33 @@ export const renderPipelineLink = (link, sourceNode) => {
         'antenna': 'var(--color-info)'    // Blue
     };
 
+    // `stroke`, not `color`: these paint SVG lines. The field was called
+    // `color`, which reads as text to anyone — and to any tool sweeping the
+    // codebase for text colours. The base tokens are the ones chosen for
+    // graphics, and the legend swatches read the same ones.
     const linkStyles = {
-        'software': { color: 'var(--color-info)', width: 2, dashArray: '4 4' },
-        'alsa': { color: 'var(--color-success)', width: 2.5, dashArray: '' },
-        'physical': { color: connectorColors[connector?.toLowerCase()] || 'var(--color-warning)', width: 3, dashArray: '' },
-        'internal': { color: 'var(--text-secondary)', width: 1.5, dashArray: '2 2' },
-        'network': { color: 'var(--color-success)', width: 2, dashArray: '8 4' },
-        'control': { color: 'var(--color-warning)', width: 1.5, dashArray: '5 3' },
+        'software': { stroke: 'var(--color-info)', width: 2, dashArray: '4 4' },
+        'alsa': { stroke: 'var(--color-success)', width: 2.5, dashArray: '' },
+        'physical': { stroke: connectorStrokes[connector?.toLowerCase()] || 'var(--color-warning)', width: 3, dashArray: '' },
+        'internal': { stroke: 'var(--text-secondary)', width: 1.5, dashArray: '2 2' },
+        'network': { stroke: 'var(--color-success)', width: 2, dashArray: '8 4' },
+        'control': { stroke: 'var(--color-warning)', width: 1.5, dashArray: '5 3' },
     };
 
-    const linkStyle = linkStyles[link_type] || { color: 'var(--color-warning)', width: 3, dashArray: '' };
+    const linkStyle = linkStyles[link_type] || { stroke: 'var(--color-warning)', width: 3, dashArray: '' };
     // Analog connectors carry no digital service identity — use neutral color, ignore flow_color
     const ANALOG_CONNECTORS = ['rca', 'din', 'banana', 'xlr', 'jack', 'spk', 'air'];
     const isAnalog = ANALOG_CONNECTORS.some(c => (connector || '').toLowerCase().includes(c));
-    const baseColor = isAnalog ? 'var(--text-secondary)' : (flow_color || linkStyle.color);
+    const baseColor = isAnalog ? 'var(--text-secondary)' : (flow_color || linkStyle.stroke);
     // Inactive links: gray color instead of nearly invisible
     const strokeColor = active ? baseColor : 'var(--text-tertiary)';
     const strokeWidth = active ? linkStyle.width : 2;
     const dashArray = active ? linkStyle.dashArray : '3 3'; // Dashed for inactive
-    const bitPerfectColor = flow_color || 'var(--color-success)';
+    // Two jobs, so two values: the badge outline is a line and owes 3:1, its
+    // label is 7px text and owes 4.5:1. A caller-supplied flow_color overrides
+    // both, as before.
+    const bitPerfectStroke = flow_color || 'var(--color-success)';
+    const bitPerfectInk = flow_color || 'var(--color-success-text)';
 
     // Particle configuration - speed based on sample rate
     const particleSpeed = duration; // Use the same duration calculation as flow speed
@@ -120,12 +131,13 @@ export const renderPipelineLink = (link, sourceNode) => {
     const latencyText = latency_us ? `${latency_us.toFixed(0)}µs` : '';
 
     // Color-code buffer fill
-    let bufferColor = 'var(--color-success)'; // Healthy < 80%
+    // Drawn as the fill of a <text>: a reading variant, not the line colour.
+    let bufferColor = 'var(--color-success-text)'; // Healthy < 80%
     if (buffer_fill_percent) {
         if (buffer_fill_percent >= 90) {
-            bufferColor = 'var(--color-error)'; // Critical >= 90%
+            bufferColor = 'var(--color-error-text)'; // Critical >= 90%
         } else if (buffer_fill_percent >= 80) {
-            bufferColor = 'var(--color-warning)'; // Warning >= 80%
+            bufferColor = 'var(--color-warning-text)'; // Warning >= 80%
         }
     }
 
@@ -157,15 +169,15 @@ export const renderPipelineLink = (link, sourceNode) => {
             <path
                 class="link-path ${active ? 'active' : ''} ${bitPerfect ? 'bit-perfect' : ''}"
                 d="${pathD}"
-                style="fill: none; stroke: ${bitPerfect ? bitPerfectColor : strokeColor}; stroke-width: ${strokeWidth}; stroke-dasharray: ${dashArray}; stroke-linecap: round; --flow-speed: ${duration}s; ${active ? `filter: drop-shadow(0 0 3px ${bitPerfect ? bitPerfectColor : strokeColor});` : ''}"
+                style="fill: none; stroke: ${bitPerfect ? bitPerfectStroke : strokeColor}; stroke-width: ${strokeWidth}; stroke-dasharray: ${dashArray}; stroke-linecap: round; --flow-speed: ${duration}s; ${active ? `filter: drop-shadow(0 0 3px ${bitPerfect ? bitPerfectStroke : strokeColor});` : ''}"
             />
             <!-- OPTIMIZATION: Bit-perfect and format badges with cache (stable values) -->
             ${cache((active && bitPerfect && showBitPerfect) ? svg`
                 <g transform="translate(${(sourceX + targetX)/2}, ${(sourceY + targetY)/2 - 10})">
-                    <rect x="-35" y="-12" width="70" height="14" rx="7" style="fill: none; stroke: ${bitPerfectColor}; stroke-width: 1.5;" />
-                    <text y="-2" style="fill: ${bitPerfectColor}; font-size: 7px; font-weight: bold; text-anchor: middle; letter-spacing: 0.5px;">BIT-PERFECT</text>
+                    <rect x="-35" y="-12" width="70" height="14" rx="7" style="fill: none; stroke: ${bitPerfectStroke}; stroke-width: 1.5;" />
+                    <text y="-2" style="fill: ${bitPerfectInk}; font-size: 7px; font-weight: bold; text-anchor: middle; letter-spacing: 0.5px;">BIT-PERFECT</text>
                     ${(formatInfo && showBitrate) ? svg`
-                        <text y="8" style="fill: ${bitPerfectColor}; font-size: 6px; font-weight: 600; text-anchor: middle;">${formatInfo}</text>
+                        <text y="8" style="fill: ${bitPerfectInk}; font-size: 6px; font-weight: 600; text-anchor: middle;">${formatInfo}</text>
                     ` : ''}
                 </g>
             ` : null)}

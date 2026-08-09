@@ -44,7 +44,7 @@
 }
 
 .system-action-card--danger .system-action-icon {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .system-action-info {
@@ -100,11 +100,13 @@
 .system-reboot-title {
     font-size: 1.2rem;
     font-weight: 700;
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     letter-spacing: 2px;
     text-transform: uppercase;
 }
 
+/* On the overlay's black scrim (rgb(0 0 0 / 0.8)), not on the page — the
+   same ground no palette describes (guidelines, rule 6 exception). */
 .system-reboot-subtitle {
     font-size: var(--font-size-sm);
     color: rgb(255 255 255 / 0.6);
@@ -236,13 +238,13 @@
 
 .event-toggle-btn.started {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
     background: var(--color-success-bg);
 }
 
 .event-toggle-btn.stopped {
     border-color: var(--color-error);
-    color: var(--color-error);
+    color: var(--color-error-text);
     background: var(--color-error-bg);
 }
 
@@ -352,7 +354,7 @@
 }
 
 .network-interface-name.network-up {
-    color: var(--color-success);
+    color: var(--color-success-text);
 }
 
 .network-interface-name.network-down {
@@ -457,7 +459,7 @@
 }
 
 .log-filter-info {
-    color: var(--color-info);
+    color: var(--color-info-text);
 }
 
 .log-filter-info.active {
@@ -466,7 +468,7 @@
 }
 
 .log-filter-warning {
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 
 .log-filter-warning.active {
@@ -475,7 +477,7 @@
 }
 
 .log-filter-error {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .log-filter-error.active {
@@ -523,7 +525,7 @@
 
 .log-btn.log-btn-active {
     border-color: var(--color-success);
-    color: var(--color-success);
+    color: var(--color-success-text);
     background: var(--color-success-bg);
 }
 
@@ -579,7 +581,7 @@
 
 .log-error {
     padding: var(--spacing-md);
-    color: var(--color-error);
+    color: var(--color-error-text);
     text-align: center;
     font-size: var(--font-size-xs);
 }
@@ -603,15 +605,17 @@
     border-radius: var(--radius-sm);
     padding: var(--spacing-sm) var(--spacing-md);
     margin-bottom: var(--spacing-md);
-    color: var(--color-success);
+    color: var(--color-success-text);
     font-size: var(--font-size-sm);
 }
 
 .lic-act__success-banner p {
     margin: 4px 0 0;
-    color: var(--color-success);
+    color: var(--color-success-text);
     opacity: 0.85;
-    font-family: var(--font-mono);
+
+    /* Prose. Monospace slows a sentence down and buys nothing here. */
+    font-family: var(--font-family);
     font-size: var(--font-size-xs);
 }
 
@@ -659,7 +663,8 @@
 }
 
 .lic-act__spinner-title {
-    font-family: var(--font-mono);
+    /* A title, not a value to be transcribed. */
+    font-family: var(--font-family);
     font-size: var(--font-size-sm);
     color: var(--text-primary);
     letter-spacing: 0.5px;

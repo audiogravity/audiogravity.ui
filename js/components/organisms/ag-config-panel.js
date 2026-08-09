@@ -19,7 +19,7 @@
  */
 
 import { LitElement, html } from 'lit';
-import { ContextConsumer } from 'https://cdn.jsdelivr.net/npm/@lit/context@1.1.0/+esm';
+import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES, API_BASE_URL } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';

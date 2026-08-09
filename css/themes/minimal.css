@@ -7,7 +7,10 @@
     --bg-tertiary: #F0F0F0;
     --text-primary: #000000;
     --text-secondary: #555555;
-    --text-tertiary: #888888;
+    --text-tertiary: #6C6C6C;
+
+    /* Darkened to clear the 4.5:1 floor on every ground this theme paints;
+       it is read text on 117 declarations, not decoration. */
 
     /* Status Colors */
     --color-success: #22c55e;
@@ -81,7 +84,14 @@
     --btn-secondary: #FFFFFF;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: #f97316;
-    --font-family: -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+
+    /* No --font-family here on purpose. Minimal is the default theme, so what it
+       renders is what almost every installation renders: it takes Inter from
+       :root in themes.css, served by the box. It used to substitute a system
+       stack, which meant the interface shipped a font it downloaded and then
+       discarded, and looked different on every operating system.
+       A theme that genuinely wants another face declares --font-family here —
+       see the contract beside the token in themes.css. */
 
     /* Minimal Theme: Strictly Clean & Square */
     --radius-sm: 0;
@@ -100,12 +110,6 @@
     --focus-color-dark: #FFFFFF;
 
     /* White  — consistent with minimal dark theme */
-
-    /* Login: error message component */
-    --status-error: #ef4444;
-
-    /* Keep explicit red for error (--color-error is #000 in minimal) */
-    --status-error-bg: rgb(239 68 68 / 0.1);
 
     /* Sparkline: SVG grid line (subtle separator inside chart) */
     --chart-grid: rgb(0 0 0 / 0.08);
@@ -174,6 +178,29 @@
     --pipeline-link: #888888;
     --pipeline-link-active: #F59E0B;
     --pipeline-link-bitperfect: #22C55E;
+
+    /* Text-safe variants of the semantic colours.
+       --color-success and friends serve three jobs at once: a border (owes 3:1),
+       a tinted fill (owes nothing) and the text on top (owes 4.5:1). One value
+       cannot satisfy all three — a red dark enough to read is too dark for the
+       border it was chosen for. These are the reading variants, same hue, and
+       the only ones a `color:` declaration may use. Values that already cleared
+       the floor are repeated verbatim so every theme states its own. */
+    --color-success-text: #157B3B;
+    --color-error-text: #D91313;
+    --color-warning-text: #945F06;
+    --color-info-text: #000000;
+
+
+    /* Text drawn ON a semantic fill, not on the page. Its legibility is decided
+       by the fill underneath — the theme's own red, amber or accent — so it
+       cannot come from the palette above: white on the red, near-black on the
+       amber. One token per fill is the minimum that works.
+       Measured against this theme's fills; see js/colors.test.js. */
+    --text-on-error: #111111;
+    --text-on-warning: #111111;
+    --text-on-accent: #FFFFFF;
+
 }
 
 [data-theme="minimal"].dark-mode,
@@ -183,7 +210,10 @@
     --bg-tertiary: #151515;
     --text-primary: #FFFFFF;
     --text-secondary: #AAAAAA;
-    --text-tertiary: #777777;
+    --text-tertiary: #7F7F7F;
+
+    /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
+       value sat under it, which is the direction nobody checks. */
     --border-color: #2A2A2A;
     --shadow-color: rgb(255 255 255 / 0.08);
     --topbar-bg: #000000;
@@ -253,12 +283,6 @@
     --accent-primary-alpha: rgb(255 255 255 / 0.15);
     --accent-hover: #CCCCCC;
 
-    /* Login: error message component — Dark Mode */
-    --status-error: #f87171;
-
-    /* Lighter red for dark backgrounds */
-    --status-error-bg: rgb(248 113 113 / 0.1);
-
     /* Sparkline: SVG grid line — Dark Mode */
     --chart-grid: rgb(255 255 255 / 0.06);
 
@@ -322,4 +346,17 @@
     --pipeline-link: #777777;
     --pipeline-link-active: #FBBF24;
     --pipeline-link-bitperfect: #4ADE80;
+
+    /* Text-safe variants — see the note in the light block. */
+    --color-success-text: #34D399;
+    --color-error-text: #f87171;
+    --color-warning-text: #FBBF24;
+    --color-info-text: #FFFFFF;
+
+
+    /* Text on a semantic fill — see the note in the light block. */
+    --text-on-error: #111111;
+    --text-on-warning: #111111;
+    --text-on-accent: #111111;
+
 }

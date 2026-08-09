@@ -171,7 +171,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    color: var(--color-error);
+    color: var(--color-error-text);
     font-size: var(--font-size-sm);
 }
 
@@ -193,14 +193,14 @@
     gap: var(--spacing-sm);
     background: var(--color-error-bg);
     border: 1px solid var(--color-error);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .ag-prov-result-head {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    color: var(--color-success);
+    color: var(--color-success-text);
     margin-bottom: var(--spacing-sm);
 }
 
@@ -221,7 +221,7 @@
 }
 
 .ag-prov-result-item.error {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .ag-prov-result-svc {
@@ -238,7 +238,7 @@
 
 .ag-prov-result-err {
     font-size: var(--font-size-xs);
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 /* ── Guided config (ag-guided-config: 3rd editor mode) ───────────────────── */
@@ -333,7 +333,7 @@
 }
 
 .ag-nmf-remove:hover {
-    color: var(--color-error);
+    color: var(--color-error-text);
 }
 
 .ag-nmf-remove svg {
@@ -354,7 +354,7 @@
 }
 
 .ag-nmf-error {
-    color: var(--color-error);
+    color: var(--color-error-text);
     font-size: var(--font-size-sm);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -394,7 +394,7 @@
 }
 
 .ag-lsi.done {
-    color: var(--color-success);
+    color: var(--color-success-text);
     border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 

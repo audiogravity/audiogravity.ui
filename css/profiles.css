@@ -142,9 +142,9 @@ body.compact-mode .profile-description {
     text-transform: uppercase;
 }
 
-.detail-state.up    { color: var(--color-success); }
+.detail-state.up    { color: var(--color-success-text); }
 .detail-state.down  { color: var(--text-secondary); }
-.detail-state.error { color: var(--color-error); }
+.detail-state.error { color: var(--color-error-text); }
 
 .detail-unit {
     font-size: var(--font-size-xs);
@@ -178,8 +178,8 @@ body.compact-mode .profile-description {
 }
 
 .detail-history-action { color: var(--text-primary); }
-.detail-history-item.success .detail-history-action { color: var(--color-success); }
-.detail-history-item.error   .detail-history-action { color: var(--color-error); }
+.detail-history-item.success .detail-history-action { color: var(--color-success-text); }
+.detail-history-item.error   .detail-history-action { color: var(--color-error-text); }
 
 .detail-empty {
     color: var(--text-tertiary);

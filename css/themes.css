@@ -6,13 +6,18 @@
  */
 
 /* =========================================
-   1. THEME IMPORTS
-   ========================================= */
-@import 'themes/slate.css';
-@import 'themes/gravity.css';
-@import 'themes/minimal.css';
+   1. THEME IMPORTS — moved to main.css
+   =========================================
 
-/* Components are now imported via main.css for better cascade control */
+   The theme files are imported by main.css, immediately after this one, and
+   that order is deliberate. `:root` is a pseudo-class, so it weighs (0,1,0) —
+   exactly what `[data-theme="…"]` weighs. The two never outrank each other;
+   only source order separates them. Imported from here they would land BEFORE
+   the tokens below (an @import must precede every rule in its file), and the
+   defaults would then beat the theme on any element the theme also matches.
+   From main.css they land after, and a theme's declaration wins outright.
+
+   Components are likewise imported via main.css, for the same cascade control. */
 
 /* =========================================
    2. SHARED VARIABLES (Layout, Spacing, Typography)
@@ -46,9 +51,30 @@
    /**
     * @group Typography
     * @description Font family and size definitions.
+    *
+    * THEMING CONTRACT — read this before changing a typeface anywhere.
+    *
+    * The interface default is Inter, served by the box (see css/fonts.css); the
+    * system names after it are the fallback for the moment before the file
+    * lands, not a second choice.
+    *
+    * A theme that wants a different face declares --font-family in its own file
+    * under css/themes/, and that declaration wins across the whole interface:
+    * the default lives on :root at specificity (0,0,0), a theme's
+    * `[data-theme="…"]` sits at (0,1,0), and js/common.js and js/login.js stamp
+    * data-theme on both <html> and <body>, so the rule reaches every element
+    * either way. Declaring it once in the theme is all a contributor has to do.
+    *
+    * What makes that hold is a rule with no exception: --font-family and
+    * --font-mono are declared HERE and in css/themes/*.css, nowhere else. A page
+    * or component stylesheet that declares one — say `body.login-page`, at
+    * (0,1,1) — silently outranks every theme, and the contributor's typeface is
+    * then obeyed everywhere except the one screen nobody thought to check.
+    * js/fonts.test.js fails the build if a declaration appears outside the theme
+    * layer; read components, never write.
     */
    --font-family: 'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
-   --font-mono: 'Courier New', monospace;
+   --font-mono: 'JetBrains Mono', monospace;
    --font-size-xs: 11px;
    --font-size-sm: 13px;
    --font-size-md: 14px;
@@ -170,8 +196,87 @@
    --breakpoint-sm: 480px;
    --breakpoint-md: 768px;
    --breakpoint-lg: 1200px;
+
+   /**
+    * @group Semantic derivatives (shared defaults)
+    * @description Toast fills, validation borders, button hover washes and the
+    * chart grid line. They lived in slate.css, which writes on :root and so
+    * handed them to every other theme — gravity depends on all fifteen and
+    * declares none. Defaults belong here; a theme overrides what it wants.
+    */
+   --toast-success: #10B981;
+   --toast-error: #EF4444;
+   --toast-warning: #F59E0B;
+   --toast-info: #3B82F6;
+   --chart-grid: rgb(0 0 0 / 0.08);
+   --validation-success-border: rgb(16 185 129 / 0.3);
+   --validation-error-border: rgb(239 68 68 / 0.3);
+   --validation-warning-border: rgb(245 158 11 / 0.3);
+   --validation-info-border: rgb(59 130 246 / 0.3);
+   --btn-success-hover-bg: rgb(16 185 129 / 0.1);
+   --btn-success-hover-shadow: rgb(16 185 129 / 0.3);
+   --btn-error-hover-bg: rgb(239 68 68 / 0.1);
+   --btn-error-hover-shadow: rgb(239 68 68 / 0.3);
+   --btn-warning-hover-bg: rgb(245 158 11 / 0.1);
+   --btn-warning-hover-shadow: rgb(245 158 11 / 0.3);
+
+   /**
+    * @group Audio pipeline diagram (shared defaults)
+    * @description Node fills the diagram needs and no theme declared, so the
+    * component carried them as hard-coded fallbacks behind tokens that resolved
+    * nowhere — the colours never followed the theme. Declared here at their
+    * former values: nothing changes on screen, and a theme can now override
+    * them. Minimal in particular paints a monochrome pipeline and will want to.
+    * Two border alphas, not one: the output node was outlined at 0.2 and the
+    * processing node at 0.1, and folding them onto a single token silently
+    * doubled the second.
+    */
+   --pipeline-node-output: #ef4444;
+   --pipeline-node-proc: #8b5cf6;
+   --pipeline-node-border: rgb(255 255 255 / 0.2);
+   --pipeline-node-border-soft: rgb(255 255 255 / 0.1);
+
 }
 
+
+
+/* =========================================
+   2b. SHARED DARK DEFAULTS
+   =========================================
+
+   Counterpart of the tokens in :root above. They lived in slate.css, whose dark
+   block opened on a bare `body.dark-mode` — no theme condition — so every other
+   theme inherited them: Gravity depends on all of these and declares none.
+   Declared here, before the theme files, a theme still overrides what it wants. */
+body.dark-mode {
+    --btn-error-hover-bg: rgb(248 113 113 / 0.15);
+    --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
+    --btn-success-hover-bg: rgb(52 211 153 / 0.15);
+    --btn-success-hover-shadow: rgb(52 211 153 / 0.4);
+    --btn-warning-hover-bg: rgb(251 191 36 / 0.15);
+    --btn-warning-hover-shadow: rgb(251 191 36 / 0.4);
+    --chart-cpu: #60A5FA;
+    --chart-cpu-bg: rgb(96 165 250 / 0.15);
+    --chart-disk: #F472B6;
+    --chart-disk-bg: rgb(244 114 182 / 0.15);
+    --chart-grid: rgb(255 255 255 / 0.06);
+    --chart-memory: #A78BFA;
+    --chart-memory-bg: rgb(167 139 250 / 0.15);
+    --chart-network: #34D399;
+    --chart-network-bg: rgb(52 211 153 / 0.15);
+    --chart-temperature: #FBBF24;
+    --chart-temperature-bg: rgb(251 191 36 / 0.15);
+    --color-success: #34D399;
+    --color-warning: #FBBF24;
+    --toast-error: #F87171;
+    --toast-info: #60A5FA;
+    --toast-success: #34D399;
+    --toast-warning: #FBBF24;
+    --validation-error-border: rgb(248 113 113 / 0.4);
+    --validation-info-border: rgb(96 165 250 / 0.4);
+    --validation-success-border: rgb(52 211 153 / 0.4);
+    --validation-warning-border: rgb(251 191 36 / 0.4);
+}
 
 /* =========================================
    3. COMPACT MODE

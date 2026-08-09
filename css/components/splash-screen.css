@@ -9,6 +9,9 @@
    SPLASH SCREEN OVERLAY
    ===================== */
 
+/* Fixed palette on purpose: the splash paints before the theme is applied —
+   it is what the user sees while the interface is still loading, so it can
+   read no token (guidelines, rule 6 exception). */
 #ag-splash-screen {
     position: fixed;
     inset: 0;
@@ -67,6 +70,8 @@
     fill: none;
 }
 
+/* Same fixed palette as the screen itself: painted before any theme exists
+   (guidelines, rule 6 exception). */
 .splash-wordmark {
     font-family: var(--font-family, 'Inter', sans-serif);
     font-size: 22px;
@@ -79,6 +84,8 @@
 
 
 
+/* Same fixed palette as the screen itself: painted before any theme exists
+   (guidelines, rule 6 exception). */
 .splash-tagline {
     font-family: var(--font-family, 'Inter', sans-serif);
     font-size: 11px;

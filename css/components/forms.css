@@ -60,15 +60,26 @@
     background: var(--bg-secondary);
 }
 
-/* Read-only identifier field (device ID): monospace, dimmed, not editable.
+/* Identifier field (device ID). Monospace because an identifier is transcribed
+   character by character — a zero has to be distinguishable from an O — and for
+   no other reason: the name says `identifier`, not `readonly`, so that the day
+   the field becomes editable nobody removes the monospace thinking it was the
+   read-only state talking. What marks it unmodifiable is the dimmed colour and
+   the cursor, not the typeface (rule 4 of the UI guidelines).
+
    Its font-size belongs here and NOT in a `style` attribute — an inline
    declaration outranks every selector, including the mobile anti-zoom rule in
    base.css, and a sub-16px field makes mobile Safari zoom the page on focus
    (site#6). */
-.form-control--readonly-mono {
+.form-control--identifier {
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
-    color: var(--text-secondary);
+
+    /* Full text colour, not the dimmed one. A device ID is real data and
+       often the most important thing on the screen; dimming it says "this
+       does not count", which is what `disabled` means, not `read-only`.
+       The flat ground and the cursor are what mark it unmodifiable. */
+    color: var(--text-primary);
     cursor: default;
 }
 

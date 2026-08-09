@@ -169,6 +169,9 @@ body:not(.npfs-open) .topbar {
     color: var(--text-secondary);
 }
 
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-corner {
     position: absolute;
     bottom: 8px;
@@ -188,6 +191,10 @@ body:not(.npfs-open) .topbar {
 }
 
 /* Source badge — top-left, matches HI-RES visual weight. */
+
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-source {
     position: absolute;
     top: 8px;
@@ -287,7 +294,7 @@ body:not(.npfs-open) .topbar {
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--accent-primary, #6366f1);
+    color: var(--accent-primary);
     align-self: flex-start;
 }
 
@@ -461,7 +468,7 @@ body:not(.npfs-open) .topbar {
     display: block;
     margin-top: var(--spacing-xs);
     font-size: var(--font-size-xxs);
-    color: var(--color-error);
+    color: var(--color-error-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -515,9 +522,13 @@ body:not(.npfs-open) .topbar {
     }
 }
 
-.npfs-header-btn.active { color: var(--accent-primary, #6366f1); }
+.npfs-header-btn.active { color: var(--accent-primary); }
 
 /* ── Hi-res badge on cover ── */
+
+/* White on a black scrim laid over album art. No token can be right here:
+   the ground is an arbitrary image, and the scrim exists precisely to make
+   one fixed colour legible over any of them (guidelines, rule 6 exception). */
 .npfs-cover-hires {
     position: absolute;
     top: 8px;
@@ -560,7 +571,10 @@ body:not(.npfs-open) .topbar {
     width: 32px;
     height: 32px;
     border-radius: var(--radius-sm);
-    background-color: var(--surface-secondary, #e8e8e8);
+
+    /* --surface-secondary was defined nowhere, so this placeholder always
+       rendered its hard-coded grey — a light square in every dark theme. */
+    background-color: var(--bg-secondary);
     flex-shrink: 0;
     display: flex;
     align-items: center;

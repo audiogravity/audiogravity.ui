@@ -105,9 +105,9 @@
 }
 
 /* Activity Indicators */
-.metric-value.activity-low { color: var(--color-success); }
-.metric-value.activity-medium { color: var(--color-warning); }
-.metric-value.activity-high { color: var(--color-error); }
+.metric-value.activity-low { color: var(--color-success-text); }
+.metric-value.activity-medium { color: var(--color-warning-text); }
+.metric-value.activity-high { color: var(--color-error-text); }
 
 /* =====================
    ALIASES & COMPATIBILITY

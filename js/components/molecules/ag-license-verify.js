@@ -121,13 +121,13 @@ export class AgLicenseVerify extends LitElement {
                         spellcheck="false"
                     />
                     ${this._error
-                        ? html`<p class="help-text" style="color:var(--color-error)">${this._error}</p>`
+                        ? html`<p class="help-text" style="color:var(--color-error-text)">${this._error}</p>`
                         : nothing}
                 </div>
                 <div class="form-field" style="margin-top:var(--spacing-sm)">
                     <label class="form-label">DEVICE ID</label>
                     <input
-                        class="form-control form-control--readonly-mono"
+                        class="form-control form-control--identifier"
                         type="text"
                         .value=${this._deviceId || '—'}
                         readonly

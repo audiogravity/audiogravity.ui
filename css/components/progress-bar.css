@@ -34,7 +34,7 @@ ag-progress-bar { display: block; }
     left: 0;
     top: 0;
     bottom: 0;
-    background: var(--accent-primary, #6366f1);
+    background: var(--accent-primary);
     border-radius: var(--radius-full);
     transition: width .25s linear;
 }
@@ -47,7 +47,7 @@ ag-progress-bar { display: block; }
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--accent-primary, #6366f1);
+    background: var(--accent-primary);
     transform: translate(-50%, -50%);
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
     transition: transform .15s, box-shadow .15s;

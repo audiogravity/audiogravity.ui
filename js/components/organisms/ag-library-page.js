@@ -87,7 +87,7 @@ const LIB_STYLES = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--color-success);
+    color: var(--color-success-text);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -153,7 +153,7 @@ body.no-animations .lib-live::before { box-shadow: none; animation: none; }
 .lib-source-banner-msg { flex: 1; min-width: 0; }
 .lib-source-banner-name {
     font-weight: 600;
-    color: var(--color-warning);
+    color: var(--color-warning-text);
 }
 .lib-source-banner-actions { display: flex; gap: 6px; flex-shrink: 0; }
 

@@ -2,7 +2,9 @@ import { svg } from 'lit';
 
 // Module-level constants — allocated once, not on every render call
 
-const DEVICE_COLORS = {
+// Fills and strokes per device type in the diagram — graphics, not text; the
+// one label drawn from them sits at 0.8 opacity over its own tinted plate.
+const DEVICE_FILLS = {
     'streamer':   '#6366f1',
     'source':     'var(--color-info)',
     'converter':  '#8b5cf6',
@@ -79,7 +81,7 @@ export const renderPipelineNode = (node) => {
         const manufacturer = node.manufacturer || '';
         const model = node.model || '';
 
-        const color = DEVICE_COLORS[deviceType] || 'var(--text-tertiary)';
+        const color = DEVICE_FILLS[deviceType] || 'var(--text-tertiary)';
 
         // Internal services (for streamer, server, controller)
         const internalServices = node.internal_services || [];
@@ -125,7 +127,10 @@ export const renderPipelineNode = (node) => {
 
             // NEW: Service names and flow color
             const services = port.services || [];
-            const flowColor = port.flow_color || (portActive ? 'var(--color-success)' : 'var(--bg-tertiary)');
+            // Two jobs again: the port disc and its outline are graphics, the
+            // 7px label beside them is text.
+            const flowFill = port.flow_color || (portActive ? 'var(--color-success)' : 'var(--bg-tertiary)');
+            const flowInk = port.flow_color || (portActive ? 'var(--color-success-text)' : 'var(--bg-tertiary)');
             const hasServices = services.length > 0;
 
             // Icon or Connector label
@@ -137,8 +142,8 @@ export const renderPipelineNode = (node) => {
                 <g class="port ${portActive ? 'active' : 'inactive'}">
                     <!-- Port circle with flow color -->
                     <circle cx="${portX}" cy="${portY}" r="6"
-                        fill="${portActive ? flowColor : 'var(--bg-primary)'}"
-                        stroke="${portActive ? flowColor : 'var(--text-tertiary)'}"
+                        fill="${portActive ? flowFill : 'var(--bg-primary)'}"
+                        stroke="${portActive ? flowFill : 'var(--text-tertiary)'}"
                         stroke-opacity="${portActive ? '0.4' : '0.8'}"
                         stroke-width="${portActive ? '2' : '2.5'}" />
 
@@ -158,7 +163,7 @@ export const renderPipelineNode = (node) => {
                     <!-- NEW: Service badges -->
                     ${hasServices ? svg`
                         <text x="${textX}" y="${portY + 8}"
-                            style="fill: ${flowColor}; font-size: 7px; font-weight: 700; text-anchor: ${textAnchor}; letter-spacing: 0.3px;">
+                            style="fill: ${flowInk}; font-size: 7px; font-weight: 700; text-anchor: ${textAnchor}; letter-spacing: 0.3px;">
                             [${services.join(', ')}]
                         </text>
                     ` : ''}
@@ -238,13 +243,19 @@ export const renderPipelineNode = (node) => {
 
                         const isActiveSvc = svc.status === 'active';
                         const snp = serviceNowPlaying[svc.id];
-                        const snpStateColor = snp?.state === 'playing' ? 'var(--color-success)'
-                                           : snp?.state === 'paused'   ? 'var(--color-warning)'
-                                           : null;
-                        const dotColor = isActiveSvc ? (snpStateColor || svc.flow_color || color) : 'var(--text-tertiary)';
+                        // The state paints a dot and the words beside it. The dot is
+                        // a graphic and keeps the vivid token; the words are text and
+                        // take the reading variant.
+                        const snpStateFill = snp?.state === 'playing' ? 'var(--color-success)'
+                                          : snp?.state === 'paused'   ? 'var(--color-warning)'
+                                          : null;
+                        const snpStateInk = snp?.state === 'playing' ? 'var(--color-success-text)'
+                                         : snp?.state === 'paused'   ? 'var(--color-warning-text)'
+                                         : null;
+                        const dotColor = isActiveSvc ? (snpStateFill || svc.flow_color || color) : 'var(--text-tertiary)';
                         const snpTitle = _truncate(snp?.title, 22);
                         const snpArtist = _truncate(snp?.artist, 22);
-                        const snpColor = snpStateColor || 'var(--text-tertiary)';
+                        const snpColor = snpStateInk || 'var(--text-tertiary)';
                         const snpSR = snp?.sample_rate;
                         const snpSRStr = snpSR ? `${(snpSR / 1000).toFixed(snpSR % 1000 === 0 ? 0 : 1)}k` : null;
                         const snpCodec = snp?.format || null;
@@ -301,7 +312,9 @@ export const renderPipelineNode = (node) => {
                     ${(() => {
                         const npY = headerHeight + servicesSectionHeight;
                         const isPlaying = nowPlaying.state === 'playing';
-                        const npColor = isPlaying ? 'var(--color-success)' : 'var(--color-warning)';
+                        // Same split: the disc, then its label.
+                        const npFill = isPlaying ? 'var(--color-success)' : 'var(--color-warning)';
+                        const npInk = isPlaying ? 'var(--color-success-text)' : 'var(--color-warning-text)';
                         const npSR = nowPlaying.sample_rate;
                         const npSRStr = npSR ? `${(npSR / 1000).toFixed(npSR % 1000 === 0 ? 0 : 1)}k` : null;
                         const npCodec = nowPlaying.format || null;
@@ -320,11 +333,11 @@ export const renderPipelineNode = (node) => {
                         const npArtist = _truncate(nowPlaying.artist, 24);
                         return svg`
                             <line x1="8" y1="${npY}" x2="${deviceWidth - 8}" y2="${npY}" stroke="${color}" stroke-width="0.5" opacity="0.2" />
-                            <circle cx="14" cy="${npY + 14}" r="3.5" fill="${npColor}" fill-opacity="${isPlaying ? '1' : '0.4'}" />
-                            ${isPlaying ? svg`<circle cx="14" cy="${npY + 14}" r="6" fill="${npColor}" fill-opacity="0.15" />` : ''}
+                            <circle cx="14" cy="${npY + 14}" r="3.5" fill="${npFill}" fill-opacity="${isPlaying ? '1' : '0.4'}" />
+                            ${isPlaying ? svg`<circle cx="14" cy="${npY + 14}" r="6" fill="${npFill}" fill-opacity="0.15" />` : ''}
                             <text x="24" y="${npY + 12}" style="fill: var(--pipeline-node-text); font-size: 9px; font-weight: 700;">${npTitle}</text>
                             <text x="24" y="${npY + 24}" style="fill: var(--text-secondary); font-size: 8px;">${npArtist}</text>
-                            ${npRight ? svg`<text x="${deviceWidth - 8}" y="${npY + 18}" style="fill: ${npColor}; font-size: 7.5px; font-weight: 600; text-anchor: end; font-family: var(--font-mono, monospace);">${npRight}</text>` : ''}
+                            ${npRight ? svg`<text x="${deviceWidth - 8}" y="${npY + 18}" style="fill: ${npInk}; font-size: 7.5px; font-weight: 600; text-anchor: end; font-family: var(--font-mono, monospace);">${npRight}</text>` : ''}
                             <line x1="8" y1="${npY + nowPlayingSectionHeight - 2}" x2="${deviceWidth - 8}" y2="${npY + nowPlayingSectionHeight - 2}" stroke="${color}" stroke-width="0.5" opacity="0.2" />
                         `;
                     })()}
@@ -344,7 +357,9 @@ export const renderPipelineNode = (node) => {
                         ${networkInterfaces.map((ni, i) => {
                             const niX = i * 54;
                             const isActiveNi = ni.active === true;
-                            const niColor = isActiveNi ? 'var(--color-success)' : 'var(--text-tertiary)';
+                            // Icon fill, then label ink.
+                            const niFill = isActiveNi ? 'var(--color-success)' : 'var(--text-tertiary)';
+                            const niInk = isActiveNi ? 'var(--color-success-text)' : 'var(--text-tertiary)';
                             const connType = (ni.connector || '').toLowerCase();
                             const niIcon = PORT_ICONS[connType] || PORT_ICONS['antenna'];
                             return svg`
@@ -366,10 +381,10 @@ export const renderPipelineNode = (node) => {
                                     }}>
                                     <rect x="0" y="-2" width="50" height="16" fill="transparent" />
                                     <g transform="scale(0.5)">
-                                        <path d="${niIcon}" fill="${niColor}" opacity="${isActiveNi ? '1' : '0.45'}" />
+                                        <path d="${niIcon}" fill="${niFill}" opacity="${isActiveNi ? '1' : '0.45'}" />
                                     </g>
                                     <text x="14" y="9"
-                                        style="fill: ${niColor}; font-size: 7.5px; font-weight: ${isActiveNi ? '700' : '400'}; font-family: var(--font-family); opacity: ${isActiveNi ? '1' : '0.6'};">
+                                        style="fill: ${niInk}; font-size: 7.5px; font-weight: ${isActiveNi ? '700' : '400'}; font-family: var(--font-family); opacity: ${isActiveNi ? '1' : '0.6'};">
                                         ${ni.label}
                                     </text>
                                 </g>
@@ -391,15 +406,15 @@ export const renderPipelineNode = (node) => {
         return svg`
             <g class="pipeline-node output" data-node-id="${node.id}" transform="translate(${x}, ${y})">
                 <circle class="node-circle ${isActive ? 'active' : ''}" cx="0" cy="0" r="${radius}"
-                    style="fill: var(--pipeline-node-output, #ef4444); stroke: var(--pipeline-node-border, rgba(255,255,255,0.2)); stroke-width: 2;" />
+                    style="fill: var(--pipeline-node-output); stroke: var(--pipeline-node-border); stroke-width: 2;" />
                 <g transform="translate(-12, -12)"><path d="${volumePath}" fill="#fff" /></g>
 
                 <!-- Unified Badge (Dynamic width) -->
                 <g transform="translate(${badgeOffset}, 40)">
-                    <rect width="${badgeWidth}" height="34" rx="4" style="fill: var(--bg-tertiary, #f1f5f9); stroke: var(--border-color, #e2e8f0); stroke-width: 1;" />
-                    <g transform="translate(8, 8) scale(0.7)"><path d="${volumePath}" fill="var(--color-info, #3b82f6)" /></g>
-                    <text x="30" y="21" style="fill: var(--text-secondary, #475569); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${deviceName}</text>
-                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--text-accent, #3b82f6); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
+                    <rect width="${badgeWidth}" height="34" rx="4" style="fill: var(--bg-tertiary); stroke: var(--border-color); stroke-width: 1;" />
+                    <g transform="translate(8, 8) scale(0.7)"><path d="${volumePath}" fill="var(--color-info)" /></g>
+                    <text x="30" y="21" style="fill: var(--text-secondary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${deviceName}</text>
+                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--accent-primary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
                 </g>
             </g>
         `;
@@ -456,7 +471,7 @@ export const renderPipelineNode = (node) => {
         const isPlaying = playbackStatus === 'Playing';
         const isStopped = playbackStatus === 'Stopped';
         const statusIcon = isPlaying ? playPath : (isPaused ? pausePath : volumePath);
-        const statusColor = isPlaying ? 'var(--color-success)' : (isPaused ? 'var(--color-warning)' : (isActive ? 'var(--color-info)' : 'var(--text-secondary)'));
+        const statusFill = isPlaying ? 'var(--color-success)' : (isPaused ? 'var(--color-warning)' : (isActive ? 'var(--color-info)' : 'var(--text-secondary)'));
         const opacity = isActive ? 1.0 : 0.6;  // Paused/stopped nodes are semi-transparent
 
         // Calculate dynamic badge width based on content
@@ -475,25 +490,25 @@ export const renderPipelineNode = (node) => {
                opacity="${opacity}">
                 <g transform="translate(${badgeOffset}, ${-badgeHeight/2})">
                     <rect width="${badgeWidth}" height="${badgeHeight}" rx="4"
-                        style="fill: var(--bg-tertiary, #f1f5f9); stroke: ${isPaused ? '#f59e0b' : 'var(--border-color, #3b82f6)'}; stroke-width: ${isActive ? 2 : 1};" />
+                        style="fill: var(--bg-tertiary); stroke: ${isPaused ? '#f59e0b' : 'var(--border-color)'}; stroke-width: ${isActive ? 2 : 1};" />
 
                     <!-- Icon/Indicator (Play/Pause/Volume) -->
                     <g transform="translate(8, 8) scale(0.7)">
-                        <path d="${statusIcon}" fill="${statusColor}" />
+                        <path d="${statusIcon}" fill="${statusFill}" />
                     </g>
 
                     <!-- Service Name & Volume -->
-                    <text x="30" y="20" style="fill: var(--text-primary, #1e293b); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${name}</text>
-                    <text x="${badgeWidth - 8}" y="20" style="fill: var(--color-info, #3b82f6); font-size: 9px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
+                    <text x="30" y="20" style="fill: var(--text-primary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${name}</text>
+                    <text x="${badgeWidth - 8}" y="20" style="fill: var(--color-info); font-size: 9px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
 
                     ${title ? svg`
                         <!-- Metadata: Track info -->
-                        <text x="30" y="32" style="fill: var(--text-secondary, #475569); font-size: 9px; font-style: italic;">${displayTrackText}</text>
+                        <text x="30" y="32" style="fill: var(--text-secondary); font-size: 9px; font-style: italic;">${displayTrackText}</text>
                         <!-- Quality Info -->
-                        <text x="30" y="42" style="fill: var(--text-accent, #3b82f6); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="42" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     ` : svg`
                         <!-- Quality Info (if no title) -->
-                        <text x="30" y="30" style="fill: var(--text-accent, #3b82f6); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="30" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     `}
 
                     <!-- Software Output Port (Green circle on the right) -->
@@ -510,7 +525,7 @@ export const renderPipelineNode = (node) => {
     return svg`
         <g class="pipeline-node processing" transform="translate(${x - width/2}, ${y - height/2})">
             <rect class="node-rect ${isActive ? 'active' : ''}" width="${width}" height="${height}" rx="${rx}" 
-                style="fill: var(--pipeline-node-proc, #8b5cf6); stroke: var(--pipeline-node-border, rgba(255,255,255,0.1)); stroke-width: 2;" />
+                style="fill: var(--pipeline-node-proc); stroke: var(--pipeline-node-border-soft); stroke-width: 2;" />
             <text class="node-text" x="${width/2}" y="${height/2 + 4}" style="fill: #fff; font-size: 11px; font-weight: bold; text-anchor: middle;">${name}</text>
         </g>
     `;

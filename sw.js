@@ -17,9 +17,12 @@ const FALLBACK_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8
 const RE_HASHED_ASSET = /\/assets\/[^/]+-[A-Za-z0-9_]{8,}\.(js|css|png|webp|svg|woff2?)$/;
 
 // CDN classification:
-//   CDN_SWR      — mutable content (Google Fonts: browser-specific subset), stale-while-revalidate.
 //   CDN_IMMUTABLE — version-pinned content (cdn.jsdelivr.net@x.y.z), cache-first like hashed assets.
-const CDN_SWR       = new Set(['fonts.googleapis.com', 'fonts.gstatic.com']);
+//
+// There is no longer a stale-while-revalidate CDN class. It existed for Google
+// Fonts, whose stylesheet is mutable (the subset served depends on the browser
+// asking); Inter now ships with the box, so no third-party host is left to
+// revalidate. Same-origin /pics/ and /fonts/ keep that strategy below.
 const CDN_IMMUTABLE = new Set(['cdn.jsdelivr.net']);
 
 // App shell: static files that never change between releases (no hash in name).
@@ -30,14 +33,17 @@ const CACHE_URLS = [
     '/login.html',
     '/offline.html',
     '/site.webmanifest',
+    // Runs before the first paint; a cache miss here would put the white flash
+    // back on exactly the cold loads this file exists to fix.
+    '/theme-boot.js',
     '/pics/apple-touch-icon.png',
     '/pics/favicon-32x32.png',
     '/pics/favicon-16x16.png',
     '/pics/logo_audiogravity_light.png',
     '/pics/logo_audiogravity_dark.png',
     '/pics/audiogravity.svg',
-    // CDN dependencies (Inter font, Chart.js, CodeMirror)
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+    // CDN dependencies (Chart.js, CodeMirror). Inter is not among them any more:
+    // it is a hashed asset in assets/, precached by the Workbox manifest above.
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
     'https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css',
     'https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js'
@@ -139,7 +145,6 @@ self.addEventListener('fetch', (event) => {
     // ── Asset classification ──────────────────────────────────────────────────
     const isHashedAsset = RE_HASHED_ASSET.test(url.pathname);
     const isCDNImmutable = CDN_IMMUTABLE.has(url.hostname);
-    const isCDNSWR       = CDN_SWR.has(url.hostname);
     const isNavigation   = request.mode === 'navigate';
 
     // ── Strategy 2 background refresh ────────────────────────────────────────
@@ -148,7 +153,8 @@ self.addEventListener('fetch', (event) => {
     // Without this, the browser may kill the SW before cache.put() completes.
     let _swrRefresh = null;
     if (!isHashedAsset && !isCDNImmutable &&
-        (isCDNSWR || url.pathname.startsWith('/pics/') || url.pathname.startsWith('/fonts/'))) {
+        (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/fonts/') ||
+         url.pathname === '/theme-boot.js')) {
         _swrRefresh = fetch(request).then(async res => {
             if (!res.ok) return;
             const c = await caches.open(CACHE_NAME);
@@ -176,7 +182,12 @@ self.addEventListener('fetch', (event) => {
             }
         }
 
-        // ── Strategy 2: Stale-while-revalidate (Google Fonts, /pics/, /fonts/) ─
+        // ── Strategy 2: Stale-while-revalidate (/pics/, /fonts/, theme-boot) ──
+        //
+        // theme-boot.js belongs here and not in network-first: it is a
+        // render-blocking <head> script, so serving it from the network would
+        // put a round trip in front of every paint — the delay this file exists
+        // to remove. Cached first, refreshed behind.
         // Background refresh already in flight via _swrRefresh + event.waitUntil().
         if (_swrRefresh !== null) {
             const cached = await caches.match(request);
