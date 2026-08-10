@@ -57,7 +57,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/now-playing` | Every active playback source |
 | GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played |
 | GET | `/audio_pipeline/cover` | Resolve cover art for a now-playing item |
-| POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }` |
+| POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }`. For `action: "seek"` the returned `success` is **meaningful**: `false` means MPD refused and **the position did not move** (a live radio stream, or a Tidal track whose first-listen remux is still downloading). Every other action still reports the write, not MPD's answer |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
@@ -148,6 +148,15 @@ A selected-but-stopped renderer yields **no item**: it is carried by
 controllable. `outputs[].active` marks the output actually carrying the audio, not
 merely a reachable selection.
 
+**Seeking** — MPD decides whether a stream can be seeked when it OPENS it, so a Tidal
+track played for the first time is unseekable for that whole listen even though its
+seekable copy finishes downloading seconds in. The backend now reopens the track from
+that copy when you seek, which is invisible to the listener; while the download is still
+running, and on any live stream, the seek is **refused**. A refusal is truthful, not a
+failure to retry: `success:false` / **503** means the position is unchanged, and the
+state published on the SSE bus right after carries the real position — a client that
+moved its progress bar optimistically should snap it back to that value.
+
 **Reading the queue** — `GET /library/queue?source_id=…` returns each item with its
 real **`origin`** (`radio`, `qobuz`, `tidal`, `upnp`, `library`…), independent of the MPD
 transport; for a recognised station the item's `cover_token` is the station logo.
@@ -192,7 +201,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }` |
+| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused `seek` now answers **503** rather than silently succeeding — see `/audio_pipeline/control` above |
 | POST | `/player/source` | Select the active source |
 | GET | `/player/sleep-timer` | Current sleep-timer state |
 | POST | `/player/sleep-timer` | Arm the sleep timer (pause after N minutes) |
