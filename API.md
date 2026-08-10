@@ -65,7 +65,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 |---|---|---|
 | GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added` |
 | GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
-| POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action }` |
+| POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action, duration? }` (`duration` in seconds, 0–86400: for UPnP tracks, whose length MPD cannot know before decoding the stream — it feeds the queue display) |
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
@@ -151,6 +151,11 @@ merely a reachable selection.
 **Reading the queue** — `GET /library/queue?source_id=…` returns each item with its
 real **`origin`** (`radio`, `qobuz`, `tidal`, `upnp`, `library`…), independent of the MPD
 transport; for a recognised station the item's `cover_token` is the station logo.
+**`duration`** is now populated for queued streams too (Qobuz, Tidal, HIGHRESAUDIO, UPnP):
+MPD only learns a stream's length by decoding it, so the value captured at enqueue time is
+served — and persisted, so it survives a core restart. A live radio stream stays `null`,
+which is the correct display (`--:--`). Now Playing falls back to the same value, so the
+player total and the queue row never disagree.
 Qobuz/Tidal/HIGHRESAUDIO share the MPD engine, so asking with their `source_id` returns
 that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
 an error. **`?limit=<n>`** returns the current track plus up to `n` following items —
