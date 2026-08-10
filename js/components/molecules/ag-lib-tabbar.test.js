@@ -8,15 +8,19 @@
  * bar would otherwise keep showing wherever it was last dragged, with the selected
  * tab off-screen.
  *
- * jsdom implements no layout and therefore no scrollIntoView, so it is stubbed and
- * the ARGUMENTS are asserted: both options carry a reason and both have been got
- * wrong before elsewhere. `block: 'nearest'` in particular is what stops the browser
- * from scrolling the whole page to reveal the bar.
+ * jsdom implements no layout, so the shared keep-in-view helper is mocked and the
+ * DELEGATION is asserted: which element, and whether the scroll is the instant
+ * first-positioning kind or animated feedback. The helper's own geometry — which
+ * container scrolls, and which must never be touched — is pinned in
+ * js/core/keep-in-view.test.js.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+vi.mock('../../core/keep-in-view.js', () => ({ keepInView: vi.fn() }));
+import { keepInView } from '../../core/keep-in-view.js';
 import './ag-lib-tabbar.js';
 
 const PAGE = path.join(
@@ -25,12 +29,8 @@ const PAGE = path.join(
 );
 
 /**
- * Mount a bar on a given tab.
- *
- * The stub lives on Element.prototype rather than on the buttons: the first render
- * already counts as a tab change, so a per-element stub installed after mounting
- * arrives too late and the component calls a method jsdom does not implement.
- * Calls made while mounting are cleared, so each test starts from zero.
+ * Mount a bar on a given tab. Calls made while mounting are cleared, so each
+ * test starts from zero.
  *
  * @param {string} tab - The tab to start on.
  * @returns {Promise<HTMLElement>} the mounted element
@@ -40,7 +40,7 @@ async function mount(tab = 'browse') {
     el.tab = tab;
     document.body.appendChild(el);
     await el.updateComplete;
-    Element.prototype.scrollIntoView.mockClear();
+    keepInView.mockClear();
     return el;
 }
 
@@ -49,7 +49,7 @@ describe('ag-lib-tabbar', () => {
 
     beforeEach(() => {
         document.body.innerHTML = '';
-        Element.prototype.scrollIntoView = vi.fn();
+        keepInView.mockClear();
     });
     afterEach(() => { el?.remove(); });
 
@@ -83,26 +83,41 @@ describe('ag-lib-tabbar', () => {
         expect(seen).toEqual(['radio', 'radio']);
     });
 
-    it('scrolls the newly active tab into view without moving the page', async () => {
+    it('keeps the newly active tab in view, animated after the first render', async () => {
         el = await mount('browse');
         el.tab = 'radio';
         await el.updateComplete;
 
         const active = el.querySelector('.lib-tab.on');
-        expect(active.scrollIntoView).toHaveBeenCalledTimes(1);
-        expect(active.scrollIntoView).toHaveBeenCalledWith(
-            expect.objectContaining({ inline: 'center', block: 'nearest' }),
-        );
+        expect(keepInView).toHaveBeenCalledTimes(1);
+        expect(keepInView).toHaveBeenCalledWith(active, { first: false });
     });
 
     it('does not scroll when a re-render is not a tab change', async () => {
         el = await mount('browse');
-        const active = el.querySelector('.lib-tab.on');
-
         el.requestUpdate();
         await el.updateComplete;
+        expect(keepInView).not.toHaveBeenCalled();
+    });
 
-        expect(active.scrollIntoView).not.toHaveBeenCalled();
+    it('syncScroll repositions instantly — for a bar that just became visible', async () => {
+        // The page renders one bar per view inside display:none containers, and
+        // several views share a highlighted tab: switching between them changes
+        // no attribute, and a scroll run while display:none had no layout box.
+        // The page calls syncScroll on every view switch to repair that.
+        el = await mount('radio');
+        el.syncScroll();
+        expect(keepInView).toHaveBeenCalledWith(
+            el.querySelector('.lib-tab.on'), { first: true },
+        );
+    });
+
+    it('is wired: the page resyncs the visible bar on every view switch', () => {
+        // Source-level, like the flex assertion below: no jsdom test can see a
+        // display:none bar fail to position itself.
+        const page = fs.readFileSync(PAGE, 'utf8');
+        expect(page).toMatch(/changed\.has\('_view'\)/);
+        expect(page).toMatch(/\.lib-view\.active ag-lib-tabbar.*syncScroll/);
     });
 
     /**
@@ -126,18 +141,4 @@ describe('ag-lib-tabbar', () => {
         expect(nav[1]).toMatch(/min-width:\s*0/);
     });
 
-    it('skips the smooth scroll when animations are turned off', async () => {
-        document.body.classList.add('no-animations');
-        try {
-            el = await mount('browse');
-            el.tab = 'library';
-            await el.updateComplete;
-            const active = el.querySelector('.lib-tab.on');
-            expect(active.scrollIntoView).toHaveBeenCalledWith(
-                expect.objectContaining({ behavior: 'auto' }),
-            );
-        } finally {
-            document.body.classList.remove('no-animations');
-        }
-    });
 });

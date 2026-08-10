@@ -507,11 +507,11 @@ class AgHqplayerOutput extends LitElement {
                 <div class="lib-hqp-field" data-field="volume">
                     <label class="lib-hqp-label">
                         Volume
-                        <span class="lib-hqp-vol-val">${this._status?.volume_db ?? 0} dB</span>
+                        <span class="lib-hqp-vol-val">${Number(this._status?.volume_db ?? 0).toFixed(1)} dB</span>
                     </label>
                     <input class="lib-hqp-slider" type="range"
-                           min="-60" max="0" step="0.5"
-                           .value=${String(this._status?.volume_db ?? 0)}
+                           min="-60" max="0" step="0.1"
+                           .value=${Number(this._status?.volume_db ?? 0).toFixed(1)}
                            aria-label="HQPlayer volume"
                            @change=${this._setVolume}
                     />

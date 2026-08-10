@@ -355,3 +355,38 @@ describe('AgHqplayerOutput._toggleOutput — one write at a time', () => {
         expect(apiPut).toHaveBeenCalledTimes(2);
     });
 });
+
+describe('AgHqplayerOutput._renderDsp — volume label', () => {
+    /**
+     * Flatten a mocked-lit template tree into the list of its interpolated
+     * values, so an assertion can look at what the template would print.
+     */
+    function flatValues(tpl, out = []) {
+        if (tpl == null) return out;
+        if (Array.isArray(tpl)) { tpl.forEach(t => flatValues(t, out)); return out; }
+        if (typeof tpl === 'object' && tpl.values) { tpl.values.forEach(v => flatValues(v, out)); return out; }
+        out.push(tpl);
+        return out;
+    }
+
+    it('prints the volume rounded to the slider step, not the float32 artifact', () => {
+        // HQPlayer stores the volume in single precision; -13.8 widened to a
+        // double through the XML path comes back as -13.800000190734863, and
+        // the label used to print it raw. The slider moves in 0.5 dB steps, so
+        // one decimal is the honest display.
+        const el = Object.create(AgHqplayerOutput.prototype);
+        el._status = { volume_db: -13.800000190734863 };
+        el._filters = []; el._shapers = []; el._modes = [];
+
+        const values = flatValues(el._renderDsp()).map(String);
+        expect(values).toContain('-13.8');
+        expect(values.join('|')).not.toContain('0.190734863');
+    });
+
+    it('shows 0.0 dB when the status has no volume yet', () => {
+        const el = Object.create(AgHqplayerOutput.prototype);
+        el._status = null;
+        el._filters = []; el._shapers = []; el._modes = [];
+        expect(flatValues(el._renderDsp()).map(String)).toContain('0.0');
+    });
+});

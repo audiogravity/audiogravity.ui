@@ -628,6 +628,24 @@ export class AgLibraryPage extends LitElement {
         return html`<div class="lib-context"><span class="lib-live">${label}</span></div>`;
     }
 
+    /**
+     * After a view switch, reposition the tab bar that just became visible.
+     *
+     * Each view carries its own bar; the one that was display:none until now
+     * could not lay out, so any keep-in-view scroll it ran was a silent no-op —
+     * and when the old and new views share a highlighted tab (outputs/library,
+     * artist-roon-upnp/browse) the bar's own updated() has no attribute change
+     * to react to. Without this, the bar of the view you just entered can sit
+     * scrolled to its far left with the highlighted tab clipped off-screen.
+     *
+     * @param {Map<string, unknown>} changed - Lit's changed-properties map.
+     * @returns {void}
+     */
+    updated(changed) {
+        if (!changed.has('_view')) return;
+        this.querySelector('.lib-view.active ag-lib-tabbar')?.syncScroll?.();
+    }
+
     render() {
         const { _view, _sourceId, _zoneId, _zoneDisplayName } = this;
 

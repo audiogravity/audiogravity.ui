@@ -50,6 +50,24 @@ export class AgLibTabbar extends LitElement {
     }
 
     /**
+     * Bring the active tab into view instantly — for when the BAR just became
+     * visible, not the tab just changed.
+     *
+     * The library page renders one bar per view inside display:none containers,
+     * and several views share a highlighted tab (outputs shows Library; the
+     * artist, Roon and UPnP browsers show Browse). Switching between them
+     * changes no `tab` attribute, so updated() never fires — and any scroll
+     * that ran while the bar was display:none had no layout box and silently
+     * did nothing. The page calls this on every view switch; instant, because
+     * positioning a bar that just appeared is not feedback to animate.
+     *
+     * @returns {void}
+     */
+    syncScroll() {
+        keepInView(this.querySelector('.lib-tab.on'), { first: true });
+    }
+
+    /**
      * Announce the tap, whether or not it lands on the tab already highlighted.
      *
      * It used to return early when the key matched, which looked like sensible

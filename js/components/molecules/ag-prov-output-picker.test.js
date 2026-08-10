@@ -11,7 +11,7 @@ vi.mock('lit', () => ({
 }));
 vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({
-    iconConnectorUsbA: '', iconHardDrive: '', iconRadio: '', iconCircle: '', iconStar: '',
+    iconConnectorUsbA: '', iconHardDrive: '', iconCircleDot: '', iconCircle: '', iconStar: '',
 }));
 
 import { AgProvOutputPicker } from './ag-prov-output-picker.js';
