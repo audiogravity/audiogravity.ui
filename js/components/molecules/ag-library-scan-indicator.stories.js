@@ -25,7 +25,6 @@ export default {
 /** Force a given internal state on the element after it mounts. */
 const withState = (state) => {
     const el = document.createElement('ag-library-scan-indicator');
-    // eslint-disable-next-line no-underscore-dangle
     el._state = state;
     return el;
 };

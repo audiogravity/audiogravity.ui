@@ -30,6 +30,8 @@ Thumbs.db
 
 # Test coverage reports
 coverage/
+# `npm run test:report` — vitest's HTML reporter writes here
+html/
 
 *storybook.log
 storybook-static
