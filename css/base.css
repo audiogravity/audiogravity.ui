@@ -144,13 +144,20 @@ button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
    unchanged.
 
    An inline `style` attribute outranks this rule whatever its specificity —
-   form controls must take their font-size from a class, never from `style=`. */
+   form controls must take their font-size from a class, never from `style=`.
+
+   `select` is deliberately NOT in this list, and putting it back is a regression.
+   It was here from the start on the assumption that every form control zooms, and
+   that was never checked: measured on an iPhone, a select declared at a plain 13px
+   takes focus WITHOUT zooming, because it opens a picker wheel and not a keyboard.
+   Forcing it to 16px only broke its size — worst on the HQPlayer DSP card, where
+   11px lists sat next to 10px labels and were painted 34% too large. Lists now keep
+   the size their component declares. */
 @media (pointer: coarse) {
     /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
        intentional: it raises specificity to (0,3,1) so this wins the (0,1,1) tie.
        The list form :not(a, b, c) would collapse back to (0,1,1) and re-break it. */
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-    select,
     textarea {
         /* rule 12 exception — 16px here is a Safari constant, not a step: iOS zooms the
            page in when a field smaller than that takes focus and does not zoom back out.
@@ -158,6 +165,39 @@ button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
            as --font-size-lg — the same rendered value, but a step someone could then
            "tidy" into the scale. */
         font-size: 16px;
+
+        /* ...and this draws that 16px field back down to the 13px of its own label.
+           Safari's zoom heuristic reads the DECLARED font-size, not the size finally
+           painted — verified on an iPhone: a field declared at 16px and drawn at
+           13.00px takes focus without zooming, while a plain 13px field zooms. So the
+           declaration above keeps the zoom disarmed and this one restores the size the
+           form was designed at.
+
+           Where 0.4435 comes from — font-size-adjust sets the ratio x-height/font-size,
+           so used_size = declared * adjust / (the face's own ratio). Inter measured on
+           device at 0.546, and 0.546 * 13/16 = 0.4435. The number is therefore tied to
+           BOTH Inter's metrics and the 13px --font-size-sm the labels use; changing
+           either without recomputing it silently resizes every field in the app.
+
+           rule 12 exception — a ratio, not a step: it cannot be expressed on the scale.
+
+           Degrades safely. Safari ignores the property before 16.4 and Chrome before
+           127; the field then stays at 16px, which is exactly the behaviour shipped
+           until now — bigger than its label, but never zooming. The anti-zoom
+           guarantee never depends on this line.
+
+           Bonus, and the reason the property exists: should Inter fail to load, the
+           fallback face is drawn at the same x-height rather than at its own. */
+        font-size-adjust: 0.4435;
+    }
+
+    /* Compact mode pulls --font-size-sm down to 12px (themes.css), so the labels move
+       and the fields have to follow: 0.4435 * 12/13. Without this the pair drifts
+       apart again for anyone who turns the setting on. */
+    /* stylelint-disable-next-line selector-not-notation -- same (0,3,1) reason as above. */
+    body.compact-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    body.compact-mode textarea {
+        font-size-adjust: 0.4094;
     }
 }
 

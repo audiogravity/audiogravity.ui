@@ -101,3 +101,89 @@ describe('mobile anti-zoom contract', () => {
         );
     });
 });
+
+/**
+ * Inter's own x-height / font-size ratio, measured on an iPhone against the very
+ * file the app ships (fonts/inter-latin.woff2). It is the divisor in
+ * `used_size = declared * adjust / ratio`, so it is what ties the adjust values in
+ * base.css to a size in pixels. Re-measure it if the font file is ever swapped.
+ */
+const INTER_X_HEIGHT_RATIO = 0.546;
+
+/** The declared size the fields keep, so that Safari never zooms. @type {number} */
+const DECLARED_PX = 16;
+
+/**
+ * Read a font-size token off a CSS custom-property declaration.
+ * @param {string} src - Stylesheet contents.
+ * @param {string} name - Token name, e.g. '--font-size-sm'.
+ * @param {number} [nth=0] - Which occurrence: 0 is :root, later ones are overrides.
+ * @returns {number} the value in px
+ */
+function tokenPx(src, name, nth = 0) {
+    const hits = [...src.matchAll(new RegExp(`${name}:\\s*(\\d+(?:\\.\\d+)?)px`, 'g'))];
+    if (!hits[nth]) throw new Error(`${name} occurrence ${nth} not found`);
+    return Number(hits[nth][1]);
+}
+
+/**
+ * Read the `font-size-adjust` values declared inside the coarse-pointer block.
+ * @param {string} base - base.css contents.
+ * @returns {number[]} values in source order: default first, compact-mode second
+ */
+function adjustValues(base) {
+    const block = base.slice(base.indexOf('@media (pointer: coarse)'));
+    return [...block.matchAll(/font-size-adjust:\s*(\d*\.\d+)/g)].map((m) => Number(m[1]));
+}
+
+/**
+ * The field is declared at 16px so Safari leaves the page alone, then drawn back down
+ * to the size of its own label. Safari's heuristic reads the declared size, not the
+ * painted one — confirmed on device: declared 16px / painted 13.00px takes focus
+ * without zooming, a plain 13px field zooms.
+ *
+ * These guards exist because the two numbers in base.css are derived, not chosen:
+ * they encode Inter's metrics AND the label step. Editing --font-size-sm, or the font
+ * file, without recomputing them would resize every field in the app and nothing on
+ * screen would say why.
+ */
+describe('field size tracks its label on touch', () => {
+    const base = fs.readFileSync(path.join(CSS_ROOT, 'base.css'), 'utf8');
+    const themes = fs.readFileSync(path.join(CSS_ROOT, 'themes.css'), 'utf8');
+
+    it('draws the field at the label step rather than leaving it at 16px', () => {
+        const [adjust] = adjustValues(base);
+        expect(adjust).toBeDefined();
+
+        const painted = (DECLARED_PX * adjust) / INTER_X_HEIGHT_RATIO;
+        // --font-size-sm is what every form label in the app uses.
+        expect(painted).toBeCloseTo(tokenPx(themes, '--font-size-sm'), 1);
+    });
+
+    it('follows the label down when compact mode shrinks the scale', () => {
+        const [, compact] = adjustValues(base);
+        expect(compact).toBeDefined();
+
+        const painted = (DECLARED_PX * compact) / INTER_X_HEIGHT_RATIO;
+        // Second occurrence: the body.compact-mode override in themes.css.
+        expect(painted).toBeCloseTo(tokenPx(themes, '--font-size-sm', 1), 1);
+    });
+
+    it('leaves dropdowns out of the anti-zoom rule entirely', () => {
+        // Measured on an iPhone: a select declared at a plain 13px takes focus
+        // without zooming — it opens a picker wheel, not a keyboard. Forcing it to
+        // 16px only broke its size, worst on the HQPlayer DSP card where 11px lists
+        // sat next to 10px labels. Re-adding `select` here would bring that back.
+        const block = base.slice(base.indexOf('@media (pointer: coarse)'));
+        expect(block).not.toMatch(/^\s*select\s*,?\s*$/m);
+        expect(block).not.toMatch(/body\.compact-mode select/);
+    });
+
+    it('never lets the drawn size reach the 16px the declaration claims', () => {
+        // A value that cancelled the shrink would silently restore the mismatch the
+        // whole rule exists to remove, while still passing a "does it zoom" check.
+        for (const adjust of adjustValues(base)) {
+            expect((DECLARED_PX * adjust) / INTER_X_HEIGHT_RATIO).toBeLessThan(DECLARED_PX);
+        }
+    });
+});
