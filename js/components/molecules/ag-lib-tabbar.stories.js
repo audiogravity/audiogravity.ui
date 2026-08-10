@@ -6,7 +6,7 @@ export default {
     argTypes: {
         tab: {
             control: { type: 'select' },
-            options: ['browse', 'search', 'queue', 'library'],
+            options: ['browse', 'search', 'queue', 'library', 'radio'],
         },
     },
 };
@@ -31,3 +31,6 @@ Queue.args = { tab: 'queue' };
 
 export const Library = Template.bind({});
 Library.args = { tab: 'library' };
+
+export const Radio = Template.bind({});
+Radio.args = { tab: 'radio' };

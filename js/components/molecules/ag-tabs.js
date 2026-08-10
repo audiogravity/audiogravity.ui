@@ -14,6 +14,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
+import { keepInView } from '../../core/keep-in-view.js';
 import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload, iconManual } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
@@ -279,19 +280,10 @@ export class AgTabs extends LitElement {
             const tabId = this.activeTab;
             if (!tabId) return;
 
-            // Use 'auto' (instant) for the very first scroll, then 'smooth'
-            const behavior = this._hasScrolled ? 'smooth' : 'auto';
+            const first = !this._hasScrolled;
             this._hasScrolled = true;
-            
             this.updateComplete.then(() => {
-                const btn = this.querySelector(`[data-tab="${tabId}"]`);
-                if (btn) {
-                    btn.scrollIntoView({ 
-                        behavior: behavior, 
-                        block: 'nearest', 
-                        inline: 'center' 
-                    });
-                }
+                keepInView(this.querySelector(`[data-tab="${tabId}"]`), { first });
             });
         }
     }

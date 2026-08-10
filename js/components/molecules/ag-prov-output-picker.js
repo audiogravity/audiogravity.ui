@@ -19,7 +19,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { svgIcon } from '../utils-lit.js';
-import { iconConnectorUsbA, iconHardDrive, iconRadio, iconCircle, iconStar } from '../../ag-icons.js';
+import { iconConnectorUsbA, iconHardDrive, iconCircleDot, iconCircle, iconStar } from '../../ag-icons.js';
 
 export class AgProvOutputPicker extends LitElement {
     static properties = {
@@ -59,7 +59,7 @@ export class AgProvOutputPicker extends LitElement {
         const selected = o.hw === this.selected;
         return html`
             <button class="ag-prov-card ${selected ? 'selected' : ''}" @click=${() => this._select(o)}>
-                ${svgIcon(selected ? iconRadio : iconCircle)}
+                ${svgIcon(selected ? iconCircleDot : iconCircle)}
                 <span class="ag-prov-card-icon">${svgIcon(o.is_usb_dac ? iconConnectorUsbA : iconHardDrive)}</span>
                 <span class="ag-prov-card-label">${o.label}</span>
                 ${o.recommended

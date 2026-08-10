@@ -96,13 +96,20 @@ export const iconFolder = svg`
 export const iconLibrary = svg`
     <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`;
 
-/** Concentric broadcast arcs with centre dot — radio. (Lucide: radio) */
+/**
+ * A radio set — internet radio. (Lucide: radio-receiver)
+ *
+ * Was Lucide `radio`, four concentric arcs around a dot. The library already holds
+ * two icons built from that same vocabulary — `iconWifi` and `iconCast` — so the
+ * three competed, worst at the 10px the origin badge uses. A receiver is an object
+ * rather than a wave: no arcs, four elements, and a wide silhouette that stands out
+ * among the squares and circles it sits with in the library tab bar.
+ */
 export const iconRadio = svg`
-    <path d="M16.247 7.761a6 6 0 0 1 0 8.478"/>
-    <path d="M19.075 4.933a10 10 0 0 1 0 14.134"/>
-    <path d="M4.925 19.067a10 10 0 0 1 0-14.134"/>
-    <path d="M7.753 16.239a6 6 0 0 1 0-8.478"/>
-    <circle cx="12" cy="12" r="2"/>`;
+    <path d="M5 16v2"/>
+    <path d="M19 16v2"/>
+    <rect width="20" height="8" x="2" y="8" rx="2"/>
+    <path d="M18 12h.01"/>`;
 
 /** Play triangle + bar — "up next" / "skip-to" indicator. (Lucide: skip-forward) */
 export const iconUpNext = svg`
@@ -452,6 +459,19 @@ export const iconCheckCircle = svg`
 
 /** Empty circle — placeholder / not-installed state. (Lucide: circle) */
 export const iconCircle = svg`<circle cx="12" cy="12" r="10"/>`;
+
+/**
+ * Circle with a centre dot — the SELECTED half of a radio-button pair, opposite
+ * `iconCircle`. (Lucide: circle-dot)
+ *
+ * The pickers used `iconRadio` for this, which was a pun on the word rather than a
+ * meaning: a radio button is a form control, not a broadcast. It went unnoticed
+ * while `iconRadio` happened to be a dot inside arcs; it stopped being invisible
+ * the moment that icon became a radio set.
+ */
+export const iconCircleDot = svg`
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="1"/>`;
 
 /** Radial lines — loading spinner (apply CSS rotate animation). (Lucide: loader) */
 export const iconSpinner = svg`

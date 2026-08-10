@@ -61,12 +61,60 @@ const LIB_STYLES = `
     border-bottom: 1px solid var(--border-color);
     min-height: 44px;
 }
-.lib-nav { display: flex; align-items: center; flex: 1; min-width: 0; }
 
+/* 32px of gutter on each side is a sixth of a 390px phone, spent before a single tab
+   is drawn. It is a desktop measure that was never revisited for the screen this page
+   is used from most. The content below keeps its own 20px, so the bar and the covers
+   still share an edge. */
 @media (max-width: 640px) {
-    .lib-nav .lib-tab span { display: none; }
-    .lib-nav .lib-tab { padding: 6px 14px; }
+    .lib-topbar { padding: 4px 12px; }
 }
+/* The component renders into the light DOM, so the element that .lib-topbar actually
+   lays out is <ag-lib-tabbar>, not .lib-nav inside it. It therefore has to carry the
+   flex properties itself.
+
+   This is what made the first attempt at a scrolling bar do nothing at all: flex and
+   "min-width: 0" were put on .lib-nav, whose parent is the custom element and not a
+   flex container, so both were inert. The element kept its content width, .lib-nav was
+   never squeezed, scrollWidth stayed equal to clientWidth — and an overflow-x that
+   never overflows has nothing to scroll. Nothing in the page reports a rule that
+   applies to the wrong box. */
+ag-lib-tabbar {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
+/* "min-width: 0" again, and for the same reason one level down — a flex item refuses to
+   go below its content width without it. Sideways scrolling is the last resort when the
+   five labelled tabs outgrow the bar, or a long source name eats their room: a bar that
+   has run out of space should still be reachable, which is the answer the licence
+   server's header uses too.
+
+   The scrollbar is hidden rather than styled: it would sit across the labels on a bar
+   this short, and the overflow is discovered by dragging, as on any tab strip. The
+   global tab-swipe (js/gestures.js) yields to this element on its own — it walks up
+   from the touch looking for an ancestor that scrolls sideways AND actually overflows,
+   so the drag scrolls the bar here and still switches app tabs when the bar fits. */
+.lib-nav {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    /* Spelled out rather than left to the browser: a box that scrolls on one axis and is
+       "visible" on the other has that visible silently computed to auto, so the bar would
+       have gained a vertical scrollbar nobody asked for. */
+    overflow-y: hidden;
+    scrollbar-width: none;
+    /* Room for the focus ring inside the clip, taken straight back off the outside so the
+       bar keeps its height. Without it a scroll container crops the 3px outline (2px
+       offset) the app draws on a focused tab — and that ring is the only thing telling a
+       keyboard user where they are. */
+    padding-block: 5px;
+    margin-block: -5px;
+}
+.lib-nav::-webkit-scrollbar { display: none; }
 .lib-topbar-right {
     display: flex;
     align-items: center;
@@ -74,6 +122,31 @@ const LIB_STYLES = `
     color: var(--text-secondary);
     flex-shrink: 0;
 }
+
+/* The bar's actions, named like its tabs.
+
+   They were bare glyphs with only a title attribute, which read as an unlabelled tab
+   from the moment the tabs themselves grew labels — a hole where a word should be.
+   They take the tabs' geometry so the row reads as one, and a hairline keeps them from
+   being mistaken for a sixth destination: these DO something, they do not take you
+   somewhere. The rule 12 exception of .lib-tab covers them for the same measured
+   reason — this bar is set in sentence case throughout. */
+.lib-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    background: transparent;
+    border: 0;
+    border-left: 1px solid var(--border-color);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.lib-action svg { width: 22px; height: 22px; flex-shrink: 0; }
 .lib-topbar-right svg {
     width: 22px; height: 22px;
     stroke: currentColor; fill: none;
@@ -107,17 +180,46 @@ body.no-animations .lib-live::before { box-shadow: none; animation: none; }
 .lib-body { display: block; }
 .lib-scroll { display: block; }
 
+/* The source, named above the content it describes rather than in the navigation.
+   It used to sit in the top bar, where "LOCAL LIBRARY" is 140px of bold uppercase
+   competing with five tabs for the width of a phone — which is why the bar overflowed
+   on every screen. It also reads better here: it says what you are LOOKING AT, so it
+   belongs with the covers, not with the controls that take you elsewhere.
+   Left padding matches .lib-filters so the source and the pills share an edge. */
+.lib-context {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px 0;
+}
+.lib-context:empty { display: none; }
+
 /* ag-lib-tabbar inner-nav tabs */
+/* Label under the icon, and shown on a phone as well — where it used to be hidden
+   outright, leaving five unlabelled glyphs on the surface people browse from most.
+   Stacking is what buys the room: side by side, the five tabs are wider than the bar.
+
+   Sentence case, and that IS a deliberate exception to the rule that a short label is
+   set in capitals — noted here rather than left to be "tidied" later. It is what makes
+   the labels fit at all: measured against Inter's own metrics, the five labels in
+   capitals with the 0.08em tracking come to 313px, where sentence case comes to 275px.
+   The tracking and the capitals alone cost 38px. It also happens to be the right
+   register: this is a tab bar people navigate with a thumb, not a column heading in a
+   console.
+
+   Set at xs, not xxs. These labels are READ — they are the whole of the navigation on a
+   phone since the rule that hid them was removed — and xxs is reserved for what is
+   identified at a glance: a badge, a unit, a format tag. They only fit at xs because two
+   other things were fixed: the source badge left this bar for the content, and the bar
+   stopped spending 64px of a 390px screen on its own gutter. 366px of bar, less 80px for
+   the action, leaves 286px for 275px of labels. */
 .lib-tab {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     padding: 6px 10px;
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     background: transparent;
     border: 0;
@@ -509,6 +611,23 @@ export class AgLibraryPage extends LitElement {
     }
 
 
+    /**
+     * The line that names the source above the content it describes.
+     *
+     * One helper rather than the four pasted copies this started as: two of them were
+     * conditional and two were not, and the unconditional pair drew the pulsing green
+     * dot with no word beside it whenever the label was empty — `.lib-context:empty`
+     * cannot catch that, since the element holds a child and is therefore not empty.
+     * The emptiness that matters is the LABEL's, so it is decided here.
+     *
+     * @param {string} label - Source name, e.g. "Local library". Falsy renders nothing.
+     * @returns {import('lit').TemplateResult | typeof nothing}
+     */
+    _contextLine(label) {
+        if (!label) return nothing;
+        return html`<div class="lib-context"><span class="lib-live">${label}</span></div>`;
+    }
+
     render() {
         const { _view, _sourceId, _zoneId, _zoneDisplayName } = this;
 
@@ -568,22 +687,30 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
-                            ${_sourceId ? html`<span class="lib-live">${srcLabel}</span>` : nothing}
                             ${this._isRoon(_sourceId) ? html`
-                                <svg viewBox="0 0 24 24" @click=${() => this._navigate('roon-browser')} title="Browse Roon"
-                                     stroke-linecap="round">
-                                    ${iconQueue}
-                                </svg>
+                                <button class="lib-action" @click=${() => this._navigate('roon-browser')}
+                                        title="Browse Roon" aria-label="Browse Roon">
+                                    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+                                         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                        ${iconQueue}
+                                    </svg>
+                                    <span>Roon</span>
+                                </button>
                             ` : html`
-                                <svg viewBox="0 0 24 24" @click=${() => this._refreshBrowse()} title="Refresh library"
-                                     style="cursor:pointer">
-                                    ${iconRefresh}
-                                </svg>
+                                <button class="lib-action" @click=${() => this._refreshBrowse()}
+                                        title="Refresh library" aria-label="Refresh library">
+                                    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+                                         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                        ${iconRefresh}
+                                    </svg>
+                                    <span>Refresh</span>
+                                </button>
                             `}
                         </div>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
+                            ${this._contextLine(srcLabel)}
                             <ag-library-browse
                                 source-id=${this._isUpnp(_sourceId) ? '' : _sourceId}
                                 zone-id=${_zoneId}
@@ -596,14 +723,12 @@ export class AgLibraryPage extends LitElement {
                 <div class="lib-view ${isArtist ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
-                        <div class="lib-topbar-right">
-                            ${_sourceId ? html`<span class="lib-live">${srcLabel}</span>` : nothing}
-                        </div>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
                             ${isArtist ? html`
-                                <ag-library-browse
+                                ${this._contextLine(srcLabel)}
+                            <ag-library-browse
                                     source-id=${_sourceId}
                                     zone-id=${_zoneId}
                                     artist-id=${this._artistId}
@@ -655,9 +780,14 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
-                            <svg viewBox="0 0 24 24" @click=${() => this._navigate('outputs')} title="Outputs">
-                                ${iconOutput}
-                            </svg>
+                            <button class="lib-action" @click=${() => this._navigate('outputs')}
+                                    title="Outputs" aria-label="Outputs">
+                                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+                                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                    ${iconOutput}
+                                </svg>
+                                <span>Outputs</span>
+                            </button>
                         </div>
                     </div>
                     <div class="lib-body">
@@ -676,9 +806,14 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
-                            <svg viewBox="0 0 24 24" @click=${() => this._navigate('library')}>
-                                ${iconBack}
-                            </svg>
+                            <button class="lib-action" @click=${() => this._navigate('library')}
+                                    title="Back to library" aria-label="Back to library">
+                                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+                                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                    ${iconBack}
+                                </svg>
+                                <span>Back</span>
+                            </button>
                         </div>
                     </div>
                     <div class="lib-body">
@@ -694,12 +829,10 @@ export class AgLibraryPage extends LitElement {
                 <div class="lib-view ${isRoonBrow ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
-                        <div class="lib-topbar-right">
-                            <span class="lib-live">${srcLabel}</span>
-                        </div>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
+                            ${this._contextLine(srcLabel)}
                             <ag-library-roon-browser
                                 source-id=${_sourceId}
                                 zone-id=${_zoneId}
@@ -713,12 +846,10 @@ export class AgLibraryPage extends LitElement {
                 <div class="lib-view ${isUpnpBrow ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
-                        <div class="lib-topbar-right">
-                            <span class="lib-live">${this._upnpName || 'UPnP'}</span>
-                        </div>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
+                            ${this._contextLine(this._upnpName || 'UPnP')}
                             <ag-library-upnp-browser
                                 location=${this._upnpLocation}
                                 server-name=${this._upnpName}

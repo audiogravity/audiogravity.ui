@@ -25,7 +25,7 @@
  */
 import { LitElement, html } from 'lit';
 import { svgIcon } from '../utils-lit.js';
-import { iconHardDrive, iconWifi, iconFolder, iconRadio, iconCircle } from '../../ag-icons.js';
+import { iconHardDrive, iconWifi, iconFolder, iconCircleDot, iconCircle } from '../../ag-icons.js';
 import './ag-network-mount-form.js';
 
 const NETWORK_FS = ['cifs', 'nfs', 'nfs4', 'smb3'];
@@ -157,7 +157,7 @@ export class AgProvLibraryPicker extends LitElement {
         return html`
             <button class="ag-prov-card ${selected ? 'selected' : ''}"
                     @click=${() => this._emit(key, this.manualPath)}>
-                ${svgIcon(selected ? iconRadio : iconCircle)}
+                ${svgIcon(selected ? iconCircleDot : iconCircle)}
                 <span class="ag-prov-card-icon">${svgIcon(this._icon(s))}</span>
                 <span class="ag-prov-card-label">${s.label}</span>
                 <span class="badge neutral">${tag}</span>
@@ -169,7 +169,7 @@ export class AgProvLibraryPicker extends LitElement {
         return html`
             <div class="ag-prov-card ${selected ? 'selected' : ''} ag-prov-manual">
                 <button class="ag-prov-manual-radio" @click=${() => this._emit('manual', this.manualPath)}>
-                    ${svgIcon(selected ? iconRadio : iconCircle)}
+                    ${svgIcon(selected ? iconCircleDot : iconCircle)}
                     <span class="ag-prov-card-icon">${svgIcon(iconFolder)}</span>
                     <span class="ag-prov-card-label">Manual path</span>
                 </button>
