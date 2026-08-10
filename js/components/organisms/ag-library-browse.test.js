@@ -10,6 +10,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('lit', () => ({
     LitElement: class {},
     html: (strings, ...values) => ({ strings, values }),
+    // `svg` as well: the component now reads ROON_IDS from library-constants.js, which
+    // pulls ag-icons.js into this graph, and the icons are built with the svg tag.
+    svg: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
 const apiGetMock = vi.fn();
