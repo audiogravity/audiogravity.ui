@@ -18,6 +18,7 @@ import { apiGet } from '../../api.js';
 import { coverUrl, fmtDuration, loadWithState } from '../utils-lit.js';
 import { queueSourceLabel, originLabel } from '../library-constants.js';
 import { removeQueueItem } from '../../library-api.js';
+import { showToast } from '../../ui-helpers.js';
 import { iconPause, iconDragHandle, iconArrowLeft } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
@@ -140,7 +141,13 @@ export class AgLibraryQueue extends LitElement {
             await removeQueueItem(this.sourceId, queueId);
             await this._load();
         } catch (e) {
+            // The backend now refuses truthfully (503 with MPD's reason, e.g.
+            // the id is no longer in the queue) — relay it like every other
+            // queue action instead of a console line nobody sees; the reload
+            // re-syncs the list with what MPD actually holds.
             console.error('[queue] remove failed:', e);
+            showToast('error', 'Remove failed', e?.message || 'Could not remove the track');
+            await this._load();
         }
     }
 
@@ -151,10 +158,23 @@ export class AgLibraryQueue extends LitElement {
         // (deleteid) is reindex-safe, so order doesn't matter.
         const upNext = (this._queue?.items ?? []).filter(i => !i.is_current);
         const { shownNext } = this._filterView(upNext);
+        // Per-item failures don't abort the sweep (the rest must still clear);
+        // they are summarised in ONE toast — the reload shows the survivors,
+        // the toast says why they survived.
+        let failed = 0;
+        let lastReason = null;
         for (const item of shownNext) {
             try {
                 await removeQueueItem(this.sourceId, item.queue_id);
-            } catch (_) { /* ignore individual failures */ }
+            } catch (e) {
+                failed += 1;
+                lastReason = e?.message || null;
+            }
+        }
+        if (failed > 0) {
+            showToast('error', 'Clear incomplete',
+                `${failed} track${failed > 1 ? 's' : ''} could not be removed`
+                + (lastReason ? ` — ${lastReason}` : ''));
         }
         await this._load();
     }

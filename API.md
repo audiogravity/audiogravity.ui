@@ -102,7 +102,10 @@ resolve their destination the same way, and answer with the same statuses:
 
 `/radio/play`, `POST /radio/library` and `POST /radio/favorites` all resolve the station
 first, and all three answer **503** when that resolution fails because the Radio Browser
-catalogue is unreachable or is rate-limiting the box — the detail carries the reason. They
+catalogue is unreachable or is rate-limiting the box — the detail carries the reason.
+`/radio/play` also answers **503 with MPD's reason** when MPD refuses the station itself
+(malformed URL, MPD saturated) — it used to report the station as playing while nothing
+had started. They
 used to answer **404 "station not found"**, which blamed the station for an outage
 elsewhere; a 404 now means the catalogue answered and does not know that UUID. A station
 already saved on the box, or added by hand, resolves without the network and is unaffected.
@@ -172,7 +175,19 @@ an error. **`?limit=<n>`** returns the current track plus up to `n` following it
 
 **Removing from the queue** — `DELETE /library/queue/{queue_id}?source_id=…`, keyed on
 the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not
-on its position.
+on its position. A removal MPD refuses (the id is no longer in the queue) — or cannot
+take because MPD is unreachable — answers **503 carrying the reason** — it used to answer
+`ok:true` and the ghost row reappeared on the next refresh with no explanation.
+
+**Queue writes tell the truth** — every MPD write behind `POST /library/queue`,
+`/library/upnp-play` and `POST /radio/play` now reads MPD's verdict: a refused add or
+play answers **503 with MPD's reason** instead of the old unconditional `ok:true` over a
+queue that never changed. Two deliberate exceptions: a **partial** stream enqueue (the
+list aborted midway) still answers `ok:true` with `tracks` set to the count actually
+queued — the queue did change, and hiding that behind an error would lie the other way —
+and the metadata tags written after a stream enqueue are cosmetic, so their refusal never
+fails an enqueue that succeeded (queue rows may show URLs instead of titles; the reason is
+logged).
 
 ### UPnP Renderer — `/upnp-renderer/*`
 
