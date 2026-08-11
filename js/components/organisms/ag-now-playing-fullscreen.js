@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -525,7 +525,16 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     async _control(action, value) {
         if (!_ALLOWED_ACTIONS.has(action)) return;
+        let toggleAnchor;
         if (action === 'toggle' && this._state) {
+            // Pre-flip anchor: a refusal (503 — the transport state did not
+            // change) restores it instantly instead of showing a paused icon
+            // over music that never stopped.
+            toggleAnchor = {
+                playing: this._state.playing,
+                playback_status: this._state.playback_status,
+                title: this._state.title ?? null,
+            };
             this._state = { ...this._state,
                 playing: !this._state.playing,
                 playback_status: !this._state.playing ? 'Playing' : 'Paused',
@@ -534,7 +543,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         // Optimistic seek: move the progress bar to the target immediately so it
         // does not appear stuck until the backend confirms the new position
         // (renderer casts refresh their position out-of-band, ~a poll away).
+        let prevSeekElapsed;
         if (action === 'seek' && value !== undefined && this._state) {
+            // Snap-back anchor: a refusal restores this instantly instead of
+            // sitting on the phantom target for the guard's full window.
+            prevSeekElapsed = this._state.elapsed;
             this._state = { ...this._state, elapsed: value };
             // Remember the target: a state event emitted WHILE the seek is in
             // flight still carries the old position, and applying it made the
@@ -557,6 +570,23 @@ export class AgNowPlayingFullscreen extends LitElement {
             if (action === 'next' || action === 'prev') this._controlRecentTime = Date.now();
             await apiPost('/player/control', body);
         } catch (e) {
+            // A refused seek is truthful: 503 means the position did not move
+            // (API.md). Restore the anchor and drop the guard, so the state
+            // the backend publishes right after a refusal passes through
+            // unfiltered instead of being overridden for up to 3 s.
+            const rolled = seekRefusalRollback(
+                this._state, this._seekPending, prevSeekElapsed, e?.status,
+            );
+            if (action === 'seek' && rolled) {
+                this._state = rolled;
+                this._seekPending = null;
+                return;
+            }
+            const unflipped = toggleRefusalRollback(this._state, toggleAnchor, e?.status);
+            if (action === 'toggle' && unflipped) {
+                this._state = unflipped;
+                return;
+            }
             console.error('[npfs] control failed:', e);
         }
     }

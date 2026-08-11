@@ -345,8 +345,22 @@ export class AgNowPlaying extends LitElement {
             }
             if (item?.zone_id) body.zone_id = item.zone_id;
             if (item?.output_id) body.output_id = item.output_id;
-            await apiPost('/audio_pipeline/control', body);
-            this._controlRecentTime = Date.now();
+            const r = await apiPost('/audio_pipeline/control', body);
+            if (r?.success === false) {
+                // A refusal is truthful (see API.md): nothing changed on the
+                // device. Undo the optimistic flip silently — a control that
+                // visibly does not act is the honest message — and do NOT arm
+                // the transition guard: it suppresses incoming state for a
+                // moment, and the very next event carries the truth the bar
+                // and the icons need to settle on.
+                if (action === 'toggle' && item) {
+                    item.playback_status =
+                        item.playback_status === 'Playing' ? 'Paused' : 'Playing';
+                    this._items = [...this._items];
+                }
+            } else {
+                this._controlRecentTime = Date.now();
+            }
         } catch (_e) {
             // ignore
         }
