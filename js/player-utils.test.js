@@ -78,7 +78,7 @@ describe('isSelfManagedDriver', () => {
 // before it jumped forward, which reads as "the seek did not work" and prompts
 // the user to seek again.
 
-import { applySeekGuard, SEEK_GUARD_MS } from './player-utils.js';
+import { applySeekGuard, SEEK_GUARD_MS, seekRefusalRollback, toggleRefusalRollback } from './player-utils.js';
 
 describe('applySeekGuard', () => {
     const NOW = 1_000_000;
@@ -245,5 +245,64 @@ describe('isOutputUnreachable', () => {
         // "reached it, it said nothing" are different answers.
         expect(isOutputUnreachable({ outputs: [{ id: 'local', active: true }] })).toBe(false);
         expect(isOutputUnreachable({ outputs: [] })).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// seekRefusalRollback — a refused seek restores the honest position at once
+// ---------------------------------------------------------------------------
+// The backend answers 503 exactly when MPD declined and the position did not
+// move (API.md); leaving the optimistic target on screen for the guard's full
+// window reads as a frozen player.
+
+describe('seekRefusalRollback', () => {
+    const pending = { target: 120, at: 1000, title: 'Alice' };
+    const state = { title: 'Alice', elapsed: 120 };   // already moved optimistically
+
+    it('restores the pre-seek position on a 503 for the same track', () => {
+        const rolled = seekRefusalRollback(state, pending, 33, 503);
+        expect(rolled).toEqual({ title: 'Alice', elapsed: 33 });
+    });
+
+    it('does nothing on other statuses — the seek may in fact have landed', () => {
+        expect(seekRefusalRollback(state, pending, 33, 500)).toBeNull();
+        expect(seekRefusalRollback(state, pending, 33, undefined)).toBeNull();
+    });
+
+    it('does nothing once the track has changed — the anchor belongs to another song', () => {
+        const other = { title: 'Kick', elapsed: 4 };
+        expect(seekRefusalRollback(other, pending, 33, 503)).toBeNull();
+    });
+
+    it('does nothing without a seek in flight or without an anchor', () => {
+        expect(seekRefusalRollback(state, null, 33, 503)).toBeNull();
+        expect(seekRefusalRollback(state, pending, undefined, 503)).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// toggleRefusalRollback — a refused play/pause undoes the optimistic flip
+// ---------------------------------------------------------------------------
+
+describe('toggleRefusalRollback', () => {
+    const anchor = { playing: true, playback_status: 'Playing', title: 'Alice' };
+    const flipped = { title: 'Alice', playing: false, playback_status: 'Paused' };
+
+    it('restores the pre-flip transport state on a 503 for the same track', () => {
+        expect(toggleRefusalRollback(flipped, anchor, 503))
+            .toEqual({ title: 'Alice', playing: true, playback_status: 'Playing' });
+    });
+
+    it('does nothing on other statuses — the toggle may in fact have landed', () => {
+        expect(toggleRefusalRollback(flipped, anchor, 500)).toBeNull();
+        expect(toggleRefusalRollback(flipped, anchor, undefined)).toBeNull();
+    });
+
+    it('does nothing once the track has changed', () => {
+        expect(toggleRefusalRollback({ ...flipped, title: 'Kick' }, anchor, 503)).toBeNull();
+    });
+
+    it('does nothing without an anchor', () => {
+        expect(toggleRefusalRollback(flipped, undefined, 503)).toBeNull();
     });
 });

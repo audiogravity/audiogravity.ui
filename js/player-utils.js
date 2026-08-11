@@ -156,6 +156,58 @@ export function applySeekGuard(state, pending, now = Date.now()) {
 }
 
 /**
+ * Decide the rollback after a REFUSED seek.
+ *
+ * A refusal is truthful, not transient: the backend answers 503 on
+ * /player/control precisely when MPD declined and the position did not move
+ * (a live radio stream, a Tidal first listen whose remux is still
+ * downloading — see API.md). Sitting on the optimistic target until the
+ * guard's expiry reads as a frozen player; the honest display is the position
+ * the listener was actually at, restored immediately.
+ *
+ * Pure, like {@link applySeekGuard}: the caller owns the state and the
+ * pending value and applies whatever comes back.
+ *
+ * @param {object|null} state - Current displayed state (elapsed already moved
+ *        optimistically to the target).
+ * @param {{target: number, at: number, title: string|null}|null} pending - Seek in flight.
+ * @param {number|undefined} prevElapsed - Position captured just before the
+ *        optimistic move.
+ * @param {number|undefined} status - HTTP status of the failed control call.
+ * @returns {object|null} The state to apply (pending must then be cleared), or
+ *          null when no rollback is due: another status (the seek may have
+ *          landed), no seek in flight, or the track changed meanwhile — the
+ *          old position would be restored onto a different song.
+ */
+export function seekRefusalRollback(state, pending, prevElapsed, status) {
+    if (status !== 503 || !pending || !state || prevElapsed === undefined) return null;
+    if ((state.title ?? null) !== pending.title) return null;
+    return { ...state, elapsed: prevElapsed };
+}
+
+/**
+ * Decide the rollback after a REFUSED play/pause toggle.
+ *
+ * Same contract as {@link seekRefusalRollback}: a 503 from /player/control is
+ * truthful — the transport state did not change — so the optimistic flip the
+ * player applied while the request travelled must be undone at once, silently
+ * (user decision: a control that visibly does not act is the honest message,
+ * a toast would be noise for cases as rare as a mixerless output).
+ *
+ * @param {object|null} state - Current displayed state (already flipped).
+ * @param {{playing: boolean, playback_status: string, title: string|null}|null} anchor -
+ *        Pre-flip values captured when the toggle was applied.
+ * @param {number|undefined} status - HTTP status of the failed control call.
+ * @returns {object|null} The state to apply, or null when no rollback is due
+ *          (other status, no anchor, or the track changed meanwhile).
+ */
+export function toggleRefusalRollback(state, anchor, status) {
+    if (status !== 503 || !anchor || !state) return null;
+    if ((state.title ?? null) !== anchor.title) return null;
+    return { ...state, playing: anchor.playing, playback_status: anchor.playback_status };
+}
+
+/**
  * Detect a DSD signal from either a FormatInfo-like object
  * (`{ format?, codec? }`) or a raw NowPlayingItem `source_format` string.
  * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat

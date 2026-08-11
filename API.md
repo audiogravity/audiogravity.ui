@@ -57,7 +57,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/now-playing` | Every active playback source |
 | GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played |
 | GET | `/audio_pipeline/cover` | Resolve cover art for a now-playing item |
-| POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }`. For `action: "seek"` the returned `success` is **meaningful**: `false` means MPD refused and **the position did not move** (a live radio stream, or a Tidal track whose first-listen remux is still downloading). Every other action still reports the write, not MPD's answer |
+| POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }`. The returned `success` reflects **MPD's verdict for every action**: `false` means **no change was confirmed** — the device refused (a live radio stream, a Tidal first listen still downloading, a mixerless output) or the exchange timed out before a verdict. A client that flipped its UI optimistically should flip it back; the state published on the SSE bus right after **every** control is the reference to converge on |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
@@ -153,8 +153,8 @@ track played for the first time is unseekable for that whole listen even though 
 seekable copy finishes downloading seconds in. The backend now reopens the track from
 that copy when you seek, which is invisible to the listener; while the download is still
 running, and on any live stream, the seek is **refused**. A refusal is truthful, not a
-failure to retry: `success:false` / **503** means the position is unchanged, and the
-state published on the SSE bus right after carries the real position — a client that
+failure to retry: `success:false` / **503** means no position change was confirmed, and
+the state published on the SSE bus right after carries the real position — a client that
 moved its progress bar optimistically should snap it back to that value.
 
 **Reading the queue** — `GET /library/queue?source_id=…` returns each item with its
@@ -201,14 +201,14 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused `seek` now answers **503** rather than silently succeeding — see `/audio_pipeline/control` above |
+| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above |
 | POST | `/player/source` | Select the active source |
 | GET | `/player/sleep-timer` | Current sleep-timer state |
 | POST | `/player/sleep-timer` | Arm the sleep timer (pause after N minutes) |
 | DELETE | `/player/sleep-timer` | Cancel the sleep timer |
 | GET | `/player/origins` | Canonical `origin → label` map, merged into the client's static fallback at startup |
 | GET | `/player/outputs` | Selector catalogue — every selectable output |
-| PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer |
+| PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer. The switch is atomic and enable-**first**: if MPD refuses the target (device busy), the previous output keeps playing and the response is **503 carrying MPD's reason** — it used to answer `success:true` even when the switch had disabled every output |
 
 **Transport actions**: `toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`,
 `set_shuffle`. Route with `control_id` (`source_id` accepted as fallback). Anything

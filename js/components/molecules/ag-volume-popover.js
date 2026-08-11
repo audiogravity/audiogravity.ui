@@ -209,6 +209,17 @@ export class AgVolumePopover extends LitElement {
         _liveVolume: { state: true },
     };
 
+    /**
+     * How long the slider keeps showing the dragged value after the LAST
+     * interaction before falling back to the parent's `volume` prop (server
+     * truth). Long enough to cover the control round trip plus the SSE state
+     * publish that follows every control; short enough that a REFUSED volume
+     * (mixerless output — the backend answers 503 and keeps its value) glides
+     * back to truth instead of sitting on a phantom until the popover closes.
+     * @type {number}
+     */
+    static LIVE_HOLD_MS = 1500;
+
     createRenderRoot() { return this; }
 
     constructor() {
@@ -217,9 +228,10 @@ export class AgVolumePopover extends LitElement {
         this._open                = false;
         this._liveVolume          = null;
         this._pendingListenerTimer = null;
+        this._liveReleaseTimer    = null;
         this._boundClose = () => {
             this._open       = false;
-            this._liveVolume = null;
+            this._releaseLive();
         };
     }
 
@@ -231,6 +243,7 @@ export class AgVolumePopover extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         clearTimeout(this._pendingListenerTimer);
+        clearTimeout(this._liveReleaseTimer);
         document.removeEventListener('click', this._boundClose);
     }
 
@@ -254,7 +267,7 @@ export class AgVolumePopover extends LitElement {
         e?.stopPropagation();
         if (this._open) {
             this._open       = false;
-            this._liveVolume = null;
+            this._releaseLive();
             clearTimeout(this._pendingListenerTimer);
             this._pendingListenerTimer = null;
             document.removeEventListener('click', this._boundClose);
@@ -270,7 +283,7 @@ export class AgVolumePopover extends LitElement {
     close() {
         if (!this._open) return;
         this._open       = false;
-        this._liveVolume = null;
+        this._releaseLive();
         document.removeEventListener('click', this._boundClose);
     }
 
@@ -282,6 +295,7 @@ export class AgVolumePopover extends LitElement {
         const vol = parseInt(e.target.value, 10);
         e.target.style.setProperty('--avp-pct', `${vol}%`);
         this._liveVolume = vol;
+        this._armLiveRelease();
         this._emit(vol);
     }
 
@@ -289,7 +303,34 @@ export class AgVolumePopover extends LitElement {
         const current = this._liveVolume ?? this.volume ?? 50;
         const vol = Math.max(0, Math.min(100, current + delta));
         this._liveVolume = vol;
+        this._armLiveRelease();
         this._emit(vol);
+    }
+
+    /**
+     * Hold the dragged value briefly, then fall back to the `volume` prop.
+     *
+     * `_liveVolume` exists so the slider does not jump while SSE echoes lag a
+     * drag — but keeping it until the popover CLOSES turned a refused volume
+     * into a phantom: the backend answered 503, kept its value, and the slider
+     * showed the dragged one indefinitely. Self-healing keeps the fix inside
+     * the molecule: no wiring through the three parents that route volume to
+     * three different transports. When the change succeeded the release is
+     * invisible (prop === dragged value); when it was refused the slider
+     * glides back to the truth the backend republished — silent but true.
+     */
+    _armLiveRelease() {
+        clearTimeout(this._liveReleaseTimer);
+        this._liveReleaseTimer = setTimeout(
+            () => this._releaseLive(), AgVolumePopover.LIVE_HOLD_MS,
+        );
+    }
+
+    /** Drop the live value and its timer — render falls back to the prop. */
+    _releaseLive() {
+        clearTimeout(this._liveReleaseTimer);
+        this._liveReleaseTimer = null;
+        this._liveVolume       = null;
     }
 
     _emit(volume) {
