@@ -1,8 +1,8 @@
 // =====================
-// SERVICE WORKER - AUDIOGRAVITY v0.9.34
+// SERVICE WORKER - AUDIOGRAVITY v0.9.35-dev
 // =====================
 
-const CACHE_NAME = 'audiogravity-v0.9.34';
+const CACHE_NAME = 'audiogravity-v0.9.35-dev';
 
 // Vite-hashed assets injected at build time by vite-plugin-pwa (injectManifest).
 // At runtime this becomes an array of { url, revision } objects covering all
