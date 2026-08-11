@@ -72,7 +72,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
 | POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }` |
-| GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL |
+| GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL. Items now carry **`duration`** (seconds, from DIDL `res@duration`, `null` when the server publishes none); it was parsed and then silently dropped, so clients received nothing to size a progress bar with |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
 | GET | `/library/upnp-servers` | Scan for new UPnP servers |
@@ -272,7 +272,14 @@ only what is running. Same entry shape, different contents.
 | PUT | `/hqplayer/mode` | Select an output mode by index |
 | PUT | `/hqplayer/volume` | Set volume (dB) |
 | DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection |
-| GET | `/hqplayer/status` | Current DSP status |
+| GET | `/hqplayer/status` | Current DSP status — now also carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
+
+**Seeking through HQPlayer now works.** The player state reports `can_seek: true` whenever a
+length is known, and `POST /player/control` with `action: "seek"` reaches HQPlayer's own seek
+(position in seconds, same payload convention as every other source). It was previously
+declared unseekable because nothing sent the command — not because HQPlayer refuses it.
+`duration` prefers HQPlayer's own measurement over whatever the source supplied: it is right
+more often, and it is the only value available for a playback started outside Audiogravi<sup>ty</sup>.
 | POST | `/hqplayer/stop` | Stop playback |
 
 **`use-as-output`** is server-side and persisted, so every client agrees on where
