@@ -4,6 +4,7 @@ import ssl
 import sys
 import os
 import argparse
+import posixpath
 import urllib.parse
 import socket
 import select
@@ -105,7 +106,30 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
+    def _is_denied(self) -> bool:
+        """True when the request targets a path that must never be served.
+
+        The certificate store used to live in the web root, and this server
+        handed out ``/ssl/key.pem`` — the interface's own TLS private key — to
+        anyone on the network, with a 200 and the key in the body. The store has
+        since moved outside the web root, which is the real fix; this is the
+        second lock, so a leftover directory on an upgraded box, or a file
+        dropped there later by mistake, is refused rather than published.
+
+        The path is unquoted and normalised first: ``/%73sl/key.pem``,
+        ``//ssl/key.pem`` and ``/x/../ssl/key.pem`` all reach the same file, and
+        a prefix test on the raw request line would miss every one of them.
+        """
+        path = self.path.split('?', 1)[0].split('#', 1)[0]
+        path = posixpath.normpath(urllib.parse.unquote(path))
+        return path == '/ssl' or path.startswith('/ssl/')
+
     def do_GET(self):
+        # Checked before anything else, including the proxy branches: a denied
+        # path must never depend on which handler happens to pick it up.
+        if self._is_denied():
+            self.send_error(404, "Not Found")
+            return
         # WebSocket upgrade (e.g. the admin terminal at /sysinfo/terminal/ws):
         # http.server can't proxy WebSockets, so tunnel it raw to the backend.
         if self.headers.get('Upgrade', '').lower() == 'websocket':
@@ -114,6 +138,15 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
             self.proxy_request('GET')
         else:
             self._serve_static()
+
+    def do_HEAD(self):
+        # Inherited from SimpleHTTPRequestHandler otherwise, which would answer
+        # 200 for a denied path — no body, but a confirmation that the file is
+        # there and how large it is.
+        if self._is_denied():
+            self.send_error(404, "Not Found")
+            return
+        super().do_HEAD()
 
     def _serve_static(self):
         """Sert les fichiers statiques avec gzip si le client le supporte."""
