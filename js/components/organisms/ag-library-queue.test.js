@@ -25,6 +25,8 @@ vi.mock('../library-constants.js', () => ({
 }));
 const removeQueueItemMock = vi.fn();
 vi.mock('../../library-api.js', () => ({ removeQueueItem: (...a) => removeQueueItemMock(...a) }));
+const showToastMock = vi.fn();
+vi.mock('../../ui-helpers.js', () => ({ showToast: (...a) => showToastMock(...a) }));
 vi.mock('../../ag-icons.js', () => ({ iconPause: '', iconDragHandle: '', iconArrowLeft: '' }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
 vi.mock('../atoms/ag-source-badge.js', () => ({}));
@@ -46,6 +48,7 @@ const item = (origin, position, title = 't') => ({ origin, position, title, is_c
 beforeEach(() => {
     apiGetMock.mockReset();
     removeQueueItemMock.mockReset().mockResolvedValue(undefined);
+    showToastMock.mockReset();
 });
 
 describe('ag-library-queue — source filter', () => {
@@ -154,5 +157,54 @@ describe('ag-library-queue — _load prunes a stale filter', () => {
         const e = el({ _originFilter: 'qobuz', sourceId: 'src_mpd' });
         await e._load();
         expect(e._originFilter).toBe('qobuz');
+    });
+});
+
+
+describe('ag-library-queue — truthful removal', () => {
+    // The backend now refuses truthfully (503 with MPD's reason); these pin
+    // that the organism relays it instead of a console line nobody sees.
+    const inst = (queueItems) => {
+        const i = el({ _queue: { items: queueItems } });
+        i._isRoon = () => false;
+        i._load = vi.fn();
+        return i;
+    };
+
+    it('_remove relays the refusal as a toast and re-syncs the list', async () => {
+        removeQueueItemMock.mockRejectedValue(
+            new Error('MPD refused to remove queue item 7: ACK [50@0] {deleteid} No such song'));
+        const i = inst([]);
+        await i._remove(7);
+        expect(showToastMock).toHaveBeenCalledWith(
+            'error', 'Remove failed', expect.stringContaining('No such song'));
+        expect(i._load).toHaveBeenCalled(); // list re-synced with what MPD holds
+    });
+
+    it('_remove stays silent on success', async () => {
+        const i = inst([]);
+        await i._remove(7);
+        expect(showToastMock).not.toHaveBeenCalled();
+    });
+
+    it('_clear sweeps past failures and summarises them in ONE toast', async () => {
+        removeQueueItemMock
+            .mockRejectedValueOnce(new Error('gone from the queue'))
+            .mockResolvedValueOnce(undefined);
+        const i = inst([
+            { ...item('qobuz', 0), queue_id: 1 },
+            { ...item('qobuz', 1), queue_id: 2 },
+        ]);
+        await i._clear();
+        expect(removeQueueItemMock).toHaveBeenCalledTimes(2); // the sweep finished
+        expect(showToastMock).toHaveBeenCalledTimes(1);
+        expect(showToastMock.mock.calls[0][2]).toContain('1 track');
+        expect(showToastMock.mock.calls[0][2]).toContain('gone from the queue');
+    });
+
+    it('_clear stays silent when every removal succeeds', async () => {
+        const i = inst([{ ...item('qobuz', 0), queue_id: 1 }]);
+        await i._clear();
+        expect(showToastMock).not.toHaveBeenCalled();
     });
 });
