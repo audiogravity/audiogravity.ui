@@ -353,3 +353,142 @@ class TestExtractPreloadLinks:
         links_v2 = serve_https._extract_preload_links(path)
         assert '/assets/main-BBBBBBBB.js' in links_v2[0]
         assert '/assets/main-AAAAAAAA.js' not in links_v2[0]
+
+
+# ── CA bootstrap listener ─────────────────────────────────────────────────────
+
+_CA_BYTES = b"-----BEGIN CERTIFICATE-----\nMIIB-fake-ca-for-tests\n-----END CERTIFICATE-----\n"
+
+
+def _start_bootstrap(tmp_path, https_port=443, name="ca.crt", write=True):
+    """Start a CA bootstrap listener on a free port; return (port, ca_path)."""
+    ca_path = tmp_path / name
+    if write:
+        ca_path.write_bytes(_CA_BYTES)
+    port = _free_port()
+    serve_https._start_ca_bootstrap(port, str(ca_path), https_port)
+    time.sleep(0.2)  # let the daemon thread bind
+    return port, ca_path
+
+
+@pytest.fixture
+def ca_port(tmp_path):
+    """A running CA bootstrap listener, redirecting to the standard HTTPS port."""
+    port, _ = _start_bootstrap(tmp_path)
+    return port
+
+
+def _get(port, path, method="GET"):
+    """Issue one request against the bootstrap listener; return the response."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    try:
+        conn.request(method, path, headers={"Host": "10.0.4.189"})
+        resp = conn.getresponse()
+        body = resp.read()
+        return resp, body
+    finally:
+        conn.close()
+
+
+class TestCABootstrap:
+    """The plain-HTTP listener that hands out the box's certificate authority.
+
+    It exists because publishing the CA at https://<box>/ca.crt is unfetchable:
+    collecting it would require already trusting it. These tests pin the two
+    properties that make the plain-HTTP exception acceptable — it serves exactly
+    one public file, and nothing else — plus the MIME type iOS needs to offer
+    the profile at all.
+    """
+
+    def test_serves_the_ca_bytes(self, ca_port):
+        """GET /ca.crt returns the certificate, byte for byte."""
+        resp, body = _get(ca_port, "/ca.crt")
+        assert resp.status == 200
+        assert body == _CA_BYTES
+        assert resp.getheader("Content-Length") == str(len(_CA_BYTES))
+
+    def test_mime_type_is_the_one_ios_installs(self, ca_port):
+        """Without application/x-x509-ca-cert, iOS shows text instead of a profile."""
+        resp, _ = _get(ca_port, "/ca.crt")
+        assert resp.getheader("Content-Type") == "application/x-x509-ca-cert"
+        assert "attachment" in resp.getheader("Content-Disposition", "")
+
+    def test_head_sends_headers_without_body(self, ca_port):
+        """HEAD is answered like GET, minus the body (some clients probe first)."""
+        resp, body = _get(ca_port, "/ca.crt", method="HEAD")
+        assert resp.status == 200
+        assert resp.getheader("Content-Type") == "application/x-x509-ca-cert"
+        assert body == b""
+
+    @pytest.mark.parametrize("path", ["/ca.crt?v=2", "/ca.crt#frag"])
+    def test_query_and_fragment_still_match(self, ca_port, path):
+        """A client appending a query or fragment must still get the certificate."""
+        resp, body = _get(ca_port, path)
+        assert resp.status == 200
+        assert body == _CA_BYTES
+
+    @pytest.mark.parametrize("path", [
+        "/", "/index.html", "/assets/main-A1B2C3D4.js",
+        "/api/sse/dashboard",      # the proxy must NOT be reachable in clear
+        "/ssl/key.pem",            # nor anything resembling the key store
+        "/ca.crt/../ssl/key.pem",
+        "/CA.CRT",                 # case-sensitive on purpose: one exact path
+    ])
+    def test_everything_else_is_redirected_never_served(self, ca_port, path):
+        """This port serves one file. No interface, no API, no proxy, in clear."""
+        resp, body = _get(ca_port, path)
+        assert resp.status == 302
+        assert resp.getheader("Location") == "https://10.0.4.189/"
+        assert _CA_BYTES not in body
+
+    def test_redirect_uses_the_requested_host_not_a_resolved_one(self, tmp_path):
+        """The Location is built from the client's Host header.
+
+        A box has several addresses and gethostbyname routinely answers
+        127.0.0.1, which would bounce the visitor to their own device.
+        """
+        port, _ = _start_bootstrap(tmp_path)
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        try:
+            conn.request("GET", "/", headers={"Host": "music.example.lan"})
+            resp = conn.getresponse()
+            resp.read()
+            assert resp.getheader("Location") == "https://music.example.lan/"
+        finally:
+            conn.close()
+
+    def test_redirect_carries_a_non_default_https_port(self, tmp_path):
+        """An interface on 8443 must be redirected to :8443, not to 443."""
+        port, _ = _start_bootstrap(tmp_path, https_port=8443)
+        resp, _ = _get(port, "/")
+        assert resp.getheader("Location") == "https://10.0.4.189:8443/"
+
+    def test_missing_certificate_answers_404_not_a_crash(self, tmp_path):
+        """If the CA disappears after startup, the listener answers 404."""
+        port, ca_path = _start_bootstrap(tmp_path, name="vanishing.crt")
+        ca_path.unlink()
+        resp, _ = _get(port, "/ca.crt")
+        assert resp.status == 404
+
+    def test_not_started_without_a_certificate(self, tmp_path):
+        """No CA file — nothing is bound, and nothing raises.
+
+        An HTTP install has no authority to hand out; opening a port that could
+        only answer 404 would advertise a procedure that cannot work.
+        """
+        port, _ = _start_bootstrap(tmp_path, name="absent.crt", write=False)
+        with pytest.raises(OSError):
+            http.client.HTTPConnection("127.0.0.1", port, timeout=2).request("GET", "/ca.crt")
+
+    def test_a_taken_port_is_never_fatal(self, tmp_path):
+        """The box must keep playing music if the port is already in use."""
+        squatter = socket.socket()
+        squatter.bind(("0.0.0.0", 0))
+        squatter.listen(1)
+        taken = squatter.getsockname()[1]
+        ca_path = tmp_path / "ca.crt"
+        ca_path.write_bytes(_CA_BYTES)
+        try:
+            serve_https._start_ca_bootstrap(taken, str(ca_path), 443)  # must not raise
+        finally:
+            squatter.close()

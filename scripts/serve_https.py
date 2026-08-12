@@ -402,7 +402,89 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
                     return
 
 
-def run(port, core, use_ssl, cert_file, key_file):
+class CABootstrapHandler(http.server.BaseHTTPRequestHandler):
+    """Hands out the box's CA certificate over PLAIN HTTP, and nothing else.
+
+    Why plain HTTP, on a box that otherwise insists on TLS: the certificate
+    authority was published at ``https://<box>/ca.crt``, which cannot work.
+    Fetching it requires trusting the very certificate it is meant to validate
+    — and iOS refuses outright, so the whole feature was unusable on the device
+    it was written for. Verified on an iPhone against this listener: over HTTP
+    Safari offers the profile, the trust switch appears, and HTTPS then opens
+    without a warning.
+
+    The exposure is nil: a CA certificate is public by design — it is the thing
+    you are meant to hand out — and carries no private key. Every other path
+    answers a redirect to the HTTPS interface, so this port serves exactly one
+    public file and no interface, no API, no proxy.
+    """
+
+    ca_path = None          #: set by run()
+    https_port = 443        #: where anything else is sent, on the requested host
+
+    def _send_ca(self, body=True):
+        try:
+            with open(self.ca_path, "rb") as f:
+                data = f.read()
+        except OSError:
+            self.send_error(404, "Not Found")
+            return
+        self.send_response(200)
+        # This MIME type is what makes iOS treat the file as a configuration
+        # profile to install rather than text to display.
+        self.send_header("Content-Type", "application/x-x509-ca-cert")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition",
+                         'attachment; filename="audiogravity-ca.crt"')
+        self.end_headers()
+        if body:
+            self.wfile.write(data)
+
+    def _wants_ca(self) -> bool:
+        return self.path.split("?", 1)[0].split("#", 1)[0] == "/ca.crt"
+
+    def _redirect(self):
+        # Built from the host the CLIENT asked for, not from a name resolved on
+        # the box: a box has several addresses and gethostbyname routinely
+        # answers 127.0.0.1, which would bounce the visitor to their own device.
+        host = (self.headers.get("Host") or "").split(":")[0]
+        suffix = "" if self.https_port == 443 else f":{self.https_port}"
+        self.send_response(302)
+        self.send_header("Location", f"https://{host}{suffix}/" if host else "/")
+        self.end_headers()
+
+    def do_GET(self):
+        self._send_ca() if self._wants_ca() else self._redirect()
+
+    def do_HEAD(self):
+        self._send_ca(body=False) if self._wants_ca() else self._redirect()
+
+    def log_message(self, fmt, *args):       # keep it out of stderr's default
+        logger.debug("[ca-bootstrap] %s - %s", self.address_string(), fmt % args)
+
+
+def _start_ca_bootstrap(port: int, ca_path: str, https_port: int) -> None:
+    """Serve the CA on `port` in a daemon thread. Never fatal.
+
+    A box must keep playing music if this cannot bind — the interface itself is
+    unaffected, only the one-time certificate fetch would be.
+    """
+    import threading
+    if not os.path.isfile(ca_path):
+        logger.info("No CA certificate at %s — bootstrap listener not started", ca_path)
+        return
+    CABootstrapHandler.ca_path = ca_path
+    CABootstrapHandler.https_port = https_port
+    try:
+        srv = ThreadingHTTPServer(("0.0.0.0", port), CABootstrapHandler)
+    except OSError as exc:
+        logger.warning("CA bootstrap listener could not bind port %d: %s", port, exc)
+        return
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    logger.info("CA available at http://<box>:%d/ca.crt (plain HTTP, on purpose)", port)
+
+
+def run(port, core, use_ssl, cert_file, key_file, ca_port=None, ca_file=None):
     AudiogravityHandler.core_url = core
     server_address = ('0.0.0.0', port)
     
@@ -414,6 +496,10 @@ def run(port, core, use_ssl, cert_file, key_file):
         context.load_cert_chain(certfile=cert_file, keyfile=key_file)
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
         logger.info(f"Serving HTTPS on 0.0.0.0:{port}, proxying /api to {core}")
+        # Only in TLS mode: in plain-HTTP mode there is no CA to hand out, and
+        # nothing to bootstrap.
+        if ca_port:
+            _start_ca_bootstrap(ca_port, ca_file or "ca.crt", port)
     else:
         logger.info(f"Serving HTTP on 0.0.0.0:{port}, proxying /api to {core}")
         
@@ -430,6 +516,13 @@ if __name__ == '__main__':
     parser.add_argument('--ssl', action='store_true', help='Enable SSL/TLS')
     parser.add_argument('--cert', type=str, default='ssl/cert.pem', help='Path to SSL certificate')
     parser.add_argument('--key', type=str, default='ssl/key.pem', help='Path to SSL private key')
-    
+    parser.add_argument('--ca-port', type=int, default=8081,
+                        help='Plain-HTTP port serving only /ca.crt so a device can '
+                             'fetch the authority BEFORE it trusts anything (TLS mode '
+                             'only; 0 disables)')
+    parser.add_argument('--ca-file', type=str, default='ca.crt',
+                        help='Path to the public CA certificate to hand out')
+
     args = parser.parse_args()
-    run(args.port, args.core, args.ssl, args.cert, args.key)
+    run(args.port, args.core, args.ssl, args.cert, args.key,
+        ca_port=args.ca_port, ca_file=args.ca_file)
