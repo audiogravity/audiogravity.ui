@@ -306,3 +306,69 @@ describe('toggleRefusalRollback', () => {
         expect(toggleRefusalRollback(flipped, undefined, 503)).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// applyVolumeGuard — the slider must not fall back to a level nobody chose
+// ---------------------------------------------------------------------------
+// Measured against a running box: a twelve-step drag fires its commands in
+// 0.45 s, and for the second that follows the release the server is still
+// publishing the levels the finger left behind — the correct one landed 1.26 s
+// after the last command. The volume popover masks 1.5 s of that, so the
+// display was correct by a quarter-second of margin rather than by
+// construction; a longer drag or a slower box eats it.
+
+import { applyVolumeGuard, VOLUME_GUARD_MS } from './player-utils.js';
+
+describe('applyVolumeGuard', () => {
+    const NOW = 1_000_000;
+    const pending = (over = {}) => ({ target: 60, at: NOW, sourceId: 'src_mpd', ...over });
+    const state = (over = {}) => ({ volume: 26, source_id: 'src_mpd', ...over });
+
+    it('passes the state through when no change is pending', () => {
+        const s = state();
+        const out = applyVolumeGuard(s, null, NOW);
+        expect(out.state).toBe(s);
+        expect(out.pending).toBeNull();
+    });
+
+    it('holds the target while a level the finger already left arrives', () => {
+        const out = applyVolumeGuard(state({ volume: 47 }), pending(), NOW);
+        expect(out.state.volume).toBe(60);
+        expect(out.pending).not.toBeNull();
+    });
+
+    it('releases on the exact target', () => {
+        const out = applyVolumeGuard(state({ volume: 60 }), pending(), NOW);
+        expect(out.state.volume).toBe(60);
+        expect(out.pending).toBeNull();
+    });
+
+    it('does not accept a neighbouring level as the destination', () => {
+        // A drag passes through 59 on its way to 60; treating "close enough" as
+        // arrival would release the guard one step early and show 59.
+        const out = applyVolumeGuard(state({ volume: 59 }), pending(), NOW);
+        expect(out.state.volume).toBe(60);
+        expect(out.pending).not.toBeNull();
+    });
+
+    it('expires so a refused level cannot freeze the slider', () => {
+        const out = applyVolumeGuard(
+            state({ volume: 26 }), pending(), NOW + VOLUME_GUARD_MS + 1);
+        expect(out.state.volume).toBe(26);
+        expect(out.pending).toBeNull();
+    });
+
+    it('releases when the source changes — the volume is someone else\'s now', () => {
+        const out = applyVolumeGuard(
+            state({ volume: 12, source_id: 'src_hqplayer' }), pending(), NOW);
+        expect(out.state.volume).toBe(12);
+        expect(out.pending).toBeNull();
+    });
+
+    it('leaves the incoming object untouched while holding', () => {
+        // Pure, like applySeekGuard: the caller owns the state it applies.
+        const s = state({ volume: 47 });
+        applyVolumeGuard(s, pending(), NOW);
+        expect(s.volume).toBe(47);
+    });
+});
