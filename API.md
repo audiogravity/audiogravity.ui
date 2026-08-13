@@ -96,7 +96,7 @@ resolve their destination the same way, and answer with the same statuses:
 
 | Status | Meaning |
 |---|---|
-| **501** | The selected output cannot play this content — a streaming source (Qobuz/Tidal/HRA) while HQPlayer is the output, or a source the backend could not classify |
+| **501** | The selected output cannot play this content — a source the backend could not classify, or a format HQPlayer cannot decode (the detail names the track and the format). Streaming sources are **no longer** refused here: Qobuz, Tidal and HIGHRESAUDIO reach HQPlayer like every other source |
 | **409** | A network renderer **and** HQPlayer are both selected — turn one off |
 | **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) |
 
@@ -114,6 +114,23 @@ Roon is never diverted: a Roon zone is its own output chain. `action: "add"` app
 to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
 a network renderer has no persistent queue, so an `add` stays with MPD. A UPnP stream is
 badged `origin: "upnp"`, a station `origin: "radio"`.
+
+**When the push went to HQPlayer**, the response carries `routed_to: "hqplayer"` alongside
+the usual `{ ok, action, item_type, tracks }`. The field is absent on every other path, so
+its presence is the signal — a client must not infer the destination from the selected
+output, which can change between the request and the answer. The item then appears in
+`PlayerState` under `source_id`/`control_id` `src_hqplayer`, badged by its **content**:
+`origin` is `qobuz`, `tidal`, `highresaudio`, `upnp`, `radio` or `library`, never
+`hqplayer` — HQPlayer is a processor in the signal path, not the identity of what plays.
+`can_seek` is true as soon as a length is known, and title, artist and cover follow the
+track through an album (they are read from the list AG pushed, indexed by HQPlayer's own
+track number; a playlist changed from HQPlayer's remote drops back to `origin: "external"`
+with no title).
+
+Tidal answers **501** when the stream it would serve is AAC — either the account's quality
+is a lossy tier, or that album is not available in lossless. The check reads the format
+Tidal actually serves for the first track of the push, not the configured tier, and the
+detail names both possible causes.
 
 A **200 does not mean sound came out**: whether a push to HQPlayer actually started is
 decided after the response and surfaces on `PlayerState.outputs[].error`.
@@ -280,6 +297,14 @@ length is known, and `POST /player/control` with `action: "seek"` reaches HQPlay
 declared unseekable because nothing sent the command — not because HQPlayer refuses it.
 `duration` prefers HQPlayer's own measurement over whatever the source supplied: it is right
 more often, and it is the only value available for a playback started outside Audiogravi<sup>ty</sup>.
+
+**Every source reaches HQPlayer**, streaming services included — there is no source-based
+refusal left, only the format deny-list. HQPlayer pulls each track over HTTP from an address
+on the LAN: `/hqplayer/stream/` for local files, and the service's own public proxy path for
+Qobuz / Tidal / HIGHRESAUDIO. Those URLs carry **no `api_key`** by design (the same reason
+renderer-facing URLs do not), so they must stay in the public-path allow-list. Qobuz and HRA
+are pushed with `?mode=redirect`, which 302s HQPlayer to the CDN so the box relays nothing;
+Tidal has no CDN URL to give and is passed through.
 | POST | `/hqplayer/stop` | Stop playback |
 
 **`use-as-output`** is server-side and persisted, so every client agrees on where
