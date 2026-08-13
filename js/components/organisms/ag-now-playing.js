@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -216,14 +216,26 @@ export class AgNowPlaying extends LitElement {
         const items = state.sources.filter(s => s.playing).map(s => {
             // For the active source, prefer root state values (fresher than
             // the stabilized SourceInfo which may lag by a few poll cycles).
-            if (s.active && state.source_id === s.source_id) {
-                return { ...s,
+            const merged = (s.active && state.source_id === s.source_id)
+                ? { ...s,
                     volume: state.volume ?? s.volume,
                     can_set_volume: state.can_set_volume ?? s.can_set_volume,
                     elapsed: state.elapsed ?? s.elapsed,
-                };
+                }
+                : s;
+            // Hold a volume the user just set until the backend confirms that
+            // exact level. A drag fires a command per movement and they overlap,
+            // so events still in flight carry levels the finger already left —
+            // measured at up to a second of trailing values after the release,
+            // where the popover only masks 1.5 s. Keyed per source: the mini
+            // player can control a source that is not the active one, whose
+            // level the root state does not describe.
+            if (!this._volumePending || merged.source_id !== this._volumePending.sourceId) {
+                return merged;
             }
-            return s;
+            const held = applyVolumeGuard(merged, this._volumePending);
+            this._volumePending = held.pending;
+            return held.state;
         });
 
         // Don't collapse during the post-control transition guard.
@@ -333,6 +345,17 @@ export class AgNowPlaying extends LitElement {
             item.playback_status = isPlaying ? 'Paused' : 'Playing';
             this._items = [...this._items];
         }
+        // Same for the volume: show the level asked for at once, and hold it
+        // until the backend confirms that exact value (see the guard in
+        // _onState). Without it the slider falls back to whatever the last
+        // event carried — during a drag, a level already left behind.
+        let prevVolume;
+        if (action === 'set_volume' && item && volume !== null) {
+            prevVolume = item.volume;
+            item.volume = volume;
+            this._items = [...this._items];
+            this._volumePending = { target: volume, at: Date.now(), sourceId: sourceId };
+        }
         try {
             const body = { source_id: sourceId, action };
             // Routing handle (spec §3): commands go to the device that PLAYS
@@ -357,6 +380,24 @@ export class AgNowPlaying extends LitElement {
                     item.playback_status =
                         item.playback_status === 'Playing' ? 'Paused' : 'Playing';
                     this._items = [...this._items];
+                }
+                // Only when this call still owns the guard: a drag fires
+                // overlapping commands, and an older one being refused must not
+                // restore ITS level over a newer one that took, nor drop the
+                // guard the newer one armed. `success: false` also covers a
+                // verdict that timed out (API.md), which makes a stale rollback
+                // that much likelier here.
+                if (action === 'set_volume' && this._volumePending?.target === volume) {
+                    // Re-find the item: _onState replaces _items with fresh
+                    // objects on every tick, so the reference captured before
+                    // the round trip may be detached by then — mutating it would roll
+                    // back nothing at all, silently.
+                    const live = this._items.find(i => i.source_id === sourceId);
+                    if (live) {
+                        live.volume = prevVolume;
+                        this._items = [...this._items];
+                    }
+                    this._volumePending = null;
                 }
             } else {
                 this._controlRecentTime = Date.now();

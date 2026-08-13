@@ -121,6 +121,56 @@ export function outputErrorLabel(raw) {
         : 'Output unavailable';
 }
 
+/** How long a volume target overrides incoming levels (ms). */
+export const VOLUME_GUARD_MS = 3000;
+
+/**
+ * Keep the volume the user just asked for on screen until the backend confirms
+ * that exact value.
+ *
+ * A drag posts one command per movement, with no debounce, and they overlap.
+ * Measured against a running box: the last command of a twelve-step drag was
+ * answered 1.26 s later, and for the second before that the server was still
+ * publishing the levels the finger had already left behind. Every one of those
+ * is a value the listener is no longer on.
+ *
+ * The volume popover masks this by holding the dragged value for 1.5 s — which
+ * makes the display correct by a quarter-second of margin rather than by
+ * construction. A longer drag, a busier core or a slower box eats that margin
+ * and the slider snaps back to a level nobody chose before jumping to the right
+ * one. Stretching the timer would only move the race; the client is the one
+ * side that knows what it asked for, so it holds until it sees that answer.
+ *
+ * Releases on the exact target (an approximation would let a neighbouring level
+ * from the same drag pass for the destination), on a source change (the volume
+ * then belongs to something else entirely), and on expiry — so a level the
+ * device refused, or one another client changed, cannot freeze the slider.
+ *
+ * The window is deliberately longer than the popover's own hold: the popover
+ * covers the round trip before any event arrives, this covers the events that
+ * arrive carrying stale levels, and a guard that expired first would hand the
+ * slider straight back to them. The cost is borne by an output that ANSWERS a
+ * level other than the one it was given — one that quantises, or clamps: its
+ * true level then shows a window later instead of at the popover's release.
+ * A late truth, never a wrong one, and only on a device that rounds.
+ *
+ * Pure, like {@link applySeekGuard}: callers own the pending value and store
+ * whatever comes back.
+ *
+ * @param {object} state - Incoming PlayerState.
+ * @param {{target: number, at: number, sourceId: string|null}|null} pending - Change in flight.
+ * @param {number} [now] - Injectable clock for tests.
+ * @returns {{state: object, pending: object|null}} State to apply, and the guard to keep.
+ */
+export function applyVolumeGuard(state, pending, now = Date.now()) {
+    if (!pending) return { state, pending: null };
+    if ((state.source_id ?? null) !== pending.sourceId) return { state, pending: null };
+    if (state.volume === pending.target || now - pending.at > VOLUME_GUARD_MS) {
+        return { state, pending: null };
+    }
+    return { state: { ...state, volume: pending.target }, pending };
+}
+
 /** How long a seek target overrides incoming positions (ms). */
 export const SEEK_GUARD_MS = 3000;
 /** How far a reported position may sit from the target and still count as arrived (s). */

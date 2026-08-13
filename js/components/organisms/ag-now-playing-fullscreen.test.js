@@ -634,3 +634,98 @@ describe('fullscreen — Up next source selection', () => {
         expect(upNextComesFromRendererQueue({ source_id: 'src_mpd' })).toBe(false);
     });
 });
+
+
+
+
+// ---------------------------------------------------------------------------
+// Volume — the slider must not fall back to a level the finger already left
+// ---------------------------------------------------------------------------
+// Measured on a running box: a twelve-command drag is answered 1.26 s after its
+// last command, while the popover only masks 1.5 s — correct by a quarter of a
+// second of margin rather than by construction.
+//
+// These drive the REAL _control and _applyState. An earlier version replicated
+// their wiring in local helpers, which passed while three defects sat in the
+// shipped code: a rollback on any error rather than on a refusal, and two
+// stale-command hazards during a drag.
+
+import { AgNowPlayingFullscreen } from './ag-now-playing-fullscreen.js';
+import { apiPost } from '../../api.js';
+
+vi.mock('../../api.js', () => ({
+    apiGet: vi.fn(async () => ({})),
+    apiPost: vi.fn(async () => ({})),
+}));
+
+describe('AgNowPlayingFullscreen — volume in flight (real _control)', () => {
+    const BASE = { source_id: 'src_mpd', control_id: 'src_mpd', volume: 26, title: 'A' };
+
+    /** A component instance without the DOM lifecycle. */
+    function fs(state = { ...BASE }) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        // _state is a Lit reactive property: its accessor expects a live
+        // element. Shadow it with a plain field so the component's own logic
+        // runs untouched without the DOM lifecycle.
+        Object.defineProperty(el, '_state',
+            { value: state, writable: true, configurable: true });
+        el._targetSourceId = null;
+        el._volumePending = undefined;
+        el._seekPending = null;
+        el._controlRecentTime = null;
+        el.requestUpdate = () => {};
+        return el;
+    }
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({}); });
+
+    it('shows the level asked for at once, and remembers what to hold', async () => {
+        const el = fs();
+        await el._control('set_volume', 60);
+        expect(el._state.volume).toBe(60);
+        expect(el._volumePending.target).toBe(60);
+        expect(apiPost).toHaveBeenCalledWith('/player/control',
+            expect.objectContaining({ action: 'set_volume', value: 60 }));
+    });
+
+    it('ignores a level the finger already left, then releases on the target', () => {
+        const el = fs();
+        el._volumePending = { target: 60, at: Date.now(), sourceId: 'src_mpd' };
+        // A state from the drag's own trail.
+        expect(el._applyVolumeGuard({ ...BASE, volume: 47 }).volume).toBe(60);
+        expect(el._applyVolumeGuard({ ...BASE, volume: 60 }).volume).toBe(60);
+        expect(el._volumePending).toBeNull();
+    });
+
+    it('restores the previous level when the output REFUSES it', async () => {
+        const el = fs();
+        const refusal = Object.assign(new Error('refused'), { status: 503 });
+        apiPost.mockRejectedValueOnce(refusal);
+        await el._control('set_volume', 60);
+        expect(el._state.volume).toBe(26);
+        expect(el._volumePending).toBeNull();
+    });
+
+    it('does NOT roll back on a network error — the level may well have taken', async () => {
+        const el = fs();
+        apiPost.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+        await el._control('set_volume', 60);
+        expect(el._state.volume).toBe(60);
+        expect(el._volumePending.target).toBe(60);
+    });
+
+    it('an older command failing does not undo a newer one', async () => {
+        // A drag fires overlapping commands: the first can answer last.
+        const el = fs();
+        let releaseFirst;
+        apiPost.mockImplementationOnce(() => new Promise((_r, rej) => {
+            releaseFirst = () => rej(Object.assign(new Error('refused'), { status: 503 }));
+        }));
+        const first = el._control('set_volume', 40);
+        await el._control('set_volume', 60);      // the newer one lands first
+        releaseFirst();
+        await first;
+        expect(el._state.volume).toBe(60);
+        expect(el._volumePending.target).toBe(60);
+    });
+});

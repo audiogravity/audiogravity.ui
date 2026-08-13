@@ -27,7 +27,7 @@ import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { originBadge } from '../library-constants.js';
@@ -302,6 +302,18 @@ export class AgNowPlayingFullscreen extends LitElement {
         return result.state;
     }
 
+    /**
+     * Keep the volume the user just set on screen until the backend confirms it.
+     * Delegates to the shared guard in player-utils.
+     * @param {object} state - Incoming PlayerState.
+     * @returns {object} The state, with volume overridden while the guard holds.
+     */
+    _applyVolumeGuard(state) {
+        const result = applyVolumeGuard(state, this._volumePending);
+        this._volumePending = result.pending;
+        return result.state;
+    }
+
     _applyState(state) {
         // SSE pushes a title-less state during track transitions — keep previous state visible.
         if (!state.title && inTransition(this._controlRecentTime)) return;
@@ -371,6 +383,12 @@ export class AgNowPlayingFullscreen extends LitElement {
         // soon as a report lands near the target, or after the guard window —
         // a seek that genuinely failed must not freeze the bar forever.
         state = this._applySeekGuard(state);
+        // Same hazard for the volume, and the one the slider actually shows:
+        // a drag posts a command per movement, so events already in flight
+        // carry levels the finger has left behind. Measured on a running box,
+        // the correct value landed 1.26 s after the last command while the
+        // popover only masks 1.5 s — correct by a quarter-second of margin.
+        state = this._applyVolumeGuard(state);
         this._state             = state;
         this._setPrimaryCover(pickPrimaryCoverToken(state, { swapped: this._coverSwapped }));
     }
@@ -555,6 +573,18 @@ export class AgNowPlayingFullscreen extends LitElement {
             // prompting the user to seek again.
             this._seekPending = { target: value, at: Date.now(), title: this._state.title ?? null };
         }
+        // Optimistic volume, same reasoning and same shape as the seek above:
+        // show what was asked for, and hold it until the backend confirms that
+        // exact level. Without this the slider falls back to whatever the last
+        // event carried — during a drag, a level the finger already left.
+        let prevVolume;
+        if (action === 'set_volume' && value !== undefined && this._state) {
+            prevVolume = this._state.volume;
+            this._state = { ...this._state, volume: value };
+            this._volumePending = {
+                target: value, at: Date.now(), sourceId: this._state.source_id ?? null,
+            };
+        }
         try {
             const body = { action };
             if (value !== undefined) body.value = value;
@@ -580,6 +610,22 @@ export class AgNowPlayingFullscreen extends LitElement {
             if (action === 'seek' && rolled) {
                 this._state = rolled;
                 this._seekPending = null;
+                return;
+            }
+            // Roll back only on a truthful REFUSAL (503 — the level did not
+            // change: a mixerless output, a source that lost its volume), like
+            // the two rollbacks above. Any thrown error would also cover a
+            // network hiccup on a command the backend had already applied,
+            // snapping the slider back off a level that did take.
+            //
+            // And only when this call still owns the guard: a drag fires
+            // overlapping commands, so an older one failing must not restore
+            // ITS level over a newer one that succeeded, nor drop the guard the
+            // newer one armed.
+            if (action === 'set_volume' && e?.status === 503 && this._state
+                    && this._volumePending?.target === value) {
+                this._state = { ...this._state, volume: prevVolume };
+                this._volumePending = null;
                 return;
             }
             const unflipped = toggleRefusalRollback(this._state, toggleAnchor, e?.status);

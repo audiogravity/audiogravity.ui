@@ -10,7 +10,7 @@
  * - Override lifted: when user's chosen source stops playing, auto-follow resumes
  * - Index clamping: _activeSourceIdx is clamped when items shrink
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Simulate the _onState auto-follow logic from ag-now-playing.js
@@ -300,5 +300,99 @@ describe('AgNowPlaying — control body routing handle', () => {
         expect(body.seek_position).toBe(42);
         expect(body.volume).toBeUndefined();
         expect(body.control_id).toBe('src_mpd');
+    });
+});
+
+
+
+// ---------------------------------------------------------------------------
+// Volume in flight — the same race as the fullscreen player's
+// ---------------------------------------------------------------------------
+// This player showed no symptom, but carried the identical hole: no optimistic
+// level, no guard, and the popover's 1.5 s hold as the only cover. These drive
+// the REAL _sendControl and _onState — an earlier version replicated their
+// wiring in helpers and would have missed both defects fixed here: a rollback
+// applied on behalf of a stale command, and one mutating an item object that
+// _onState had already replaced.
+
+import { AgNowPlaying } from './ag-now-playing.js';
+import { apiPost } from '../../api.js';
+
+vi.mock('../../api.js', () => ({
+    apiGet: vi.fn(async () => ({})),
+    apiPost: vi.fn(async () => ({ success: true })),
+}));
+
+describe('AgNowPlaying — volume in flight (real _sendControl)', () => {
+    function np(items) {
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({ _items: items, _volumePending: undefined })) {
+            Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        }
+        el._isLicensed = () => true;
+        // Reactive properties too: their accessors expect a live element.
+        for (const k of ['_licenseStatus', '_outputs', '_activeOutputId',
+                         '_activeSourceIdx', '_userSourceOverride', '_hasItems']) {
+            Object.defineProperty(el, k,
+                { value: undefined, writable: true, configurable: true });
+        }
+        el.requestUpdate = () => {};
+        el._reportHeight = () => {};   // measures a DOM node this shell has not got
+        return el;
+    }
+    const mpd = () => ({ source_id: 'src_mpd', control_id: 'src_mpd', volume: 26 });
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({ success: true }); });
+
+    it('shows the level at once and arms the guard for that source', async () => {
+        const item = mpd();
+        const el = np([item]);
+        await el._sendControl('src_mpd', 'set_volume', 60, item);
+        expect(el._items[0].volume).toBe(60);
+        expect(el._volumePending).toEqual(
+            expect.objectContaining({ target: 60, sourceId: 'src_mpd' }));
+    });
+
+    it('rolls back a REFUSED level on the item currently in the list', async () => {
+        // _onState replaces _items with fresh objects on every tick, so the
+        // reference captured before the round trip can be detached by the time
+        // the answer lands — mutating it would roll back nothing at all.
+        const captured = mpd();
+        const el = np([captured]);
+        apiPost.mockImplementationOnce(async () => {
+            el._items = [{ ...captured, volume: 60 }];   // an SSE tick lands
+            return { success: false };
+        });
+        await el._sendControl('src_mpd', 'set_volume', 60, captured);
+        expect(el._items[0].volume).toBe(26);
+        expect(el._volumePending).toBeNull();
+    });
+
+    it('an older command refused does not undo a newer one', async () => {
+        const item = mpd();
+        const el = np([item]);
+        let refuseFirst;
+        apiPost.mockImplementationOnce(() => new Promise((res) => {
+            refuseFirst = () => res({ success: false });
+        }));
+        const first = el._sendControl('src_mpd', 'set_volume', 40, item);
+        await el._sendControl('src_mpd', 'set_volume', 60, el._items[0]);
+        refuseFirst();
+        await first;
+        expect(el._items[0].volume).toBe(60);
+        expect(el._volumePending.target).toBe(60);
+    });
+
+    it('never holds a level on a source the user was not adjusting', () => {
+        // The dots let a second playing source be controlled; holding the wrong
+        // one would pin a level onto music nobody touched.
+        const el = np([mpd()]);
+        el._volumePending = { target: 60, at: Date.now(), sourceId: 'src_mpd' };
+        el._outputs = [];
+        el._onState({
+            source_id: 'src_hqplayer', volume: 12,
+            sources: [{ source_id: 'src_hqplayer', active: true, playing: true, volume: 12 }],
+        });
+        expect(el._items[0].volume).toBe(12);
     });
 });
