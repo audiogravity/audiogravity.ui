@@ -67,6 +67,52 @@ body {
     width: 100vw;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    /* Text selection is OFF by default, because AG's UI is a control console and not
+       a document. A long press on a phone, or a mouse drag on the desktop, would
+       otherwise highlight a button label or a section title — noise, since nothing in
+       the chrome is meant to be read as prose. This replaces an earlier rule that
+       named a handful of elements (button, tabs); the whole app is covered from here
+       now, and what stays selectable is the rule right below.
+
+       One declaration is enough for the whole app: every component but one renders
+       into the light DOM (`createRenderRoot() { return this }`), so the inherited
+       value reaches all of them. The exception, ag-audio-pipeline, lives in a shadow
+       root and already declares the same rule on its own `:host`.
+
+       `-webkit-touch-callout` is a separate mechanism, not a fallback: it is what
+       removes the iOS "Copy / Look Up" bubble. Without it the selection is gone but
+       the bubble still pops up on a long press. */
+
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here;
+       Safari only took the unprefixed property in 17, and AG is used from older iOS. */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+/* ...and here is what stays selectable. The list is part of the contract, not
+   decoration:
+     - Form fields come first, and NOT for comfort — on Safari/iOS an inherited
+       `user-select: none` takes the caret away INSIDE the field. `textarea` also
+       covers xterm's off-screen `.xterm-helper-textarea`, which is where the terminal
+       routes typing and the clipboard. `[contenteditable]` is here for the same
+       reason: any region the user edits must stay selectable, whether or not one
+       exists today.
+     - `pre` and `code` carry what a user has to send us when something goes wrong:
+       the JSON of an event, a systemd diff, an order id, a MinimServer device URL.
+       The log viewer and the Device ID have their own copy button; these have nothing
+       else.
+
+   `.xterm` is deliberately ABSENT from that list, and adding it would be a
+   regression. xterm disables native selection itself (`.xterm { user-select: none }`
+   in its own stylesheet, identical from the version we load through to the current
+   major) and paints its own selection onto the canvas. Re-enabling the native one
+   here would set the two against each other — precisely what xterm avoids. */
+input, textarea, [contenteditable], pre, code {
+    /* stylelint-disable-next-line property-no-vendor-prefix -- same as above. */
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 /* TYPOGRAPHY */
@@ -122,11 +168,6 @@ button, a, select, [role="button"], [role="tab"], label {
         transform: scale(0.96);
         transition: transform 60ms ease-out;
     }
-}
-
-/* Prevent text selection on long-press for navigation/UI elements */
-button, [role="tab"], [role="tablist"], .tab-btn, .tab-sidebar-toggle {
-    user-select: none;
 }
 
 /* Prevent iOS Safari from auto-zooming on input focus (it zooms whenever a form
