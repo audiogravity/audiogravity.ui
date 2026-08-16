@@ -8,6 +8,18 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Partial: common.js calls initAuth as it loads, so the real module must stay.
+vi.mock(import('../../auth.js'), async (importOriginal) => ({
+    ...(await importOriginal()),
+    isGuest: () => false,
+    isAdmin: () => true,
+    // common.js gates its own module load on this and throws otherwise, so a
+    // test that imports the component has to be logged in.
+    requireAuth: () => true,
+}));
+
+import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
+
 /**
  * Replicate the escapeHtml logic used in the component (same as common.js)
  * so we can test the expected output without importing the full component.
@@ -84,5 +96,58 @@ describe('Bulk-update confirm dialog — XSS prevention via escapeHtml', () => {
         expect(() => buildPkgListHtml(updates)).not.toThrow();
         const html = buildPkgListHtml(updates);
         expect(html).toContain('TestPkg');
+    });
+});
+
+/**
+ * The update path for a package whose vendor publishes no version.
+ *
+ * Roon's installer points at a fixed filename and ships no version file, so
+ * there is nothing to compare against. Refusing on that basis left Roon with no
+ * way to update from the interface at all — on a real box, stuck on a build
+ * from years back. "Update" there means re-running the vendor's installer,
+ * which always fetches the current build.
+ *
+ * Exercises the component's own method: a local re-implementation would keep
+ * passing while the shipped decision drifted away from it.
+ */
+describe('Update of a package that publishes no version', () => {
+    /** @returns {Object} A bare instance, enough to call the decision method. */
+    function page() {
+        return Object.create(AgAudioSoftwarePage.prototype);
+    }
+
+    it('offers a reinstall for a vendor that publishes no version', () => {
+        expect(page()._decideUpdate({
+            installer_type: 'script',
+            installed_version: '1.8 (build 1125) stable',
+            available_version: null,
+        })).toBe('reinstall');
+    });
+
+    it('still refuses when a package that should have a version has none', () => {
+        // An apt package with no candidate means something is wrong; offering a
+        // blind reinstall there would hide it.
+        expect(page()._decideUpdate({
+            installer_type: 'apt_simple',
+            installed_version: '0.24.5-1',
+            available_version: null,
+        })).toBe('no-version');
+    });
+
+    it('keeps the up-to-date shortcut for packages that do publish one', () => {
+        expect(page()._decideUpdate({
+            installer_type: 'apt_deb',
+            installed_version: '6.1.4-71',
+            available_version: '6.1.4-71',
+        })).toBe('up-to-date');
+    });
+
+    it('goes ahead when the published version differs', () => {
+        expect(page()._decideUpdate({
+            installer_type: 'apt_deb',
+            installed_version: '5.1.5-67',
+            available_version: '6.1.4-71',
+        })).toBe('proceed');
     });
 });

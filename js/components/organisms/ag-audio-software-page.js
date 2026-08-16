@@ -26,7 +26,8 @@ import {
     MemoryCache,
     AgTimerManager,
     EventEmitter,
-    addToHistory
+    addToHistory,
+    escapeHtml
 } from '../../common.js';
 import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
@@ -345,21 +346,40 @@ export class AgAudioSoftwarePage extends LitElement {
         }
     }
 
+    /**
+     * Decide what an UPDATE press means for one package.
+     *
+     * Some vendors publish no version at all — Roon's installer points at a
+     * fixed filename and ships no version file, so there is nothing to compare
+     * against. Updating one means re-running its installer, which always
+     * fetches the current build; refusing on the grounds that no number could
+     * be shown left those packages with no way to update from here at all. A
+     * package that *should* have a version and has none is a different matter:
+     * that is a symptom, and a blind reinstall would hide it.
+     *
+     * @param {Object} pkg - Package as returned by the core.
+     * @returns {'proceed'|'reinstall'|'up-to-date'|'no-version'} What to do.
+     */
+    _decideUpdate(pkg) {
+        if (!pkg.available_version) {
+            return pkg.installer_type === 'script' ? 'reinstall' : 'no-version';
+        }
+        return pkg.available_version === pkg.installed_version ? 'up-to-date' : 'proceed';
+    }
+
     async _handleAction(e) {
         const { packageId, action } = e.detail;
         const pkgIndex = this.packages.findIndex(p => p.id === packageId);
         if (pkgIndex === -1) return;
         const pkg = this.packages[pkgIndex];
 
+        let reinstallOnly = false;
+
         if (action === 'update') {
             if (!pkg.available_version) {
                 showToast('info', 'Checking Version', 'Checking for available updates...');
                 try {
                     const latestPkg = await apiGet(`/packages/${packageId}`);
-                    if (!latestPkg.available_version) {
-                        showToast('warning', 'No Version Info', 'Unable to determine available version');
-                        return;
-                    }
                     // update it in state
                     this.packages[pkgIndex] = { ...pkg, ...latestPkg };
                     this._saveUpdatesCache();
@@ -371,19 +391,33 @@ export class AgAudioSoftwarePage extends LitElement {
                 }
             }
 
-            const currentPkg = this.packages[pkgIndex];
-            if (currentPkg.available_version === currentPkg.installed_version) {
-                showToast('info', 'Already Up-to-Date', `${currentPkg.label} is already at version ${currentPkg.installed_version}`);
+            const decision = this._decideUpdate(this.packages[pkgIndex]);
+            if (decision === 'no-version') {
+                showToast('warning', 'No Version Info', 'Unable to determine available version');
                 return;
             }
+            if (decision === 'up-to-date') {
+                const upToDate = this.packages[pkgIndex];
+                showToast('info', 'Already Up-to-Date', `${upToDate.label} is already at version ${upToDate.installed_version}`);
+                return;
+            }
+            reinstallOnly = decision === 'reinstall';
         }
 
         const currentPkg = this.packages[pkgIndex];
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+        const label = escapeHtml(currentPkg.label);
 
-        let confirmMessage = `Are you sure you want to ${action} ${currentPkg.label}?`;
-        if (action === 'update' && currentPkg.available_version) {
-            confirmMessage = `Update ${currentPkg.label} from version ${currentPkg.installed_version} to ${currentPkg.available_version}?`;
+        // Escaped: showConfirm renders this through unsafeHTML, and both the
+        // label and the version can carry vendor text — a version string is read
+        // straight out of a file the vendor's installer wrote.
+        let confirmMessage = `Are you sure you want to ${action} ${label}?`;
+        if (action === 'update' && reinstallOnly) {
+            const installed = currentPkg.installed_version
+                ? ` You currently have ${escapeHtml(currentPkg.installed_version)}.` : '';
+            confirmMessage = `${label} publishes no version number, so there is nothing to compare against. Reinstall it from the vendor's latest published build?${installed}`;
+        } else if (action === 'update' && currentPkg.available_version) {
+            confirmMessage = `Update ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`;
         }
 
         const confirmed = await showConfirm(

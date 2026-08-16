@@ -179,10 +179,19 @@ export class AgPackageCard extends LitElement {
      *   there is nothing to explain.
      * @private
      */
-    _renderAvailability() {
+    /**
+     * Whether the explanatory banner is being shown.
+     * @returns {boolean} True when the card explains an unavailable package.
+     * @private
+     */
+    _showsAvailabilityBanner() {
         const state = this.pkg.availability;
-        if (!state || state === 'available') return '';
-        if (this.pkg.status !== 'not_installed') return '';
+        return Boolean(state) && state !== 'available' && this.pkg.status === 'not_installed';
+    }
+
+    _renderAvailability() {
+        if (!this._showsAvailabilityBanner()) return '';
+        const state = this.pkg.availability;
 
         // Per state, so a value this component does not know yet degrades to a
         // neutral sentence rather than to a vendor claim that may be false —
@@ -258,7 +267,7 @@ export class AgPackageCard extends LitElement {
                             <span>${this.pkg.arch_support ? this.pkg.arch_support.join(', ') : 'Unknown'}</span>
                         </span>
                         ${this.pkg.is_test_package ? html`<span class="badge warning">Test Package</span>` : ''}
-                        ${!this.pkg.is_supported && (!this.pkg.availability || this.pkg.availability === 'available')
+                        ${!this.pkg.is_supported && !this._showsAvailabilityBanner()
                             ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>

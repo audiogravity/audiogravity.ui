@@ -134,6 +134,23 @@ describe('ag-package-card — availability', () => {
         expect(text).not.toContain('no build');
     });
 
+    it('keeps a compact signal on an installed package the box cannot install', async () => {
+        // The banner is for a disabled INSTALL button and there is none here,
+        // but suppressing the badge as well left the card completely mute about
+        // a vendor that no longer publishes for this system.
+        el = await mount({
+            ...basePkg,
+            status: 'installed',
+            installed_version: '2.60',
+            is_supported: false,
+            availability: 'unsupported',
+            availability_reason: 'vendor publishes no build for x86_64',
+        });
+        expect(el.querySelector('.software-availability')).toBeNull();
+        const badges = [...el.querySelectorAll('.software-meta .badge')].map(b => b.textContent.trim());
+        expect(badges).toContain('Not Supported');
+    });
+
     it('says nothing on an installed package, whatever the verdict', async () => {
         // The banner explains a disabled INSTALL button. There is none here, and
         // "not available here" under an INSTALLED header contradicts itself.
