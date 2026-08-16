@@ -735,12 +735,15 @@ export class AgAudioSoftwarePage extends LitElement {
             [
                 { title: 'Filter', text: 'Use ALL / INSTALLED / UPDATES to quickly narrow the package list.' },
                 { title: 'Package States', text: 'NOT INSTALLED (gray), INSTALLED (green), INSTALLING / UPDATING / UNINSTALLING (orange progress bar), ERROR (red).' },
-                { title: 'Actions', text: 'INSTALL adds the package to the system. UPDATE upgrades to the latest available version. UNINSTALL removes it.' },
-                { title: 'Version Check', text: 'Click "Check updates" on a card to fetch the latest available version on demand. Use CHECK UPDATES in the header to refresh all packages at once.' },
+                { title: 'Actions', text: 'INSTALL adds the package to the system. UPDATE upgrades to the latest available version. UNINSTALL removes it. After a failure the card offers what fits: a failed install left nothing behind, so it offers to retry; a failed update left the previous version in place, so it offers to update or remove.' },
+                { title: 'Version Check', text: 'Your box checks by itself once a day and tells you when something new is published. CHECK UPDATES in the header asks straight away, and first refreshes what the system knows its software sources publish — which is what makes the answer current.' },
+                { title: 'Not Available', text: 'A greyed-out INSTALL always says why, and the reasons differ: no build for this architecture (nothing to be done), the publisher\'s site could not be reached when the list was resolved (worth retrying — the refresh icon in the header rebuilds it), or another installed package rules it out. Roon Server and Roon Bridge cannot share a box.' },
+                { title: 'Installed, Not Configured', text: 'Installing a service does not configure it — that is a separate step. A card says so while the service still runs on the settings its own package shipped, since it can then play to the wrong output while looking ready.' },
+                { title: 'Playback', text: 'Updating a service restarts it and uninstalling stops it, so the confirmation names the service about to be interrupted before you commit to it.' },
                 { title: 'Restart Required', text: 'After an install or update, a pulsing badge appears on cards whose associated service needs a restart. Click it to restart the service immediately.' },
                 { title: 'Documentation', text: 'The book icon in the footer of each card opens the official documentation in a new tab.' },
                 { title: 'DRY-RUN Mode', text: 'Simulates operations without executing them — safe for testing before making real changes.' },
-                { title: 'Architecture Support', text: 'The CPU badge shows which architectures are supported (amd64, arm64, armhf, all). Cards for unsupported architectures are dimmed.' }
+                { title: 'Architecture Support', text: 'The CPU badge shows which architectures are supported (amd64, arm64, armhf, all).' }
             ]
         );
 
