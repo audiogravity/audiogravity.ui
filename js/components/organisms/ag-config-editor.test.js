@@ -90,16 +90,56 @@ describe('AgConfigEditor — guided/structured/expert mode switching', () => {
         expect(el.currentMode).toBe('raw');
     });
 
+    // The map holds the PREVIOUS value of each changed property, so a first render
+    // carries `undefined` and a later one carries the service shown until now.
     it('willUpdate opens a provisionable service in guided mode', () => {
-        const el = makeEl({ guided: true, currentMode: 'form' });
-        el.willUpdate(new Map([['service', null]]));
+        const el = makeEl({ guided: true, currentMode: 'form', service: { id: 'mpd' } });
+        el.willUpdate(new Map([['service', undefined]]));
         expect(el.currentMode).toBe('guided');
     });
 
     it('willUpdate opens a non-provisionable service in form mode', () => {
-        const el = makeEl({ guided: false, currentMode: 'guided' });
-        el.willUpdate(new Map([['service', null]]));
+        const el = makeEl({ guided: false, currentMode: 'guided', service: { id: 'mpd' } });
+        el.willUpdate(new Map([['service', undefined]]));
         expect(el.currentMode).toBe('form');
+    });
+
+    it('switching to another service returns to the default view', () => {
+        const el = makeEl({ guided: true, currentMode: 'raw', service: { id: 'upmpdcli' } });
+        el.willUpdate(new Map([['service', { id: 'mpd' }]]));
+        expect(el.currentMode).toBe('guided');
+    });
+
+    // The bug: the page rebuilds a service entry as a NEW object on every
+    // service-metrics push (up to once a second, to move the tile's status badge).
+    // Judged on the property rather than on the id, that was indistinguishable from
+    // opening another service — so Structured and Expert snapped back to Guided
+    // within a second of being chosen, every time.
+    it('a status refresh of the same service leaves the chosen view alone', () => {
+        const el = makeEl({
+            guided: true, currentMode: 'raw', service: { id: 'mpd', status: 'active' },
+        });
+        el.willUpdate(new Map([['service', { id: 'mpd', status: 'inactive' }]]));
+        expect(el.currentMode).toBe('raw');
+    });
+
+    it('a status refresh does not disturb the structured view either', () => {
+        const el = makeEl({
+            guided: true, currentMode: 'form', service: { id: 'mpd', status: 'active' },
+        });
+        el.willUpdate(new Map([['service', { id: 'mpd', status: 'inactive' }]]));
+        expect(el.currentMode).toBe('form');
+    });
+
+    it('repeated status refreshes never accumulate into a reset', () => {
+        const el = makeEl({
+            guided: true, currentMode: 'raw', service: { id: 'mpd', status: 'active' },
+        });
+        for (let i = 0; i < 10; i++) {
+            el.service = { id: 'mpd', status: i % 2 ? 'active' : 'inactive' };
+            el.willUpdate(new Map([['service', { id: 'mpd' }]]));
+        }
+        expect(el.currentMode).toBe('raw');
     });
 });
 

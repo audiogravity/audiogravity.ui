@@ -98,9 +98,17 @@ export class AgConfigEditor extends LitElement {
             this._originalRawContent = this.rawContent || '';
             this.isDirty = false;
         }
-        // Provisionable services open in the guided view by default.
+        // Provisionable services open in the guided view by default — on a change of
+        // SERVICE, judged by its id. Judging it on the property alone reset the view
+        // roughly once a second: the page rebuilds a service entry as a new object on
+        // every service-metrics push (the tile's status badge), so a plain status
+        // refresh was indistinguishable from opening another service, and Structured
+        // or Expert snapped back to Guided under the user's hands.
         if (changedProperties.has('service')) {
-            this.currentMode = this.guided ? 'guided' : 'form';
+            const previousId = changedProperties.get('service')?.id;
+            if (this.service?.id !== previousId) {
+                this.currentMode = this.guided ? 'guided' : 'form';
+            }
         }
     }
 
