@@ -70,23 +70,14 @@ export class AgAudioSoftwarePage extends LitElement {
 
         this.packagesFetch = new FetchController(this, {
             autoFetch: false,
-            fetchFn: async () => {
-                const response = await apiGet('/packages/');
-                let loadedPackages = response || [];
-                
-                // Restore previous update checks from cache to prevent update loss on refresh
-                const cachedUpdates = MemoryCache.get('audioSoftwareUpdatesCache', {});
-                if (Object.keys(cachedUpdates).length > 0) {
-                    loadedPackages = loadedPackages.map(pkg => {
-                        const cachedVersion = cachedUpdates[pkg.id];
-                        if (cachedVersion && (!pkg.available_version || pkg.available_version === pkg.installed_version)) {
-                            return { ...pkg, available_version: cachedVersion };
-                        }
-                        return pkg;
-                    });
-                }
-                return loadedPackages;
-            },
+            // No browser-side cache of the published versions any more. It
+            // existed because the core could not answer without an expensive
+            // check; it now remembers them itself and re-checks daily, so a
+            // plain listing already carries them. Worse, the cache had no
+            // expiry and was applied OVER a fresh "up to date" answer, so a
+            // version that had stopped being offered could keep an update badge
+            // lit on that browser indefinitely.
+            fetchFn: async () => await apiGet('/packages/') || [],
             onSuccess: (data) => {
                 this.packages = data;
                 this._updateGlobalUpdateBadge();
@@ -192,7 +183,6 @@ export class AgAudioSoftwarePage extends LitElement {
                 MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
             }
             this.packages[pkgIndex] = { ...pkg };
-            this._saveUpdatesCache();
             this.requestUpdate();
             this._updateGlobalUpdateBadge();
         }
@@ -303,16 +293,6 @@ export class AgAudioSoftwarePage extends LitElement {
         return this.packagesFetch.fetch();
     }
 
-    _saveUpdatesCache() {
-        const cacheObj = {};
-        this.packages.forEach(pkg => {
-            if (pkg.installed_version && pkg.available_version && pkg.installed_version !== pkg.available_version) {
-                cacheObj[pkg.id] = pkg.available_version;
-            }
-        });
-        MemoryCache.set('audioSoftwareUpdatesCache', cacheObj);
-    }
-
     _updateGlobalUpdateBadge() {
         const updateCount = this.packages.filter(pkg =>
             pkg.installed_version && pkg.available_version && pkg.installed_version !== pkg.available_version
@@ -357,6 +337,12 @@ export class AgAudioSoftwarePage extends LitElement {
      * package that *should* have a version and has none is a different matter:
      * that is a symptom, and a blind reinstall would hide it.
      *
+     * `installer_type === 'script'` stands in for "publishes no version",
+     * which is true of every script package in the registry — none declares a
+     * version check. The day one does, its check failing would look the same
+     * from here, and the distinction would have to come from the core, which is
+     * the only side that knows whether a check was configured or merely failed.
+     *
      * @param {Object} pkg - Package as returned by the core.
      * @returns {'proceed'|'reinstall'|'up-to-date'|'no-version'} What to do.
      */
@@ -382,7 +368,6 @@ export class AgAudioSoftwarePage extends LitElement {
                     const latestPkg = await apiGet(`/packages/${packageId}`);
                     // update it in state
                     this.packages[pkgIndex] = { ...pkg, ...latestPkg };
-                    this._saveUpdatesCache();
                     this.requestUpdate();
                     this._updateGlobalUpdateBadge();
                 } catch (error) {
@@ -460,7 +445,6 @@ export class AgAudioSoftwarePage extends LitElement {
         try {
             const updatedPkg = await apiGet(`/packages/${packageId}`);
             this.packages[pkgIndex] = { ...updatedPkg };
-            this._saveUpdatesCache();
             this.requestUpdate();
             this._updateGlobalUpdateBadge();
         } catch (error) {
@@ -494,7 +478,6 @@ export class AgAudioSoftwarePage extends LitElement {
             const updatedPackages = await apiGet('/packages/?check_updates=true');
             if (updatedPackages && Array.isArray(updatedPackages)) {
                 this.packages = updatedPackages;
-                this._saveUpdatesCache(); // Store the results to MemoryCache
                 this._updateGlobalUpdateBadge();
                 showToast('success', 'Check Complete', 'Update check finished');
             }

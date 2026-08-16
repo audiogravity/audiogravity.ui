@@ -200,6 +200,21 @@ describe('ag-package-card — actions', () => {
         expect(labels.join(' ')).toContain('UPDATE');
     });
 
+    it('leaves a way out after a failed operation', async () => {
+        // An operation that failed leaves the software wherever it was, very
+        // often on disk and half updated. Falling through to no buttons at all
+        // stranded the user on exactly the card that needs an action.
+        el = await mount({
+            ...basePkg,
+            status: 'error',
+            installed_version: '2.60',
+            is_supported: false,
+            availability: 'blocked',
+        });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).toContain('UNINSTALL');
+    });
+
     it('still offers INSTALL normally when everything is fine', async () => {
         el = await mount({ ...basePkg, availability: 'available' });
         const buttons = [...el.querySelectorAll('.software-actions button')];

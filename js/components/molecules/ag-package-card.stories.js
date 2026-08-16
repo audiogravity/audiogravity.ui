@@ -10,6 +10,10 @@ export default {
     },
 };
 
+// Mirrors what GET /packages/ actually returns. `installer_type` in particular
+// is one of apt_simple | apt_deb | apt_repo | script | dummy — a made-up value
+// made the card render controls the real one never shows for this package
+// (Roon is installed by a vendor script, which publishes no version to check).
 const pkgMock = {
     id: 'roonserver',
     label: 'Roon Server',
@@ -18,8 +22,9 @@ const pkgMock = {
     installed_version: '2.0.12',
     available_version: '2.0.15',
     is_supported: true,
+    availability: 'available',
     arch_support: ['x86_64', 'aarch64'],
-    installer_type: 'binary'
+    installer_type: 'script'
 };
 
 const Template = (args) => html`

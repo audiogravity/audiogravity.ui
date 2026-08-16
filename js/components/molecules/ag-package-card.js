@@ -139,7 +139,11 @@ export class AgPackageCard extends LitElement {
             return html`<button class="tile-action-btn start" @click=${() => this._handleAction('install')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> INSTALL</button>`;
         }
 
-        if (this.pkg.status === 'installed') {
+        // `error` alongside `installed`: an operation that failed leaves the
+        // software wherever it was — very often on disk, half updated — and the
+        // way out is to retry or to remove it. Falling through to no buttons at
+        // all would strand the user on exactly the card that needs an action.
+        if (this.pkg.status === 'installed' || this.pkg.status === 'error') {
             return html`
                 <button class="tile-action-btn secondary" @click=${() => this._handleAction('update')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> UPDATE</button>
                 <button class="tile-action-btn warning" @click=${() => this._handleAction('uninstall')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg> UNINSTALL</button>
@@ -165,22 +169,13 @@ export class AgPackageCard extends LitElement {
     }
 
     /**
-     * Explain an unavailable package instead of leaving a greyed-out button
-     * unexplained. The core distinguishes "the vendor publishes nothing for this
-     * box" from "we could not reach the vendor" (and from "another package
-     * forbids it"), which are three very different things for the reader: only
-     * the first is permanent.
-     *
-     * Shown for a package that is NOT installed, and only there — it explains
-     * the disabled INSTALL button. On something already installed there is no
-     * such button, and "not available here" under an INSTALLED header, next to
-     * working UPDATE and UNINSTALL buttons, contradicts itself.
-     * @returns {import('lit').TemplateResult|string} The banner, or '' when
-     *   there is nothing to explain.
-     * @private
-     */
-    /**
      * Whether the explanatory banner is being shown.
+     *
+     * Only for a package that is NOT installed: the banner explains a disabled
+     * INSTALL button, and on something already installed there is none — "not
+     * available here" under an INSTALLED header, next to working UPDATE and
+     * UNINSTALL buttons, contradicts itself. The compact badge in the footer
+     * takes over there, which is why both read this.
      * @returns {boolean} True when the card explains an unavailable package.
      * @private
      */
@@ -189,6 +184,16 @@ export class AgPackageCard extends LitElement {
         return Boolean(state) && state !== 'available' && this.pkg.status === 'not_installed';
     }
 
+    /**
+     * Explain an unavailable package instead of leaving a greyed-out button
+     * unexplained. The core distinguishes "the vendor publishes nothing for this
+     * box" from "we could not reach the vendor" (and from "another package
+     * forbids it"), which are three very different things for the reader: only
+     * the first is permanent.
+     * @returns {import('lit').TemplateResult|string} The banner, or '' when
+     *   there is nothing to explain.
+     * @private
+     */
     _renderAvailability() {
         if (!this._showsAvailabilityBanner()) return '';
         const state = this.pkg.availability;
