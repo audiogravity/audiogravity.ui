@@ -123,7 +123,11 @@ export class AgPackageCard extends LitElement {
     }
 
     _renderActions() {
-        if (!this.pkg.is_supported) {
+        // `is_supported` gates INSTALL only. An installed package must keep its
+        // UPDATE and UNINSTALL buttons whatever the verdict says: a box that
+        // ended up with two conflicting products would otherwise have no way to
+        // remove either — the very situation the conflict rule exists to avoid.
+        if (!this.pkg.is_supported && this.pkg.status === 'not_installed') {
             return html`<button class="tile-action-btn start" disabled><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> INSTALL</button>`;
         }
 
@@ -160,6 +164,57 @@ export class AgPackageCard extends LitElement {
         return '';
     }
 
+    /**
+     * Explain an unavailable package instead of leaving a greyed-out button
+     * unexplained. The core distinguishes "the vendor publishes nothing for this
+     * box" from "we could not reach the vendor" (and from "another package
+     * forbids it"), which are three very different things for the reader: only
+     * the first is permanent.
+     *
+     * Shown for a package that is NOT installed, and only there — it explains
+     * the disabled INSTALL button. On something already installed there is no
+     * such button, and "not available here" under an INSTALLED header, next to
+     * working UPDATE and UNINSTALL buttons, contradicts itself.
+     * @returns {import('lit').TemplateResult|string} The banner, or '' when
+     *   there is nothing to explain.
+     * @private
+     */
+    _renderAvailability() {
+        const state = this.pkg.availability;
+        if (!state || state === 'available') return '';
+        if (this.pkg.status !== 'not_installed') return '';
+
+        // Per state, so a value this component does not know yet degrades to a
+        // neutral sentence rather than to a vendor claim that may be false —
+        // "no build for this system" is wrong for a local conflict.
+        const { label, badgeClass, fallback } = {
+            unsupported: {
+                label: 'Not available here',
+                badgeClass: 'badge error',
+                fallback: 'no build for this system',
+            },
+            unknown: {
+                label: 'Cannot be checked',
+                badgeClass: 'badge warning',
+                fallback: 'the source could not be reached',
+            },
+            blocked: {
+                label: 'Unavailable',
+                badgeClass: 'badge error',
+                fallback: 'another installed package prevents it',
+            },
+        }[state] || { label: 'Unavailable', badgeClass: 'badge error', fallback: '' };
+
+        const reason = this.pkg.availability_reason || fallback;
+
+        return html`
+            <div class="software-availability">
+                <span class=${badgeClass}>${label}</span>
+                ${reason ? html`<span class="software-availability-reason">${reason}</span>` : ''}
+            </div>
+        `;
+    }
+
     render() {
         if (!this.pkg) return html``;
 
@@ -188,6 +243,8 @@ export class AgPackageCard extends LitElement {
 
                 <div class="software-description">${this.pkg.description}</div>
 
+                ${this._renderAvailability()}
+
                 ${this._renderVersions()}
 
                 <div class="software-actions">
@@ -201,7 +258,8 @@ export class AgPackageCard extends LitElement {
                             <span>${this.pkg.arch_support ? this.pkg.arch_support.join(', ') : 'Unknown'}</span>
                         </span>
                         ${this.pkg.is_test_package ? html`<span class="badge warning">Test Package</span>` : ''}
-                        ${!this.pkg.is_supported ? html`<span class="badge error">Not Supported</span>` : ''}
+                        ${!this.pkg.is_supported && (!this.pkg.availability || this.pkg.availability === 'available')
+                            ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>
                                 <svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg> Restart required

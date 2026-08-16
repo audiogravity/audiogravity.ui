@@ -160,6 +160,23 @@
     overflow-wrap: anywhere;
 }
 
+/* Why a package cannot be installed on this box. Sits under the description so
+   it is read before the disabled button it explains. */
+.software-availability {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-md);
+}
+
+.software-availability-reason {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
 /* Version info */
 .software-version {
     display: flex;
