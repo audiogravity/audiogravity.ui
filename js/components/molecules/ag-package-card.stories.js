@@ -31,6 +31,7 @@ const Template = (args) => html`
   <div style="padding: 24px; max-width: 400px; background: var(--bg-primary);">
     <ag-package-card 
         .pkg="${args.pkg}"
+        .configuredByAg="${args.configuredByAg !== false}"
         ?isChecking="${args.isChecking}"
         ?isGuest="${args.isGuest}"
         @package-action="${(e) => console.log('Action:', e.detail)}">
@@ -131,6 +132,42 @@ InstalledButNoLongerPublished.args = {
         is_supported: false,
         availability: 'unsupported',
         availability_reason: 'vendor publishes no build for x86_64'
+    },
+    isChecking: false,
+    isGuest: false
+};
+
+/**
+ * Installed, but running on the settings its own package ships — Audiogravity
+ * has not written this service's configuration. Installing deliberately does not
+ * configure; the card says so rather than doing it silently.
+ */
+export const InstalledNotConfigured = Template.bind({});
+InstalledNotConfigured.args = {
+    pkg: {
+        ...pkgMock,
+        id: 'mpd',
+        label: 'Music Player Daemon',
+        description: 'Flexible, powerful server-side audio player',
+        service_id: 'mpd',
+        installer_type: 'apt_simple',
+        status: 'installed',
+        installed_version: '0.24.5-1',
+        available_version: '0.24.5-1'
+    },
+    configuredByAg: false,
+    isChecking: false,
+    isGuest: false
+};
+
+/** A failed install leaves nothing on disk: the way out is to try again. */
+export const FailedInstall = Template.bind({});
+FailedInstall.args = {
+    pkg: {
+        ...pkgMock,
+        status: 'error',
+        installed_version: null,
+        available_version: null
     },
     isChecking: false,
     isGuest: false

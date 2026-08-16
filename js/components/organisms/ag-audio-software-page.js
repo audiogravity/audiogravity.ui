@@ -55,6 +55,13 @@ export class AgAudioSoftwarePage extends LitElement {
         this._pollInterval = null;
         this._loaded = false;
         this._restartNeeded = new Set(MemoryCache.get('softwareRestartNeeded', []));
+        // Services the box runs on the packaged defaults rather than on a
+        // configuration Audiogravity wrote. Installing a package never
+        // configures it — deliberately — so the card has to say so, or a
+        // freshly installed service looks ready while it plays to the wrong
+        // output. Empty until the first read, and stays empty if the read
+        // fails: a missing answer must not accuse anything.
+        this._unconfigured = new Set();
 
         // Log lines arrive as live SSE events; anything missed while the stream was
         // down is unrecoverable without this cursor. It tracks which package the
@@ -94,6 +101,35 @@ export class AgAudioSoftwarePage extends LitElement {
                 }
             }
         });
+    }
+
+    /**
+     * Note which audio services are NOT running on a configuration AG wrote.
+     *
+     * "Configured" is not "a config file exists" — every package ships one.
+     * The core judges it on a marker it writes itself, which is also what makes
+     * this survive a package upgrade replacing the file. Failures are swallowed
+     * on purpose: a guest, or an unreachable endpoint, must leave the cards
+     * saying nothing rather than saying something wrong.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _loadConfiguredServices() {
+        // Admin-only on the core side: a guest asking would take a guaranteed
+        // 403 on every load. And it probes the box's block devices to answer,
+        // so it is read when this tab is actually shown — never on the startup
+        // fetch that runs for the update badge alone.
+        if (!isAdmin()) return;
+        try {
+            const status = await apiGet('/audio-stack/status');
+            this._unconfigured = new Set(
+                (status?.services || [])
+                    .filter(s => s.configured === false)
+                    .map(s => s.service_id)
+            );
+        } catch {
+            this._unconfigured = new Set();
+        }
     }
 
     _handleSyncEvent() {
@@ -152,6 +188,11 @@ export class AgAudioSoftwarePage extends LitElement {
             if (!this._loaded) {
                 this._loadPackages();
             }
+            // Every time the tab is shown, not only the first: the user may have
+            // just provisioned a service in the Config tab, and a card still
+            // saying "not configured" would be accusing it of something it no
+            // longer is.
+            this._loadConfiguredServices().then(() => this.requestUpdate());
         }
     }
 
@@ -159,6 +200,7 @@ export class AgAudioSoftwarePage extends LitElement {
         if (currentTab === 'audio-software') {
             // Full refresh on visibility to ensure sync
             this._loadPackages();
+            this._loadConfiguredServices().then(() => this.requestUpdate());
         }
     }
 
@@ -353,6 +395,33 @@ export class AgAudioSoftwarePage extends LitElement {
         return pkg.available_version === pkg.installed_version ? 'up-to-date' : 'proceed';
     }
 
+    /**
+     * Warn that an operation will interrupt whatever is playing through it.
+     *
+     * Updating a package restarts the service it drives — the package's own
+     * post-install script does it, so nothing here can avoid it — and
+     * uninstalling stops it outright. Said in the confirmation rather than
+     * enforced by a guard: the only reliable way to know whether that service is
+     * currently playing is to rebuild the whole audio pipeline, ALSA probing
+     * included, which is far too much to pay before every operation and is blind
+     * to Roon anyway. The person pressing the button knows whether they are
+     * listening; this makes sure they know what the button does.
+     *
+     * @param {Object} pkg - Package the action targets.
+     * @param {string} action - install | update | uninstall.
+     * @returns {string} A sentence to append, or '' when nothing is at stake.
+     */
+    _playbackWarning(pkg, action) {
+        // No service_id: nothing AG starts or stops (Roon Server), so nothing to
+        // warn about. Installing something that is not running yet is harmless.
+        if (!pkg.service_id || action === 'install') return '';
+
+        const label = escapeHtml(pkg.label);
+        return action === 'uninstall'
+            ? ` This stops and removes ${label} — anything playing through it will stop.`
+            : ` This restarts ${label} — anything playing through it will stop.`;
+    }
+
     async _handleAction(e) {
         const { packageId, action } = e.detail;
         const pkgIndex = this.packages.findIndex(p => p.id === packageId);
@@ -362,7 +431,11 @@ export class AgAudioSoftwarePage extends LitElement {
         let reinstallOnly = false;
 
         if (action === 'update') {
-            if (!pkg.available_version) {
+            // A package whose vendor publishes no version has nothing to fetch:
+            // asking anyway cost a round-trip and put "checking for available
+            // updates…" on screen a moment before a dialogue that says there is
+            // nothing to compare.
+            if (!pkg.available_version && this._decideUpdate(pkg) !== 'reinstall') {
                 showToast('info', 'Checking Version', 'Checking for available updates...');
                 try {
                     const latestPkg = await apiGet(`/packages/${packageId}`);
@@ -402,8 +475,15 @@ export class AgAudioSoftwarePage extends LitElement {
                 ? ` You currently have ${escapeHtml(currentPkg.installed_version)}.` : '';
             confirmMessage = `${label} publishes no version number, so there is nothing to compare against. Reinstall it from the vendor's latest published build?${installed}`;
         } else if (action === 'update' && currentPkg.available_version) {
-            confirmMessage = `Update ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`;
+            // The installed version can be absent — a failed install leaves the
+            // card in error with nothing on disk — and printing it unguarded
+            // offered to update "from version null".
+            confirmMessage = currentPkg.installed_version
+                ? `Update ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`
+                : `Install ${label} version ${escapeHtml(currentPkg.available_version)}?`;
         }
+
+        confirmMessage += this._playbackWarning(currentPkg, action);
 
         const confirmed = await showConfirm(
             `${actionLabel} Package`,
@@ -760,6 +840,7 @@ export class AgAudioSoftwarePage extends LitElement {
                             .animationsEnabled=${AppState.animationsEnabled}
                             .isChecking=${pkg.isChecking || false}
                             .restartRequired=${this._restartNeeded.has(pkg.id)}
+                            .configuredByAg=${!this._unconfigured.has(pkg.service_id)}
                             .delayIndex=${index}>
                         </ag-package-card>
                     `}

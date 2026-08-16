@@ -200,6 +200,15 @@ describe('ag-package-card — actions', () => {
         expect(labels.join(' ')).toContain('UPDATE');
     });
 
+    it('offers a retry after a failed install, not actions on absent software', async () => {
+        // A failed install leaves nothing on disk: UPDATE and UNINSTALL would
+        // both act on something that is not there.
+        el = await mount({ ...basePkg, status: 'error', installed_version: null });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).toContain('INSTALL');
+        expect(labels.join(' ')).not.toContain('UNINSTALL');
+    });
+
     it('leaves a way out after a failed operation', async () => {
         // An operation that failed leaves the software wherever it was, very
         // often on disk and half updated. Falling through to no buttons at all
@@ -220,5 +229,71 @@ describe('ag-package-card — actions', () => {
         const buttons = [...el.querySelectorAll('.software-actions button')];
         expect(buttons).toHaveLength(1);
         expect(buttons[0].disabled).toBe(false);
+    });
+});
+
+/**
+ * "Installed" is not "configured".
+ *
+ * Installing a package deliberately does not write its configuration — that is
+ * a separate step — so a freshly installed service runs on the defaults its
+ * package ships and can play to the wrong output while the card looks perfectly
+ * ready. The core judges this on a marker it writes into the file itself, not
+ * on the file existing: every package ships one.
+ */
+describe('ag-package-card — configuration state', () => {
+    let el;
+
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { el?.remove(); });
+
+    /** @param {Object} extra - Fields to override on the installed base package. */
+    async function mountInstalled(extra = {}, props = {}) {
+        const card = document.createElement('ag-package-card');
+        card.pkg = {
+            ...basePkg,
+            id: 'mpd',
+            label: 'Music Player Daemon',
+            service_id: 'mpd',
+            status: 'installed',
+            installed_version: '0.24.5-1',
+            ...extra,
+        };
+        Object.assign(card, props);
+        document.body.appendChild(card);
+        await card.updateComplete;
+        return card;
+    }
+
+    /** @param {HTMLElement} card - Mounted card. @returns {string[]} Footer badges. */
+    const badges = card =>
+        [...card.querySelectorAll('.software-meta .badge')].map(b => b.textContent.trim());
+
+    it('says so when AG has not written the configuration', async () => {
+        el = await mountInstalled({}, { configuredByAg: false });
+        expect(badges(el)).toContain('Not configured');
+    });
+
+    it('says nothing once it is configured', async () => {
+        el = await mountInstalled({}, { configuredByAg: true });
+        expect(badges(el)).not.toContain('Not configured');
+    });
+
+    it('says nothing when the state could not be read', async () => {
+        // A guest, or an endpoint that failed: silence, never an accusation.
+        el = await mountInstalled();
+        expect(badges(el)).not.toContain('Not configured');
+    });
+
+    it('says nothing about a package that is not installed', async () => {
+        el = await mountInstalled({ status: 'not_installed', installed_version: null },
+            { configuredByAg: false });
+        expect(badges(el)).not.toContain('Not configured');
+    });
+
+    it('says nothing about a package AG does not drive', async () => {
+        // Roon Server has no service_id: AG installs it and configures nothing.
+        el = await mountInstalled({ service_id: null }, { configuredByAg: false });
+        expect(badges(el)).not.toContain('Not configured');
     });
 });

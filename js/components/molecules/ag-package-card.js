@@ -25,7 +25,8 @@ export class AgPackageCard extends LitElement {
         pkg: { type: Object },
         animationsEnabled: { type: Boolean },
         isChecking: { type: Boolean },
-        restartRequired: { type: Boolean }
+        restartRequired: { type: Boolean },
+        configuredByAg: { type: Boolean }
     };
 
     constructor() {
@@ -34,6 +35,10 @@ export class AgPackageCard extends LitElement {
         this.animationsEnabled = true; // Set by main application state
         this.isChecking = false;
         this.restartRequired = false;
+        // Defaults to true so a page that could not read the audio stack's state
+        // — a guest, an endpoint that failed — says nothing rather than accusing
+        // every service of being unconfigured.
+        this.configuredByAg = true;
     }
 
     createRenderRoot() {
@@ -122,6 +127,23 @@ export class AgPackageCard extends LitElement {
         `;
     }
 
+    /**
+     * Whether this package drives a service AG has not configured.
+     *
+     * Installing a package deliberately does not configure it — that is a
+     * separate, deliberate step — so a freshly installed service runs on the
+     * defaults its package ships and can play to the wrong output while looking
+     * perfectly ready. Saying so is the whole point; configuring it silently
+     * would be worse.
+     * @returns {boolean} True when the card should say it is not configured.
+     * @private
+     */
+    _needsConfiguring() {
+        return this.pkg.status === 'installed'
+            && Boolean(this.pkg.service_id)
+            && this.configuredByAg === false;
+    }
+
     _renderActions() {
         // `is_supported` gates INSTALL only. An installed package must keep its
         // UPDATE and UNINSTALL buttons whatever the verdict says: a box that
@@ -139,10 +161,16 @@ export class AgPackageCard extends LitElement {
             return html`<button class="tile-action-btn start" @click=${() => this._handleAction('install')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> INSTALL</button>`;
         }
 
-        // `error` alongside `installed`: an operation that failed leaves the
-        // software wherever it was — very often on disk, half updated — and the
-        // way out is to retry or to remove it. Falling through to no buttons at
-        // all would strand the user on exactly the card that needs an action.
+        // A failed operation leaves the software wherever it was, and the card
+        // must offer the way out — but which way depends on what failed. A
+        // failed install leaves nothing on disk, so UPDATE and UNINSTALL would
+        // both act on software that is not there; a failed update leaves the
+        // previous version in place. The card cannot know which operation it
+        // was, but it can see whether anything is installed.
+        if (this.pkg.status === 'error' && !this.pkg.installed_version) {
+            return html`<button class="tile-action-btn start" @click=${() => this._handleAction('install')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> INSTALL</button>`;
+        }
+
         if (this.pkg.status === 'installed' || this.pkg.status === 'error') {
             return html`
                 <button class="tile-action-btn secondary" @click=${() => this._handleAction('update')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> UPDATE</button>
@@ -274,6 +302,8 @@ export class AgPackageCard extends LitElement {
                         ${this.pkg.is_test_package ? html`<span class="badge warning">Test Package</span>` : ''}
                         ${!this.pkg.is_supported && !this._showsAvailabilityBanner()
                             ? html`<span class="badge error">Not Supported</span>` : ''}
+                        ${this._needsConfiguring() ? html`
+                            <span class="badge warning" title="Installing does not configure: this service is running on the configuration its package ships, not on the output you chose. Set it up in Audio Configuration.">Not configured</span>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>
                                 <svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg> Restart required

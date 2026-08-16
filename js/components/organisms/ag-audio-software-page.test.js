@@ -6,13 +6,15 @@
  *   into the showConfirm dialog HTML string (XSS regression)
  * - The escaping does not break display of normal package names
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const session = vi.hoisted(() => ({ admin: true }));
 
 // Partial: common.js calls initAuth as it loads, so the real module must stay.
 vi.mock(import('../../auth.js'), async (importOriginal) => ({
     ...(await importOriginal()),
     isGuest: () => false,
-    isAdmin: () => true,
+    isAdmin: () => session.admin,
     // common.js gates its own module load on this and throws otherwise, so a
     // test that imports the component has to be logged in.
     requireAuth: () => true,
@@ -149,5 +151,86 @@ describe('Update of a package that publishes no version', () => {
             installed_version: '5.1.5-67',
             available_version: '6.1.4-71',
         })).toBe('proceed');
+    });
+});
+
+/**
+ * Warning that an operation interrupts playback.
+ *
+ * Updating a package restarts the service it drives — its own post-install
+ * script does it — and uninstalling stops it. Enforcing a guard would mean
+ * rebuilding the whole audio pipeline before every operation just to ask
+ * whether that service is playing, which is far too much to pay and is blind to
+ * Roon regardless. Saying it costs nothing and is always true.
+ */
+describe('Playback warning in the confirmation', () => {
+    /** @returns {Object} A bare instance, enough to call the method. */
+    function page() {
+        return Object.create(AgAudioSoftwarePage.prototype);
+    }
+
+    it('warns that an update restarts the service', () => {
+        const text = page()._playbackWarning(
+            { label: 'Music Player Daemon', service_id: 'mpd' }, 'update');
+        expect(text).toContain('restarts Music Player Daemon');
+        expect(text).toContain('will stop');
+    });
+
+    it('warns that an uninstall stops and removes it', () => {
+        const text = page()._playbackWarning(
+            { label: 'UPnP Bridge', service_id: 'upmpdcli' }, 'uninstall');
+        expect(text).toContain('stops and removes UPnP Bridge');
+    });
+
+    it('says nothing when installing something that is not running yet', () => {
+        expect(page()._playbackWarning(
+            { label: 'Roon Bridge', service_id: 'roon' }, 'install')).toBe('');
+    });
+
+    it('says nothing for a package AG does not start or stop', () => {
+        // Roon Server has no service_id: AG installs it and has no handle on it.
+        expect(page()._playbackWarning(
+            { label: 'Roon Server', service_id: null }, 'update')).toBe('');
+    });
+
+    it('escapes the label it interpolates', () => {
+        const text = page()._playbackWarning(
+            { label: '<img src=x onerror=alert(1)>', service_id: 'mpd' }, 'update');
+        expect(text).not.toContain('<img');
+        expect(text).toContain('&lt;img');
+    });
+});
+
+/**
+ * The configuration state is admin-only on the core side and probes the box's
+ * block devices to answer, so it is read when the tab is shown — never on the
+ * startup fetch that exists only to light the update badge.
+ */
+describe('Reading which services AG has configured', () => {
+    afterEach(() => { session.admin = true; });
+
+    it('does not ask when the session is not an admin', async () => {
+        // The endpoint is admin-gated: asking would take a guaranteed 403 on
+        // every load. The guard returns before anything is fetched, so whatever
+        // was known before is left untouched.
+        session.admin = false;
+        const page = Object.create(AgAudioSoftwarePage.prototype);
+        page._unconfigured = new Set(['mpd']);
+
+        await page._loadConfiguredServices();
+
+        expect([...page._unconfigured]).toEqual(['mpd']);
+    });
+
+    it('reads it for an admin, and says nothing when the read fails', async () => {
+        // No server in a unit test: the fetch rejects, which must clear the set
+        // rather than leave a stale accusation behind.
+        session.admin = true;
+        const page = Object.create(AgAudioSoftwarePage.prototype);
+        page._unconfigured = new Set(['mpd']);
+
+        await page._loadConfiguredServices();
+
+        expect([...page._unconfigured]).toEqual([]);
     });
 });
