@@ -9,6 +9,10 @@
  *    - `/player/state/snapshot` — pulled at library mount by 3 components,
  *      otherwise hit concurrently. TTL 30s.
  *    - `/library/roon-zones` — pulled by 2 components. TTL 60s.
+ *    - `/library/roon-status` — where the Roon setup stands, polled by the
+ *      status panel while a connection attempt runs. TTL 10s: the state changes
+ *      because of something the owner does inside Roon, which the box only
+ *      learns on its next attempt.
  *
  * 2. **PlayerState SSE multiplexer**: the backend exposes `GET /player/state`
  *    as a live SSE stream of `state` events. Components subscribe via
@@ -29,6 +33,11 @@ import { showToast } from './ui-helpers.js';
 
 const TTL_SNAPSHOT   = 30_000;
 const TTL_ROON_ZONES = 60_000;
+// Where the Roon setup stands. Short-lived on purpose: the state it reports
+// changes because of something the owner does inside Roon, which the box learns
+// about only on its next attempt — a stale answer would leave the card claiming
+// they still have a click to make after they made it.
+const TTL_ROON_STATUS = 10_000;
 
 // Offline snapshot — last known player state persisted to localStorage so the
 // player is not empty when the page is loaded without a network connection.
@@ -42,6 +51,7 @@ let _offlineSnapshotTimer = null;
 
 const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
+const roonState = { value: null, fetchedAt: 0, inFlight: null };
 
 /**
  * Last output failure already announced, so the toast fires on the transition
@@ -227,6 +237,21 @@ export async function getRoonZones({ force = false } = {}) {
     if (!force && isFresh(zones, TTL_ROON_ZONES)) return zones.value;
     if (zones.inFlight) return zones.inFlight;
     return fetchInto(zones, '/library/roon-zones');
+}
+
+/**
+ * Resolve where the Roon setup stands: whether a Roon endpoint runs on the box,
+ * whether a Core answers, whether the extension still has to be enabled inside
+ * Roon, and how many zones are visible once it is.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<{state: string, zones: number, extension_name: string}>}
+ */
+export async function getRoonStatus({ force = false } = {}) {
+    if (!force && isFresh(roonState, TTL_ROON_STATUS)) return roonState.value;
+    if (roonState.inFlight) return roonState.inFlight;
+    return fetchInto(roonState, '/library/roon-status');
 }
 
 /** Drop the cached snapshot so the next call re-fetches. */

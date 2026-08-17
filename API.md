@@ -76,6 +76,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
 | GET | `/library/upnp-servers` | Scan for new UPnP servers |
+| GET | `/library/roon-status` | Where the Roon setup stands — `{ state, zones, extension_name }`. `state` is one of `no_endpoint` (no Roon Bridge or Roon Server running on the box), `core_not_found` (no Core answering), `waiting_authorization` (the extension has to be enabled in Roon → Settings → Extensions), `connected`, `checking` (an attempt is running — the call returns at once rather than holding for it, so poll), or `unknown` (nothing attempted, or a failure whose cause the box could not name). `extension_name` is the label to look for in Roon's list |
 | GET | `/library/roon-zones` | List Roon zones |
 | GET | `/library/roon-browse` | Browse the Roon hierarchy |
 | POST | `/library/roon-action` | Execute a Roon browse action (play, queue…) |

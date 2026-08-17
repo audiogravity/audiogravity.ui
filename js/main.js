@@ -104,6 +104,7 @@ import './components/molecules/ag-playback-controls.js';
 import './components/molecules/ag-progress-bar.js';
 import './components/molecules/ag-format-strip.js';
 import './components/molecules/ag-library-source-card.js';
+import './components/molecules/ag-roon-status.js';
 import './components/molecules/ag-upnp-item.js';
 import './components/molecules/ag-radio-card.js';
 import './components/molecules/ag-hqplayer-output.js';

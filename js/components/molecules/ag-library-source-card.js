@@ -3,6 +3,8 @@
  * @description Source card molecule for the library source switcher.
  * Renders a single audio source card (MPD, Roon, Qobuz, UPnP…).
  * For Roon sources, toggles an inline zone picker and fetches zones autonomously.
+ * When no zone comes back, ag-roon-status takes that place: "No zones available"
+ * was a dead end, and the reason is always something the owner can act on.
  *
  * @element ag-library-source-card
  *
@@ -17,6 +19,7 @@ import { getRoonZones } from '../../library-store.js';
 import { ROON_IDS, SOURCE_LABELS, SOURCE_ICONS } from '../library-constants.js';
 import { iconChevronDown, iconOutput, iconCheck } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
+import './ag-roon-status.js';
 
 export class AgLibrarySourceCard extends LitElement {
     static properties = {
@@ -61,6 +64,27 @@ export class AgLibrarySourceCard extends LitElement {
             } finally {
                 this._zonesLoading = false;
             }
+        }
+    }
+
+    /**
+     * Re-fetch the zones after the status panel reports a live session.
+     *
+     * The card asks for zones when it is expanded, which is usually before Roon
+     * has authorized anything — so it caches an empty list for a minute. Without
+     * this, the panel would say "Connected — 2 zones" above a list still showing
+     * none, and collapsing and reopening would hit the same cached emptiness.
+     *
+     * @returns {Promise<void>}
+     */
+    async _reloadZones() {
+        this._zonesLoading = true;
+        try {
+            this._roonZones = await getRoonZones({ force: true });
+        } catch (_) {
+            this._roonZones = [];
+        } finally {
+            this._zonesLoading = false;
         }
     }
 
@@ -124,7 +148,9 @@ export class AgLibrarySourceCard extends LitElement {
                         ${this._zonesLoading
                             ? html`<div class="lib-src-zone-row loading">Loading zones…</div>`
                             : this._roonZones.length === 0
-                                ? html`<div class="lib-src-zone-row empty">No zones available</div>`
+                                ? html`<ag-roon-status
+                                        @roon-connected=${() => this._reloadZones()}
+                                    ></ag-roon-status>`
                                 : this._roonZones.map(zone => html`
                                     <div
                                         class="lib-src-zone-row ${zone.zone_id === zoneId ? 'active' : ''}"
