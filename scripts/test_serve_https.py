@@ -24,6 +24,7 @@ import importlib.util
 import logging
 import os
 import socket
+import ssl
 import threading
 import time
 from pathlib import Path
@@ -492,3 +493,69 @@ class TestCABootstrap:
             serve_https._start_ca_bootstrap(taken, str(ca_path), 443)  # must not raise
         finally:
             squatter.close()
+
+
+class TestAClientThatVanishesMidConnection:
+    """A browser closing a tab must not read as a server fault in the journal.
+
+    Measured on a deployed box: 29 tracebacks over three days, every one from the
+    same frame and the same cause — `[SSL: UNEXPECTED_EOF_WHILE_READING]`, one
+    browser closing its keep-alive connections. Over plain TCP that drop arrives
+    as a reset and was already swallowed; over TLS, OpenSSL calls it a protocol
+    error instead, and Python's own ragged-EOF suppression does not cover it
+    (that only applies to SSL_ERROR_EOF). Nothing was broken — but a journal full
+    of tracebacks hides the day something is.
+    """
+
+    @staticmethod
+    def _handler_whose_read_raises(monkeypatch, exc):
+        """Return a handler whose inherited request read raises ``exc``.
+
+        Args:
+            monkeypatch: pytest fixture used to replace the inherited method.
+            exc: Exception instance the read should raise.
+
+        Returns:
+            An AudiogravityHandler built without touching a socket.
+        """
+        def _raise(self):
+            raise exc
+
+        monkeypatch.setattr(
+            http.server.SimpleHTTPRequestHandler, "handle_one_request", _raise
+        )
+        handler = object.__new__(serve_https.AudiogravityHandler)
+        handler.close_connection = False
+        return handler
+
+    @staticmethod
+    def _tls_error(reason):
+        """Build an ssl.SSLError shaped like the one OpenSSL raises."""
+        exc = ssl.SSLError(1, f"[SSL: {reason}] tls failure (_ssl.c:2650)")
+        exc.reason = reason
+        return exc
+
+    def test_a_vanished_tls_peer_is_not_an_error(self, monkeypatch):
+        """The observed case: swallowed, and the connection is closed."""
+        handler = self._handler_whose_read_raises(
+            monkeypatch, self._tls_error("UNEXPECTED_EOF_WHILE_READING")
+        )
+        handler.handle_one_request()  # must not raise
+        assert handler.close_connection is True
+
+    def test_a_real_tls_fault_still_surfaces(self, monkeypatch):
+        """Swallowing every SSL error would hide a genuine protocol failure."""
+        handler = self._handler_whose_read_raises(
+            monkeypatch, self._tls_error("WRONG_VERSION_NUMBER")
+        )
+        with pytest.raises(ssl.SSLError):
+            handler.handle_one_request()
+
+    @pytest.mark.parametrize(
+        "exc", [BrokenPipeError(), ConnectionResetError()], ids=["broken-pipe", "reset"]
+    )
+    def test_the_plain_socket_drops_are_still_swallowed(self, monkeypatch, exc):
+        """Guard the behaviour that was already there before the TLS variant."""
+        handler = self._handler_whose_read_raises(monkeypatch, exc)
+        handler.handle_one_request()  # must not raise
+        assert handler.close_connection is True

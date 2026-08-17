@@ -30,6 +30,10 @@ _preload_cache: dict = {}
 
 _RE_HASHED = re.compile(r'-[A-Za-z0-9_]{8,}\.(js|css)$')
 
+# OpenSSL's reason for "the peer went away mid-connection without saying goodbye",
+# as opposed to a genuine TLS fault. A browser closing a tab does exactly this.
+_TLS_PEER_GONE = 'UNEXPECTED_EOF_WHILE_READING'
+
 # Tag-level patterns — capture the whole opening tag so attribute order is irrelevant.
 _RE_SCRIPT_TAG  = re.compile(r'<script\b[^>]+>', re.I)
 _RE_LINK_TAG    = re.compile(r'<link\b[^>]+>', re.I)
@@ -97,6 +101,20 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
         try:
             super().handle_one_request()
         except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+        except ssl.SSLError as exc:
+            # Over TLS the very same drop arrives as an SSL error rather than a
+            # reset: since OpenSSL 3 a peer that closes without close_notify is
+            # reported as UNEXPECTED_EOF_WHILE_READING, and Python's own ragged-EOF
+            # suppression does not cover it — that only suppresses SSL_ERROR_EOF,
+            # while this one is a protocol-level error. Measured on a box: 29
+            # tracebacks over three days, every one of them from this frame, this
+            # reason, one browser closing its keep-alive connections. Nothing was
+            # broken; the journal merely read as though something was.
+            # Only that reason is swallowed: a handshake or protocol failure is a
+            # real fault and must stay visible.
+            if getattr(exc, "reason", None) != _TLS_PEER_GONE:
+                raise
             self.close_connection = True
 
     def finish(self):
