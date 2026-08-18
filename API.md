@@ -663,7 +663,7 @@ The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 |---|---|
 | `now_playing` | Current track, source, format |
 | `audio_pipeline` | Full pipeline topology update — same node shape as `GET /audio_pipeline/current`, `unmatched_outputs` included |
-| `services_metrics` | CPU/memory/IO per service |
+| `services_metrics` | CPU/memory/IO per service. `memory_mb` is `null` when the kernel exposes no memory cgroup controller — absent, not zero; the event's `memory_accounting` flag says which case the box is in |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |
 | `renderer_status` | UPnP renderer connection state — see below |

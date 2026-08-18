@@ -62,3 +62,33 @@ StoppedService.args = {
     metrics: { cpu_percent: 0, memory_mb: 0, tasks: 0 },
     history: historyMock
 };
+
+export const NothingMeasured = Template.bind({});
+NothingMeasured.args = {
+    // What a running service looks like when the counters behind its figures are
+    // off: memory on a Raspberry Pi kernel, disk and network until IO/IP
+    // Accounting is enabled for the unit. A dash, and no graph — printing 0 here
+    // would be indistinguishable from an idle service.
+    service: { ...serviceMock, name: 'MPD' },
+    metrics: {
+        cpu_percent: 1.4, tasks: 7,
+        memory_mb: null,
+        io_read_rate: null, io_write_rate: null,
+        network_rx_rate: null, network_tx_rate: null,
+    },
+    history: historyMock
+};
+
+export const MemoryNotMeasured = Template.bind({});
+MemoryNotMeasured.args = {
+    // The Raspberry Pi case on its own: disk and network are counted, memory is
+    // not, so one tile shows a dash while the others carry figures.
+    service: { ...serviceMock, name: 'MPD' },
+    metrics: {
+        cpu_percent: 2.2, tasks: 7,
+        memory_mb: null,
+        io_read_rate: 0.4, io_write_rate: 0,
+        network_rx_rate: 1.2, network_tx_rate: 0.3,
+    },
+    history: historyMock
+};

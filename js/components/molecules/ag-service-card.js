@@ -19,7 +19,7 @@
  * @fires restart-service - Dispatched when a restart is requested (if applicable)
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { formatRate, formatTimestamp, getActivityLevel, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate } from '../utils-lit.js';
 import { isGuest } from '../../auth.js';
@@ -100,6 +100,20 @@ export class AgServiceCard extends LitElement {
         return getActivityLevelForRate(rate);
     }
 
+    /**
+     * Format a rate, or a dash when nobody measured it.
+     *
+     * The shared formatter answers '0.0 MB/s' for anything that is not a number,
+     * so an unguarded null printed a zero — the very claim the dash removes, and
+     * it slipped back in through the tooltips.
+     *
+     * @param {number|null|undefined} rate
+     * @returns {string}
+     */
+    _rate(rate) {
+        return rate === null || rate === undefined ? '—' : this._formatRate(rate);
+    }
+
     _formatRate(rate) {
         return formatRate(rate);
     }
@@ -149,30 +163,38 @@ export class AgServiceCard extends LitElement {
      */
     _renderServiceSummary() {
         const cpu      = this.metrics?.cpu_percent    || 0;
-        const memory   = this.metrics?.memory_mb      || 0;
-        const netRx    = this.metrics?.network_rx_rate || 0;
-        const netTx    = this.metrics?.network_tx_rate || 0;
-        const diskRead  = this.metrics?.io_read_rate   || 0;
-        const diskWrite = this.metrics?.io_write_rate  || 0;
+        // Null means the kernel counts no memory (a Raspberry Pi ships that
+        // way): absent, not zero. Coercing it to 0 stated that the service uses
+        // nothing, which is what an idle service looks like.
+        const memory   = this.metrics?.memory_mb ?? null;
+        // Same rule as memory: null means nothing measured it — for disk and
+        // network that is the unit's accounting being off, a checkbox away in
+        // the Systemd tab. Zero would claim the service is idle.
+        const netRx    = this.metrics?.network_rx_rate ?? null;
+        const netTx    = this.metrics?.network_tx_rate ?? null;
+        const diskRead  = this.metrics?.io_read_rate   ?? null;
+        const diskWrite = this.metrics?.io_write_rate  ?? null;
 
         return html`
             <div class="profile-services-summary">
                 <div class="profile-info-row">
                     <span class="info-label">CPU / MEM</span>
-                    <span class="info-value stops">${cpu.toFixed(1)} % / ${memory.toFixed(0)} MB</span>
+                    <span class="info-value stops">
+                        ${cpu.toFixed(1)} % / ${memory === null ? '—' : `${memory.toFixed(0)} MB`}
+                    </span>
                 </div>
                 <div class="profile-info-row">
                     <span class="info-label">Disk</span>
                     <span class="info-value stops net-value">
-                        <span>↓ ${this._formatRate(diskRead)}</span>
-                        <span>↑ ${this._formatRate(diskWrite)}</span>
+                        <span>↓ ${this._rate(diskRead)}</span>
+                        <span>↑ ${this._rate(diskWrite)}</span>
                     </span>
                 </div>
                 <div class="profile-info-row">
                     <span class="info-label">NET</span>
                     <span class="info-value stops net-value">
-                        <span>↓ ${this._formatRate(netRx)}</span>
-                        <span>↑ ${this._formatRate(netTx)}</span>
+                        <span>↓ ${this._rate(netRx)}</span>
+                        <span>↑ ${this._rate(netTx)}</span>
                     </span>
                 </div>
                 <div class="profile-info-row">
@@ -210,15 +232,17 @@ export class AgServiceCard extends LitElement {
 
         // Metrics processing
         const cpu = this.metrics?.cpu_percent || 0;
-        const memory = this.metrics?.memory_mb || 0;
+        const memory = this.metrics?.memory_mb ?? null;   // null = not measured
 
-        const netRx = this.metrics?.network_rx_rate || 0;
-        const netTx = this.metrics?.network_tx_rate || 0;
-        const totalNet = netRx + netTx;
+        const netRx = this.metrics?.network_rx_rate ?? null;
+        const netTx = this.metrics?.network_tx_rate ?? null;
+        const netMeasured = netRx !== null || netTx !== null;
+        const totalNet = (netRx ?? 0) + (netTx ?? 0);
 
-        const diskRead = this.metrics?.io_read_rate || 0;
-        const diskWrite = this.metrics?.io_write_rate || 0;
-        const totalDisk = diskRead + diskWrite;
+        const diskRead = this.metrics?.io_read_rate ?? null;
+        const diskWrite = this.metrics?.io_write_rate ?? null;
+        const diskMeasured = diskRead !== null || diskWrite !== null;
+        const totalDisk = (diskRead ?? 0) + (diskWrite ?? 0);
 
         const tileClasses = {
             'service-tile': true,
@@ -276,64 +300,70 @@ export class AgServiceCard extends LitElement {
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">MEM</div>
-                        <div class="metric-value activity-${this._getActivityLevelForMemory(memory)}">
-                            ${memory.toFixed(0)} MB
+                        <div class="metric-value activity-${memory === null ? 'none' : this._getActivityLevelForMemory(memory)}">
+                            ${memory === null ? '—' : html`${memory.toFixed(0)} MB`}
                         </div>
-                        <div class="sparkline-container" @click=${() => this._handleExpandMetric('mem')}>
-                            <ag-sparkline
-                                .data=${this.history?.mem || []}
-                                auto-scale
-                                smooth
-                                line-color="var(--chart-memory)"
-                                fill-color="var(--chart-memory-bg)">
-                            </ag-sparkline>
-                        </div>
+                        ${memory === null ? nothing : html`
+                            <div class="sparkline-container" @click=${() => this._handleExpandMetric('mem')}>
+                                <ag-sparkline
+                                    .data=${this.history?.mem || []}
+                                    auto-scale
+                                    smooth
+                                    line-color="var(--chart-memory)"
+                                    fill-color="var(--chart-memory-bg)">
+                                </ag-sparkline>
+                            </div>
+                        `}
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">NET</div>
-                        <div class="metric-value activity-${this._getActivityLevelForRate(totalNet)}">
-                            ${this._formatRate(totalNet)}
+                        <div class="metric-value activity-${netMeasured ? this._getActivityLevelForRate(totalNet) : 'none'}">
+                            ${netMeasured ? this._formatRate(totalNet) : '—'}
                             <div class="metric-tooltip">
                                 <strong>Network Activity</strong><br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowDown}</svg> Ingress: ${this._formatRate(netRx)}<br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowUp}</svg> Egress: ${this._formatRate(netTx)}<br>
-                                Total: ${this._formatRate(totalNet)}
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowDown}</svg> Ingress: ${this._rate(netRx)}<br>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowUp}</svg> Egress: ${this._rate(netTx)}<br>
+                                Total: ${netMeasured ? this._formatRate(totalNet) : '—'}
                             </div>
                         </div>
-                        <div class="sparkline-container" @click=${() => this._handleExpandMetric('net')}>
-                            <ag-sparkline
-                                .data=${this.history?.netRx || []}
-                                .data2=${this.history?.netTx || []}
-                                auto-scale
-                                smooth
-                                line-color="var(--chart-network)"
-                                fill-color="var(--chart-network-bg)"
-                                second-line-color="var(--chart-network-tx, var(--color-warning))">
-                            </ag-sparkline>
-                        </div>
+                        ${netMeasured ? html`
+                            <div class="sparkline-container" @click=${() => this._handleExpandMetric('net')}>
+                                <ag-sparkline
+                                    .data=${this.history?.netRx || []}
+                                    .data2=${this.history?.netTx || []}
+                                    auto-scale
+                                    smooth
+                                    line-color="var(--chart-network)"
+                                    fill-color="var(--chart-network-bg)"
+                                    second-line-color="var(--chart-network-tx, var(--color-warning))">
+                                </ag-sparkline>
+                            </div>
+                        ` : nothing}
                     </div>
                     <div class="metric-box">
                         <div class="metric-label">DISK</div>
-                        <div class="metric-value activity-${this._getActivityLevelForRate(totalDisk)}">
-                            ${this._formatRate(totalDisk)}
+                        <div class="metric-value activity-${diskMeasured ? this._getActivityLevelForRate(totalDisk) : 'none'}">
+                            ${diskMeasured ? this._formatRate(totalDisk) : '—'}
                             <div class="metric-tooltip">
                                 <strong>Disk I/O</strong><br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconFileText}</svg> Read: ${this._formatRate(diskRead)}<br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPencil}</svg> Write: ${this._formatRate(diskWrite)}<br>
-                                Total: ${this._formatRate(totalDisk)}
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconFileText}</svg> Read: ${this._rate(diskRead)}<br>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPencil}</svg> Write: ${this._rate(diskWrite)}<br>
+                                Total: ${diskMeasured ? this._formatRate(totalDisk) : '—'}
                             </div>
                         </div>
-                        <div class="sparkline-container" @click=${() => this._handleExpandMetric('disk')}>
-                            <ag-sparkline
-                                .data=${this.history?.diskRead || []}
-                                .data2=${this.history?.diskWrite || []}
-                                auto-scale
-                                smooth
-                                line-color="var(--chart-disk)"
-                                fill-color="var(--chart-disk-bg)"
-                                second-line-color="var(--chart-disk-write, var(--color-warning))">
-                            </ag-sparkline>
-                        </div>
+                        ${diskMeasured ? html`
+                            <div class="sparkline-container" @click=${() => this._handleExpandMetric('disk')}>
+                                <ag-sparkline
+                                    .data=${this.history?.diskRead || []}
+                                    .data2=${this.history?.diskWrite || []}
+                                    auto-scale
+                                    smooth
+                                    line-color="var(--chart-disk)"
+                                    fill-color="var(--chart-disk-bg)"
+                                    second-line-color="var(--chart-disk-write, var(--color-warning))">
+                                </ag-sparkline>
+                            </div>
+                        ` : nothing}
                     </div>
                 </div>
 
@@ -349,7 +379,7 @@ export class AgServiceCard extends LitElement {
                     </div>
                 ` : ''}
 
-                ${this.expandedMetrics.mem ? html`
+                ${this.expandedMetrics.mem && memory !== null ? html`
                     <div class="metric-expanded-section expanded" data-expanded="mem">
                         <div class="expanded-metric-header">
                             <h4>Memory Usage</h4>
@@ -361,7 +391,7 @@ export class AgServiceCard extends LitElement {
                     </div>
                 ` : ''}
 
-                ${this.expandedMetrics.net ? html`
+                ${this.expandedMetrics.net && netMeasured ? html`
                     <div class="metric-expanded-section expanded" data-expanded="net">
                         <div class="expanded-metric-header">
                             <h4>Network Activity</h4>
@@ -374,7 +404,7 @@ export class AgServiceCard extends LitElement {
                     </div>
                 ` : ''}
 
-                ${this.expandedMetrics.disk ? html`
+                ${this.expandedMetrics.disk && diskMeasured ? html`
                     <div class="metric-expanded-section expanded" data-expanded="disk">
                         <div class="expanded-metric-header">
                             <h4>Disk I/O</h4>

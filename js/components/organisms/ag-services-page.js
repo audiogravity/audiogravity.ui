@@ -13,7 +13,7 @@
  * @dependency ag-service-card
  * @dependency AppState - Used for connection status
  */
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { iconMinimize, iconMaximize } from '../../ag-icons.js';
 import { showToast, showConfirm, handleError } from '../../ui-helpers.js';
@@ -35,7 +35,9 @@ export class AgServicesPage extends LitElement {
         config: { type: Object },
         metricsHistory: { type: Object },
         _filter: { type: String, state: true },
-        _detailService: { type: Object, state: true }
+        _detailService: { type: Object, state: true },
+        _memoryUnavailable: { type: Boolean, state: true },
+        _accountingOff: { type: Boolean, state: true }
     };
 
     constructor() {
@@ -45,6 +47,8 @@ export class AgServicesPage extends LitElement {
         this.metricsHistory = this._loadMetricsHistory();
         this._filter = 'all';
         this._detailService = null;
+        this._memoryUnavailable = false;
+        this._accountingOff = false;
         this._loaded = false;
 
         this._bindAppVisible = this._handleAppVisible.bind(this);
@@ -119,6 +123,7 @@ export class AgServicesPage extends LitElement {
 
             // PHASE 3.7: Reactive live updates for service states (Mirror of Profiles logic)
             this._onServicesMetrics = (data) => {
+                this._readMeasurementGaps(data);
                 if (!this.services || !data.services) return;
                 const servicesData = data.services;
                 this.services.forEach((service, index) => {
@@ -470,6 +475,37 @@ export class AgServicesPage extends LitElement {
         return html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgContent}</svg>`;
     }
 
+    /**
+     * Open the manual at the section explaining the missing memory counter.
+     *
+     * The dashes are honest but not actionable on their own: the fix is a line
+     * on the kernel command line and a reboot, which belongs in the manual, not
+     * in a tooltip.
+     */
+    _openMemoryHelp() {
+        document.getElementById('agManualModal')?.open('09-troubleshooting');
+    }
+
+    /**
+     * Record which figures the box could not measure, from one metrics event.
+     *
+     * Assigned rather than latched: someone who enables a counter — the kernel's
+     * after a reboot, or a service's in the Systemd tab — would otherwise keep
+     * reading that it is off until they reloaded the page by hand.
+     *
+     * @param {object} data - a `services_metrics` event.
+     */
+    _readMeasurementGaps(data) {
+        // The box says whether its kernel counts memory at all.
+        this._memoryUnavailable = data.memory_accounting === false;
+        // Disk and network go missing per service, not per box: their accounting
+        // is a checkbox on the unit. One running service without it is enough to
+        // explain the dashes, and the remedy is the same for all of them.
+        this._accountingOff = Object.values(data.services || {}).some(
+            m => m.io_read_rate == null || m.network_rx_rate == null,
+        );
+    }
+
     _showInfo() {
         if (!window.UIComponents || !window.UIComponents.InfoModal) return;
 
@@ -541,6 +577,24 @@ export class AgServicesPage extends LitElement {
                         title="Toggle all metrics"
                         @click=${this._toggleAllMetrics}>${this._renderToggleIcon()}</span>
                 </div>
+                ${this._memoryUnavailable || this._accountingOff ? html`
+                    <p class="services-note">
+                        A dash means the figure is not measured, which is not the same as
+                        zero.
+                        ${this._memoryUnavailable ? html`
+                            Memory is not measured on this box: its kernel was started
+                            without that counter.
+                            <button type="button" class="link-like"
+                                    @click=${this._openMemoryHelp}>How to turn it on</button>.
+                        ` : nothing}
+                        ${this._accountingOff ? html`
+                            Disk and network are measured per service, once
+                            <strong>IO&nbsp;Accounting</strong> and
+                            <strong>IP&nbsp;Accounting</strong> are enabled for it in the
+                            <strong>Systemd</strong> tab.
+                        ` : nothing}
+                    </p>
+                ` : nothing}
                 <div class="tab-filter-row">
                     <ag-filter-bar
                         .options=${filterOptions}

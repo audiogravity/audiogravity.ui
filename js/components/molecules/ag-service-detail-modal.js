@@ -53,6 +53,9 @@ export class AgServiceDetailModal extends LitElement {
      * @returns {string}
      */
     _fmt(rate) {
+        // A dash, like the card: null means nobody measured this, and printing
+        // 0 B/s here would contradict the very tile the reader just clicked.
+        if (rate === null || rate === undefined) return '—';
         if (!rate) return '0 B/s';
         if (rate < 0.001) return `${(rate * 1024 * 1024).toFixed(0)} B/s`;
         if (rate < 1)     return `${(rate * 1024).toFixed(1)} KB/s`;
@@ -79,7 +82,7 @@ export class AgServiceDetailModal extends LitElement {
                         </tr>
                         <tr>
                             <td class="detail-unit">Memory</td>
-                            <td class="detail-state">${(m.memory_mb || 0).toFixed(0)} MB</td>
+                            <td class="detail-state">${m.memory_mb == null ? '—' : `${m.memory_mb.toFixed(0)} MB`}</td>
                         </tr>
                         <tr>
                             <td class="detail-unit">Tasks</td>

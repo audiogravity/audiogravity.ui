@@ -409,3 +409,25 @@ body.compact-mode .service-metrics {
         height: 50px;
     }
 }
+
+/* One-line note under the tab title — used when the box reports that its kernel
+   counts no memory, so the dashes on the cards are accounted for once instead of
+   on every tile. */
+.services-note {
+    margin: 0 0 var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+}
+
+.services-note .link-like {
+    /* A real button, so it is reachable by keyboard and announced as an action —
+       it is the only way to the remedy the note offers. Styled as a link. */
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent-primary);
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+}
