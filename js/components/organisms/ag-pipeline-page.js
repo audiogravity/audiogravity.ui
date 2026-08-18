@@ -179,7 +179,26 @@ export class AgPipelinePage extends LitElement {
         const gridStyle = this._eventsCollapsed ? 'grid-template-columns: 1fr 32px' : '';
 
         if (this._isMobile) {
-            return html`<ag-mobile-pipeline></ag-mobile-pipeline>`;
+            // The chain drawn below is only as good as the description of your
+            // hi-fi it is drawn from, and that description had no way in from a
+            // phone: CONFIG lived in the desktop branch alone. A box whose chain
+            // shows nothing would then send its owner to a button that does not
+            // exist on the device in their hand.
+            return html`
+                <div class="amp-mobile-view">
+                    <div class="pipeline-zone tab-zone amp-mobile-bar">
+                        <div class="tab-title-container">
+                            <h2>AUDIO DSP PIPELINE</h2>
+                            <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
+                            ${!isGuest() ? html`
+                                <span class="badge warning clickable"
+                                      @click=${this._openTopologyConfigModal}>CONFIG</span>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <ag-mobile-pipeline></ag-mobile-pipeline>
+                </div>
+            `;
         }
 
         return html`

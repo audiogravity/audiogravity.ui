@@ -67,3 +67,16 @@
         border-radius: var(--radius-md);
     }
 }
+
+/* The pipeline's mobile bar carries the same structure as every other tab —
+   .tab-zone + .tab-title-container — so its title sits where the others do. Rolled
+   by hand once, it lined up with nothing. The offset clearing the fixed top bar
+   belongs to .amp-mobile-view, the container around bar + chain.
+
+   Only the title row's own bottom margin is dropped: the zone keeps its padding,
+   because .tab-title-container wraps below 768 px — precisely this branch's range
+   — and a CONFIG badge pushed onto a second line would otherwise sit flush on the
+   rounded bottom edge. */
+.amp-mobile-bar .tab-title-container {
+    margin-bottom: 0;
+}

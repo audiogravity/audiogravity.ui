@@ -51,7 +51,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Audio Pipeline — `/audio_pipeline/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio_pipeline/current` | Current pipeline state + now playing |
+| GET | `/audio_pipeline/current` | Current pipeline state + now playing. The streamer node's `metadata` may carry `unmatched_outputs` — `[{ label, output_type, hw }]`, the outputs currently carrying audio whose connector kind no declared topology port mentions; absent when idle or fully described. |
+
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
 | GET | `/audio_pipeline/now-playing` | Every active playback source |
@@ -661,7 +662,7 @@ The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 | Event type | Payload |
 |---|---|
 | `now_playing` | Current track, source, format |
-| `audio_pipeline` | Full pipeline topology update |
+| `audio_pipeline` | Full pipeline topology update — same node shape as `GET /audio_pipeline/current`, `unmatched_outputs` included |
 | `services_metrics` | CPU/memory/IO per service |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network |

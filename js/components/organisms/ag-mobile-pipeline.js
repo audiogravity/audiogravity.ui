@@ -61,6 +61,11 @@ ag-mobile-pipeline .amp-format-bar { display: flex; gap: 6px; flex-wrap: wrap; m
 ag-mobile-pipeline .amp-fmt-chip { font-size: var(--font-size-xxs); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); letter-spacing: 0.4px; background: var(--color-success-bg); color: var(--color-success-text); }
 ag-mobile-pipeline .amp-fmt-chip.dim { background: var(--accent-primary-alpha); color: var(--accent-primary); }
 ag-mobile-pipeline .amp-chain-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; margin-bottom: 10px; }
+ag-mobile-pipeline .amp-nochain .amp-nochain-line { margin: 0 0 var(--spacing-sm); color: var(--text-secondary); font-size: var(--font-size-xs); line-height: 1.5; }
+ag-mobile-pipeline .amp-nochain .amp-nochain-line:last-child { margin-bottom: 0; }
+ag-mobile-pipeline .amp-nochain .amp-nochain-row { display: flex; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; font-size: var(--font-size-xs); }
+ag-mobile-pipeline .amp-nochain .amp-nochain-key { color: var(--text-tertiary); flex-shrink: 0; min-width: 96px; }
+ag-mobile-pipeline .amp-nochain .amp-nochain-val { color: var(--text-primary); }
 ag-mobile-pipeline .amp-chain { display: flex; flex-direction: column; }
 ag-mobile-pipeline .amp-device-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; }
 ag-mobile-pipeline .amp-device-row.inactive { opacity: 0.38; }
@@ -433,9 +438,101 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         `;
     }
 
+    /**
+     * Explain an empty signal path instead of leaving a blank space.
+     *
+     * Devices are drawn only when active, and a device is active only when one
+     * of its ports is — ports being matched to real hardware by connector. The
+     * chain shipped with a box is an example, describing a USB and an optical
+     * output, so a box playing through a HAT board matches neither and every
+     * device reads inactive. Measured on one: the track, then nothing, with no
+     * way to guess what was expected. The box now reports the outputs it found
+     * and could not place, which is exactly what the reader needs to hear.
+     *
+     * @returns {import('lit').TemplateResult|string} The explanation, or '' when
+     *          a chain is being drawn and there is nothing to explain.
+     */
+    _renderNoChain({ playing = false } = {}) {
+        const nodes = this._pipeline?.nodes || [];
+        const streamer = nodes.find(n => n.type === 'device' && n.device_type === 'streamer');
+        const unmatched = streamer?.metadata?.unmatched_outputs || [];
+        const described = (streamer?.outputs || []).map(o => o.label || o.id).filter(Boolean);
+        // A streamer with no declared ports serialises `outputs: null`, which
+        // says nothing about the rest of the description: someone can describe
+        // converter, amplifier and speakers and simply leave the box's own
+        // outputs out. Saying "your chain declares no output at all" there
+        // sends them to fix a description that exists — so name what is
+        // genuinely missing, the outputs of this box.
+        const describedLabel = described.length
+            ? described.join(', ')
+            : 'no output on this box';
+
+        // Declared against detected, side by side: the whole question is which of
+        // the two the owner has to change, and reading them next to each other
+        // answers it without knowing anything about how the matching works.
+        const comparison = html`
+            <div class="amp-nochain-row">
+                <span class="amp-nochain-key">Playing through</span>
+                <span class="amp-nochain-val">
+                    ${unmatched.length ? unmatched.map(o => o.label).join(', ') : '—'}
+                </span>
+            </div>
+            <div class="amp-nochain-row">
+                <span class="amp-nochain-key">Your chain declares</span>
+                <span class="amp-nochain-val">${describedLabel}</span>
+            </div>`;
+
+        let body;
+        if (unmatched.length) {
+            body = html`
+                <p class="amp-nochain-line">
+                    The output this box plays through is not one your described chain
+                    mentions, so there is no path to draw.
+                </p>
+                ${comparison}
+                <p class="amp-nochain-line">
+                    Describe your own hi-fi chain with <strong>CONFIG</strong>, above.
+                </p>`;
+        } else if (playing) {
+            // Music demonstrably flows and nothing is reported undeclared, yet
+            // no chain drew: the description covers the output's kind but the
+            // port could not be lit — the port-activity matcher works from the
+            // sound card's name, which not every card cooperates with. Saying
+            // "nothing is flowing" here would be flatly false, and it is the
+            // trap a correctly-described HAT board falls into.
+            body = html`
+                <p class="amp-nochain-line">
+                    Music is playing, but its route through the described chain could
+                    not be traced.
+                </p>
+                ${comparison}
+                <p class="amp-nochain-line">
+                    Check that the declared connector matches the output actually in
+                    use — <strong>CONFIG</strong>, above.
+                </p>`;
+        } else {
+            body = html`
+                <p class="amp-nochain-line">
+                    Nothing is flowing through the chain described for this box.
+                </p>
+                ${comparison}
+                <p class="amp-nochain-line">
+                    Start playing, or adjust the description with <strong>CONFIG</strong>, above.
+                </p>`;
+        }
+
+        return html`
+            <div class="amp-section-label">Signal chain</div>
+            <div class="amp-chain-card amp-nochain">${body}</div>
+        `;
+    }
+
     _renderChain() {
         const streams = this._getActiveStreams();
-        if (!streams.length) return '';
+        if (!streams.length) return this._renderNoChain();
+
+        const drawn = streams.filter(stream => this._getChainForStream(stream).length);
+        if (!drawn.length) return this._renderNoChain({ playing: true });
 
         return html`
             ${streams.map(stream => {

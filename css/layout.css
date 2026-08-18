@@ -842,15 +842,24 @@ body.dark-mode .logo-dark {
     }
 
     .content-grid,
-    ag-mobile-pipeline {
+    .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+    }
+
+    /* .content-grid separates its children with the gap above; the mobile
+       pipeline view is a plain block, so it needs its own — without it the bar
+       and the chain touch, which is what the rename left behind. */
+    .amp-mobile-view {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
     }
 
     /* In vertical mode on mobile the sidebar overlays the content:
        the content starts right below the topbar (no tabs-height offset) */
     body:has(.tabs--vertical) .content-grid,
-    body:has(.tabs--vertical) ag-mobile-pipeline {
+    body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
     }
@@ -891,14 +900,14 @@ body.dark-mode .logo-dark {
     }
 
     .content-grid,
-    ag-mobile-pipeline {
+    .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
         padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
     }
 
     body:has(.tabs--vertical) .content-grid,
-    body:has(.tabs--vertical) ag-mobile-pipeline {
+    body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
         padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));

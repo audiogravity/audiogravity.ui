@@ -7,7 +7,7 @@
  * - a clean topology is persisted directly
  * - a validation outage falls through to the save (never blocks)
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('lit', () => ({
     LitElement: class { },
@@ -38,15 +38,34 @@ function makeEl() {
     return Object.create(AgPipelinePage.prototype);
 }
 
-/** Install a fake topology modal reachable via document.getElementById. */
+/**
+ * Install a fake topology modal reachable via document.getElementById.
+ *
+ * Answers for that one id only, and is restored after every test: a blanket
+ * mockReturnValue survives the whole file (nothing in vite.config.js restores
+ * mocks, and clearAllMocks empties call history without putting the real
+ * implementation back), so every later lookup — a component's own
+ * connectedCallback, say — receives this stub instead of a DOM node, and fails
+ * somewhere that gives no hint where the stub came from.
+ *
+ * @returns {object} The fake modal the page will find.
+ */
 function installModal() {
     const modal = { _isLoading: false, isOpen: true };
-    vi.spyOn(document, 'getElementById').mockReturnValue(modal);
+    const real = document.getElementById.bind(document);
+    vi.spyOn(document, 'getElementById').mockImplementation(
+        id => (id === 'agTopologyConfigModal' ? modal : real(id)),
+    );
     return modal;
 }
 
 const CONFIG = { hifi_topology: { devices: {} } };
 const evt = { detail: { config: CONFIG } };
+
+afterEach(() => {
+    // Puts spied-on globals back; clearAllMocks alone would not.
+    vi.restoreAllMocks();
+});
 
 describe('ag-pipeline-page topology save', () => {
     beforeEach(() => {
@@ -133,5 +152,56 @@ describe('ag-pipeline-page topology save', () => {
         expect(showToast).toHaveBeenCalledWith('error', 'Save Failed', 'disk full');
         expect(modal.isOpen).toBe(true);
         expect(modal._isLoading).toBe(false);
+    });
+});
+
+describe('the mobile view can reach the configuration', () => {
+    /** Flatten the mocked lit templates into plain text. */
+    function text(node) {
+        if (node === null || node === undefined || node === false) return '';
+        if (typeof node === 'symbol') return '';
+        if (Array.isArray(node)) return node.map(text).join('');
+        if (typeof node === 'object' && node.strings) {
+            return node.strings
+                .map((str, i) => str + (i < node.values.length ? text(node.values[i]) : ''))
+                .join('');
+        }
+        if (typeof node === 'function') return '[handler]';
+        return String(node);
+    }
+
+    function mobilePage() {
+        const el = Object.create(AgPipelinePage.prototype);
+        el._isActive = true;
+        el._isMobile = true;
+        el._eventsCollapsed = false;
+        return el;
+    }
+
+    it('offers CONFIG on a phone, as the desktop view does', () => {
+        // It did not: CONFIG lived in the desktop branch alone, so a chain that
+        // shows nothing sent its owner to a button absent from the device in
+        // their hand.
+        const out = text(mobilePage().render());
+        expect(out).toContain('CONFIG');
+        expect(out).toContain('ag-mobile-pipeline');
+    });
+
+    it('withholds it from a guest, exactly as the desktop view does', async () => {
+        const { isGuest } = await import('../../auth.js');
+        isGuest.mockReturnValueOnce(true);
+        const out = text(mobilePage().render());
+        expect(out).not.toContain('CONFIG');
+        expect(out).toContain('ag-mobile-pipeline');
+    });
+});
+
+describe('the test stubs do not leak', () => {
+    it('leaves document.getElementById alone for other ids', () => {
+        // The guard for the trap above: a blanket stub answered every lookup in
+        // the file, and the failure surfaced in whichever test was added next.
+        installModal();
+        expect(document.getElementById('agTopologyConfigModal')).toMatchObject({ isOpen: true });
+        expect(document.getElementById('somethingElse')).toBe(null);
     });
 });
