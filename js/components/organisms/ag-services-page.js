@@ -121,17 +121,21 @@ export class AgServicesPage extends LitElement {
             EventEmitter.on('app-visible', this._bindAppVisible);
             EventEmitter.on('profile-changed', this._bindProfileChanged);
 
-            // PHASE 3.7: Reactive live updates for service states (Mirror of Profiles logic)
+            // The envelope is read for what only it carries: whether this
+            // machine counts memory at all. The figures themselves arrive on the
+            // per-service path below and must NOT be applied again here.
+            //
+            // This loop never ran in a released build — nothing emitted
+            // `services-metrics` until the same change that revived it — so
+            // there is no past damage to point at. What it would have caused
+            // from that moment on: both subscriptions feed
+            // _updateServiceMetrics, so every sample would enter the history
+            // twice, each sparkline drawing each measurement doubled over a
+            // window covering half the time it claims, plus two state clones and
+            // two renders per service per cycle on a machine tuned to leave the
+            // music alone.
             this._onServicesMetrics = (data) => {
                 this._readMeasurementGaps(data);
-                if (!this.services || !data.services) return;
-                const servicesData = data.services;
-                this.services.forEach((service, index) => {
-                    const metrics = servicesData[service.id] || servicesData[service.systemd_unit.replace('.service', '')];
-                    if (metrics && metrics.state) {
-                        this._updateServiceMetrics(service.id, metrics);
-                    }
-                });
             };
 
             this._onServiceAction = (data) => {

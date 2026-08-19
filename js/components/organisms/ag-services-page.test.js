@@ -6,10 +6,13 @@
  * page says once why they are there, and offers the way out, which lives in the
  * manual (a kernel command line and a reboot, not a setting in the app).
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('lit', () => ({
-    LitElement: class {},
+    // connectedCallback/disconnectedCallback are stubbed on the base class so a
+    // test can subscribe the page for real and exercise the SSE handlers it
+    // registers there — the wiring, not just the methods it calls.
+    LitElement: class { connectedCallback() {} disconnectedCallback() {} },
     html: (strings, ...values) => ({ strings, values }),
     nothing: Symbol('nothing'),
 }));
@@ -34,6 +37,7 @@ vi.mock('./ag-card-grid.js', () => ({}));
 vi.mock('../molecules/ag-service-card.js', () => ({}));
 
 import { AgServicesPage } from './ag-services-page.js';
+import { EventEmitter } from '../../common.js';
 
 /** Flatten the mocked lit templates into plain text. */
 function flat(node) {
@@ -140,5 +144,77 @@ describe('when the box counts no memory', () => {
         } finally {
             vi.restoreAllMocks();
         }
+    });
+});
+
+
+/**
+ * A page subscribed for real, so the handlers it registers can be driven the
+ * way the SSE layer drives them.
+ */
+function subscribedPage() {
+    const el = Object.create(AgServicesPage.prototype);
+    el.services = [{ id: 'mpd', systemd_unit: 'mpd.service', state: 'active' }];
+    el._memoryUnavailable = false;
+    el._accountingOff = false;
+    el.updateComplete = Promise.resolve();
+    el._loadServices = vi.fn();
+    el._updateServiceMetrics = vi.fn();
+    el.requestUpdate = vi.fn();
+    // Bound in the constructor, which Object.create skips — reproduced here so
+    // the page registers the same function the real one does.
+    el._bindHandleServiceMetricsSSE = el._handleServiceMetricsSSE.bind(el);
+    el.connectedCallback();
+    return el;
+}
+
+/** The handler the page registered for one event name. */
+function handlerFor(name) {
+    const call = EventEmitter.on.mock.calls.find(c => c[0] === name);
+    return call && call[1];
+}
+
+describe('the two metrics subscriptions do not overlap', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('reads the envelope for what only it carries', () => {
+        const el = subscribedPage();
+
+        handlerFor('services-metrics')({
+            memory_accounting: false,
+            services: { mpd: { state: 'active', cpu_percent: 5, memory_mb: null } },
+        });
+
+        expect(el._memoryUnavailable).toBe(true);
+    });
+
+    it('does not apply the figures a second time', () => {
+        // Both subscriptions can reach _updateServiceMetrics for the same
+        // service on the same cycle. No released build ever did — nothing
+        // emitted `services-metrics` until it was revived — but from that point
+        // on, every sample would enter the history twice: each sparkline drawing
+        // each measurement doubled over a window covering half the time it
+        // claims. The figures belong to the per-service path; the envelope is
+        // read for the machine-wide fact alone.
+        const el = subscribedPage();
+
+        handlerFor('services-metrics')({
+            memory_accounting: false,
+            services: { mpd: { state: 'active', cpu_percent: 5, memory_mb: null } },
+        });
+
+        expect(el._updateServiceMetrics).not.toHaveBeenCalled();
+    });
+
+    it('still applies them once, on the per-service event', () => {
+        const el = subscribedPage();
+
+        handlerFor('service-metrics-sse')({
+            serviceId: 'mpd',
+            metrics: { state: 'active', cpu_percent: 5, memory_mb: null },
+        });
+
+        expect(el._updateServiceMetrics).toHaveBeenCalledTimes(1);
+        expect(el._updateServiceMetrics).toHaveBeenCalledWith('mpd', expect.objectContaining({ cpu_percent: 5 }));
     });
 });

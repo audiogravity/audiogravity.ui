@@ -27,9 +27,16 @@ if (typeof window !== 'undefined') {
 let sseWorker = null;
 
 /**
- * Handle messages from the SSE Worker
+ * Handle messages from the SSE Worker.
+ *
+ * Exported so a test can drive the real routing below. The wiring is where a
+ * subscriber silently stops being fed: `services-metrics` had two subscribers
+ * and no emitter for as long as the file existed, and every test that reached
+ * the handlers by calling them directly passed anyway.
+ *
+ * @param {MessageEvent} e - a message from the SSE worker: `{ type, data, error }`.
  */
-function handleWorkerMessage(e) {
+export function handleWorkerMessage(e) {
     const { type, data, error } = e.data;
     
     if (type === 'error') {
@@ -121,6 +128,16 @@ function handleWorkerMessage(e) {
 // Create throttled wrappers once
 const throttledUpdateSystemMetrics = throttle(updateSystemMetrics, 1000);
 const throttledServicesMetrics = throttle((data) => {
+    // The whole event first, for the views that need what only the envelope
+    // carries: `memory_accounting` — a property of the machine, sent once — and
+    // the set of services as one piece. Splitting it per service below loses
+    // both, and a subscriber handed a single service cannot tell "this box
+    // measures no memory" from "this service reported nothing".
+    //
+    // Nothing emitted this until 0.9.43, while two pages had subscribed to it
+    // since v0.9.4: the Services tab could never say why its cards show a dash,
+    // and the Profiles tab never refreshed the service states it displays.
+    (window.EventEmitter || EventEmitter).emit('services-metrics', data);
     const services = data.services || {};
     for (const [serviceId, metrics] of Object.entries(services)) {
         (window.EventEmitter || EventEmitter).emit('service-metrics-sse', { serviceId, metrics });

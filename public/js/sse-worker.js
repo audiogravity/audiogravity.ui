@@ -59,7 +59,11 @@ function connect(url) {
         eventSource.onopen = () => forward('open');
         
         eventSource.onerror = (e) => {
-            forward('error', 'SSE connection failed');
+            // `error`, not `data`: that is the field the page reads, and the two
+            // other error paths in this file already use it. Sent as `data`, a
+            // dropped connection — the failure users actually meet — logged
+            // 'SSE Worker Error: undefined' and named nothing.
+            self.postMessage({ type: 'error', error: 'SSE connection failed' });
             eventSource.close();
             
             // Reconnect
