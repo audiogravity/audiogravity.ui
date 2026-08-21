@@ -7,9 +7,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Minimal stubs for Lit and dependencies.
+// `svg` is part of the mock because the card now takes its name and icon from
+// library-constants.js, which tags its origin glyphs with it. A mock narrower than the
+// module graph fails at import time, before a single assertion runs.
 vi.mock('lit', () => ({
     LitElement: class { connectedCallback() {} },
     html: (strings, ...values) => ({ strings, values }),
+    svg: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
 const { apiPost, apiDelete } = vi.hoisted(() => ({ apiPost: vi.fn(), apiDelete: vi.fn() }));
@@ -51,7 +55,7 @@ describe('AgHighresaudioOutput render', () => {
         const el = makeEl({ connected: false });
         const html = renderToString(el.render());
         expect(html).toContain('hra-login-form');
-        expect(html).toContain('Highresaudio');
+        expect(html).toContain('HIGHRESAUDIO');
         expect(html).toContain('single active device');
     });
 
@@ -59,7 +63,7 @@ describe('AgHighresaudioOutput render', () => {
         const el = makeEl({ connected: true, username: 'a@b.co', subscription: 'SUBSCRIPTION' });
         const html = renderToString(el.render());
         expect(html).toContain('connected');
-        expect(html).toContain('Highresaudio');
+        expect(html).toContain('HIGHRESAUDIO');
         expect(html).toContain('a@b.co');
         expect(html).toContain('Disconnect');
     });

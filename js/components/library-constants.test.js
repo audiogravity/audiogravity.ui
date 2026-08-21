@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel } from './library-constants.js';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS} from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -99,7 +99,7 @@ describe('queueSourceLabel — header labels by playing origin', () => {
     it('keeps the full source label for local library and HIGHRESAUDIO (not "Library"/"HRA")', () => {
         // Regression guard: origin 'library' must NOT collapse to ORIGIN_LABELS.library ('Library').
         expect(queueSourceLabel('library', 'src_mpd')).toBe('Local Library');
-        expect(queueSourceLabel('highresaudio', 'src_highresaudio')).toBe('Highresaudio');
+        expect(queueSourceLabel('highresaudio', 'src_highresaudio')).toBe('HIGHRESAUDIO');
     });
 
     it('reuses the source label for Qobuz/Tidal (origin and source agree)', () => {
@@ -129,9 +129,10 @@ describe('resolvePlayingSource — SOURCE vs engine', () => {
     it('resolves Tidal and HIGHRESAUDIO streams to their own browse source', () => {
         expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'tidal' }))
             .toEqual({ id: 'src_tidal', group: 'tidal', label: 'Tidal' });
-        // HRA uses the space-saving `short` label.
+        // The name is written in full, in capitals: it is the brand as its owner
+        // defines it, and there is no abbreviated label for it any more.
         expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'highresaudio' }))
-            .toEqual({ id: 'src_highresaudio', group: 'highresaudio', label: 'HRA' });
+            .toEqual({ id: 'src_highresaudio', group: 'highresaudio', label: 'HIGHRESAUDIO' });
     });
 
     it('keeps a local-file stream on the MPD engine ("Local Library")', () => {
@@ -219,5 +220,32 @@ describe('normalizeSearchSources', () => {
     it('tolerates null/undefined inputs', () => {
         expect(normalizeSearchSources(null)).toEqual([]);
         expect(normalizeSearchSources(undefined, undefined)).toEqual([]);
+    });
+});
+
+
+describe('SOURCE_MARKS — a source shown by its mark instead of its name', () => {
+    /* The library header renders `SOURCE_MARKS[id] ?? name`. Both halves of that
+       fallback matter, and neither was covered: a mark that stops resolving would
+       silently take the name's place with nothing to show, and a mark added to a
+       source by accident would replace a name that was perfectly readable. */
+
+    it('gives HIGHRESAUDIO a mark, because its owner asked to be shown rather than named', () => {
+        expect(SOURCE_MARKS.src_highresaudio).toBeDefined();
+    });
+
+    it('carries both theme variants and the name for anyone the image cannot reach', () => {
+        const rendered = JSON.stringify(SOURCE_MARKS.src_highresaudio);
+        expect(rendered).toContain('hra-logo-light.webp');
+        expect(rendered).toContain('hra-logo-dark.webp');
+        // An <img alt>, not a CSS background: a background shows nothing at all when the
+        // file is missing, offline on a first load, or in forced-colours mode.
+        expect(rendered).toContain('alt=\\"HIGHRESAUDIO\\"');
+    });
+
+    it('leaves every other source to be named', () => {
+        // The header's fallback is the normal path; a second mark is a deliberate act,
+        // not something that should arrive by copy-paste.
+        expect(Object.keys(SOURCE_MARKS)).toEqual(['src_highresaudio']);
     });
 });

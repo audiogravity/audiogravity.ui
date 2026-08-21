@@ -21,7 +21,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { getSnapshot, getRoonZones, subscribePlayerState } from '../../library-store.js';
 import { iconBack, iconQueue, iconRefresh, iconOutput, iconInfo } from '../../ag-icons.js';
-import { SOURCE_META, normalizeSearchSources, resolvePlayingSource } from '../library-constants.js';
+import { SOURCE_MARKS, SOURCE_META, normalizeSearchSources, resolvePlayingSource } from '../library-constants.js';
 import '../molecules/ag-lib-tabbar.js';
 import './ag-library-browse.js';
 import './ag-library-outputs.js';
@@ -612,16 +612,15 @@ export class AgLibraryPage extends LitElement {
 
 
     /**
-     * The line that names the source above the content it describes.
+     * The line naming (or marking) the source, above the content it describes.
      *
-     * One helper rather than the four pasted copies this started as: two of them were
-     * conditional and two were not, and the unconditional pair drew the pulsing green
-     * dot with no word beside it whenever the label was empty — `.lib-context:empty`
-     * cannot catch that, since the element holds a child and is therefore not empty.
-     * The emptiness that matters is the LABEL's, so it is decided here.
-     *
-     * @param {string} label - Source name, e.g. "Local library". Falsy renders nothing.
-     * @returns {import('lit').TemplateResult | typeof nothing}
+     * @param {string|import('lit').TemplateResult} label - The source's name, or the
+     *   source's own mark when it has one (SOURCE_MARKS). Both render as a child
+     *   binding, so a fragment is as valid here as a string.
+     * @returns {import('lit').TemplateResult|typeof nothing} The line, or nothing when
+     *   there is no source to name — an empty string would otherwise leave the pulsing
+     *   dot alone with no word beside it. A fragment is always truthy, which is correct:
+     *   a source that has a mark always has something to show.
      */
     _contextLine(label) {
         if (!label) return nothing;
@@ -659,9 +658,14 @@ export class AgLibraryPage extends LitElement {
         const isUpnpBrow = _view === 'upnp-browser';
         const isRadio    = _view === 'radio';
 
-        const srcLabel = this._isUpnp(_sourceId)
+        const srcName = this._isUpnp(_sourceId)
             ? (this._upnpName || 'UPnP')
-            : (SOURCE_META[_sourceId]?.short ?? SOURCE_META[_sourceId]?.label ?? _sourceId.replace('src_', ''));
+            : (SOURCE_META[_sourceId]?.label ?? _sourceId.replace('src_', ''));
+
+        // A source with a mark of its own is shown by it rather than named — today only
+        // HIGHRESAUDIO, whose logo IS a wordmark, so setting the name beside it would say
+        // the same thing twice. Anything without a mark is named, as before.
+        const srcLabel = SOURCE_MARKS[_sourceId] ?? srcName;
 
         return html`
             <div class="lib-page">

@@ -19,6 +19,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
+import { SOURCE_ICONS, SOURCE_LABELS } from '../library-constants.js';
 import '../atoms/ag-status-indicator.js';
 
 export class AgHighresaudioOutput extends LitElement {
@@ -116,9 +117,9 @@ export class AgHighresaudioOutput extends LitElement {
         return html`
             <div class="lib-qb-card connected">
                 <div class="lib-qb-card-hd">
-                    <div class="lib-qb-ic"><img src="./pics/highresaudio.webp" alt="Highresaudio" width="24" height="24" /></div>
+                    <div class="lib-qb-ic">${SOURCE_ICONS.src_highresaudio}</div>
                     <div class="lib-qb-col">
-                        <div class="lib-qb-name">Highresaudio</div>
+                        <div class="lib-qb-name">${SOURCE_LABELS.src_highresaudio}</div>
                         <div class="lib-qb-desc">${desc}</div>
                     </div>
                     <ag-status-indicator state="up" label="Connected"></ag-status-indicator>
@@ -137,9 +138,9 @@ export class AgHighresaudioOutput extends LitElement {
         return html`
             <div class="lib-qb-card">
                 <div class="lib-qb-card-hd">
-                    <div class="lib-qb-ic"><img src="./pics/highresaudio.webp" alt="Highresaudio" width="24" height="24" /></div>
+                    <div class="lib-qb-ic">${SOURCE_ICONS.src_highresaudio}</div>
                     <div class="lib-qb-col">
-                        <div class="lib-qb-name">Highresaudio</div>
+                        <div class="lib-qb-name">${SOURCE_LABELS.src_highresaudio}</div>
                         <div class="lib-qb-desc">Hi-Res streaming</div>
                     </div>
                 </div>

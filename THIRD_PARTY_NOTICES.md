@@ -167,10 +167,20 @@ bundled** — only their brand assets are shown to identify the services
 
 - **Qobuz** — Qobuz and the Qobuz logo.
 - **Tidal** — TIDAL and the TIDAL logo.
-- **HIGHRESAUDIO** — HIGHRESAUDIO (HRA) and the HIGHRESAUDIO logo.
+- **HIGHRESAUDIO** — HIGHRESAUDIO (HRA) and the HIGHRESAUDIO logo. The two files
+  shipped for the library header (`pics/hra-logo-light.webp`, `hra-logo-dark.webp`)
+  are the positive and negative artwork supplied by HIGHRESAUDIO, with their flat
+  background made transparent and the image scaled — the drawing itself, its
+  proportions and its colours are unchanged.
 
 These names and logos are trademarks of their respective owners. Audiogravi<sup>ty</sup> is
-**not affiliated with, endorsed by, or sponsored by** any of these companies.
+**not affiliated with, endorsed by, or sponsored by** Qobuz or TIDAL.
+
+HIGHRESAUDIO is a separate case and is stated separately rather than left in the sentence
+above, which would no longer be accurate: HRA provided their API for this integration and
+reviewed the interface built on it. That is a working arrangement between the two, not a
+commercial one — HRA does not sponsor Audiogravi<sup>ty</sup>, and no claim of partnership or
+endorsement is made here or on audiogravity.app.
 
 ---
 

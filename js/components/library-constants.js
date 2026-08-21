@@ -15,7 +15,7 @@ export const SOURCE_LABELS = {
     src_mpd: 'Local Library',
     src_qobuz: 'Qobuz',
     src_tidal: 'Tidal',
-    src_highresaudio: 'Highresaudio',
+    src_highresaudio: 'HIGHRESAUDIO',
 };
 
 export const SOURCE_ICONS = {
@@ -24,8 +24,29 @@ export const SOURCE_ICONS = {
     src_mpd: html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Local Library">${iconLibrary}</svg>`,
     src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
-    src_highresaudio: html`<img src="./pics/highresaudio.webp" alt="HRA" width="24" height="24" style="object-fit:contain">`,
+    src_highresaudio: html`<img src="./pics/highresaudio.webp" alt="HIGHRESAUDIO" width="24" height="24" style="object-fit:contain">`,
     default: '♪',
+};
+
+/**
+ * A source's own mark, for the one place a brand is shown instead of being named:
+ * the line above the album grid. Kept beside SOURCE_ICONS so a source's visual
+ * identity has a single home — the header used to build this inline, which put the
+ * same thing in two files.
+ *
+ * Two <img> rather than a CSS background: a background paints nothing when the file
+ * is missing, when the browser is in forced-colours mode, or on a first offline load,
+ * and the line would then show a pulsing dot beside an empty box with no name at all.
+ * An <img> falls back to its alt text, which is the name. The variants are the
+ * owner's own positive and negative artwork; CSS shows one and hides the other, and a
+ * hidden one is not announced twice.
+ */
+export const SOURCE_MARKS = {
+    src_highresaudio: html`
+        <img class="lib-src-mark lib-src-mark-light" src="./pics/hra-logo-light.webp"
+             alt="HIGHRESAUDIO" width="55" height="40">
+        <img class="lib-src-mark lib-src-mark-dark" src="./pics/hra-logo-dark.webp"
+             alt="HIGHRESAUDIO" width="55" height="40">`,
 };
 
 /* ─── Stream origin / provider (Now Playing badge) ───
@@ -42,7 +63,7 @@ const originSvg = (glyph, label) => html`
 export const ORIGIN_LABELS = {
     tidal: 'Tidal',
     qobuz: 'Qobuz',
-    highresaudio: 'HRA',
+    highresaudio: 'HIGHRESAUDIO',
     roon: 'Roon',
     radio: 'Radio',
     upnp: 'UPnP',
@@ -107,8 +128,8 @@ export function originLabel(origin) {
 }
 
 /** Origin → the browse source id whose full label the queue header should reuse,
- *  so a local-library queue stays "Local Library" (not "Library") and HRA stays
- *  "Highresaudio" (not "HRA"). Radio/UPnP have no source card and use ORIGIN_LABELS. */
+ *  so a local-library queue stays "Local Library" (not "Library"). Radio/UPnP have
+ *  no source card and use ORIGIN_LABELS. */
 const ORIGIN_SOURCE_LABEL_ID = {
     library: 'src_mpd', qobuz: 'src_qobuz', tidal: 'src_tidal',
     highresaudio: 'src_highresaudio', roon: 'src_roon',
@@ -143,13 +164,18 @@ export const SOURCE_META = {
     src_mpd:         { label: 'Local Library', group: 'mpd' },
     src_qobuz:       { label: 'Qobuz', group: 'qobuz' },
     src_tidal:       { label: 'Tidal', group: 'tidal' },
-    // `short` is used in space-constrained spots (library toolbar chip, banner)
-    // where the full 'Highresaudio' name overflows; the full name stays in the
-    // Sources card / picker rows (which use SOURCE_LABELS).
-    src_highresaudio:{ label: 'Highresaudio', short: 'HRA', group: 'highresaudio' },
+    // The name is written HIGHRESAUDIO, in full capitals, everywhere it is shown:
+    // it is the brand as its owner defines it, and the corporate identity supplied
+    // with their API is part of the agreement that allows the integration to exist.
+    // There is no abbreviated form of this name, here or anywhere: `short` used to
+    // stand in for it above the album grid, which is exactly where its owner asked for
+    // their mark instead. The field is gone from the vocabulary rather than merely
+    // unset here — left in place it would have quietly reactivated on the next source
+    // given one, in a header that no longer reads it.
+    src_highresaudio:{ label: 'HIGHRESAUDIO', group: 'highresaudio' },
 };
 
-/** Reverse of SOURCE_META: dedup group → its canonical meta ({label, short?}). */
+/** Reverse of SOURCE_META: dedup group → its canonical meta ({label, group}). */
 export const GROUP_META = Object.values(SOURCE_META).reduce((acc, m) => {
     if (!acc[m.group]) acc[m.group] = m;
     return acc;
@@ -177,7 +203,7 @@ export function resolvePlayingSource(state) {
     const id = ORIGIN_TO_SOURCE_ID[state?.origin] || state?.source_id || '';
     const group = SOURCE_META[id]?.group ?? id;
     const label = state?.origin_name
-        || GROUP_META[group]?.short || GROUP_META[group]?.label
+        || GROUP_META[group]?.label
         || ORIGIN_LABELS[state?.origin] || id.replace('src_', '');
     return { id, group, label };
 }

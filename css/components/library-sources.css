@@ -123,6 +123,31 @@
     mask: url("/pics/tidal.webp") center / contain no-repeat;
 }
 
+/* A source's full mark, shown in place of its name above the album grid — see
+   SOURCE_MARKS in library-constants.js. Not a currentColor mask like the two above:
+   this one is two-tone, and flattening it to a single colour would be altering an
+   identity that is not ours to alter. Its owner supplies a positive and a negative
+   version instead, and CSS shows the one the theme calls for.
+
+   40px of height is what the artwork costs to stay readable, measured — a literal
+   value for that reason, rule 6 exception. The width is left to the artwork. */
+.lib-src-mark {
+    height: 40px;
+
+    /* auto, not the 55px the artwork happens to measure: when the image does not
+       paint, the box has to hold the alt text instead, and a fixed width clips the
+       name to "HIGHRI". The width/height attributes on the tag still give the
+       browser the ratio before the file arrives, so nothing shifts on load. */
+    width: auto;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.lib-src-mark-dark { display: none; }
+
+body.dark-mode .lib-src-mark-light { display: none; }
+body.dark-mode .lib-src-mark-dark { display: block; }
+
 .lib-src-col {
     display: flex;
     flex-direction: column;
