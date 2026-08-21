@@ -93,6 +93,10 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-categories` | HRA shop categories — `[{title, label}]`, in the order HRA publishes them |
 | GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
 | GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
+| GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]` |
+| GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
+| GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
+| GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
 
 > **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
 > string and the ONLY value `/library/highresaudio-category` accepts; four categories come
@@ -100,6 +104,19 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > instead (*Hörtipps* → *Tips*). `label` equals `title` for every other category. Passing a
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
+
+> **HRA genres — `path` is the key, never the title.** Sub-genre titles repeat across genres,
+> and sixteen of them carry the name of a top-level genre (`Soundtrack/Soundtrack`), so only
+> the path identifies one. `/` separates the two levels and no title contains one.
+
+> **HRA search — `q` is required (3 characters minimum); the filters narrow a search, they do
+> not replace one.** A shorter `q` answers `200 []` without calling HRA. Two caveats measured
+> on their side, which is why the interface offers neither: **`format` makes HRA ignore `q`
+> altogether** (three different terms, one of them nonsense, return the same fifty albums),
+> and **`mood` takes about a minute** on a cold query (then answers instantly, their cache
+> being warm). This endpoint therefore waits **30s** instead of the usual 15, and answers
+> **504** — "trying again usually returns at once" — rather than 500 when it runs out. Only
+> album hits are returned; HRA can also answer with playlists, which AG cannot play yet.
 
 **Where a play goes** — `/library/queue`, `/library/upnp-play` and `/radio/play` all
 resolve their destination the same way, and answer with the same statuses:

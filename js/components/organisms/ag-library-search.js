@@ -20,6 +20,7 @@ import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-ap
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { iconSearch } from '../../ag-icons.js';
 import '../molecules/ag-library-list-row.js';
+import '../molecules/ag-hra-search-filters.js';
 
 export class AgLibrarySearch extends LitElement {
     static properties = {
@@ -29,6 +30,8 @@ export class AgLibrarySearch extends LitElement {
         _query:    { state: true },
         _results:  { state: true },
         _loading:  { state: true },
+        _error:    { state: true },
+        _hraFilters: { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -41,13 +44,59 @@ export class AgLibrarySearch extends LitElement {
         this._query    = '';
         this._results  = null;
         this._loading  = false;
+        // loadWithState writes here on a failure. It went nowhere: undeclared and never
+        // rendered, so HRA answering "this search took too long, try again" — its
+        // documented cold case — showed up as "No results for …", which is a different
+        // statement entirely and the wrong advice.
+        this._error    = '';
         this._debounce = null;
+        /** Generation counter: an answer that resolves under an older token is dropped. */
+        this._searchToken = 0;
+        /** @type {{composer: string, label: string}} HRA search filters. */
+        this._hraFilters = { composer: '', label: '' };
         this._fav      = new FavoritesController(this);   // streaming album ★ state
     }
 
     /** True for the streaming sources that support album favorites. */
     get _isStreaming() {
         return ['src_qobuz', 'src_tidal', 'src_highresaudio'].includes(this.sourceId);
+    }
+
+    /** @returns {boolean} Whether the active source is HIGHRESAUDIO. */
+    get _isHighresaudio() { return this.sourceId === 'src_highresaudio'; }
+
+    /** @returns {boolean} Whether an HRA filter is set, which changes where the search goes. */
+    get _hasHraFilters() {
+        const f = this._hraFilters;
+        return this._isHighresaudio && Boolean(f.composer || f.label);
+    }
+
+    updated(changed) {
+        // The filter row is rendered for HIGHRESAUDIO only, so leaving the source
+        // destroys it and coming back builds an empty one. Its values must go with it:
+        // kept, they narrowed every later search with no control on screen to undo it.
+        if (changed.has('sourceId') && !this._isHighresaudio && !this.isEmptyHraFilters) {
+            this._hraFilters = { composer: '', label: '' };
+        }
+    }
+
+    /** @returns {boolean} True when no HRA filter is set. */
+    get isEmptyHraFilters() {
+        return !this._hraFilters.composer && !this._hraFilters.label;
+    }
+
+    /**
+     * @private A filter changed: re-run the search when there is something to search
+     * for, and drop stale results when the filters are cleared with an empty box.
+     * @param {CustomEvent} e
+     */
+    _onHraFilters(e) {
+        this._hraFilters = e.detail;
+        // The typing debounce may still be armed: left alone it fires a second,
+        // unfiltered request after this one, and the slower filtered answer can land
+        // first and be overwritten by it.
+        clearTimeout(this._debounce);
+        if (this._query.trim()) this._search();
     }
 
     _onInput(e) {
@@ -89,16 +138,45 @@ export class AgLibrarySearch extends LitElement {
 
     async _search() {
         if (!this.sourceId || !this._query.trim()) return;
+        this._error = '';
+        const q = this._query.trim();
+        // HRA cannot search on fewer than three characters, and the filtered endpoint
+        // answers nothing rather than refusing. Left silent, "U2" with a composer set
+        // looked like a catalogue without U2 in it.
+        if (this._hasHraFilters && q.length < 3) {
+            this._results = null;
+            this._error = 'HIGHRESAUDIO needs at least three characters to search with a filter.';
+            return;
+        }
+        // A slow filtered search (HRA takes tens of seconds on a cold one) can resolve
+        // after a later, faster one. The token is checked where the answer comes back.
+        const token = ++this._searchToken;
         await loadWithState(this, async () => {
+            // Filtered, the search goes to HRA's own advanced endpoint, which answers
+            // with albums only — so the artist and track sections are absent rather
+            // than stale. Unfiltered, nothing changes: the ordinary search still
+            // covers all three, on every source.
+            if (this._hasHraFilters) {
+                const f = this._hraFilters;
+                const params = new URLSearchParams({ q, limit: '50' });
+                if (f.composer) params.set('composer', f.composer);
+                if (f.label) params.set('label', f.label);
+                const albums = await apiGet(`/library/highresaudio-search?${params}`);
+                if (token !== this._searchToken) return;   // superseded while we waited
+                this._results = { query: q, source_id: this.sourceId, artists: [], albums, tracks: [] };
+                return;
+            }
             const params = new URLSearchParams({
                 source_id: this.sourceId,
-                q:         this._query.trim(),
+                q,
                 limit:     '50',
             });
             if (this.zoneId) params.set('zone_id', this.zoneId);
             const loc = this._location();
             if (loc) params.set('location', loc);
-            this._results = await apiGet(`/library/search?${params}`);
+            const results = await apiGet(`/library/search?${params}`);
+            if (token !== this._searchToken) return;
+            this._results = results;
         });
         if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — album ★ state
     }
@@ -178,7 +256,7 @@ export class AgLibrarySearch extends LitElement {
     }
 
     render() {
-        const { _query, _results, _loading } = this;
+        const { _query, _results, _loading, _error } = this;
         const hasResults = _results && (_results.tracks?.length || _results.albums?.length || _results.artists?.length);
 
         return html`
@@ -200,6 +278,12 @@ export class AgLibrarySearch extends LitElement {
                 ` : nothing}
             </div>
 
+            ${this._isHighresaudio ? html`
+                <ag-hra-search-filters
+                    @hra-filters-change=${(e) => this._onHraFilters(e)}
+                ></ag-hra-search-filters>
+            ` : nothing}
+
             ${this.sources.length > 0 ? html`
                 <div class="lib-src-badges">
                     ${this.sources.map(src => html`
@@ -212,6 +296,8 @@ export class AgLibrarySearch extends LitElement {
             ` : nothing}
 
             ${_loading ? html`<div class="lib-loading">Searching…</div>` : nothing}
+
+            ${!_loading && _error ? html`<div class="lib-empty">${_error}</div>` : nothing}
 
             ${hasResults ? html`
                 ${_results.artists?.length ? html`
@@ -228,7 +314,7 @@ export class AgLibrarySearch extends LitElement {
                 ` : nothing}
             ` : nothing}
 
-            ${!_loading && !hasResults && _query ? html`
+            ${!_loading && !_error && !hasResults && _query ? html`
                 <div class="lib-empty">No results for "${_query}"</div>
             ` : nothing}
 

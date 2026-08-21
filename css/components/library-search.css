@@ -91,3 +91,41 @@
     margin: 6px 20px 12px;
     display: block;
 }
+
+/* HIGHRESAUDIO search filters (ag-hra-search-filters).
+   A row under the search bar, aligned on the same 20px gutter, that wraps rather than
+   scrolls: unlike the pill bars, neither field can be skipped over — each one narrows
+   the answer, so none of them may end up off-screen. */
+.lib-hraf {
+    margin: 0 20px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.lib-hraf-input {
+    flex: 1 1 140px;
+    min-width: 0;
+    padding: 8px 10px;
+    appearance: none;
+    border: 1px solid var(--border-color);
+    outline: 0;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+}
+
+.lib-hraf-input::placeholder { color: var(--text-tertiary); }
+
+.lib-hraf-clear {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}

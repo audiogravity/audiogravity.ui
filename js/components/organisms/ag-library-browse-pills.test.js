@@ -64,7 +64,10 @@ const el = (overrides = {}) => Object.assign(Object.create(AgLibraryBrowse.proto
     // The two controllers the constructor would have built. render() asks the scroll
     // one whether the bar hides pills at all — here it never does, so no chevron.
     _edges: { overflows: false, attach() {}, measure() {} },
+    _genreEdges: { overflows: false, attach() {}, measure() {} },
     _hraCategories: [],
+    _hraGenres: [],
+    _genre: null,
     ...overrides,
 });
 
@@ -250,6 +253,16 @@ describe('a pill bar that scrolls says so', () => {
         expect(out).not.toContain('categories');
     });
 
+    it('names each strip\'s chevrons after the strip they move', () => {
+        // Both bars can be on screen at once; "More filters" heard twice tells a
+        // screen-reader user nothing about which one moved.
+        const host = bar({ overflows: true });
+        const filters = JSON.stringify(host._renderPillNav(1, 'filters'));
+        const genres = JSON.stringify(host._renderPillNav(1, 'genres'));
+        expect(filters).toContain('More filters');
+        expect(genres).toContain('More genres');
+    });
+
     it('keeps the chevrons out of the global tab swipe', () => {
         // They sit beside the bar, so the swipe guard's "is an ancestor scrolling
         // sideways?" walk finds nothing — the 20px they occupy used to belong to the
@@ -274,5 +287,37 @@ describe('a pill bar that scrolls says so', () => {
         const out = JSON.stringify(bar({ overflows: true, _loading: true }).render());
         expect(out).toContain('lib-filters');
         expect(out).toContain('Loading');
+    });
+});
+
+describe('the genre strip drills in place', () => {
+    const GENRES = [{ title: 'Jazz', path: 'Jazz', subgenres: [{ title: 'Bebop', path: 'Jazz/Bebop' }] }];
+    const hra = (over = {}) => el({
+        sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: GENRES, ...over,
+    });
+
+    it('shows no genre strip on any other pill', () => {
+        const out = JSON.stringify(hra({ _filter: 'favorites' }).render());
+        expect(out).not.toContain('"genres"');
+    });
+
+    it('shows the strip on the Genres pill, with its own data-strip name', () => {
+        // The name is what tells the two strips apart: each has its own controller and
+        // its own chevrons, and both carry the same classes.
+        const out = JSON.stringify(hra({ _filter: 'genres' }).render());
+        expect(out).toContain('"genres"');
+        expect(out).toContain('Jazz');
+    });
+
+    it('offers a way back to the list once a genre is chosen', () => {
+        const out = JSON.stringify(hra({ _filter: 'genres', _genre: 'Jazz/Bebop' }).render());
+        expect(out).toContain('← ');
+        expect(out).toContain('Bebop');
+    });
+
+    it('says to choose a genre rather than reporting no albums', () => {
+        const out = JSON.stringify(hra({ _filter: 'genres', _albums: [] }).render());
+        expect(out).toContain('Choose a genre');
+        expect(out).not.toContain('No albums found');
     });
 });

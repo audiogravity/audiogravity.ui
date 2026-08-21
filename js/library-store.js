@@ -58,6 +58,7 @@ const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
 const roonState = { value: null, fetchedAt: 0, inFlight: null };
 const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
+const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
 
 /**
  * Last output failure already announced, so the toast fires on the transition
@@ -235,6 +236,34 @@ export async function getSnapshot({ force = false } = {}) {
 }
 
 /**
+ * One of HIGHRESAUDIO's fixed lists: fetch it, or serve the cached one.
+ *
+ * Every caller goes through the same sanitising and the same catch, the one already
+ * in flight included. Handing a concurrent caller the raw request instead — which is
+ * what a bare `return entry.inFlight` does — gives it `null` on a 204 and an unhandled
+ * rejection on a failure, and both land in a component that called this without
+ * awaiting it: a pill bar built from `null`, and a render that throws.
+ *
+ * An empty list is never kept, so the next visit asks again (see getHraCategories).
+ *
+ * @param {{value: *, fetchedAt: number, inFlight: Promise|null}} entry - Cache slot.
+ * @param {string} path - API path to fetch.
+ * @param {{force?: boolean}} [opts]
+ * @returns {Promise<Array<object>>} the list, or [] on any failure
+ */
+async function hraList(entry, path, { force = false } = {}) {
+    if (!force && isFresh(entry, TTL_HRA_CATEGORIES)) return entry.value;
+    const inFlight = entry.inFlight ?? fetchInto(entry, path);
+    return inFlight
+        .then((value) => {
+            const list = Array.isArray(value) ? value : [];
+            if (!list.length) entry.value = null;
+            return list;
+        })
+        .catch(() => []);
+}
+
+/**
  * Resolve HIGHRESAUDIO's shop categories — one pill each on the browse bar.
  *
  * Each entry is `{title, label}`: the title addresses the category on the core, the
@@ -248,15 +277,23 @@ export async function getSnapshot({ force = false } = {}) {
  * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
  */
 export async function getHraCategories({ force = false } = {}) {
-    if (!force && isFresh(hraCategories, TTL_HRA_CATEGORIES)) return hraCategories.value;
-    if (hraCategories.inFlight) return hraCategories.inFlight;
-    return fetchInto(hraCategories, '/library/highresaudio-categories')
-        .then((cats) => {
-            const list = Array.isArray(cats) ? cats : [];
-            if (!list.length) hraCategories.value = null;   // nothing worth keeping
-            return list;
-        })
-        .catch(() => []);
+    return hraList(hraCategories, '/library/highresaudio-categories', { force });
+}
+
+/**
+ * Resolve HIGHRESAUDIO's genres, each with its sub-genres one level deep.
+ *
+ * Same shape and same rules as {@link getHraCategories}: fixed for an account, cached
+ * for the page, and an empty answer never kept. Each entry carries a `path` — the
+ * title alone does not identify a genre, since sub-genre titles repeat and some carry
+ * the name of a top-level genre.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, path: string, subgenres: Array<object>}>>} empty on failure
+ */
+export async function getHraGenres({ force = false } = {}) {
+    return hraList(hraGenres, '/library/highresaudio-genres', { force });
 }
 
 /**
