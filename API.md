@@ -125,7 +125,7 @@ resolve their destination the same way, and answer with the same statuses:
 |---|---|
 | **501** | The selected output cannot play this content — a source the backend could not classify, or a format HQPlayer cannot decode (the detail names the track and the format). Streaming sources are **no longer** refused here: Qobuz, Tidal and HIGHRESAUDIO reach HQPlayer like every other source |
 | **409** | A network renderer **and** HQPlayer are both selected — turn one off |
-| **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) |
+| **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) — **or MPD is not running at all**, see below |
 
 `/radio/play`, `POST /radio/library` and `POST /radio/favorites` all resolve the station
 first, and all three answer **503** when that resolution fails because the Radio Browser
@@ -136,6 +136,21 @@ had started. They
 used to answer **404 "station not found"**, which blamed the station for an outage
 elsewhere; a 404 now means the catalogue answered and does not know that UUID. A station
 already saved on the box, or added by hand, resolves without the network and is unaffected.
+
+> **When MPD is stopped.** Everything AG plays goes through MPD, and the box stops it
+> itself for the Roon and HQPlayer profiles, so a stopped daemon is a state an owner
+> reaches on purpose. Every route that talks to it now answers **503** with
+> `MPD is not running. Start it from the Services tab.` — the interface shows that
+> detail verbatim, where it used to show `Queue operation failed`. It applies to
+> `GET /library/albums`, `GET /library/search`, `GET`/`DELETE`/`POST /library/queue`,
+> `POST /library/upnp-play` and `POST /radio/play`.
+>
+> Two of those changed shape: `GET /library/albums` and `GET /library/queue` used to
+> answer **200 with an empty payload**, which stated that the collection was gone. Only
+> a REFUSED connection is reported this way, and only after being confirmed a second
+> later — AG restarts MPD itself on an output change, and the port refuses during that
+> window exactly like a stopped daemon. A timeout still degrades to an empty list: a
+> daemon that is listening and not answering is a different failure.
 
 Roon is never diverted: a Roon zone is its own output chain. `action: "add"` appends —
 to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
