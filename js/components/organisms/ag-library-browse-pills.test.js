@@ -26,7 +26,12 @@ vi.mock('lit', () => ({
 const apiGetMock = vi.fn(async () => []);
 vi.mock('../../api.js', () => ({ apiGet: (...a) => apiGetMock(...a) }));
 vi.mock('../../library-store.js', () => ({ subscribePlayerState: () => () => {} }));
-vi.mock('../utils-lit.js', () => ({ coverUrl: () => '', loadWithState: async (_h, fn) => fn() }));
+vi.mock('../utils-lit.js', () => ({
+    coverUrl: () => '',
+    loadWithState: async (_h, fn) => fn(),
+    // The real one wraps an icon in a sized <svg>; here only its presence matters.
+    svgIcon: (icon) => ({ strings: ['<svg>'], values: [icon] }),
+}));
 vi.mock('../../library-api.js', () => ({}));
 // The real icon module: they are plain strings with no side effects, and a stub would
 // have to enumerate every export vitest checks for.
@@ -56,6 +61,13 @@ const el = (overrides = {}) => Object.assign(Object.create(AgLibraryBrowse.proto
     _loadingMore: false,
     _detachObserver() {},
     _fav: { load() {} },
+    // The two controllers the constructor would have built. render() asks the scroll
+    // one whether the bar hides pills at all — here it never does, so no chevron.
+    _edges: { overflows: false, attach() {}, measure() {} },
+    _genreEdges: { overflows: false, attach() {}, measure() {} },
+    _hraCategories: [],
+    _hraGenres: [],
+    _genre: null,
     ...overrides,
 });
 
@@ -205,5 +217,107 @@ describe('a page in flight cannot land in the wrong order', () => {
         apiGetMock.mockImplementationOnce(async () => []);
         await host._load();
         expect(host._loadingMore).toBe(false);
+    });
+});
+
+describe('a pill bar that scrolls says so', () => {
+    // Fifteen pills where Qobuz has four: without a marker the bar cut the last label
+    // in half, and the hidden scrollbar left nothing to say the strip continued.
+    const bar = ({ _loading = false, ...edges } = {}) => el({
+        sourceId: 'src_highresaudio',
+        _hraCategories: [{ title: 'Editors Choice', label: 'Editors Choice' }],
+        _filter: 'favorites',
+        _loading,
+        _edges: { attach() {}, ...edges },
+    });
+
+    it('offers no chevron at all while every pill fits', () => {
+        const out = JSON.stringify(bar({ overflows: false }).render());
+        expect(out).not.toContain('lib-filters-nav');
+    });
+
+    it('offers both chevrons as soon as pills are hidden', () => {
+        // Both, from the first hidden pill on: they sit beside the bar, so dropping the
+        // one that cannot move would widen the bar mid-scroll. Which of the two is inert
+        // is a CSS answer, driven by the classes the controller writes.
+        const out = JSON.stringify(bar({ overflows: true }).render());
+        expect(out).toContain('Previous filters');
+        expect(out).toContain('More filters');
+    });
+
+    it('names the chevrons after what the bar holds on every source, not just HRA', () => {
+        // They serve the Qobuz, Tidal and local bars too; "categories" would have been
+        // read out on a bar of sort buttons.
+        const out = JSON.stringify(el({ _edges: { attach() {}, overflows: true } }).render());
+        expect(out).toContain('More filters');
+        expect(out).not.toContain('categories');
+    });
+
+    it('names each strip\'s chevrons after the strip they move', () => {
+        // Both bars can be on screen at once; "More filters" heard twice tells a
+        // screen-reader user nothing about which one moved.
+        const host = bar({ overflows: true });
+        const filters = JSON.stringify(host._renderPillNav(1, 'filters'));
+        const genres = JSON.stringify(host._renderPillNav(1, 'genres'));
+        expect(filters).toContain('More filters');
+        expect(genres).toContain('More genres');
+    });
+
+    it('keeps the chevrons out of the global tab swipe', () => {
+        // They sit beside the bar, so the swipe guard's "is an ancestor scrolling
+        // sideways?" walk finds nothing — the 20px they occupy used to belong to the
+        // bar's own padding, which was swipe-immune by being part of the scroller.
+        const out = JSON.stringify(bar({ overflows: true }).render());
+        expect(out).toContain('no-swipe');
+    });
+
+    it('leaves the wrapper class alone so the markers survive a render', () => {
+        // The controller writes has-left / has-right straight onto this element. Lit only
+        // leaves an attribute alone when the template holds it as a static string: bind it
+        // to a value and every render would wipe both markers.
+        const out = JSON.stringify(bar({ overflows: true }).render());
+        expect(out).toContain('class=\\"lib-filters-wrap\\"');
+        expect(out).not.toContain('has-left');
+    });
+
+    it('keeps the bar up while a page loads', () => {
+        // It used to be replaced by the loading line, and came back scrolled to the
+        // start with the pill just chosen off-screen — invisible with four pills,
+        // the normal case with fifteen.
+        const out = JSON.stringify(bar({ overflows: true, _loading: true }).render());
+        expect(out).toContain('lib-filters');
+        expect(out).toContain('Loading');
+    });
+});
+
+describe('the genre strip drills in place', () => {
+    const GENRES = [{ title: 'Jazz', path: 'Jazz', subgenres: [{ title: 'Bebop', path: 'Jazz/Bebop' }] }];
+    const hra = (over = {}) => el({
+        sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: GENRES, ...over,
+    });
+
+    it('shows no genre strip on any other pill', () => {
+        const out = JSON.stringify(hra({ _filter: 'favorites' }).render());
+        expect(out).not.toContain('"genres"');
+    });
+
+    it('shows the strip on the Genres pill, with its own data-strip name', () => {
+        // The name is what tells the two strips apart: each has its own controller and
+        // its own chevrons, and both carry the same classes.
+        const out = JSON.stringify(hra({ _filter: 'genres' }).render());
+        expect(out).toContain('"genres"');
+        expect(out).toContain('Jazz');
+    });
+
+    it('offers a way back to the list once a genre is chosen', () => {
+        const out = JSON.stringify(hra({ _filter: 'genres', _genre: 'Jazz/Bebop' }).render());
+        expect(out).toContain('← ');
+        expect(out).toContain('Bebop');
+    });
+
+    it('says to choose a genre rather than reporting no albums', () => {
+        const out = JSON.stringify(hra({ _filter: 'genres', _albums: [] }).render());
+        expect(out).toContain('Choose a genre');
+        expect(out).not.toContain('No albums found');
     });
 });

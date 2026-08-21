@@ -277,3 +277,45 @@ describe('getSnapshot', () => {
         expect(fresh.sources.map(s => s.source_id)).toContain('src_highresaudio');
     });
 });
+
+// ---------------------------------------------------------------------------
+// getHraCategories — the pill bar of the HIGHRESAUDIO browse
+//
+// The list is fixed for an account, so it is worth caching for the page; an EMPTY
+// list is not. HRA reports several failures as a 200 with nothing in it, the core
+// passes that on as [], and cached it would leave the bar showing Favorites alone
+// with nothing able to ask again on a screen that stays open for days.
+// ---------------------------------------------------------------------------
+
+import { getHraCategories } from './library-store.js';
+
+describe('getHraCategories', () => {
+    const CATS = [{ title: 'Hörtipps', label: 'Tips' }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('asks the core again after an empty answer', async () => {
+        _apiGet.mockResolvedValueOnce([]);
+        expect(await getHraCategories()).toEqual([]);
+        _apiGet.mockResolvedValueOnce(CATS);
+        expect(await getHraCategories()).toEqual(CATS);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('serves the cached list once it has one', async () => {
+        // Warm from the previous case.
+        expect(await getHraCategories()).toEqual(CATS);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('refetches when forced', async () => {
+        _apiGet.mockResolvedValue(CATS);
+        await getHraCategories({ force: true });
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers with an empty list rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getHraCategories({ force: true })).toEqual([]);
+    });
+});

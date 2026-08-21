@@ -38,6 +38,11 @@ const TTL_ROON_ZONES = 60_000;
 // about only on its next attempt — a stale answer would leave the card claiming
 // they still have a click to make after they made it.
 const TTL_ROON_STATUS = 10_000;
+// HIGHRESAUDIO's shop categories: fixed for an account, and the core memoises them
+// too, so this only has to survive the page. Long, but not forever — an empty answer
+// (HRA refusing a session comes back as one) must not leave the pill bar bare for a
+// screen that stays open for days.
+const TTL_HRA_CATEGORIES = 3_600_000;
 
 // Offline snapshot — last known player state persisted to localStorage so the
 // player is not empty when the page is loaded without a network connection.
@@ -52,6 +57,8 @@ let _offlineSnapshotTimer = null;
 const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
 const roonState = { value: null, fetchedAt: 0, inFlight: null };
+const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
+const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
 
 /**
  * Last output failure already announced, so the toast fires on the transition
@@ -226,6 +233,67 @@ export async function getSnapshot({ force = false } = {}) {
     if (!force && isFresh(snapshot, TTL_SNAPSHOT)) return snapshot.value;
     if (snapshot.inFlight) return snapshot.inFlight;
     return fetchInto(snapshot, '/player/state/snapshot');
+}
+
+/**
+ * One of HIGHRESAUDIO's fixed lists: fetch it, or serve the cached one.
+ *
+ * Every caller goes through the same sanitising and the same catch, the one already
+ * in flight included. Handing a concurrent caller the raw request instead — which is
+ * what a bare `return entry.inFlight` does — gives it `null` on a 204 and an unhandled
+ * rejection on a failure, and both land in a component that called this without
+ * awaiting it: a pill bar built from `null`, and a render that throws.
+ *
+ * An empty list is never kept, so the next visit asks again (see getHraCategories).
+ *
+ * @param {{value: *, fetchedAt: number, inFlight: Promise|null}} entry - Cache slot.
+ * @param {string} path - API path to fetch.
+ * @param {{force?: boolean}} [opts]
+ * @returns {Promise<Array<object>>} the list, or [] on any failure
+ */
+async function hraList(entry, path, { force = false } = {}) {
+    if (!force && isFresh(entry, TTL_HRA_CATEGORIES)) return entry.value;
+    const inFlight = entry.inFlight ?? fetchInto(entry, path);
+    return inFlight
+        .then((value) => {
+            const list = Array.isArray(value) ? value : [];
+            if (!list.length) entry.value = null;
+            return list;
+        })
+        .catch(() => []);
+}
+
+/**
+ * Resolve HIGHRESAUDIO's shop categories — one pill each on the browse bar.
+ *
+ * Each entry is `{title, label}`: the title addresses the category on the core, the
+ * label is what to show (four titles come back in German whatever the language asked
+ * for, and the core relabels them). Only a non-empty list is cached: an empty one is
+ * a failure the core cannot report as an error, and caching it would leave the bar
+ * showing Favorites alone with nothing to retry it.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getHraCategories({ force = false } = {}) {
+    return hraList(hraCategories, '/library/highresaudio-categories', { force });
+}
+
+/**
+ * Resolve HIGHRESAUDIO's genres, each with its sub-genres one level deep.
+ *
+ * Same shape and same rules as {@link getHraCategories}: fixed for an account, cached
+ * for the page, and an empty answer never kept. Each entry carries a `path` — the
+ * title alone does not identify a genre, since sub-genre titles repeat and some carry
+ * the name of a top-level genre.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, path: string, subgenres: Array<object>}>>} empty on failure
+ */
+export async function getHraGenres({ force = false } = {}) {
+    return hraList(hraGenres, '/library/highresaudio-genres', { force });
 }
 
 /**
