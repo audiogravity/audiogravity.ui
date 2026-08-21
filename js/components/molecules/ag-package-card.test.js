@@ -183,6 +183,51 @@ describe('ag-package-card — actions', () => {
         expect(buttons[0].textContent).toContain('INSTALL');
     });
 
+    it('offers no UNINSTALL on a package the box cannot work without', async () => {
+        // MPD is not an engine among others: the local library, the queue, internet
+        // radio and every streaming service play through it. Removing it would leave
+        // an interface in front of a box that cannot make a sound, so the question is
+        // not asked here — and the backend refuses it too, for whoever calls the route
+        // directly. UPDATE stays: a required package still has to be updatable.
+        el = await mount({ ...basePkg, status: 'installed', installed_version: '0.23.14', required: true });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).toContain('UPDATE');
+        expect(labels.join(' ')).not.toContain('UNINSTALL');
+    });
+
+    it('offers REPAIR when a required package failed while installed', async () => {
+        // Hiding UNINSTALL also removes the usual repair — remove, then reinstall.
+        // UPDATE cannot stand in for it: it runs `apt-get install --only-upgrade`,
+        // a no-op on a package already at the candidate version, which is precisely
+        // where a failed update leaves one. Without this the card would show a single
+        // button that does nothing to a broken player the box cannot go without.
+        el = await mount({
+            ...basePkg, status: 'error', installed_version: '0.23.14', required: true,
+        });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).toContain('REPAIR');
+        expect(labels.join(' ')).not.toContain('UNINSTALL');
+    });
+
+    it('offers no REPAIR on a required package that is simply installed', async () => {
+        // Nothing is broken; a repair button there is noise inviting a needless
+        // apt run on the one package the box depends on.
+        el = await mount({
+            ...basePkg, status: 'installed', installed_version: '0.23.14', required: true,
+        });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).not.toContain('REPAIR');
+        expect(labels.join(' ')).toContain('UPDATE');
+    });
+
+    it('still offers UNINSTALL on everything else', async () => {
+        // The gate must read the flag, not a package id: written against "mpd" it
+        // would keep passing while meaning something else on the next required one.
+        el = await mount({ ...basePkg, id: 'mpd', status: 'installed', installed_version: '0.23.14' });
+        const labels = [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim());
+        expect(labels.join(' ')).toContain('UNINSTALL');
+    });
+
     it('keeps UPDATE and UNINSTALL on an installed package the core marks unavailable', async () => {
         // A box that ended up with two conflicting products must be able to
         // remove one — hiding the buttons leaves the user stuck with the pair

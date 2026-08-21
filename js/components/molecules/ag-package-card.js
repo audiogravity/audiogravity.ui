@@ -15,7 +15,7 @@
  * @fires package-check-update - Dispatched when manual update check is requested
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
 import { iconRepeat, iconDownload, iconTrash, iconCheckCircle, iconCircle, iconClose, iconSpinner, iconDocs, iconCpu } from '../../ag-icons.js';
@@ -172,9 +172,25 @@ export class AgPackageCard extends LitElement {
         }
 
         if (this.pkg.status === 'installed' || this.pkg.status === 'error') {
+            // A required package loses UNINSTALL: Audiogravity plays everything through
+            // it, so removing it would leave an interface in front of a box that cannot
+            // make a sound. The backend refuses it too — hiding the button is what stops
+            // the question being asked, not what enforces the answer.
+            //
+            // Losing it also takes away the usual repair, which is remove-and-reinstall.
+            // So a required package that failed WHILE installed is offered REPAIR: the
+            // plain install, which reconfigures what is on disk. UPDATE would not do it
+            // — `apt-get install --only-upgrade` is a no-op on a package already at the
+            // candidate version, which is exactly the state a failed update leaves.
+            const secondAction = !this.pkg.required
+                ? html`<button class="tile-action-btn warning" @click=${() => this._handleAction('uninstall')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg> UNINSTALL</button>`
+                : this.pkg.status === 'error'
+                    ? html`<button class="tile-action-btn start" @click=${() => this._handleAction('install')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> REPAIR</button>`
+                    : nothing;
+
             return html`
                 <button class="tile-action-btn secondary" @click=${() => this._handleAction('update')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> UPDATE</button>
-                <button class="tile-action-btn warning" @click=${() => this._handleAction('uninstall')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg> UNINSTALL</button>
+                ${secondAction}
             `;
         }
 
