@@ -4,8 +4,10 @@
  * Loads the first PAGE_SIZE albums on mount, then fetches subsequent pages as the user
  * scrolls toward the bottom (IntersectionObserver on a sentinel element).
  *
- * For Qobuz sources, displays category pills (Favorites, New Releases, Selection,
- * Playlists) that each fetch from a different backend endpoint.
+ * For streaming sources, displays category pills that each fetch from a different
+ * backend endpoint — a fixed set for Qobuz and Tidal, and for HIGHRESAUDIO the shop
+ * categories as the service publishes them. The bar scrolls sideways when the pills
+ * outgrow it, and fades the edge that still hides some (ScrollEdgesController).
  *
  * @element ag-library-browse
  *
@@ -18,9 +20,13 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
-import { coverUrl, loadWithState } from '../utils-lit.js';
+import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
+import { getHraCategories } from '../../library-store.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
+import { ScrollEdgesController } from '../../core/ScrollEdgesController.js';
+import { keepInView } from '../../core/keep-in-view.js';
+import { iconBack, iconChevronRight } from '../../ag-icons.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
 import '../atoms/ag-library-fav-btn.js';
@@ -54,17 +60,20 @@ const TIDAL_PILLS  = [
     ['editorial',    'Editorial'],
     ['playlists',    'Playlists'],
 ];
-const HRA_PILLS    = [
-    ['favorites', 'Favorites'],
-    ['discover',  'Discover'],
-    ['editors',   "Editor's Picks"],
-    ['bestsellers', 'Bestsellers'],
-];
-// Maps HRA browse pills to their HRA shop-category title (album grid).
-const HRA_CATEGORIES = {
-    editors:     'Editors Choice',
-    bestsellers: 'Bestsellers',
-};
+// HIGHRESAUDIO publishes fourteen shop categories and the core lists them, so the
+// pills are built from the answer rather than hard-coded. Three were hard-coded
+// before — under names we had invented ('Discover' for High-Res Essentials,
+// "Editor's Picks" for Editors Choice) — which showed three of the fourteen and
+// renamed two of the three. HRA's own wording is what their listeners recognise.
+const HRA_FAVORITES_PILL = ['favorites', 'Favorites'];
+/**
+ * Prefix marking a pill that addresses an HRA shop category by title. The title is a
+ * key, not a display string: it is what the core takes on
+ * /library/highresaudio-category, and HRA publishes each one once — the four German
+ * titles included, relabelled for display and left untouched here.
+ */
+const HRA_CAT = 'cat:';
+
 
 export class AgLibraryBrowse extends LitElement {
     static properties = {
@@ -75,6 +84,7 @@ export class AgLibraryBrowse extends LitElement {
         artistId:     { type: String, attribute: 'artist-id' },
         artistName:   { type: String, attribute: 'artist-name' },
         _albums:      { state: true },
+        _hraCategories: { state: true },
         _filter:      { state: true },
         _loading:     { state: true },
         _loadingMore: { state: true },
@@ -91,7 +101,10 @@ export class AgLibraryBrowse extends LitElement {
         this.artistId     = '';
         this.artistName   = '';
         this._albums      = [];
+        /** @type {Array<{title: string, label: string}>} HRA shop categories, one pill each. */
+        this._hraCategories = [];
         this._fav         = new FavoritesController(this);   // streaming album ★ state
+        this._edges       = new ScrollEdgesController(this); // pill-bar overflow markers
         this._filter      = 'all';
         this._loading     = false;
         this._loadingMore = false;
@@ -125,6 +138,25 @@ export class AgLibraryBrowse extends LitElement {
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
+        this._edges.attach(this.querySelector('.lib-filters'), this.querySelector('.lib-filters-wrap'));
+        // Only when the pills themselves can have changed. Measuring on every update
+        // would read the strip's geometry right after a DOM mutation — a forced layout
+        // per appended album page, and per ★ toggled anywhere in the app.
+        if (changed.has('sourceId') || changed.has('artistId') || changed.has('_hraCategories')) {
+            this._edges.measure();
+        }
+    }
+
+    /**
+     * @private Fill the HRA category pills. Driven from `_load()` rather than from a
+     * source switch: a source restored at boot only changes once, so a core that was
+     * still warming up its HRA session would leave the bar showing Favorites alone
+     * with nothing able to ask again. Refresh reloads, so Refresh now repairs it.
+     */
+    async _loadHraCategories() {
+        const cats = await getHraCategories();
+        // The source can have changed while the answer was in flight.
+        if (this._isHighresaudio) this._hraCategories = cats;
     }
 
     disconnectedCallback() {
@@ -138,6 +170,7 @@ export class AgLibraryBrowse extends LitElement {
 
     async _load() {
         if (!this.sourceId) return;
+        if (this._isHighresaudio && !this._hraCategories.length) this._loadHraCategories();
         this._detachObserver();
         // Every load opens a new generation. A page requested under the previous sort can
         // still be in flight — switching pill now reloads on MPD too, which it did not
@@ -221,18 +254,16 @@ export class AgLibraryBrowse extends LitElement {
         }
     }
 
-    /** @private HRA-specific fetch: favorites (My Album), the curated Discover grid,
-     * or a shop category (Editor's Picks, Bestsellers). */
+    /** @private HRA-specific fetch: favorites (My Album), or one of the shop categories. */
     async _fetchHighresaudioPage(offset) {
         const params = new URLSearchParams({
             offset: String(offset),
             limit:  String(PAGE_SIZE),
         });
-        if (this._filter === 'discover') {
-            return apiGet(`/library/highresaudio-discover?${params}`);
-        }
-        if (HRA_CATEGORIES[this._filter]) {
-            params.set('category', HRA_CATEGORIES[this._filter]);
+        if (this._filter.startsWith(HRA_CAT)) {
+            // The category is addressed by its title — including the four HRA publishes
+            // in German, which the core relabels for display but still keys on.
+            params.set('category', this._filter.slice(HRA_CAT.length));
             return apiGet(`/library/highresaudio-category?${params}`);
         }
         params.set('source_id', this.sourceId);
@@ -387,71 +418,142 @@ export class AgLibraryBrowse extends LitElement {
         return this._albums;
     }
 
+    /**
+     * @private The pills of the active source: `[filter, label]` pairs, empty for Roon
+     * (which pages and orders its own library, so a pill could not act on it).
+     * @returns {Array<[string, string]>}
+     */
+    get _pills() {
+        if (this._isQobuz) return QOBUZ_PILLS;
+        if (this._isTidal) return TIDAL_PILLS;
+        if (this._isHighresaudio) {
+            return [
+                HRA_FAVORITES_PILL,
+                ...this._hraCategories.map((c) => [`${HRA_CAT}${c.title}`, c.label]),
+            ];
+        }
+        return this._isRoon ? [] : MPD_PILLS;
+    }
+
     /** @private Section header label based on the active streaming pill (or artist). */
     get _sectionLabel() {
         if (this.artistId) return `Albums by ${this.artistName || 'artist'}`;
-        const pills = this._isQobuz ? QOBUZ_PILLS
-            : this._isTidal ? TIDAL_PILLS
-            : this._isHighresaudio ? HRA_PILLS
-            : null;
-        if (!pills) return 'Albums';
-        const entry = pills.find(([f]) => f === this._filter);
+        if (!this._isStreaming) return 'Albums';
+        const entry = this._pills.find(([f]) => f === this._filter);
         return entry ? entry[1] : 'Albums';
     }
 
+    /**
+     * @private Advance the pill bar by clicking a chevron: bring the first pill still
+     * cut off on that side into view. Centring it (what keepInView does) lands on a
+     * pill boundary instead of mid-label, and leaves its neighbours reachable.
+     * @param {1 | -1} dir - 1 for the right-hand chevron, -1 for the left-hand one.
+     */
+    _scrollPills(dir) {
+        const bar = this.querySelector('.lib-filters');
+        if (!bar) return;
+        const pills = [...bar.querySelectorAll('.lib-pill')];
+        const edge = bar.getBoundingClientRect();
+        const target = dir > 0
+            ? pills.find((p) => p.getBoundingClientRect().right > edge.right + 1)
+            : pills.reverse().find((p) => p.getBoundingClientRect().left < edge.left - 1);
+        keepInView(target);
+    }
+
+    /**
+     * @private One chevron of the pill bar. Both are rendered as soon as the bar
+     * overflows at all, and the one with nowhere to go is disabled rather than
+     * dropped: they sit in the layout beside the bar, so removing one would resize
+     * the bar mid-scroll — and a bar that narrows can overflow again, which is how a
+     * marker starts flickering against itself.
+     * @param {1 | -1} dir
+     */
+    _renderPillNav(dir) {
+        const next = dir > 0;
+        return html`
+            <button
+                class="lib-filters-nav no-swipe ${next ? 'next' : 'prev'}"
+                aria-label=${next ? 'More filters' : 'Previous filters'}
+                @click=${() => this._scrollPills(dir)}
+            >${svgIcon(next ? iconChevronRight : iconBack, { size: '16px' })}</button>
+        `;
+    }
+
+    /**
+     * @private The filter bar: pills, and on a pointer that clicks rather than drags,
+     * a chevron each side. It stays mounted while a page loads — replaced by the
+     * loading line, it came back scrolled to the start with the pill the reader just
+     * chose off-screen, and every pill jumped 20px sideways as the chevrons returned.
+     */
+    _renderFilters() {
+        // Both chevrons, from the first hidden pill on: they sit beside the bar, so
+        // dropping the one that cannot move would widen the bar mid-scroll — and a bar
+        // that widens can stop overflowing, which is how a marker flickers against
+        // itself. The one at the end of the strip is greyed and inert, in CSS.
+        const nav = this._edges.overflows;
+        return html`
+            <div class="lib-filters-wrap">
+                ${nav ? this._renderPillNav(-1) : nothing}
+                <div class="lib-filters">
+                    ${this.artistId ? html`
+                        <button
+                            class="lib-pill"
+                            @click=${() => this.dispatchEvent(new CustomEvent('lib-artist-back', { bubbles: true }))}
+                        >← Back</button>
+                    ` : this._pills.map(([f, label]) => html`
+                        <button
+                            class="lib-pill ${this._filter === f ? 'on' : ''}"
+                            @click=${() => this._setFilter(f)}
+                        >${label}</button>
+                    `)}
+                </div>
+                ${nav ? this._renderPillNav(1) : nothing}
+            </div>
+        `;
+    }
+
     render() {
-        const { _loading, _error, _filter, _loadingMore, _hasMore } = this;
+        const { _loading, _error, _loadingMore, _hasMore } = this;
 
         if (!this.sourceId) return html`<div class="lib-empty">Select a source</div>`;
-        if (_loading)       return html`<div class="lib-loading">Loading…</div>`;
-        if (_error)         return html`<div class="lib-empty">Error: ${_error}</div>`;
 
-        const pills        = this._isQobuz ? QOBUZ_PILLS
-            : this._isTidal ? TIDAL_PILLS
-            : this._isHighresaudio ? HRA_PILLS
-            : this._isRoon ? []
-            : MPD_PILLS;
         const filtered     = this._filtered();
         const recent       = filtered.slice(0, 10);
         const more         = filtered.slice(10);
         const showSentinel = _hasMore;
 
+        // One template for every state, loading and error included: two templates in
+        // this slot would each own their DOM, and switching between them would rebuild
+        // the filter bar — losing where it was scrolled, which is the whole point of
+        // keeping it up.
         return html`
-            <div class="lib-filters">
-                ${this.artistId ? html`
-                    <button
-                        class="lib-pill"
-                        @click=${() => this.dispatchEvent(new CustomEvent('lib-artist-back', { bubbles: true }))}
-                    >← Back</button>
-                ` : pills.map(([f, label]) => html`
-                    <button
-                        class="lib-pill ${_filter === f ? 'on' : ''}"
-                        @click=${() => this._setFilter(f)}
-                    >${label}</button>
-                `)}
-            </div>
+            ${this._renderFilters()}
 
-            ${recent.length > 0 ? html`
-                <div class="lib-section-hd">
-                    <span class="lib-sh-t">${this._sectionLabel}</span>
-                    <span class="lib-sh-more" @click=${() => this._load()}>Refresh</span>
-                </div>
-                <div class="lib-album-row">
-                    ${recent.map(a => this._renderAlbumCard(a))}
-                </div>
-            ` : html`<div class="lib-empty">No albums found</div>`}
+            ${_error ? html`<div class="lib-empty">Error: ${_error}</div>`
+              : _loading ? html`<div class="lib-loading">Loading…</div>`
+              : html`
+                ${recent.length > 0 ? html`
+                    <div class="lib-section-hd">
+                        <span class="lib-sh-t">${this._sectionLabel}</span>
+                        <span class="lib-sh-more" @click=${() => this._load()}>Refresh</span>
+                    </div>
+                    <div class="lib-album-row">
+                        ${recent.map(a => this._renderAlbumCard(a))}
+                    </div>
+                ` : html`<div class="lib-empty">No albums found</div>`}
 
-            ${more.length > 0 ? html`
-                <div class="lib-section-hd">
-                    <span class="lib-sh-t">More</span>
-                </div>
-                ${more.map(a => this._renderListRow(a))}
-            ` : nothing}
+                ${more.length > 0 ? html`
+                    <div class="lib-section-hd">
+                        <span class="lib-sh-t">More</span>
+                    </div>
+                    ${more.map(a => this._renderListRow(a))}
+                ` : nothing}
 
-            ${showSentinel  ? html`<div id="lib-browse-sentinel" style="height:1px"></div>` : nothing}
-            ${_loadingMore  ? html`<div class="lib-loading">Loading…</div>` : nothing}
+                ${showSentinel  ? html`<div id="lib-browse-sentinel" style="height:1px"></div>` : nothing}
+                ${_loadingMore  ? html`<div class="lib-loading">Loading…</div>` : nothing}
 
-            <div style="height:12px"></div>
+                <div style="height:12px"></div>
+              `}
         `;
     }
 }

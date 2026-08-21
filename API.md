@@ -90,8 +90,16 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/tidal-editorial` | Tidal editorial playlists |
 | GET | `/library/tidal-playlists` | Tidal user playlists |
 | GET | `/library/tidal-playlist-tracks` | Tracks of a Tidal playlist |
-| GET | `/library/highresaudio-discover` | HRA curated album grid ("High-Res Essentials") |
+| GET | `/library/highresaudio-categories` | HRA shop categories — `[{title, label}]`, in the order HRA publishes them |
 | GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
+| GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
+
+> **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
+> string and the ONLY value `/library/highresaudio-category` accepts; four categories come
+> back in German whatever the language asked for, so the core carries a `label` to display
+> instead (*Hörtipps* → *Tips*). `label` equals `title` for every other category. Passing a
+> label back where a title is expected is not an error: the category is simply unknown and
+> the answer is `200 []`.
 
 **Where a play goes** — `/library/queue`, `/library/upnp-play` and `/radio/play` all
 resolve their destination the same way, and answer with the same statuses:

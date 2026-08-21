@@ -38,6 +38,11 @@ const TTL_ROON_ZONES = 60_000;
 // about only on its next attempt — a stale answer would leave the card claiming
 // they still have a click to make after they made it.
 const TTL_ROON_STATUS = 10_000;
+// HIGHRESAUDIO's shop categories: fixed for an account, and the core memoises them
+// too, so this only has to survive the page. Long, but not forever — an empty answer
+// (HRA refusing a session comes back as one) must not leave the pill bar bare for a
+// screen that stays open for days.
+const TTL_HRA_CATEGORIES = 3_600_000;
 
 // Offline snapshot — last known player state persisted to localStorage so the
 // player is not empty when the page is loaded without a network connection.
@@ -52,6 +57,7 @@ let _offlineSnapshotTimer = null;
 const snapshot = { value: null, fetchedAt: 0, inFlight: null };
 const zones    = { value: null, fetchedAt: 0, inFlight: null };
 const roonState = { value: null, fetchedAt: 0, inFlight: null };
+const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 
 /**
  * Last output failure already announced, so the toast fires on the transition
@@ -226,6 +232,31 @@ export async function getSnapshot({ force = false } = {}) {
     if (!force && isFresh(snapshot, TTL_SNAPSHOT)) return snapshot.value;
     if (snapshot.inFlight) return snapshot.inFlight;
     return fetchInto(snapshot, '/player/state/snapshot');
+}
+
+/**
+ * Resolve HIGHRESAUDIO's shop categories — one pill each on the browse bar.
+ *
+ * Each entry is `{title, label}`: the title addresses the category on the core, the
+ * label is what to show (four titles come back in German whatever the language asked
+ * for, and the core relabels them). Only a non-empty list is cached: an empty one is
+ * a failure the core cannot report as an error, and caching it would leave the bar
+ * showing Favorites alone with nothing to retry it.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getHraCategories({ force = false } = {}) {
+    if (!force && isFresh(hraCategories, TTL_HRA_CATEGORIES)) return hraCategories.value;
+    if (hraCategories.inFlight) return hraCategories.inFlight;
+    return fetchInto(hraCategories, '/library/highresaudio-categories')
+        .then((cats) => {
+            const list = Array.isArray(cats) ? cats : [];
+            if (!list.length) hraCategories.value = null;   // nothing worth keeping
+            return list;
+        })
+        .catch(() => []);
 }
 
 /**

@@ -5,14 +5,115 @@
  * library-cover.css alongside the ag-library-add-btn variants.)
  */
 
+/* The pill bar holds four pills for Qobuz and fifteen for HIGHRESAUDIO, whose shop
+   categories are listed by the service. Its scrollbar is hidden (it would sit across
+   labels this short), so on its own the bar cut the last pill mid-word with nothing
+   to say the strip continued. The wrapper marks each edge that still hides pills:
+   a fade towards the page background, plus a chevron where a pointer is used to
+   clicking rather than dragging. Both sides are driven by ScrollEdgesController, so
+   neither ever claims content that is not there. */
+.lib-filters-wrap {
+    /* The gutter, and the chevron column that takes its place when the bar scrolls.
+       ONE value on purpose: the swap is only net-zero while they are equal. Widen the
+       chevrons alone and a bar that overflows would gain chevrons, lose the padding,
+       stop overflowing, drop the chevrons — and start again. */
+    --lib-filters-gutter: 20px;
+
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
 .lib-filters {
     display: flex;
     gap: 6px;
-    padding: 10px 20px 14px;
+    padding: 10px var(--lib-filters-gutter) 14px;
     overflow-x: auto;
+
+    /* Takes the room the chevrons leave, and no more: without min-width a flex item
+       refuses to go below its content width, so fifteen pills would push the bar wider
+       than the page instead of scrolling inside it. */
+    flex: 1;
+    min-width: 0;
+
+    /* Both, as the library tab bar does: Firefox reads neither ::-webkit-scrollbar nor
+       the WebKit rule, and left alone it drew a real scrollbar under the fade — on a
+       bar that now overflows as a matter of course rather than by accident. */
+    scrollbar-width: none;
 }
 
 .lib-filters::-webkit-scrollbar { display: none; }
+
+.lib-filters-wrap::before,
+.lib-filters-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+
+    /* The fade sits over the pills; without this it would swallow taps on the pill
+       underneath, which is the one the reader is aiming for. */
+    pointer-events: none;
+}
+
+.lib-filters-wrap.has-left::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg-primary), transparent);
+}
+
+.lib-filters-wrap.has-right::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg-primary), transparent);
+}
+
+/* The chevrons sit BESIDE the bar, never over it: laid on top they landed on the label
+   of the pill at the edge, which the 40px fade is far too narrow to have cleared.
+   Their column is the bar's own side padding, handed over rather than added to (see
+   the pointer-fine block), so the first pill stays on the page gutter and in line with
+   the section titles below it. */
+.lib-filters-nav {
+    display: none;
+    flex: 0 0 var(--lib-filters-gutter);
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 4px;   /* the bar's own padding is bottom-heavy; this re-centres the glyph */
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+/* At either end of the strip its chevron stays in place and goes quiet, rather than
+   disappearing and handing its width back to the bar mid-scroll. Driven by the same
+   two classes as the fades, so it costs no render while a finger drags the bar. */
+.lib-filters-wrap:not(.has-left) .lib-filters-nav.prev,
+.lib-filters-wrap:not(.has-right) .lib-filters-nav.next {
+    color: var(--text-tertiary);
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Shown only where dragging a strip is not the reflex — a mouse or a trackpad. On a
+   touch screen the fade is the marker and the finger is the control, and a button
+   there would take room from the pills on the narrowest surface we support. Whether
+   they exist at all is decided in the component: no chevron is rendered while the
+   whole strip fits, so a bar that does not scroll keeps its full width here too. */
+@media (pointer: fine) {
+    .lib-filters-nav { display: flex; }
+
+    /* The bar gives its side padding to the chevrons instead of adding their width to
+       it: 20px of gutter, then the pills, exactly where they were before. Scoped to a
+       bar that actually scrolls — with no chevron to stand in for it, the padding is
+       what keeps the first pill off the edge. */
+    .lib-filters-wrap.has-left .lib-filters,
+    .lib-filters-wrap.has-right .lib-filters { padding-inline: 0; }
+
+    /* The pills start after the chevron now, so their fade starts there too — over the
+       labels it is meant to soften, not over the button. */
+    .lib-filters-wrap.has-left::before { left: var(--lib-filters-gutter); }
+    .lib-filters-wrap.has-right::after { right: var(--lib-filters-gutter); }
+}
 
 .lib-pill {
     flex-shrink: 0;
