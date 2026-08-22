@@ -65,6 +65,8 @@ const el = (overrides = {}) => Object.assign(Object.create(AgLibraryBrowse.proto
     // one whether the bar hides pills at all — here it never does, so no chevron.
     _edges: { overflows: false, attach() {}, measure() {} },
     _genreEdges: { overflows: false, attach() {}, measure() {} },
+    _playlistEdges: { overflows: false, attach() {}, measure() {} },
+    _playlistKind: 'editorial',
     _hraCategories: [],
     _hraGenres: [],
     _genre: null,
@@ -261,6 +263,14 @@ describe('a pill bar that scrolls says so', () => {
         const genres = JSON.stringify(host._renderPillNav(1, 'genres'));
         expect(filters).toContain('More filters');
         expect(genres).toContain('More genres');
+    });
+
+    it('names a strip added later after itself, not after the filters', () => {
+        // The mapping used to be a ternary with one special case, so every strip
+        // added after the genres announced itself as "More filters".
+        const host = bar({ overflows: true });
+        expect(JSON.stringify(host._renderPillNav(1, 'playlists'))).toContain('More playlists');
+        expect(JSON.stringify(host._renderPillNav(-1, 'genres'))).toContain('Previous genres');
     });
 
     it('keeps the chevrons out of the global tab swipe', () => {

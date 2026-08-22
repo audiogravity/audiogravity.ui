@@ -97,6 +97,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
 | GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
 | GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
+| GET | `/library/highresaudio-playlists?type=editorial\|mine` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins |
+| GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
 
 > **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
 > string and the ONLY value `/library/highresaudio-category` accepts; four categories come
@@ -104,6 +106,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > instead (*Hörtipps* → *Tips*). `label` equals `title` for every other category. Passing a
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
+
+> **HRA playlists — the id names its own family.** The two trees have independent id
+> sequences, so a listing returns `editorial:1845` / `mine:5549` rather than a bare number:
+> the id you were given travels back untouched to `/library/highresaudio-playlist-tracks`
+> and to `POST /library/queue`, and no caller ever has to guess which tree it came from.
+> `type` still exists on both routes and stays authoritative when the prefix is absent.
+> An account with no playlist of its own answers `200 []`, not an error.
 
 > **HRA genres — `path` is the key, never the title.** Sub-genre titles repeat across genres,
 > and sixteen of them carry the name of a top-level genre (`Soundtrack/Soundtrack`), so only
