@@ -673,9 +673,20 @@ across both layouts instead. A service the core does not know has no editable co
 |---|---|---|
 | GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry) |
 | GET | `/audio_app_config/{service_id}/config` | Read the config file |
-| POST | `/audio_app_config/{service_id}/config` | Write it (a backup is taken first) |
-| GET | `/audio_app_config/{service_id}/backups` | List backups |
-| POST | `/audio_app_config/{service_id}/backups/{filename}/restore` | Restore a backup |
+
+Each item of `GET /audio_app_config/services` carries three fields describing the state of
+the software and of its file. All three default to the optimistic value, so a box that
+cannot answer is never reported as missing something it has.
+
+| Field | Meaning |
+|---|---|
+| `is_installed` | Whether systemd knows the service's unit (`LoadState != not-found`), read over D-Bus. `true` when it could not be determined — including when the box has no D-Bus. Same authority as the Services and Profiles tabs. |
+| `state` | systemd `ActiveState` (`active`, `inactive`, `failed`…), `null` when unknown. Read here rather than from `GET /services/`, whose listing omits units that are loaded yet idle — `upmpdcli` among them — which left their tile with no status at all. |
+| `file_exists` | Whether the configuration file is on disk. Distinct from `file_mtime`, which is also `null` when the file cannot be stat'ed: such a file is still served by `GET /{service_id}/config`, so it must not be reported as absent. |
+
+The three are independent, and the UI acts on them separately: a package can be gone with
+its configuration file left behind (`apt remove` without `--purge`), and an installed
+service can have no file yet — writing one creates it.
 
 ### Other
 | Method | Path | Description |

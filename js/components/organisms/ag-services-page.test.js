@@ -38,20 +38,8 @@ vi.mock('../molecules/ag-service-card.js', () => ({}));
 
 import { AgServicesPage } from './ag-services-page.js';
 import { EventEmitter } from '../../common.js';
+import { flat } from '../../test-utils.js';
 
-/** Flatten the mocked lit templates into plain text. */
-function flat(node) {
-    if (node === null || node === undefined || node === false) return '';
-    if (typeof node === 'symbol') return '';
-    if (Array.isArray(node)) return node.map(flat).join('');
-    if (typeof node === 'object' && node.strings) {
-        return node.strings
-            .map((s, i) => s + (i < node.values.length ? flat(node.values[i]) : ''))
-            .join('');
-    }
-    if (typeof node === 'function') return '';
-    return String(node);
-}
 
 function page(memoryUnavailable) {
     const el = Object.create(AgServicesPage.prototype);

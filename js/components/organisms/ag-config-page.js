@@ -64,20 +64,20 @@ export class AgConfigPage extends LitElement {
         this._librarySources = [];
         this._statusServices = [];
         this._showInitModal = false;
+        // Starts true so the first context notification, which arrives while
+        // connectedCallback's own load is still the freshest data there is, is
+        // not read as a return to the tab and does not fetch the list twice.
+        this._tabActive = true;
         this._boundHandleServiceMetrics = this._handleServiceMetricsSSE.bind(this);
 
         this.servicesFetch = new FetchController(this, {
             autoFetch: false,
             fetchFn: async () => {
-                const [configServices, allServices] = await Promise.all([
-                    apiGet('/audio_app_config/services'),
-                    apiGet('/services/').catch(() => [])
-                ]);
-                // /services/ returns names without .service suffix — normalise both
-                const statusMap = new Map([
-                    ...allServices.map(s => [s.name, s.state]),
-                    ...allServices.map(s => [`${s.name}.service`, s.state])
-                ]);
+                // Install state and systemd state both come from this one call. The
+                // /services/ list used to supply the state, but it omits units that
+                // are loaded yet idle (upmpdcli), which left their tile with no
+                // status badge and could not tell "idle" from "not installed".
+                const configServices = await apiGet('/audio_app_config/services');
                 return configServices.map(s => ({
                     id: s.id,
                     name: s.label,
@@ -86,9 +86,14 @@ export class AgConfigPage extends LitElement {
                     critical: s.critical,
                     audioOutput: s.audio_output || null,
                     systemdUnit: s.systemd_unit || null,
-                    status: s.systemd_unit ? (statusMap.get(s.systemd_unit) || null) : null,
+                    status: s.state || null,
                     fileMtime: s.file_mtime || null,
                     backupCount: s.backup_count ?? 0,
+                    // Passed through untouched: the card owns the "unknown means
+                    // installed" rule, as ag-service-card does. Normalising here
+                    // too would collapse the tri-state before the card sees it.
+                    isInstalled: s.is_installed,
+                    fileExists: s.file_exists,
                 }));
             },
             onSuccess: (data) => {
@@ -140,8 +145,19 @@ export class AgConfigPage extends LitElement {
     }
 
     _handleTabChanged(data) {
-        if (data.active !== 'config') {
+        const wasActive = this._tabActive;
+        this._tabActive = data.active === 'config';
+
+        if (!this._tabActive) {
             this._resetState();
+            return;
+        }
+        // Coming back to the tab re-reads the list. An UNAVAILABLE tile sends the
+        // user to Audio Software to install the package, and that round trip
+        // lands right back here — the SSE only patches `status`, so without this
+        // the tile they were told to fix stays greyed out until a full reload.
+        if (!wasActive) {
+            this._loadServices();
         }
     }
 

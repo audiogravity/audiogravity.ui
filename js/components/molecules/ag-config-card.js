@@ -13,6 +13,10 @@
  * @prop {string|null} [service.status] - Systemd ActiveState (active, inactive, failed, etc.)
  * @prop {string|null} [service.fileMtime] - ISO 8601 last-modified timestamp of the config file.
  * @prop {number} [service.backupCount=0] - Number of available backups.
+ * @prop {boolean} [service.isInstalled] - False when the package is not installed on the box.
+ *   Undefined means the backend could not tell, and is treated as installed.
+ * @prop {boolean} [service.fileExists] - False when the config file is not on disk.
+ *   Undefined is likewise treated as present: the editor can create a missing file.
  * @prop {Number} delayIndex - Animation delay index for staggered appearance
  *
  * @fires edit-config - Dispatched when edit button clicked, detail: { serviceId }
@@ -26,6 +30,9 @@ import { iconDownload } from '../../ag-icons.js';
 import { AgAudioOutput } from '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
 import { apiGet } from '../../api.js';
+
+/** Shown on the download button when there is no file to take off the box. */
+const _NO_FILE_TOOLTIP = 'No configuration file on this box';
 
 /** Format an ISO 8601 mtime string to a compact locale-aware relative label. */
 const _fmtMtime = (iso) => {
@@ -95,6 +102,22 @@ export class AgConfigCard extends LitElement {
         const tileStyle = this.delayIndex ? `--delay-index: ${this.delayIndex}` : '';
         const tileClasses = this.delayIndex ? 'stagger-delay' : '';
 
+        // Same rule as the Services and Profiles tabs: an absent package makes the
+        // tile grey, states it, and disables what cannot work. Undefined means the
+        // backend could not tell — assume installed rather than accuse.
+        const isInstalled = this.service.isInstalled !== false;
+        const hasFile = this.service.fileExists !== false;
+        // Editing follows the SOFTWARE: saving writes the file and then restarts
+        // the service, and that second half cannot succeed for a package that is
+        // not there. It stays open for an installed service whose file is
+        // missing, though — the editor is built to create one, and the core
+        // answers such a read with exists: false rather than an error.
+        const canEdit = isInstalled;
+        // Downloading follows the FILE: `apt remove` without --purge leaves the
+        // conffile behind, and a file that is on the box can always be taken off
+        // it. Its backups are not lost either — they come back with the package.
+        const canDownload = hasFile;
+
         const status = this.service.status;
         const statusVariant = status === 'active' ? 'running'
             : status === 'failed' ? 'failed'
@@ -106,21 +129,25 @@ export class AgConfigCard extends LitElement {
             : null;
 
         return html`
-            <div class="config-tile animate-fade-in ${criticalClass} ${tileClasses}" data-service-id="${this.service.id}"
+            <div class="config-tile animate-fade-in ${criticalClass} ${tileClasses} ${isInstalled ? '' : 'unavailable'}"
+                 data-service-id="${this.service.id}"
                  style=${tileStyle}>
                 <div class="service-header">
                     <div class="config-service-name">${this.service.displayName}</div>
                     <div class="config-header-badges">
+                        ${!isInstalled ? html`
+                            <span class="badge error">UNAVAILABLE</span>
+                        ` : nothing}
                         ${this.service.backupCount > 0 ? html`
                             <div class="has-tooltip">
                                 <span class="badge neutral config-backup-badge">${this.service.backupCount}</span>
                                 <div class="tooltip">${this.service.backupCount} backup${this.service.backupCount > 1 ? 's' : ''} available</div>
                             </div>
                         ` : nothing}
-                        ${statusLabel ? html`
+                        ${isInstalled && statusLabel ? html`
                             <span class="config-status-badge config-status-badge--${statusVariant}">${statusLabel}</span>
                         ` : nothing}
-                        ${this.provisionable ? html`
+                        ${isInstalled && this.provisionable ? html`
                             <div class="has-tooltip">
                                 <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
                                 <div class="tooltip">${this.configured ? 'Set up by Audiogravity' : 'Using package defaults — not set up by Audiogravity'}</div>
@@ -131,7 +158,7 @@ export class AgConfigCard extends LitElement {
 
                 <div class="service-body" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
                     <div class="config-service-path">${this.service.path}</div>
-                    ${this.service.audioOutput ? html`
+                    ${this.service.audioOutput && isInstalled ? html`
                         <ag-audio-output .value=${this.service.audioOutput}></ag-audio-output>
                     ` : nothing}
                     ${this.service.fileMtime ? html`
@@ -141,12 +168,22 @@ export class AgConfigCard extends LitElement {
                     ` : nothing}
                 </div>
 
+                ${!isInstalled ? html`
+                    <div class="config-unavailable-hint">
+                        ${hasFile
+                            ? html`Package not installed — only its configuration file is left behind.`
+                            : html`Package not installed — this file does not exist yet.`}
+                        Install it from <a href="#audio-software">Audio Software</a>.
+                    </div>
+                ` : nothing}
+
                 <div class="service-footer">
                     <div class="config-footer-left">
                         ${!isGuest() ? html`
                         <div class="has-tooltip">
-                            <button class="tile-action-btn" @click="${this.handleEdit}">EDIT CONFIG</button>
-                            <div class="tooltip">Configure this service</div>
+                            <button class="tile-action-btn" ?disabled=${!canEdit}
+                                    @click="${this.handleEdit}">EDIT CONFIG</button>
+                            <div class="tooltip">${canEdit ? 'Configure this service' : 'Package not installed'}</div>
                         </div>
                         ` : nothing}
                         ${this.service.critical ? html`
@@ -157,10 +194,11 @@ export class AgConfigCard extends LitElement {
                         ` : nothing}
                     </div>
                     <div class="has-tooltip">
-                        <button class="tile-action-btn tile-action-btn--icon" @click="${this.handleDownload}" aria-label="Download config">
+                        <button class="tile-action-btn tile-action-btn--icon" ?disabled=${!canDownload}
+                                @click="${this.handleDownload}" aria-label="Download config">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
                         </button>
-                        <div class="tooltip">Download config file</div>
+                        <div class="tooltip">${canDownload ? 'Download config file' : _NO_FILE_TOOLTIP}</div>
                     </div>
                 </div>
             </div>
