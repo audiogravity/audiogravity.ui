@@ -71,6 +71,16 @@ const HRA_FAVORITES_PILL = ['favorites', 'Favorites'];
 // order, and 212 more buttons on the end of it would bury the fourteen shelves. The
 // pill opens a second strip instead, which drills one level down in place.
 const HRA_GENRES_PILL = ['genres', 'Genres'];
+// HRA keeps two separate playlist trees — the selections it publishes, and the
+// account's own — with independent id sequences. They share the second strip, the
+// way the genres do, rather than doubling the shelf bar.
+const HRA_PLAYLISTS_PILL = ['playlists', 'Playlists'];
+// Third entry: the shelf heading. It is NOT the pill label plus the word "playlists" —
+// that reading gave "Mine playlists". A button and a heading are not the same sentence.
+const HRA_PLAYLIST_KINDS = [
+    ['editorial', 'Editorial', 'Editorial playlists'],
+    ['mine', 'Mine', 'My playlists'],
+];
 /** Label of the pill that stands for a whole genre rather than one of its sub-genres. */
 const HRA_WHOLE_GENRE_LABEL = 'All';
 /**
@@ -94,6 +104,7 @@ export class AgLibraryBrowse extends LitElement {
         _hraCategories: { state: true },
         _hraGenres:   { state: true },
         _genre:       { state: true },
+        _playlistKind: { state: true },
         _filter:      { state: true },
         _loading:     { state: true },
         _loadingMore: { state: true },
@@ -116,9 +127,12 @@ export class AgLibraryBrowse extends LitElement {
         this._hraGenres   = [];
         /** @type {string|null} Selected genre path ('Jazz' or 'Jazz/Bebop'), null on the list. */
         this._genre       = null;
+        /** @type {string} Which HRA playlist tree is shown: 'editorial' or 'mine'. */
+        this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
         this._fav         = new FavoritesController(this);   // streaming album ★ state
         this._edges       = new ScrollEdgesController(this); // filter-bar overflow markers
         this._genreEdges  = new ScrollEdgesController(this); // genre-strip overflow markers
+        this._playlistEdges = new ScrollEdgesController(this); // playlist-strip markers
         this._filter      = 'all';
         this._loading     = false;
         this._loadingMore = false;
@@ -150,6 +164,7 @@ export class AgLibraryBrowse extends LitElement {
         if ((changed.has('sourceId') || changed.has('artistId')) && this.sourceId) {
             this._filter = this._isStreaming ? 'favorites' : 'all';
             this._genre = null;
+            this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
@@ -161,6 +176,7 @@ export class AgLibraryBrowse extends LitElement {
         };
         watch(this._edges, 'filters');
         watch(this._genreEdges, 'genres');
+        watch(this._playlistEdges, 'playlists');
         // Only when the pills themselves can have changed. Measuring on every update
         // would read the strip's geometry right after a DOM mutation — a forced layout
         // per appended album page, and per ★ toggled anywhere in the app.
@@ -298,6 +314,10 @@ export class AgLibraryBrowse extends LitElement {
             offset: String(offset),
             limit:  String(PAGE_SIZE),
         });
+        if (this._filter === HRA_PLAYLISTS_PILL[0]) {
+            params.set('type', this._playlistKind);
+            return apiGet(`/library/highresaudio-playlists?${params}`);
+        }
         if (this._filter === HRA_GENRES_PILL[0]) {
             // Nothing to show until a genre is picked: the strip below is the choice.
             if (!this._genre) return [];
@@ -367,7 +387,10 @@ export class AgLibraryBrowse extends LitElement {
     _albumOpts(album, action) {
         const TIDAL_PLAYLIST_FILTERS = ['playlists', 'editorial', 'charts'];
         const isPlaylist = (this._isQobuz && this._filter === 'playlists')
-            || (this._isTidal && TIDAL_PLAYLIST_FILTERS.includes(this._filter));
+            || (this._isTidal && TIDAL_PLAYLIST_FILTERS.includes(this._filter))
+            // The id the core listed already names its family ('mine:5549'), so it
+            // travels back untouched — the interface never builds one.
+            || (this._isHighresaudio && this._filter === HRA_PLAYLISTS_PILL[0]);
         return {
             sourceId:  this.sourceId,
             zoneId:    this.zoneId,
@@ -480,6 +503,7 @@ export class AgLibraryBrowse extends LitElement {
             return [
                 HRA_FAVORITES_PILL,
                 HRA_GENRES_PILL,
+                HRA_PLAYLISTS_PILL,
                 ...this._hraCategories.map((c) => [`${HRA_CAT}${c.title}`, c.label]),
             ];
         }
@@ -520,6 +544,14 @@ export class AgLibraryBrowse extends LitElement {
     get _sectionLabel() {
         if (this.artistId) return `Albums by ${this.artistName || 'artist'}`;
         if (!this._isStreaming) return 'Albums';
+        // Which of the two trees is on screen, rather than the bare word "Playlists"
+        // that the pill already shows just above. HIGHRESAUDIO only: Qobuz and Tidal
+        // use that very filter value for their own playlists, and without this guard
+        // their grid was titled "Editorial playlists" too.
+        if (this._isHighresaudio && this._filter === HRA_PLAYLISTS_PILL[0]) {
+            const kind = HRA_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
+            return kind ? kind[2] : HRA_PLAYLISTS_PILL[1];
+        }
         // In the genres, the shelf is the genre itself — its own name says far more
         // than the word "Genres" repeated above every grid.
         if (this._filter === HRA_GENRES_PILL[0]) {
@@ -558,9 +590,11 @@ export class AgLibraryBrowse extends LitElement {
      */
     _renderPillNav(dir, strip) {
         const next = dir > 0;
-        // Named after the strip it moves: the two bars can be on screen together, and
-        // a reader hearing "More filters" twice has no way to tell them apart.
-        const what = strip === 'genres' ? 'genres' : 'filters';
+        // Named after the strip it moves: several bars can be on screen together, and
+        // a reader hearing "More filters" twice has no way to tell them apart. The
+        // name comes from the strip itself rather than a ternary — that one already
+        // mislabelled the playlists strip the day it was added.
+        const what = strip;
         return html`
             <button
                 class="lib-filters-nav no-swipe ${next ? 'next' : 'prev'}"
@@ -637,6 +671,31 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     /**
+     * @private The playlist strip: which of HRA's two trees is on screen. Two entries
+     * only, so no drill-down — the grid fills straight away rather than asking first.
+     */
+    _renderPlaylistKinds() {
+        if (!this._isHighresaudio || this._filter !== HRA_PLAYLISTS_PILL[0]) return nothing;
+        return this._renderStrip({
+            strip: 'playlists',
+            edges: this._playlistEdges,
+            pills: HRA_PLAYLIST_KINDS,
+            active: this._playlistKind,
+            pick: (kind) => this._setPlaylistKind(kind),
+        });
+    }
+
+    /**
+     * @private Switch between HRA's two playlist trees.
+     * @param {string} kind
+     */
+    _setPlaylistKind(kind) {
+        if (kind === this._playlistKind) return;
+        this._playlistKind = kind;
+        this._load();
+    }
+
+    /**
      * @private The genre strip, under the filters and only while Genres is the chosen
      * pill. It drills in place: the list of genres, then that genre and its
      * sub-genres, with a way back to the list at the front.
@@ -678,6 +737,7 @@ export class AgLibraryBrowse extends LitElement {
         return html`
             ${this._renderFilters()}
             ${this._renderGenres()}
+            ${this._renderPlaylistKinds()}
 
             ${_error ? html`<div class="lib-empty">Error: ${_error}</div>`
               : _loading ? html`<div class="lib-loading">Loading…</div>`

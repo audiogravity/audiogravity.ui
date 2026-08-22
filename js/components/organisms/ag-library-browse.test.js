@@ -99,7 +99,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     it('builds one pill per category, behind Favorites, in the order HRA publishes them', () => {
         expect(hraEl()._pills.map(([, label]) => label))
-            .toEqual(['Favorites', 'Genres', 'Editors Choice', 'Tips']);
+            .toEqual(['Favorites', 'Genres', 'Playlists', 'Editors Choice', 'Tips']);
     });
 
     it('shows the label but keys the pill on the title HRA answers with', () => {
@@ -109,7 +109,8 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     it('keeps the two entries of our own until the categories arrive', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] })._pills)
-            .toEqual([['favorites', 'Favorites'], ['genres', 'Genres']]);
+            .toEqual([['favorites', 'Favorites'], ['genres', 'Genres'],
+                      ['playlists', 'Playlists']]);
     });
 
     it('_fetchPage asks for the category by title', async () => {
@@ -149,7 +150,8 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         getHraCategoriesMock.mockResolvedValue([]);
         const el = makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] });
         await el._loadHraCategories();
-        expect(el._pills).toEqual([['favorites', 'Favorites'], ['genres', 'Genres']]);
+        expect(el._pills).toEqual([['favorites', 'Favorites'], ['genres', 'Genres'],
+                                   ['playlists', 'Playlists']]);
     });
 
     it('asks again on every load while the list is missing — Refresh repairs the bar', async () => {
@@ -293,5 +295,80 @@ describe('ag-library-browse — HIGHRESAUDIO genres', () => {
         el._load = vi.fn();
         el._setFilter('genres');
         expect(el._genre).toBeNull();
+    });
+});
+
+
+describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
+    // HRA keeps two playlist trees with independent id sequences, so the id carries
+    // its own family and the interface never builds one.
+    function plEl(over = {}) {
+        return makeEl({
+            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            _filter: 'playlists', _playlistKind: 'editorial',
+            _detachObserver() {}, _fav: { load() {} }, ...over,
+        });
+    }
+
+    beforeEach(() => apiGetMock.mockReset().mockResolvedValue([]));
+
+    it('offers Playlists next to Favorites and Genres', () => {
+        expect(plEl()._pills.map(([f]) => f).slice(0, 3))
+            .toEqual(['favorites', 'genres', 'playlists']);
+    });
+
+    it('asks for the tree that is on screen', async () => {
+        await plEl()._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('/library/highresaudio-playlists?');
+        expect(apiGetMock.mock.calls[0][0]).toContain('type=editorial');
+    });
+
+    it('switching tree reloads with the other one', async () => {
+        const el = plEl();
+        el._load = vi.fn();
+        el._setPlaylistKind('mine');
+        expect(el._playlistKind).toBe('mine');
+        expect(el._load).toHaveBeenCalledTimes(1);
+        await el._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('type=mine');
+    });
+
+    it('queues a playlist as a playlist, with the id exactly as listed', () => {
+        const opts = plEl({ _playlistKind: 'mine' })
+            ._albumOpts({ id: 'mine:5549', title: 'Audiogravity test' }, 'play');
+        expect(opts.itemType).toBe('playlist');
+        expect(opts.itemId).toBe('mine:5549');
+    });
+
+    it('an album on any other pill is still an album', () => {
+        const opts = plEl({ _filter: 'favorites' })._albumOpts({ id: 'alb1' }, 'play');
+        expect(opts.itemType).toBe('album');
+    });
+
+    it('leaves the Qobuz and Tidal playlists pill alone', () => {
+        // 'playlists' is their filter value too — an unguarded branch titled their
+        // grid "Editorial playlists", and "Mine playlists" after a visit to HRA.
+        for (const sourceId of ['src_qobuz', 'src_tidal']) {
+            const el = makeEl({ sourceId, _filter: 'playlists', _playlistKind: 'mine' });
+            expect(el._sectionLabel).toBe('Playlists');
+        }
+    });
+
+    it('forgets which tree was open when the source changes', () => {
+        const el = plEl({ _playlistKind: 'mine' });
+        el._syncObserver = () => {};
+        el._edges = { attach() {}, measure() {} };
+        el._genreEdges = { attach() {}, measure() {} };
+        el._playlistEdges = { attach() {}, measure() {} };
+        el.querySelector = () => null;
+        el.updated(new Map([['sourceId', 'src_qobuz']]));
+        expect(el._playlistKind).toBe('editorial');
+    });
+
+    it('titles the grid with the tree on screen', () => {
+        // The heading is its own wording, not the pill label plus a word: the pill
+        // reads "Mine", the shelf above the grid must read "My playlists".
+        expect(plEl()._sectionLabel).toBe('Editorial playlists');
+        expect(plEl({ _playlistKind: 'mine' })._sectionLabel).toBe('My playlists');
     });
 });
