@@ -116,7 +116,7 @@
 
 /**
  * @state .unavailable
- * @description Package not installed — service/profile tiles are greyed out and non-interactive.
+ * @description Package not installed — service/profile/config tiles are greyed out and non-interactive.
  */
 .service-tile.unavailable,
 .profile-tile.unavailable {
@@ -125,12 +125,42 @@
     border-style: dashed;
 }
 
+/**
+ * @state .unavailable (config)
+ * @description Same look as above, but the fade covers only the tile's inert
+ * description — never anything that must be read or clicked. Two reasons, both
+ * measured: the sentence explaining the tile is its only instruction and carries
+ * its only link, and under the 0.45 fade it falls to 2.16:1 (light) / 2.33:1
+ * (dark) against 4.5:1 for AA, with even --text-primary topping out at 3.02:1 —
+ * no colour rescues text from inside a fade. And the footer stays out of it
+ * because its buttons remain ACTIVE when the package is gone but its
+ * configuration file is not: fading them would hide the only route to the file
+ * and its backups behind the same greyness as a dead control. Disabled buttons
+ * are already shown as disabled by their own :disabled styling.
+ */
+.config-tile.unavailable {
+    border-style: dashed;
+}
+
+.config-tile.unavailable > .service-body {
+    opacity: 0.45;
+    filter: grayscale(60%);
+}
+
 .services-grid .service-tile.unavailable:hover,
 .profiles-grid .profile-tile.unavailable:hover {
     transform: none;
     box-shadow: none;
     border-color: var(--border-color);
     opacity: 0.45;
+}
+
+/* Same hover suppression, minus the opacity: on a config tile the fade lives on
+   the children, and restating it here would put the hint back under it. */
+.config-selector-grid .config-tile.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-color);
 }
 
 /**

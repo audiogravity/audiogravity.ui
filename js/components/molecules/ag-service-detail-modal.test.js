@@ -15,20 +15,8 @@ vi.mock('lit', () => ({
 vi.mock('./ag-modal.js', () => ({}));
 
 import { AgServiceDetailModal } from './ag-service-detail-modal.js';
+import { flat } from '../../test-utils.js';
 
-/** Flatten the mocked lit templates into plain text. */
-function flat(node) {
-    if (node === null || node === undefined || node === false) return '';
-    if (typeof node === 'symbol') return '';
-    if (Array.isArray(node)) return node.map(flat).join('');
-    if (typeof node === 'object' && node.strings) {
-        return node.strings
-            .map((s, i) => s + (i < node.values.length ? flat(node.values[i]) : ''))
-            .join('');
-    }
-    if (typeof node === 'function') return '';
-    return String(node);
-}
 
 function modalFor(metrics) {
     const el = Object.create(AgServiceDetailModal.prototype);

@@ -45,6 +45,23 @@
     opacity: 0.7;
 }
 
+/* Says why the tile is empty and where to install the package. Sits outside
+   .service-body deliberately: that is what keeps it clear of the fade applied to
+   the tile's dead content (see .config-tile.unavailable in tile.css). */
+.config-unavailable-hint {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-sm);
+    line-height: 1.5;
+}
+
+/* Colour comes from the global `a` rule in base.css. Only the underline is added:
+   that rule underlines external links on hover alone, and this one needs a
+   standing affordance since it is the tile's only call to action. */
+.config-unavailable-hint a {
+    text-decoration: underline;
+}
+
 .config-header-badges {
     display: flex;
     align-items: center;
