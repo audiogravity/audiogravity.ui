@@ -41,6 +41,17 @@ export class AgLogsModal extends LitElement {
 
     constructor() {
         super();
+        // Bound because these three go into the template handed to <ag-modal> as
+        // `.footerTemplate`. Lit binds a listener's `this` to the component that
+        // RENDERS the template — the modal — not to the one that wrote it. So
+        // `this.isOpen = false` in _handleClose was landing on <ag-modal>, which
+        // has no `isOpen` (it uses `show`): the dialog closed only because a
+        // parent happened to listen for the bubbled `close-request` and set the
+        // property itself. On its own — the Storybook story, any future host —
+        // it stayed open.
+        this._handleClose = this._handleClose.bind(this);
+        this._handleCancel = this._handleCancel.bind(this);
+        this._copyLogs = this._copyLogs.bind(this);
         this.isOpen = false;
         this.title = 'Processing...';
         this.progress = 0;
