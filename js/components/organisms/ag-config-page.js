@@ -69,6 +69,14 @@ export class AgConfigPage extends LitElement {
         // not read as a return to the tab and does not fetch the list twice.
         this._tabActive = true;
         this._boundHandleServiceMetrics = this._handleServiceMetricsSSE.bind(this);
+        // Bound because these two are used inside the template handed to <ag-modal>
+        // as `.bodyTemplate`. Lit binds a listener's `this` to the component that
+        // RENDERS the template, not the one that wrote it — and the modal renders
+        // it. Unbound, both threw `is not a function` on the modal, uncaught and
+        // invisible: the box reported itself configured and the tab kept showing
+        // the pre-setup view until a manual reload.
+        this._boundHandleProvisioned = this._handleProvisioned.bind(this);
+        this._boundHandleStatusLoaded = this._handleStatusLoaded.bind(this);
 
         this.servicesFetch = new FetchController(this, {
             autoFetch: false,
@@ -196,9 +204,15 @@ export class AgConfigPage extends LitElement {
         return this._statusServices.find(s => s.service_id === serviceId)?.output || null;
     }
 
-    /** A provision generated/changed configs — refresh the grid and the box state. */
+    /** A provision generated/changed configs — refresh the grid. */
     async _handleProvisioned() {
-        await this._loadServices();
+        // The GRID only. The audio status arrives on its own: the panel re-reads
+        // it right after dispatching this event and hands it over through
+        // `status-loaded`, which _handleStatusLoaded stores. Fetching it here too
+        // asked the box the same question twice for one click — and that question
+        // is not cheap: measured at 80 ms and half a dozen process creations
+        // (lsblk, findmnt, one `sudo cat` per service).
+        await this.servicesFetch.fetch();
     }
 
     /** Whether the box is unconfigured: provisionable services exist, none AG-provisioned. */
@@ -414,8 +428,8 @@ export class AgConfigPage extends LitElement {
                     <ag-modal title="First-time setup" ?show=${this._showInitModal} size="large"
                         .bodyTemplate=${html`
                             <ag-audio-stack-provisioning
-                                @status-loaded=${this._handleStatusLoaded}
-                                @provisioned=${this._handleProvisioned}>
+                                @status-loaded=${this._boundHandleStatusLoaded}
+                                @provisioned=${this._boundHandleProvisioned}>
                             </ag-audio-stack-provisioning>
                         `}
                         @modal-close=${() => { this._showInitModal = false; }}>
