@@ -45,7 +45,7 @@ export class AgAudioStackProvisioning extends LitElement {
         _outputs: { state: true },
         _librarySources: { state: true },
         _selectedOutputId: { state: true },   // hw string of the chosen output candidate
-        _libraryChoice: { state: true },       // 'src:<idx>' for a detected source, or 'manual'
+        _libraryChoice: { state: true },       // 'src:<idx>' | 'manual' | 'none' (no local library)
         _manualPath: { state: true },
         _state: { state: true },               // 'idle' | 'provisioning' | 'success' | 'error'
         _result: { state: true },
@@ -165,7 +165,11 @@ export class AgAudioStackProvisioning extends LitElement {
     /** Why INITIALIZE is disabled — shown as an inline hint next to the button. */
     get _disabledReason() {
         if (!this._selectedOutput) return 'Select an audio output above to enable.';
-        if (!this._libraryPayload) return 'Select a music library above to enable.';
+        // Names the way out for a box with no local music, which used to have
+        // none: the only way past this hint was to invent a path.
+        if (!this._libraryPayload) {
+            return 'Choose a music library above — or "No music library" — to enable.';
+        }
         return '';
     }
 
@@ -206,7 +210,11 @@ export class AgAudioStackProvisioning extends LitElement {
             // on the indicator that _loadStatus just (re)rendered. Must run AFTER
             // _loadStatus: its `_loading` flip tears down and rebuilds the panel
             // (and the indicator with it), which would discard an earlier start().
-            if (typeof this.querySelector === 'function') {
+            // Not when no library was chosen: the core skips the rescan there, so
+            // the indicator would announce "Indexing library…" for a run that
+            // never happens, and poll for its status.
+            const rescanned = lib.music_directory !== '';
+            if (rescanned && typeof this.querySelector === 'function') {
                 await this.updateComplete;
                 this.querySelector('ag-library-scan-indicator')?.start();
             }
@@ -246,7 +254,9 @@ export class AgAudioStackProvisioning extends LitElement {
                 <div class="ag-prov-section">
                     <h4>Music library <span class="ag-prov-scope">MPD</span></h4>
                     <p class="ag-prov-hint">Used by MPD only. Pick a detected source, type an existing mount path,
-                        or add a NAS share below — it is mounted and tested on the spot.</p>
+                        or add a NAS share below — it is mounted and tested on the spot. If your music lives on
+                        HIGHRESAUDIO, Qobuz or Tidal, or the box is an AirPlay receiver or a UPnP bridge, choose
+                        <strong>No music library</strong>: those need no file on disk.</p>
                     <ag-prov-library-picker .sources=${this._librarySources} .choice=${this._libraryChoice}
                         .manualPath=${this._manualPath}
                         @library-change=${(e) => { this._libraryChoice = e.detail.choice; this._manualPath = e.detail.manualPath; }}
