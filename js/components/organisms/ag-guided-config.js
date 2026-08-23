@@ -26,7 +26,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiPost } from '../../api.js';
-import { showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
+import { showToast, handleError, showConfirm, showPasswordConfirm } from '../../ui-helpers.js';
 import { svgIcon } from '../utils-lit.js';
 import { iconRefresh } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';
@@ -164,16 +164,39 @@ export class AgGuidedConfig extends LitElement {
                     device_id: o.device_id ?? 0,
                 });
             }
-            const libraryChanged = this._fields.includes('library') && !!this._libraryPayload;
+            // Captured once: `_libraryPayload` is a getter over `_libraryChoice`,
+            // which is reset to null a few lines below — reading it again after
+            // that yields null, and every use of it here would throw.
+            const libPayload = this._libraryPayload;
+            const libraryChanged = this._fields.includes('library') && !!libPayload;
+            // Detaching is the one library change that TAKES something away: it
+            // removes the directive and restarts MPD, so a box with a working
+            // collection loses it. The other choices point MPD somewhere else and
+            // are recoverable by pointing it back; this one is confirmed.
+            if (libraryChanged && libPayload.music_directory === '') {
+                const ok = await showConfirm(
+                    'Remove the music library?',
+                    `${this.serviceId} will no longer index or play local files. `
+                    + 'Streaming services, AirPlay and the UPnP bridge are unaffected, '
+                    + 'and nothing on disk is deleted — you can point it back at a '
+                    + 'library later.',
+                    { okLabel: 'Remove' },
+                );
+                if (!ok) return;
+            }
             if (libraryChanged) {
-                await apiPost('/audio-stack/library', this._libraryPayload);
+                await apiPost('/audio-stack/library', libPayload);
             }
             showToast('success', 'Applied', `${this.serviceId} configuration updated.`);
             this._libraryChoice = null;
             this._manualPath = '';
             this._emitChanged();
             // A library change triggers an MPD rescan server-side — surface it.
-            if (libraryChanged && typeof this.querySelector === 'function') {
+            // Not when the library was removed: the core skips the rescan there
+            // (there is nothing to walk), so the indicator would announce an
+            // indexing run that never happens and poll for its status.
+            const rescanned = libraryChanged && libPayload.music_directory !== '';
+            if (rescanned && typeof this.querySelector === 'function') {
                 this.querySelector('ag-library-scan-indicator')?.start();
             }
         } catch (e) {

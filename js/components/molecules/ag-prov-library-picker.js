@@ -11,7 +11,7 @@
  *
  * @element ag-prov-library-picker
  * @prop {Array} sources - Detected library sources (from /audio-stack/status).
- * @prop {string} choice - Current choice: `src:<idx>` | `manual` | null.
+ * @prop {string} choice - Current choice: `src:<idx>` | `manual` | `none` | null.
  * @prop {string} manualPath - Current manual path value.
  * @fires library-change - Bubbles. detail: { choice, manualPath, payload } —
  *   payload is the API fragment (music_directory OR library_usb_uuid/fstype), or null.
@@ -25,7 +25,7 @@
  */
 import { LitElement, html } from 'lit';
 import { svgIcon } from '../utils-lit.js';
-import { iconHardDrive, iconWifi, iconFolder, iconCircleDot, iconCircle } from '../../ag-icons.js';
+import { iconHardDrive, iconWifi, iconFolder, iconCircleDot, iconCircle, iconCloud } from '../../ag-icons.js';
 import './ag-network-mount-form.js';
 
 const NETWORK_FS = ['cifs', 'nfs', 'nfs4', 'smb3'];
@@ -51,12 +51,27 @@ export class AgProvLibraryPicker extends LitElement {
     /**
      * Derive the API library payload fragment for a choice, or null if unusable.
      * Shared so parents (panel, guided editor, dialog) don't re-implement it.
-     * @param {string|null} choice - `src:<idx>` | `manual` | null.
+     * @param {string|null} choice - `src:<idx>` | `manual` | `none` | null.
      * @param {string} manualPath - Manual path value.
      * @param {Array} [sources] - Detected sources.
-     * @returns {object|null} { music_directory } | { library_usb_uuid, library_fstype } | null.
+     * @returns {object|null} { music_directory } | { library_usb_uuid, library_fstype }
+     *   | { music_directory: '' } for a deliberate "no library" | null when nothing
+     *   usable is chosen. Never `{}`: an absent field tells the core to KEEP the
+     *   library mpd already has, which is the opposite of what `none` means.
      */
     static payloadFor(choice, manualPath, sources = []) {
+        // A box with no local music is a legitimate setup — the streaming
+        // services, the AirPlay receiver and the UPnP bridge need no file on
+        // disk. Sent as an EMPTY path, not as an absent field: to the core those
+        // mean different things, and they must. An absent field says "I am not
+        // talking about the library", which keeps the one mpd already has — so
+        // sending nothing here would re-inherit the old library on any box that
+        // has one, which is every box that was ever configured. The empty string
+        // says "no library", and the core then omits mpd's directive rather than
+        // writing it empty, which would stop mpd from starting.
+        // Distinct from null, which means "nothing chosen yet" and keeps
+        // INITIALIZE disabled.
+        if (choice === 'none') return { music_directory: '' };
         if (choice === 'manual') {
             const p = (manualPath || '').trim();
             return p ? { music_directory: p } : null;
@@ -89,7 +104,7 @@ export class AgProvLibraryPicker extends LitElement {
      * choices pass through unchanged (a manual path is index-independent).
      *
      * Shared so every picker host reconciles identically (mirrors payloadFor).
-     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | null.
+     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | `none` | null.
      * @param {Array} oldSources - The sources the choice indexed into.
      * @param {Array} newSources - The refreshed sources.
      * @returns {string|null} The reconciled choice: a new `src:<idx>`, or null if
@@ -107,7 +122,7 @@ export class AgProvLibraryPicker extends LitElement {
      * Drop a `manual` selection that points at a now-removed mountpoint, so a
      * deleted share can't stay selected. Any other choice passes through.
      * Shared so every picker host reconciles removals identically.
-     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | null.
+     * @param {string|null} choice - Current choice: `src:<idx>` | `manual` | `none` | null.
      * @param {string} manualPath - The current manual path.
      * @param {string} [removedMountpoint] - The removed share's mountpoint.
      * @returns {{choice: string|null, manualPath: string}} The reconciled pair.
@@ -121,7 +136,7 @@ export class AgProvLibraryPicker extends LitElement {
 
     /**
      * Update the choice/path and notify the parent with the resolved payload.
-     * @param {string} choice - New choice.
+     * @param {string} choice - New choice: `src:<idx>` | `manual` | `none`.
      * @param {string} manualPath - New manual path.
      */
     _emit(choice, manualPath) {
@@ -146,8 +161,28 @@ export class AgProvLibraryPicker extends LitElement {
             <div class="ag-prov-list">
                 ${this.sources.map((s, i) => this._srcCard(s, i))}
                 ${this._manual()}
+                ${this._none()}
                 <ag-network-mount-form></ag-network-mount-form>
             </div>`;
+    }
+
+    /**
+     * The explicit "no local library" choice.
+     *
+     * Listed as an option rather than left as an empty selection: without it the
+     * only way past a disabled INITIALIZE was to invent a path, which the box
+     * then accepted and turned into an empty library nobody could explain.
+     * @returns {import('lit').TemplateResult}
+     */
+    _none() {
+        const selected = this.choice === 'none';
+        return html`
+            <button class="ag-prov-card ${selected ? 'selected' : ''}"
+                    @click=${() => this._emit('none', this.manualPath)}>
+                ${svgIcon(selected ? iconCircleDot : iconCircle)}
+                <span class="ag-prov-card-icon">${svgIcon(iconCloud)}</span>
+                <span class="ag-prov-card-label">No music library — online listening only</span>
+            </button>`;
     }
 
     _srcCard(s, i) {

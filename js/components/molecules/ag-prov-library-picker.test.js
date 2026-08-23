@@ -44,6 +44,36 @@ describe('payloadFor', () => {
     });
 });
 
+describe('the deliberate "no library" choice', () => {
+    // A box with no local music is a legitimate setup — the streaming services,
+    // the AirPlay receiver and the UPnP bridge need no file on disk. Without this
+    // option the only way past a disabled INITIALIZE was to invent a path, which
+    // the box accepted and turned into an empty library nobody could explain.
+    it('sends an EMPTY path, not an absent field', () => {
+        // The two mean different things to the core: an absent field keeps the
+        // library mpd already has, so sending nothing would re-inherit the old
+        // one on any box that was ever configured — which is every box.
+        expect(AgProvLibraryPicker.payloadFor('none', '', SOURCES)).toEqual({ music_directory: '' });
+    });
+
+    it('is usable, unlike "nothing chosen yet"', () => {
+        // The panel enables INITIALIZE on a truthy payload, so these two must not
+        // be conflated: both are "no library", only one is a decision.
+        expect(AgProvLibraryPicker.payloadFor('none', '', SOURCES)).toBeTruthy();
+        expect(AgProvLibraryPicker.payloadFor(null, '', SOURCES)).toBeNull();
+    });
+
+    it('reaches the request as an explicit empty path', () => {
+        const body = { card_name: 'DAC', ...AgProvLibraryPicker.payloadFor('none', '', SOURCES) };
+        expect(body).toEqual({ card_name: 'DAC', music_directory: '' });
+    });
+
+    it('ignores a manual path left behind in the field', () => {
+        expect(AgProvLibraryPicker.payloadFor('none', '/mnt/typed-then-abandoned', SOURCES))
+            .toEqual({ music_directory: '' });
+    });
+});
+
 describe('_emit', () => {
     function makeEl(overrides = {}) {
         const el = Object.create(AgProvLibraryPicker.prototype);

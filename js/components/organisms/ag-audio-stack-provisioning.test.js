@@ -82,6 +82,28 @@ describe('_canProvision', () => {
     });
 });
 
+describe('a box with no local library', () => {
+    // The entry this closes: INITIALIZE stayed inert under "Select a music
+    // library above", and the core refused too — so an owner whose music lives
+    // on HIGHRESAUDIO, Qobuz or Tidal had to invent a path to get past it.
+    it('can initialize once "no library" is chosen', () => {
+        expect(makeEl({ _libraryChoice: 'none' })._canProvision).toBe(true);
+    });
+
+    it('is still refused while nothing has been chosen', () => {
+        expect(makeEl({ _libraryChoice: null })._canProvision).toBe(false);
+    });
+
+    it('sends an explicit empty path, not an absent field', () => {
+        // Absent would mean "keep the library mpd already has".
+        expect(makeEl({ _libraryChoice: 'none' })._libraryPayload).toEqual({ music_directory: '' });
+    });
+
+    it('names the way out instead of only stating the requirement', () => {
+        expect(makeEl({ _libraryChoice: null })._disabledReason).toContain('No music library');
+    });
+});
+
 describe('_disabledReason', () => {
     it('asks to select an output when none is selected', () => {
         expect(makeEl({ _selectedOutputId: null })._disabledReason).toContain('output');

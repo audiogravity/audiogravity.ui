@@ -11,7 +11,7 @@ vi.mock('lit', () => ({
     nothing: null,
 }));
 vi.mock('../../api.js', () => ({ apiPost: vi.fn() }));
-vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), handleError: vi.fn(), showPasswordConfirm: vi.fn() }));
+vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), handleError: vi.fn(), showConfirm: vi.fn(), showPasswordConfirm: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
 vi.mock('../../ag-icons.js', () => ({
     iconRefresh: '', iconConnectorUsbA: '', iconHardDrive: '', iconRadio: '',
@@ -19,7 +19,7 @@ vi.mock('../../ag-icons.js', () => ({
 }));
 
 import { apiPost } from '../../api.js';
-import { showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
+import { showConfirm, showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
 import { AgGuidedConfig, GUIDED_FIELDS } from './ag-guided-config.js';
 
 const OUTPUTS = [
@@ -197,5 +197,74 @@ describe('willUpdate — library selection re-anchor', () => {
         const el = makeEl({ librarySources: [], _libraryChoice: 'manual', _manualPath: '/mnt/x' });
         el.willUpdate(new Map([['librarySources', [src()]]]));
         expect(el._libraryChoice).toBe('manual');
+    });
+});
+
+
+describe('removing the music library from the guided editor', () => {
+    // The picker is shared with the provisioning panel, so the new "No music
+    // library" card appears here too — where Apply changes is one click, with no
+    // password and no summary of what it does. Every other library choice points
+    // MPD somewhere else and is undone by pointing it back; this one TAKES the
+    // collection away and restarts MPD.
+
+    beforeEach(() => {
+        // clearAllMocks() forgets the CALLS but keeps an implementation set
+        // earlier, so a preceding test leaving apiPost rejecting would make every
+        // assertion here depend on file order.
+        apiPost.mockResolvedValue({});
+    });
+
+    it('asks before detaching', async () => {
+        showConfirm.mockResolvedValue(true);
+        const el = makeEl({ _libraryChoice: 'none' });
+
+        await el._apply();
+
+        expect(showConfirm).toHaveBeenCalledTimes(1);
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/library', { music_directory: '' });
+    });
+
+    it('does nothing when the question is declined', async () => {
+        showConfirm.mockResolvedValue(false);
+        const el = makeEl({ _libraryChoice: 'none' });
+
+        await el._apply();
+
+        expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('does not ask when a library is being SET', async () => {
+        // Confirming every library change would train the reader to dismiss it.
+        const el = makeEl({ _libraryChoice: 'src:0' });
+
+        await el._apply();
+
+        expect(showConfirm).not.toHaveBeenCalled();
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/library', { library_usb_uuid: 'u-1', library_fstype: 'ext4' });
+    });
+
+    it('does not announce an indexing run that will not happen', async () => {
+        // The core skips the rescan with no library — there is nothing to walk —
+        // so the indicator would show "Indexing library…" and poll for a job
+        // that was never started.
+        showConfirm.mockResolvedValue(true);
+        const started = vi.fn();
+        const el = makeEl({ _libraryChoice: 'none' });
+        el.querySelector = () => ({ start: started });
+
+        await el._apply();
+
+        expect(started).not.toHaveBeenCalled();
+    });
+
+    it('still announces one when a library IS set', async () => {
+        const started = vi.fn();
+        const el = makeEl({ _libraryChoice: 'src:0' });
+        el.querySelector = () => ({ start: started });
+
+        await el._apply();
+
+        expect(started).toHaveBeenCalled();
     });
 });

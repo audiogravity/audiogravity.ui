@@ -562,6 +562,10 @@ export const iconHardDrive = svg`
     <path d="M21.946 12.013H2.054"/>
     <path d="M6 16h.01"/>`;
 
+/** Online-only: content that lives off the box rather than on its disk. (Lucide: cloud) */
+export const iconCloud = svg`
+    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>`;
+
 /** Cast / broadcast to a screen or speaker. (Lucide: cast) */
 export const iconCast = svg`
     <path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>

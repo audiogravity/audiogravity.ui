@@ -26,3 +26,17 @@ ManualPath.args = { sources: SOURCES, choice: 'manual', manualPath: '/mnt/musics
 
 export const NoSourcesDetected = Template.bind({});
 NoSourcesDetected.args = { sources: [], choice: null, manualPath: '' };
+
+/**
+ * The deliberate "no local library" choice — a streaming-only box, an AirPlay
+ * receiver, a UPnP bridge. Worth looking at on its own: it carries the only new
+ * icon, and its label is the longest of the list, so it is where
+ * `text-overflow: ellipsis` on `.ag-prov-card-label` shows up first.
+ */
+export const NoLibrary = Template.bind({});
+NoLibrary.args = { sources: SOURCES, choice: 'none', manualPath: '' };
+
+/** The same choice on a box where nothing was detected either — the case an
+ *  owner with no local music actually meets. */
+export const NoLibraryAndNoSources = Template.bind({});
+NoLibraryAndNoSources.args = { sources: [], choice: 'none', manualPath: '' };
