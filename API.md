@@ -707,7 +707,13 @@ across both layouts instead. A service the core does not know has no editable co
 | Method | Path | Description |
 |---|---|---|
 | GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry) |
-| GET | `/audio_app_config/{service_id}/config` | Read the config file |
+| GET | `/audio_app_config/{service_id}/config` | Read the config file (`?type=raw` for the file itself) |
+| POST | `/audio_app_config/{service_id}/config` | Write it back; optionally restart the service |
+| GET | `/audio_app_config/{service_id}/backups` | List the timestamped copies kept before each save |
+| POST | `/audio_app_config/{service_id}/backups/{filename}/restore` | Restore one of them; optionally restart the service |
+
+Every save takes a timestamped backup first, which is what the two `backups` routes read
+and replay — so an edit that stops a service can always be undone from the editor.
 
 Each item of `GET /audio_app_config/services` carries three fields describing the state of
 the software and of its file. All three default to the optimistic value, so a box that
