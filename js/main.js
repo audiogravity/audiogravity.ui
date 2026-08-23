@@ -118,6 +118,7 @@ import './components/organisms/ag-modal.js';
 import './components/organisms/ag-confirm-dialog.js';
 import './components/organisms/ag-user-modal.js';
 import './components/organisms/ag-logs-modal.js';
+import './components/organisms/ag-support-report.js';
 import './components/organisms/ag-docs-modal.js';
 import './components/organisms/ag-manual-modal.js';
 import './components/organisms/ag-orientation-gate.js';

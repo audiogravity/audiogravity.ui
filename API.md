@@ -465,6 +465,31 @@ these today**; see `/docs` for their request/response shape.
 | POST | `/sysinfo/actions/restart-backend` | Restart the core |
 | POST | `/sysinfo/actions/update` | Self-update the core to a newer release; admin **password** required |
 | GET | `/sysinfo/update-status` | Current self-update progress (phase) |
+| GET | `/sysinfo/support-report` | Full state snapshot for the owner to send to support; **admin-only** |
+
+`GET /sysinfo/support-report` → one snapshot of the box, built on demand. Sections:
+
+- `box` — `ag_version`, `architecture`, `hostname`, `os`, `python`, `enabled_modules`.
+- `licence` — `status` (the verdict: `trial | lifetime | starter | expired | version_expired | tampered | no_license`), `plan`, `device_id`, `days_remaining`, `activated_at`, `expires_at`, `version_scope`, `order_id`, plus `online_check` `{ status, valid, checked, checked_at }`. No `.lic` content.
+- `system` — `uptime`, `boot_time`, `load_average`, `memory`, `cpu`, `temperature`, `os_release`, `kernel`, and `network_interfaces` as `{ name, ipv4, ipv6, is_up }`. No MAC: `licence.device_id` already answers the identity question.
+- `packages` — `{ id, label, status, installed_version, supported_here }`. No update check, so no apt refresh and no vendor calls.
+- `services` — `managed` (the AG allowlist, each `{ name, state, sub_state, enabled }`), `failed_elsewhere` (any failed unit outside it) and `total_units`.
+- `audio_stack` — the `/audio-stack/status` payload: `outputs`, `selected_output`, per-service `{ service_id, config_path, configured, output }`, `library_sources`.
+- `configs` — one entry per audio config: `{ service_id, path, exists, size_bytes, modified, mode, lines, dropped_comments, redacted, truncated }`. See the redaction contract below.
+- `library` — `declared_roots`, `has_local_library`, `roots_detail` `{ path, exists, readable }`, and `mpd_database` `{ path, declared, exists?, size_bytes?, modified? }` where `declared` ∈ `declared | not_declared | config_unreadable` — an unreadable `mpd.conf` is not the same diagnostic as a database that was never built.
+- `streaming` — one boolean per service (`qobuz`, `tidal`, `highresaudio`, `roon`). Never a token.
+
+**Secrets are redacted before the report is built.** Config files are reduced to their
+effective directives — comments dropped except the Audiogravity marker, `#`/`//`/XML
+alike — and any credential-shaped directive **or value** is replaced with `«redacted»`,
+the directive **name** kept so the reader still learns the setting exists. API keys, the
+JWT secret, CIFS credentials, streaming tokens, the `.lic` content and library contents
+never appear. Each config entry carries `dropped_comments`, `redacted` and `truncated`
+counts — a cut is never silent.
+
+A section the core could not collect carries its own `error` key instead of sinking the
+response; the call still returns **200**. On-demand only: it shells out (lsblk, findmnt,
+dpkg), so it is not cached, polled or scheduled.
 
 `POST /sysinfo/actions/update` body: `{ password, version?, token? }` → `{ status: "updating", from, to }`. Admin + **password** gated. Launches a **detached** updater (transient systemd unit) that reinstalls the core binary (to `version`, or latest when omitted), health-checks it, and **rolls back** on failure. `token` is an optional GitHub PAT for the private releases repo (Early Access); when omitted it falls back to the core's configured `RELEASE_DOWNLOAD_TOKEN`. Health-check requires the new binary to report the **target version** (not just answer `200`). Returns **409** if an update is already in progress (a crashed/stale in-progress state older than 15 min is ignored, so a dead updater can't wedge this). Follow progress via `GET /sysinfo/update-status`.
 
