@@ -68,6 +68,17 @@ export class AgModal extends LitElement {
         });
     }
 
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        // The Escape listener lives on `document`, and until now it was only ever
+        // removed by `updated()` on a show → false transition. Every modal used to be a
+        // permanent child of <body>, so that was enough. It stops being enough as soon
+        // as one is rendered inside a branch Lit can destroy — a tab, an admin-only
+        // section: the element goes away while shown, and the listener stays alive for
+        // the life of the page, holding the detached modal and its contents with it.
+        this._removeKeyboardTrap();
+    }
+
     updated(changedProperties) {
         if (changedProperties.has('show')) {
             if (this.show) {

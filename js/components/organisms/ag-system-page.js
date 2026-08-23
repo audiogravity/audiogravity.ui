@@ -116,6 +116,12 @@ export class AgSystemPage extends LitElement {
         window.UIComponents.InfoModal.show('About System Monitoring', content);
     }
 
+    /** Open the body-level support report window (same pattern as the other modals). */
+    _openSupportReport() {
+        const modal = document.getElementById('agSupportReport');
+        if (modal) modal.show = true;
+    }
+
     _handleEventClick(e) {
         const modal = document.getElementById('agEventDetailModal');
         if (modal && e.detail && e.detail.payload) {
@@ -171,7 +177,9 @@ export class AgSystemPage extends LitElement {
                     <div class="tab-title-container">
                         <h2>SYSTEM ACTIONS</h2>
                     </div>
-                    <ag-system-actions></ag-system-actions>
+                    <ag-system-actions
+                        @support-report-request=${this._openSupportReport}>
+                    </ag-system-actions>
                 </div>
                 <div class="system-terminal-zone tab-zone">
                     <div class="tab-title-container">

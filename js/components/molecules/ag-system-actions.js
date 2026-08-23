@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiPost } from '../../api.js';
 import { showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
 import { isAdmin } from '../../auth.js';
-import { iconRepeat, iconPowerCord } from '../../ag-icons.js';
+import { iconRepeat, iconPowerCord, iconFileText } from '../../ag-icons.js';
 
 /**
  * System Actions Molecule
@@ -57,6 +57,16 @@ export class AgSystemActions extends LitElement {
             this._restartingBackend = false;
             showToast('error', 'Restart Failed', err.message || 'Unknown error');
         }
+    }
+
+    /**
+     * Ask the host to open the support report window.
+     *
+     * The window itself is an organism (`ag-support-report`) hosted by the page: a
+     * molecule orchestrating a modal would be doing an organism's job.
+     */
+    _handleSupportReport() {
+        this.dispatchEvent(new CustomEvent('support-report-request', { bubbles: true, composed: true }));
     }
 
     /**
@@ -147,6 +157,16 @@ export class AgSystemActions extends LitElement {
                         ${this._restartingBackend
                             ? html`<svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> Restarting…`
                             : html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> Restart`}
+                    </button>
+                </div>
+                <div class="system-action-card">
+                    <div class="system-action-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconFileText}</svg></div>
+                    <div class="system-action-info">
+                        <div class="system-action-title">Support Report</div>
+                        <div class="system-action-desc">A readable snapshot of this box — version, licence, services, audio stack, configuration files — to copy into a support message. Passwords and tokens are removed; nothing is sent anywhere.</div>
+                    </div>
+                    <button class="btn-action compact" @click=${this._handleSupportReport}>
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconFileText}</svg> Open
                     </button>
                 </div>
                 <div class="system-action-card system-action-card--danger">

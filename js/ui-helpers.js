@@ -259,6 +259,33 @@ export async function copyToClipboard(text) {
     document.body.removeChild(ta);
 }
 
+/**
+ * Save text to a file on the visitor's machine.
+ *
+ * Two details decide whether this works or only looks like it does:
+ *
+ * 1. **The anchor must be in the document.** A detached `<a download>` is ignored by
+ *    some browsers, and `click()` then does nothing at all — silently.
+ * 2. **The object URL must outlive the click.** Revoking it on the next statement
+ *    races the browser, which may not have started reading the blob yet: the click
+ *    reports success and no file is ever written. It is released on a later turn of
+ *    the event loop instead, so the memory is still freed.
+ *
+ * @param {string} text - File contents.
+ * @param {string} filename - Name proposed to the visitor.
+ * @param {string} [mimeType='text/plain;charset=utf-8'] - Content type of the blob.
+ * @returns {void}
+ */
+export function downloadTextFile(text, filename, mimeType = 'text/plain;charset=utf-8') {
+    const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+    const anchor = Object.assign(document.createElement('a'), { href: url, download: filename });
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 // Global attachment for legacy code
 if (typeof window !== 'undefined') {
     window.showToast = showToast;

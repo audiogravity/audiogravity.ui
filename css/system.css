@@ -671,3 +671,40 @@
     margin: 0;
 }
 
+
+/* ── Support report window ──────────────────────────────────────────────────
+   The report is plain text on purpose — that is the form it takes when the
+   owner pastes it into a message — so the body is a monospace block that
+   scrolls on its own rather than stretching the modal. */
+.support-report-intro {
+    margin: 0 0 var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+}
+
+.support-report-status {
+    padding: var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.support-report-status.error {
+    color: var(--color-error-text);
+}
+
+.support-report-body {
+    margin: 0;
+    max-height: 55vh;
+    overflow: auto;
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+    white-space: pre;
+    tab-size: 4;
+}
