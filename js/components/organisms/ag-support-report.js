@@ -30,7 +30,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet } from '../../api.js';
 import { copyToClipboard, downloadTextFile, showToast } from '../../ui-helpers.js';
-import { iconCopy, iconDownload } from '../../ag-icons.js';
+import { iconCheck, iconCopy, iconDownload, iconSpinner } from '../../ag-icons.js';
 import { formatSupportReport } from '../../core/support-report-format.js';
 import './ag-modal.js';
 
@@ -135,10 +135,19 @@ export class AgSupportReport extends LitElement {
                         it and attach it to your message yourself.
                     </p>
                     ${this._loading ? html`
-                        <div class="support-report-status">Collecting…</div>
+                        <div class="support-report-status collecting">
+                            <svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg>
+                            Collecting — probing the box, its services and its network (a few seconds)…
+                        </div>
                     ` : ''}
                     ${this._error ? html`
                         <div class="support-report-status error">${this._error}</div>
+                    ` : ''}
+                    ${this._text && !this._loading ? html`
+                        <div class="support-report-status ready">
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCheck}</svg>
+                            Report ready.
+                        </div>
                     ` : ''}
                     ${this._text ? html`
                         <pre class="support-report-body">${this._text}</pre>

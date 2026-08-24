@@ -693,6 +693,24 @@
     color: var(--color-error-text);
 }
 
+/* The collection state, unmistakable at a glance: in progress (spinner, warning
+   tone) vs done (check, success tone) — the request takes seconds now that the
+   report probes the network, and a bare "Collecting…" read as frozen. */
+.support-report-status.collecting,
+.support-report-status.ready {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.support-report-status.collecting {
+    color: var(--color-warning-text);
+}
+
+.support-report-status.ready {
+    color: var(--color-success-text);
+}
+
 .support-report-body {
     margin: 0;
     max-height: 55vh;

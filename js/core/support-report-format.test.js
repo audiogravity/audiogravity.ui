@@ -201,3 +201,420 @@ describe('formatSupportReport', () => {
         expect(formatSupportReport(fullReport())).toContain('not supported on this architecture');
     });
 });
+
+describe('formatSupportReport — v2 sections', () => {
+    const v2 = {
+        report_version: 2,
+        network: {
+            gateway: '10.0.4.1', default_interface: 'wlan0', lan_ip: '10.0.4.254',
+            dns_servers: ['1.1.1.1'],
+            clock: { timezone: 'Europe/Paris', ntp_synchronized: 'no' },
+            reachability: {
+                internet: { host: 'audiogravity.app', port: 443, reachable: true, latency_ms: 77 },
+                license_server: { host: 'ls.example', port: 443, reachable: false, error: 'TimeoutError' },
+            },
+        },
+        web_ui: {
+            port: 8080, lan_ip: '10.0.4.254', scheme: 'https', reachable: true,
+            ui_build: { version: '0.9.46', build_date: '2026-08-24T10:00:00Z', git_commit: 'abc1234' },
+            certificate: {
+                subject: 'Audiogravity UI', not_after: '2028-01-01T00:00:00+00:00',
+                days_left: 490, san_ips: ['10.0.4.10'], san_dns: [], covers_lan_ip: false,
+            },
+            ca: { bootstrap_port: 8081, available: true, subject: 'Audiogravity CA', issuer_matches: true, signature_verified: true },
+        },
+        self_update: {
+            state: { phase: 'idle' },
+            bootstrap_url: 'https://audiogravity.app/install-core.sh',
+            download_token_present: false,
+        },
+        env_sanity: {
+            path: '/etc/audiogravity/.env', exists: true, mode: '0o644', world_readable: true,
+            keys_present: 31, expected_keys: 46,
+            missing: ['RELEASE_DOWNLOAD_TOKEN'], unknown: ['OLD_KEY'],
+        },
+        storage: { mounts: [{ mountpoint: '/mnt/musics', used_percent: 72.6, free_bytes: 2199023255552 }] },
+        audio_live: {
+            cards: [{ index: 0, id: 'Abacus', description: 'USB-Audio - Heed Abacus', usbid: '20b1:30ab', usbbus: '001/009' }],
+            active_streams: [{ stream: 'card0/pcm0p/sub0', direction: 'playback', format: 'S32_LE', rate: '44100 (44100/1)', channels: '2' }],
+            cpu_governor: 'performance',
+        },
+        library: {
+            has_local_library: false,
+            mpd_stats: { songs: '48312', albums: '3210', artists: '812', db_updated: '2026-08-23T06:12:08+00:00' },
+        },
+        journal: { priority: 'err', window: '7 days', units: ['mpd.service'], lines: ['2026-08-24 box mpd[1]: something failed'] },
+    };
+
+    it('reports NTP not synchronizing — the silent killer', () => {
+        expect(formatSupportReport(v2)).toContain('NTP synchronized: no');
+    });
+
+    it('reports an unreachable licence server with its error', () => {
+        expect(formatSupportReport(v2)).toContain('UNREACHABLE (TimeoutError)');
+    });
+
+    it('gives the UI its own version line', () => {
+        expect(formatSupportReport(v2)).toContain('0.9.46 · built 2026-08-24T10:00:00Z · commit abc1234');
+    });
+
+    it('flags a certificate that does not name the current address', () => {
+        expect(formatSupportReport(v2)).toContain('NO — certificate does not name 10.0.4.254');
+    });
+
+    it('says the CA signs the served certificate', () => {
+        expect(formatSupportReport(v2)).toContain('signs the served certificate: yes');
+    });
+
+    it('treats an absent download token as the normal public-releases state', () => {
+        expect(formatSupportReport(v2)).toContain('not set (not required — releases are public)');
+        expect(formatSupportReport(v2)).not.toContain('MISSING');
+    });
+
+    it('reports MEASURED access to the releases repo, with the latest version', () => {
+        const ok = { ...v2, box: { ag_version: '0.9.45' }, self_update: { ...v2.self_update, releases: { accessible: true, latest: 'v0.9.46', http_status: 200, latency_ms: 47 } } };
+        expect(formatSupportReport(ok)).toContain('access OK · latest v0.9.46 — this box runs 0.9.45 · 47 ms');
+    });
+
+    it('says when the box is up to date', () => {
+        const same = { ...v2, box: { ag_version: '0.9.46' }, self_update: { ...v2.self_update, releases: { accessible: true, latest: 'v0.9.46', http_status: 200, latency_ms: 47 } } };
+        expect(formatSupportReport(same)).toContain('latest v0.9.46 (this box is up to date)');
+    });
+
+    it('reports refused access as what breaks updates', () => {
+        const no = { ...v2, self_update: { ...v2.self_update, releases: { accessible: false, http_status: 404 } } };
+        expect(formatSupportReport(no)).toContain('NO ACCESS (HTTP 404) — updates cannot download');
+    });
+
+    it('never converts a GitHub rate limit into a verdict', () => {
+        const limited = { ...v2, self_update: { ...v2.self_update, releases: { accessible: null, note: 'rate-limited by GitHub — inconclusive' } } };
+        const text = formatSupportReport(limited);
+        expect(text).toContain('inconclusive — rate-limited');
+        expect(text).not.toContain('NO ACCESS');
+    });
+
+    it('warns on a world-readable .env and lists missing keys by name', () => {
+        const text = formatSupportReport(v2);
+        expect(text).toContain('world-readable');
+        expect(text).toContain('RELEASE_DOWNLOAD_TOKEN');
+        expect(text).toContain('31 present / 46 expected');
+    });
+
+    it('shows storage in terabytes when it is terabytes', () => {
+        expect(formatSupportReport(v2)).toContain('72.6% used · 2.0 TB free');
+    });
+
+    it('shows the live stream — the bit-perfect proof', () => {
+        const text = formatSupportReport(v2);
+        expect(text).toContain('card0/pcm0p/sub0 · S32_LE · 44100 (44100/1) Hz · 2 ch');
+        expect(text).toContain('[20b1:30ab bus 001/009]');
+    });
+
+    it('renders MPD stats even on a streaming-only box', () => {
+        expect(formatSupportReport(v2)).toContain('48312 songs · 3210 albums · 812 artists');
+    });
+
+    it('renders journal lines, and silence as a real answer', () => {
+        expect(formatSupportReport(v2)).toContain('mpd[1]: something failed');
+        const quiet = { ...v2, journal: { window: '7 days', lines: [] } };
+        expect(formatSupportReport(quiet)).toContain('logged no error in this window');
+    });
+
+    it('renders an idle stream list as a statement, not an absence', () => {
+        const idle = { ...v2, audio_live: { cards: [], active_streams: [], cpu_governor: null } };
+        expect(formatSupportReport(idle)).toContain('No PCM stream open right now.');
+    });
+
+    it('states when the .env does not exist at all', () => {
+        const missing = { ...v2, env_sanity: { path: '/etc/audiogravity/.env', exists: false } };
+        expect(formatSupportReport(missing)).toContain('DOES NOT EXIST');
+    });
+
+    it('a failed v2 section prints its error and sinks nothing', () => {
+        const broken = { ...v2, network: { error: 'boom' } };
+        const text = formatSupportReport(broken);
+        expect(text).toContain('could not be collected — boom');
+        expect(text).toContain('AUDIO LIVE');
+    });
+});
+
+describe('formatSupportReport — AV network', () => {
+    const base = {
+        report_version: 2,
+        system: {
+            network_interfaces: [
+                { name: 'eth0', ipv4: [], is_up: false },
+                { name: 'wlan0', ipv4: ['10.0.4.254'], is_up: true },
+            ],
+        },
+        network: { default_interface: 'wlan0' },
+        av_peers: {
+            upnp_renderers: [
+                { name: 'music.#1', host: '10.0.4.254', is_local: true },
+                { name: 'Salon', host: '10.0.4.189', is_local: false },
+            ],
+            upnp_servers: [{ name: 'MinimServer[nas]', host: '10.0.0.42' }],
+            hqplayer: { configured_host: '10.0.4.200', port: 4321, probe: { reachable: true, latency_ms: 3 }, available: true, state: 'playing' },
+            roon: { configured_host: '10.0.4.200', probe: { reachable: false, port: 9330, error: 'TimeoutError' } },
+        },
+    };
+
+    it('lists each renderer with its host and marks this box', () => {
+        const text = formatSupportReport(base);
+        expect(text).toContain('music.#1 @ 10.0.4.254 (this box)');
+        expect(text).toContain('Salon @ 10.0.4.189');
+    });
+
+    it('lists media servers such as MinimServer', () => {
+        expect(formatSupportReport(base)).toContain('MinimServer[nas] @ 10.0.0.42');
+    });
+
+    it('reports HQPlayer reachable with its engine state', () => {
+        expect(formatSupportReport(base)).toContain('10.0.4.200:4321 reachable · 3 ms · engine answering (playing)');
+    });
+
+    it('reports an unreachable Roon Core as the diagnosis it is', () => {
+        expect(formatSupportReport(base)).toContain('10.0.4.200:9330 UNREACHABLE (TimeoutError)');
+    });
+
+    it('says none found rather than showing an empty list', () => {
+        const empty = { ...base, av_peers: { upnp_renderers: [], upnp_servers: [], hqplayer: {}, roon: {} } };
+        const text = formatSupportReport(empty);
+        expect(text).toContain('none found on this network segment');
+        expect(text).toContain('HQPlayer');
+        expect(text).toContain('not configured');
+    });
+
+    it('marks the interface carrying the default route', () => {
+        const text = formatSupportReport(base);
+        expect(text).toContain('net wlan0');
+        expect(text).toContain('10.0.4.254 · default route');
+        expect(text).toContain('no address (down)');
+    });
+});
+
+describe('formatSupportReport — links, USB speed, audio tuning', () => {
+    const report = {
+        report_version: 2,
+        network: {
+            clock: { timezone: 'Europe/Paris', ntp_synchronized: 'yes', local_time: '2026-08-24T13:51:45+02:00' },
+            links: [
+                { name: 'eth0', up: true, mtu: 1500, type: 'wired', speed_mbps: 100, duplex: 'full' },
+                { name: 'wlan0', up: true, mtu: 1500, type: 'wifi', note: 'iw not installed — WiFi rate/signal unknown' },
+                { name: 'wlan1', up: true, mtu: 1500, type: 'wifi', bitrate: '866.7 MBit/s', signal_dbm: -52, ssid: 'Salon' },
+            ],
+        },
+        audio_live: {
+            cards: [{ index: 0, id: 'Abacus', description: 'USB-Audio - Heed Abacus', usbid: '20b1:30ab', usbbus: '001/009', usb_speed_mbps: 480, usb_version: '2.00' }],
+            active_streams: [],
+            cpu_governor: 'performance',
+            cpu_mhz: 2415,
+        },
+        audio_tuning: {
+            units: [
+                {
+                    unit: 'mpd.service', active: 'active',
+                    configured: { nice: '0', cpu_affinity: '3', cpu_sched: 'rr', cpu_sched_priority: '45', io_class: 'best-effort', io_priority: '4', io_accounting: 'yes', ip_accounting: 'yes', drop_ins: ['realtime.conf'] },
+                    live: { nice: 0, cpu_sched: 'rr', cpu_sched_priority: 45, cpu_affinity: '3', io: 'none: prio 0' },
+                },
+                {
+                    unit: 'upmpdcli.service', active: 'active',
+                    configured: { nice: '0', cpu_sched: 'rr', cpu_sched_priority: '35', io_accounting: 'no', ip_accounting: 'no', drop_ins: [] },
+                    live: { nice: 0, cpu_sched: 'other', cpu_sched_priority: 0, cpu_affinity: '0-3' },
+                },
+            ],
+        },
+    };
+
+    it('gives each wired link its negotiated speed — the 100 Mb gigabit port', () => {
+        expect(formatSupportReport(report)).toContain('wired · 100 Mb/s full duplex · mtu 1500');
+    });
+
+    it('says WHY the wifi rate is unknown instead of pretending', () => {
+        expect(formatSupportReport(report)).toContain('iw not installed');
+    });
+
+    it('gives a measured wifi link its bitrate, signal and ssid', () => {
+        expect(formatSupportReport(report)).toContain('866.7 MBit/s · -52 dBm · ssid Salon');
+    });
+
+    it('shows the local time next to the timezone', () => {
+        expect(formatSupportReport(report)).toContain('local time 2026-08-24T13:51:45+02:00');
+    });
+
+    it('names the USB link speed of the DAC', () => {
+        expect(formatSupportReport(report)).toContain('USB 480 Mb/s (High-Speed)');
+    });
+
+    it('shows the current CPU frequency with the governor', () => {
+        expect(formatSupportReport(report)).toContain('performance · 2415 MHz');
+    });
+
+    it('renders live scheduling with accounting and drop-ins', () => {
+        const text = formatSupportReport(report);
+        expect(text).toContain('rr prio 45 · nice 0 · CPUs 3 · io none: prio 0 · acct io:yes ip:yes');
+        expect(text).toContain('drop-ins: realtime.conf');
+    });
+
+    it('flags a drop-in that did not apply — configured vs live', () => {
+        expect(formatSupportReport(report)).toContain('⚠ configured rr prio 35');
+    });
+});
+
+describe('formatSupportReport — kernel, boots, ro, restarts, backups, network finds', () => {
+    const report = {
+        report_version: 2,
+        storage: { mounts: [{ mountpoint: '/', used_percent: 42, free_bytes: 1000, read_only: true }] },
+        audio_tuning: {
+            units: [{
+                unit: 'mpd.service', active: 'active', restarts: 7,
+                started_at: 'Mon 2026-08-24 13:00:01 CEST',
+                memory_bytes: 52428800, cpu_used_seconds: 123,
+                configured: { nice: '0', io_accounting: 'yes', ip_accounting: 'yes', drop_ins: [] },
+                live: { nice: 0, cpu_sched: 'rr', cpu_sched_priority: 45, cpu_affinity: '3' },
+            }],
+        },
+        av_peers: {
+            upnp_renderers: [], upnp_servers: [],
+            hqplayer: { configured_host: null, port: 4321, found_on_network: [{ host: '10.0.4.200', active_filter: 'poly-sinc-ext2' }] },
+            roon: { configured_host: null, found_on_network: { host: '10.0.4.200', port: 9330 } },
+        },
+        configs: [{
+            service_id: 'mpd', path: '/etc/mpd.conf', exists: true,
+            dropped_comments: 3, lines: ['port "6600"'],
+            backups_total: 8, last_backup: '2026-08-23T10:00:00+00:00',
+        }],
+        journal: {
+            window: '7 days', units: ['mpd.service'],
+            lines: [],
+            kernel: ['2026-08-22 kernel: usb 1-8: reset high-speed USB device'],
+            boots: { total: 5, recent: ['3 abc… Sat…', '4 def… Sun…', '5 ghi… Mon…'] },
+        },
+    };
+
+    it('marks a read-only filesystem as the failure it is', () => {
+        expect(formatSupportReport(report)).toContain('⚠ READ-ONLY');
+    });
+
+    it('unmasks a crash-looping unit hidden by Restart=always', () => {
+        const text = formatSupportReport(report);
+        expect(text).toContain('⚠ 7 restart(s)');
+        expect(text).toContain('started Mon 2026-08-24 13:00:01 CEST');
+    });
+
+    it('reads what accounting counts — memory and cpu per unit', () => {
+        expect(formatSupportReport(report)).toContain('mem 50.0 MB · cpu 123s');
+    });
+
+    it('says an unconfigured HQPlayer was still FOUND on the network', () => {
+        expect(formatSupportReport(report)).toContain('not configured · found on network: 10.0.4.200 (filter poly-sinc-ext2)');
+    });
+
+    it('says an unconfigured Roon Core announces itself', () => {
+        expect(formatSupportReport(report)).toContain('announced on network at 10.0.4.200:9330');
+    });
+
+    it('counts the backups behind each config', () => {
+        expect(formatSupportReport(report)).toContain('8 backup(s), latest 2026-08-23T10:00:00+00:00');
+    });
+
+    it('surfaces hardware kernel warnings — the DAC reset', () => {
+        expect(formatSupportReport(report)).toContain('usb 1-8: reset');
+    });
+
+    it('shows the boot history that reframes a ticket', () => {
+        const text = formatSupportReport(report);
+        expect(text).toContain('Boots');
+        expect(text).toContain('5 recorded');
+    });
+
+    it('states kernel silence as an answer', () => {
+        const quiet = { ...report, journal: { ...report.journal, kernel: [] } };
+        expect(formatSupportReport(quiet)).toContain('no hardware-related kernel warning');
+    });
+});
+
+describe('formatSupportReport — post-review corrections', () => {
+    it('a box without Roon says "not in use", never a false UNREACHABLE', () => {
+        const report = {
+            report_version: 2,
+            av_peers: {
+                upnp_renderers: [], upnp_servers: [], hqplayer: {},
+                roon: { configured_host: '127.0.0.1', in_use: false, found_on_network: null },
+            },
+        };
+        const text = formatSupportReport(report);
+        expect(text).toContain('not in use on this box · no Core announced on the network');
+        expect(text).not.toContain('UNREACHABLE');
+    });
+
+    it('keys on code defaults read as inventory, not as an alarm', () => {
+        const report = {
+            report_version: 2,
+            env_sanity: { path: '/etc/audiogravity/.env', exists: true, mode: '0o600', keys_present: 26, expected_keys: 46, missing: ['TIDAL_QUALITY', 'JWT_ENABLED'], unknown: [] },
+        };
+        const text = formatSupportReport(report);
+        expect(text).toContain('2 key(s) on code defaults: TIDAL_QUALITY, JWT_ENABLED');
+        expect(text).not.toContain('Missing');
+    });
+});
+
+describe('formatSupportReport — a failed measurement is never a negative diagnosis', () => {
+    it('a v1 core: absent v2 sections are stated as absent, not fabricated', () => {
+        const text = formatSupportReport({ report_version: 1, box: { ag_version: '0.9.45' } });
+        expect(text).toContain('not provided by this core (report v1');
+        expect(text).not.toContain('no default route');
+        expect(text).not.toContain('No PCM stream open');
+        expect(text).not.toContain('none found on this network segment');
+        expect(text).not.toContain('logged no error in this window');
+    });
+
+    it('a failed gateway or DNS read is shown as a failed read', () => {
+        const text = formatSupportReport({ report_version: 2, network: { gateway_error: 'ip: not found', dns_error: 'EACCES' } });
+        expect(text).toContain('Gateway');
+        expect(text).toContain('could not be read — ip: not found');
+        expect(text).toContain('could not be read — EACCES');
+        expect(text).not.toContain('no default route');
+    });
+
+    it('a failed live scheduling probe falls back to configured values and says so', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_tuning: { units: [{ unit: 'mpd.service', configured: { nice: '0', cpu_sched: 'rr', cpu_sched_priority: '45', cpu_affinity: '3', io_accounting: 'yes', ip_accounting: 'yes' }, live: { error: 'ProcessLookupError: pid gone' } }] },
+        });
+        expect(text).toContain('rr prio 45');
+        expect(text).toContain('live read failed — ProcessLookupError: pid gone');
+        expect(text).not.toContain('— · nice —');
+    });
+
+    it('a failed unit query still shows kernel warnings and boot history', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            journal: { window: '7 days', error: 'journalctl timed out', kernel: ['kernel: usb 1-8: reset'], boots: { total: 3, recent: [] } },
+        });
+        expect(text).toContain('unit errors could not be read — journalctl timed out');
+        expect(text).toContain('usb 1-8: reset');
+        expect(text).toContain('3 recorded');
+    });
+
+    it('kernel and boot read failures are rendered, not swallowed', () => {
+        const text = formatSupportReport({ report_version: 2, journal: { window: '7 days', lines: [], kernel_error: 'no pcre2', boots_error: 'denied' } });
+        expect(text).toContain('kernel journal could not be read — no pcre2');
+        expect(text).toContain('boot history could not be read — denied');
+        expect(text).not.toContain('no hardware-related kernel warning');
+    });
+
+    it('an unreadable /proc/asound/cards is not "no DAC"', () => {
+        const text = formatSupportReport({ report_version: 2, audio_live: { cards: [], cards_error: 'EIO', active_streams: [] } });
+        expect(text).toContain('could not be read — EIO');
+    });
+
+    it('backups are shown even for a config file that is missing', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            configs: [{ service_id: 'mpd', path: '/etc/mpd.conf', exists: false, backups_total: 4, last_backup: '2026-08-20T10:00:00+00:00' }],
+        });
+        expect(text).toContain('4 backup(s), latest 2026-08-20T10:00:00+00:00');
+        expect(text).toContain('(file does not exist)');
+    });
+});
