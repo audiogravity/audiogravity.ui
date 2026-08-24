@@ -715,6 +715,15 @@ across both layouts instead. A service the core does not know has no editable co
 Every save takes a timestamped backup first, which is what the two `backups` routes read
 and replay — so an edit that stops a service can always be undone from the editor.
 
+Three contract details of the structured form (`?type=structured` / POST with `data`):
+values of schema-declared **boolean** fields arrive as JSON booleans (not the file's
+`0`/`1` strings) and are written back as the format's own spelling; a structured save
+**preserves the `# Managed by AudioGravity` marker** when the file carried it (never adds
+it — raw saves are untouched, the user controls the full text there); and upmpdcli's single
+**Friendly Name** field maps to `avfriendlyname` (the name UPnP/AV control points display),
+with `friendlyname` — the OpenHome renderer's name — derived server-side as `<name>-OH`.
+Dissociating the two keys remains possible in raw mode only.
+
 Each item of `GET /audio_app_config/services` carries three fields describing the state of
 the software and of its file. All three default to the optimistic value, so a box that
 cannot answer is never reported as missing something it has.

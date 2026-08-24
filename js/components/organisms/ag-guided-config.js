@@ -213,9 +213,16 @@ export class AgGuidedConfig extends LitElement {
             showToast('warning', 'No audio output', 'Select an audio output first.');
             return;
         }
+        // AirPlay and UPnP publish a name on the network; a reset returns it to
+        // its default, which deserves a heads-up (saved entries in control apps
+        // go stale). MPD publishes no name, so no note there.
+        const nameNote = this.serviceId === 'mpd'
+            ? ''
+            : 'The name shown to control apps returns to its default. ';
         const password = await showPasswordConfirm(
             `Reset ${this.serviceId} to a working default?`,
             'This regenerates a minimal working configuration (the current one is backed up first). '
+            + nameNote
             + 'Enter your admin password to confirm.'
         );
         if (!password) return;
