@@ -52,13 +52,30 @@ function errorLine(section) {
 }
 
 /**
+ * Render a v2 section that this core did not produce at all.
+ *
+ * A frontend updated ahead of its core (a skew the core's own comments call
+ * out) must not fabricate "no default route" or "no renderer found" from an
+ * absent section: absence is a version fact, stated as such.
+ * @param {object} report - The whole report.
+ * @param {string} key - Section key.
+ * @returns {string|null} The absence/error line, or null when the section is fine.
+ */
+function sectionError(report, key) {
+    if (report[key] === undefined) {
+        return `  not provided by this core (report v${report.report_version ?? '?'} — update the core to collect it)`;
+    }
+    return errorLine(report[key]);
+}
+
+/**
  * Format bytes as a human-readable size.
  * @param {number} bytes - Size in bytes.
  * @returns {string} e.g. "228.1 kB".
  */
 function humanSize(bytes) {
     if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '—';
-    const units = ['B', 'kB', 'MB', 'GB'];
+    const units = ['B', 'kB', 'MB', 'GB', 'TB'];
     let value = bytes;
     let unit = 0;
     while (value >= 1024 && unit < units.length - 1) {
@@ -143,7 +160,175 @@ export function formatSupportReport(report) {
         }
         for (const iface of system.network_interfaces || []) {
             const addresses = [...(iface.ipv4 || []), ...(iface.ipv6 || [])].join(', ');
-            out.push(line(`net ${iface.name}`, `${addresses || 'no address'}${iface.is_up === false ? ' (down)' : ''}`));
+            // Which interface actually carries the traffic: with several of them
+            // up, "which one is the box really using" is the first question.
+            const isDefault = iface.name === (report.network || {}).default_interface;
+            out.push(line(`net ${iface.name}`, `${addresses || 'no address'}${iface.is_up === false ? ' (down)' : ''}${isDefault ? ' · default route' : ''}`));
+        }
+    }
+
+    // ── Network ────────────────────────────────────────────────────────────────
+    const network = report.network || {};
+    out.push(heading('Network'));
+    const networkError = sectionError(report, 'network');
+    if (networkError) {
+        out.push(networkError);
+    } else {
+        // A failed read is not "no route": the core sets gateway_error and
+        // omits the key — only a successful empty answer means no default route.
+        out.push(line('Gateway', network.gateway_error
+            ? `could not be read — ${network.gateway_error}`
+            : network.gateway ? `${network.gateway} via ${network.default_interface || '?'}` : 'none — no default route'));
+        out.push(line('LAN IP', network.lan_ip));
+        out.push(line('DNS', network.dns_error
+            ? `could not be read — ${network.dns_error}`
+            : (network.dns_servers || []).join(', ')));
+        const clock = network.clock || {};
+        // The one silent killer: a drifted clock breaks TLS, the licence check and
+        // streaming sessions, and shows up nowhere else in the report.
+        out.push(line('Clock', clock.error
+            ? `error — ${clock.error}`
+            : `${clock.timezone || '?'} · NTP synchronized: ${clock.ntp_synchronized || 'unknown'}${clock.local_time ? ` · local time ${clock.local_time}` : ''}`));
+        for (const link of network.links || []) {
+            let detail;
+            if (link.type === 'wired') {
+                detail = link.speed_mbps
+                    ? `wired · ${link.speed_mbps} Mb/s ${link.duplex || ''} duplex`.trim()
+                    : `wired · no carrier`;
+            } else {
+                detail = link.bitrate
+                    ? `wifi · ${link.bitrate}${link.signal_dbm !== undefined ? ` · ${link.signal_dbm} dBm` : ''}${link.ssid ? ` · ssid ${link.ssid}` : ''}`
+                    : `wifi${link.note ? ` · ${link.note}` : ''}`;
+            }
+            out.push(line(`link ${link.name}`, `${detail} · mtu ${link.mtu}${link.up === false ? ' (down)' : ''}`));
+        }
+        for (const [name, probe] of Object.entries(network.reachability || {})) {
+            out.push(line(name, probe.reachable
+                ? `${probe.host}:${probe.port} reachable · ${probe.latency_ms} ms`
+                : `${probe.host}:${probe.port} UNREACHABLE (${probe.error || '?'})`));
+        }
+    }
+
+    // ── Web interface ──────────────────────────────────────────────────────────
+    const web = report.web_ui || {};
+    out.push(heading('Web interface'));
+    const webError = sectionError(report, 'web_ui');
+    if (webError) {
+        out.push(webError);
+    } else {
+        out.push(line('Serving', web.reachable
+            ? `${web.scheme} on port ${web.port}`
+            : `NOT REACHABLE on port ${web.port}`));
+        const build = web.ui_build || {};
+        if (build.version) {
+            out.push(line('UI version', `${build.version} · built ${build.build_date || '—'} · commit ${build.git_commit || '—'}`));
+        }
+        const cert = web.certificate;
+        if (cert) {
+            if (cert.error) {
+                out.push(line('Certificate', `unreadable — ${cert.error}`));
+            } else {
+                out.push(line('Certificate', `${cert.subject || '—'} · expires ${cert.not_after} (${cert.days_left} days left)`));
+                out.push(line('SAN', [...(cert.san_ips || []), ...(cert.san_dns || [])].join(', ')));
+                // The certificate is issued for the address the box had at install
+                // time; a box that changed address serves one browsers refuse.
+                if (cert.covers_lan_ip !== null && cert.covers_lan_ip !== undefined) {
+                    out.push(line('Covers LAN IP', cert.covers_lan_ip ? 'yes' : `NO — certificate does not name ${web.lan_ip}`));
+                }
+            }
+        }
+        const ca = web.ca;
+        if (ca) {
+            if (!ca.available) {
+                out.push(line('CA', `NOT AVAILABLE on port ${ca.bootstrap_port}${ca.error ? ` — ${ca.error}` : ''}`));
+            } else {
+                // signature_verified null means "could not check", which is not "no".
+                const signs = ca.issuer_matches === false ? 'NO — served certificate signed by another authority'
+                    : ca.signature_verified === true ? 'yes'
+                        : ca.issuer_matches === true ? 'yes (by name)' : 'unverified';
+                out.push(line('CA', `${ca.subject || '—'} · on port ${ca.bootstrap_port} · signs the served certificate: ${signs}`));
+            }
+        }
+    }
+
+    // ── Self-update ────────────────────────────────────────────────────────────
+    const update = report.self_update || {};
+    out.push(heading('Self-update'));
+    const updateError = sectionError(report, 'self_update');
+    if (updateError) {
+        out.push(updateError);
+    } else {
+        const state = update.state || {};
+        let stateLine = state.phase || 'idle';
+        if (state.phase && state.phase !== 'idle') {
+            stateLine = `${state.phase}${state.from ? ` — ${state.from} → ${state.to || '?'}` : ''}${state.error ? ` · error: ${state.error}` : ''}`;
+        }
+        out.push(line('State', stateLine));
+        out.push(line('Bootstrap URL', update.bootstrap_url));
+        // The measured access check — the repo's own answer to the same request
+        // the updater makes, never a deduction from host reachability. Three
+        // honest outcomes: yes (with the latest version), no (with the status),
+        // inconclusive (GitHub's anonymous rate limit answers 403).
+        const releases = update.releases;
+        if (releases) {
+            let access;
+            if (releases.accessible === true) {
+                const box = (report.box || {}).ag_version;
+                const latest = releases.latest || '?';
+                const upToDate = box && latest.replace(/^v/, '') === box;
+                access = `access OK · latest ${latest}${box ? (upToDate ? ' (this box is up to date)' : ` — this box runs ${box}`) : ''} · ${releases.latency_ms} ms`;
+            } else if (releases.accessible === null) {
+                access = `inconclusive — ${releases.note || 'rate-limited'}`;
+            } else {
+                access = `NO ACCESS (${releases.error || `HTTP ${releases.http_status}`}) — updates cannot download`;
+            }
+            out.push(line('Releases repo', access));
+        }
+        if (update.download_token_present !== undefined) {
+            out.push(line('Download token', update.download_token_present
+                ? 'present (legacy — no longer required, may be removed)'
+                : 'not set (not required — releases are public)'));
+        }
+    }
+
+    // ── Deployed settings ──────────────────────────────────────────────────────
+    const env = report.env_sanity || {};
+    out.push(heading('Deployed settings (.env)'));
+    const envError = sectionError(report, 'env_sanity');
+    if (envError) {
+        out.push(envError);
+    } else if (env.exists === false) {
+        out.push(line('File', `${env.path} — DOES NOT EXIST`));
+    } else {
+        out.push(line('File', `${env.path} · mode ${(env.mode || '').replace('0o', '0')}`));
+        if (env.world_readable) {
+            out.push('  ⚠ world-readable — this file holds every secret the box has');
+        }
+        out.push(line('Keys', `${env.keys_present ?? '?'} present / ${env.expected_keys ?? '?'} expected`));
+        // Inventory, not an alarm: many Settings keys are optional and never
+        // written by the deployed template, so a healthy box always has some —
+        // a permanent "Missing: 20 keys" would teach support to ignore the one
+        // line built to catch real drift (the RELEASE_DOWNLOAD_TOKEN incident).
+        if ((env.missing || []).length) {
+            out.push(line('Defaults', `${env.missing.length} key(s) on code defaults: ${env.missing.join(', ')}`));
+        }
+        if ((env.unknown || []).length) out.push(line('Unknown', env.unknown.join(', ')));
+    }
+
+    // ── Storage ────────────────────────────────────────────────────────────────
+    const storage = report.storage || {};
+    out.push(heading('Storage'));
+    const storageError = sectionError(report, 'storage');
+    if (storageError) {
+        out.push(storageError);
+    } else {
+        for (const mount of storage.mounts || []) {
+            // A filesystem the kernel remounted read-only is the classic silent
+            // failure: the box "works" and nothing persists.
+            const ro = mount.read_only ? ' · ⚠ READ-ONLY' : '';
+            out.push(line(mount.mountpoint, mount.error
+                ? `unreadable — ${mount.error}`
+                : `${mount.used_percent}% used · ${humanSize(mount.free_bytes)} free${ro}`));
         }
     }
 
@@ -204,6 +389,161 @@ export function formatSupportReport(report) {
         }
     }
 
+    // ── Audio live ─────────────────────────────────────────────────────────────
+    const live = report.audio_live || {};
+    out.push(heading('Audio live'));
+    const liveError = sectionError(report, 'audio_live');
+    if (liveError) {
+        out.push(liveError);
+    } else {
+        if (live.cards_error) out.push(line('cards', `could not be read — ${live.cards_error}`));
+        for (const card of live.cards || []) {
+            const usb = card.usbid ? ` [${card.usbid}${card.usbbus ? ` bus ${card.usbbus}` : ''}]` : '';
+            // The negotiated link speed, named: a DAC that came up Full-Speed
+            // instead of High-Speed is a classic silent degradation.
+            const speedNames = { 1.5: 'Low', 12: 'Full', 480: 'High', 5000: 'Super', 10000: 'Super+' };
+            const usbSpeed = card.usb_speed_mbps
+                ? ` · USB ${card.usb_speed_mbps} Mb/s${speedNames[card.usb_speed_mbps] ? ` (${speedNames[card.usb_speed_mbps]}-Speed)` : ''}`
+                : '';
+            out.push(line(`card${card.index} ${card.id}`, `${card.description}${usb}${usbSpeed}`));
+        }
+        const streams = live.active_streams || [];
+        if (!streams.length) {
+            out.push('  No PCM stream open right now.');
+        } else {
+            // The bit-perfect proof: what is actually crossing ALSA, not what the
+            // config asked for.
+            for (const stream of streams) {
+                out.push(line(stream.direction, `${stream.stream} · ${stream.format} · ${stream.rate} Hz · ${stream.channels} ch`));
+            }
+        }
+        out.push(line('CPU governor', live.cpu_governor
+            ? `${live.cpu_governor}${live.cpu_mhz ? ` · ${live.cpu_mhz} MHz` : ''}`
+            : live.cpu_governor));
+    }
+
+    // ── Audio tuning ───────────────────────────────────────────────────────────
+    const tuning = report.audio_tuning || {};
+    out.push(heading('Audio tuning'));
+    const tuningError = sectionError(report, 'audio_tuning');
+    if (tuningError) {
+        out.push(tuningError);
+    } else {
+        for (const unit of tuning.units || []) {
+            const label = (unit.unit || '').replace(/\.service$/, '');
+            if (unit.error) {
+                out.push(line(label, `could not be read — ${unit.error}`));
+                continue;
+            }
+            const cfg = unit.configured || {};
+            // The LIVE values lead — they are what the kernel actually applies;
+            // the configured ones only appear where they disagree, because a
+            // drop-in that failed to apply is exactly that difference.
+            const live2 = unit.live || {};
+            // A failed live probe carries only {error} (the MainPID exited
+            // between systemctl show and the sched syscalls): it must not win
+            // over the configured values and print "no realtime scheduling".
+            const liveOk = live2.cpu_sched !== undefined;
+            const src = liveOk ? live2 : cfg;
+            const sched = src.cpu_sched
+                ? `${src.cpu_sched}${Number(src.cpu_sched_priority) > 0 ? ` prio ${src.cpu_sched_priority}` : ''}`
+                : '—';
+            const parts = [
+                sched,
+                `nice ${src.nice ?? '—'}`,
+                `CPUs ${live2.cpu_affinity || cfg.cpu_affinity || 'all'}`,
+                live2.io ? `io ${live2.io}` : (cfg.io_class ? `io ${cfg.io_class} prio ${cfg.io_priority}` : 'io —'),
+                `acct io:${cfg.io_accounting ?? '?'} ip:${cfg.ip_accounting ?? '?'}`,
+            ];
+            const mismatch = liveOk && cfg.cpu_sched && live2.cpu_sched
+                && (cfg.cpu_sched !== live2.cpu_sched || String(cfg.cpu_sched_priority) !== String(live2.cpu_sched_priority))
+                ? ` ⚠ configured ${cfg.cpu_sched} prio ${cfg.cpu_sched_priority}` : '';
+            out.push(line(label, parts.join(' · ') + mismatch));
+            const facts = [];
+            if (live2.error) facts.push(`live read failed — ${live2.error}`);
+            // Restart=always masks crashes — the counter unmasks them.
+            if (unit.restarts) facts.push(`⚠ ${unit.restarts} restart(s)`);
+            if (unit.started_at) facts.push(`started ${unit.started_at}`);
+            if (unit.memory_bytes !== undefined) facts.push(`mem ${humanSize(unit.memory_bytes)}`);
+            if (unit.cpu_used_seconds !== undefined) facts.push(`cpu ${unit.cpu_used_seconds}s`);
+            if (facts.length) out.push(line('', facts.join(' · ')));
+            if ((cfg.drop_ins || []).length) {
+                out.push(line('', `drop-ins: ${cfg.drop_ins.join(', ')}`));
+            }
+        }
+    }
+
+    // ── AV network ─────────────────────────────────────────────────────────────
+    const peers = report.av_peers || {};
+    out.push(heading('AV network'));
+    const peersError = sectionError(report, 'av_peers');
+    if (peersError) {
+        out.push(peersError);
+    } else {
+        const renderers = peers.upnp_renderers;
+        if (peers.upnp_renderers_error) {
+            out.push(line('UPnP renderers', `could not scan — ${peers.upnp_renderers_error}`));
+        } else if (!(renderers || []).length) {
+            out.push(line('UPnP renderers', 'none found on this network segment'));
+        } else {
+            for (const renderer of renderers) {
+                out.push(line('renderer', `${renderer.name} @ ${renderer.host}${renderer.is_local ? ' (this box)' : ''}`));
+            }
+        }
+        const servers = peers.upnp_servers;
+        if (peers.upnp_servers_error) {
+            out.push(line('UPnP servers', `could not scan — ${peers.upnp_servers_error}`));
+        } else if (!(servers || []).length) {
+            // Multicast does not cross subnets: a server on another segment is
+            // invisible here without being wrong.
+            out.push(line('UPnP servers', 'none found on this network segment'));
+        } else {
+            for (const server of servers) {
+                out.push(line('server', `${server.name} @ ${server.host}`));
+            }
+        }
+        const hqp = peers.hqplayer || {};
+        // What the network holds, whatever the configuration says: "not
+        // configured" alone cannot tell a box that chose not to use HQPlayer
+        // from one that never found it.
+        const hqFound = hqp.found_on_network;
+        const hqNetwork = hqp.discovery_error ? ` · network scan failed (${hqp.discovery_error})`
+            : hqFound === undefined ? ''
+                : hqFound.length ? ` · found on network: ${hqFound.map(h => h.host + (h.active_filter ? ` (filter ${h.active_filter})` : '')).join(', ')}`
+                    : ' · none found on the local /24';
+        if (!hqp.configured_host) {
+            out.push(line('HQPlayer', `not configured${hqNetwork}`));
+        } else {
+            const probe = hqp.probe || {};
+            const engine = hqp.available === undefined ? ''
+                : hqp.available ? ` · engine answering (${hqp.state})` : ' · engine NOT answering';
+            out.push(line('HQPlayer', probe.reachable
+                ? `${hqp.configured_host}:${hqp.port} reachable · ${probe.latency_ms} ms${engine}${hqNetwork}`
+                : `${hqp.configured_host}:${hqp.port} UNREACHABLE (${probe.error || '?'})${hqNetwork}`));
+        }
+        const roon = peers.roon || {};
+        const roonFound = roon.found_on_network;
+        const roonNetwork = roon.discovery_error ? ` · network scan failed (${roon.discovery_error})`
+            : roonFound === undefined ? ''
+                : roonFound ? ` · announced on network at ${roonFound.host}:${roonFound.port}`
+                    : ' · no Core announced on the network';
+        if (roon.in_use === false) {
+            // roon_core_host DEFAULTS to 127.0.0.1, so a host alone never means
+            // "configured" — without the pairing token the box does not use
+            // Roon, and probing would print a false "configured but down".
+            out.push(line('Roon Core', `not in use on this box${roonNetwork}`));
+        } else if (!roon.configured_host) {
+            out.push(line('Roon Core', `not configured${roonNetwork}`));
+        } else if (roon.probe) {
+            const probe = roon.probe;
+            out.push(line('Roon Core', probe.reachable
+                ? `${roon.configured_host}:${probe.port} reachable · ${probe.latency_ms} ms${roonNetwork}`
+                : `${roon.configured_host}:${probe.port || ''} UNREACHABLE (${probe.error || '?'})${roonNetwork}`));
+        } else {
+            out.push(line('Roon Core', `${roon.configured_host} configured${roonNetwork}`));
+        }
+    }
+
     // ── Library ────────────────────────────────────────────────────────────────
     const library = report.library || {};
     out.push(heading('Music library'));
@@ -232,6 +572,17 @@ export function formatSupportReport(report) {
         }
         out.push(line('MPD database', databaseLine));
     }
+    // MPD's own numbers answer what a database file size cannot; rendered outside
+    // the has_local_library branch — a streaming-only box still runs MPD.
+    const stats = library.mpd_stats;
+    if (stats && !libraryError) {
+        if (stats.error) {
+            out.push(line('MPD stats', `unavailable — ${stats.error}`));
+        } else {
+            out.push(line('MPD stats', `${stats.songs ?? '?'} songs · ${stats.albums ?? '?'} albums · ${stats.artists ?? '?'} artists${stats.db_updated ? ` · db updated ${stats.db_updated}` : ''}`));
+            if (stats.mpd_error) out.push(line('MPD error', stats.mpd_error));
+        }
+    }
 
     // ── Streaming ──────────────────────────────────────────────────────────────
     const streaming = report.streaming || {};
@@ -257,6 +608,13 @@ export function formatSupportReport(report) {
         for (const config of configs) {
             out.push('');
             out.push(`  ── ${config.service_id} — ${config.path}`);
+            // Backups first: a config that is missing or unreadable is exactly
+            // when "restore it from the Backups button" is the advice.
+            if (config.backups_total !== undefined) {
+                out.push(`     (${config.backups_total
+                    ? `${config.backups_total} backup(s), latest ${config.last_backup || '—'}`
+                    : 'no backups yet'})`);
+            }
             if (!config.exists) {
                 out.push('     (file does not exist)');
                 continue;
@@ -270,6 +628,48 @@ export function formatSupportReport(report) {
             if (config.truncated) notes.push(`${config.truncated} line(s) cut`);
             out.push(`     (${notes.join(', ')})`);
             for (const configLine of config.lines || []) out.push(`     ${configLine}`);
+        }
+    }
+
+    // ── Journal ────────────────────────────────────────────────────────────────
+    const journal = report.journal || {};
+    out.push(heading(`Recent errors (journal, ${journal.window || '7 days'})`));
+    const journalError = report.journal === undefined ? sectionError(report, 'journal') : null;
+    if (journalError) {
+        out.push(journalError);
+    } else {
+        // Boot history first: five boots in two days points at power or
+        // storage, not software, and reframes everything below it.
+        const boots = journal.boots;
+        if (boots) {
+            out.push(line('Boots', `${boots.total} recorded`));
+            for (const boot of boots.recent || []) out.push(`    ${boot}`);
+            out.push('');
+        }
+        // journal.error is the UNIT query failing; kernel warnings and boot
+        // history are collected independently and must still be shown.
+        if (journal.error) {
+            out.push(`  ⚠ unit errors could not be read — ${journal.error}`);
+        } else if (!(journal.lines || []).length) {
+            // A real answer, not an absence: these units logged no error in the window.
+            out.push('  none — the AG-managed units logged no error in this window.');
+        } else {
+            for (const journalLine of journal.lines) out.push(`  ${journalLine}`);
+        }
+        if (journal.boots_error) out.push(`  ⚠ boot history could not be read — ${journal.boots_error}`);
+        // The kernel is where a DAC dropping off the bus, a dying SD card or an
+        // undervolted supply speak — none of it belongs to any unit.
+        if (journal.kernel_error) {
+            out.push('');
+            out.push(`  ⚠ kernel journal could not be read — ${journal.kernel_error}`);
+        } else if (journal.kernel !== undefined) {
+            out.push('');
+            out.push('  kernel (usb / storage / power / thermal):');
+            if (!(journal.kernel || []).length) {
+                out.push('    none — no hardware-related kernel warning in this window.');
+            } else {
+                for (const kernelLine of journal.kernel) out.push(`    ${kernelLine}`);
+            }
         }
     }
 

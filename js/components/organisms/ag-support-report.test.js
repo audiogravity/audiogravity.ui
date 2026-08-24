@@ -27,7 +27,7 @@ vi.mock('../../ui-helpers.js', () => ({
     downloadTextFile: (...args) => downloadTextFile(...args),
     showToast: (...args) => showToast(...args),
 }));
-vi.mock('../../ag-icons.js', () => ({ iconCopy: '', iconDownload: '' }));
+vi.mock('../../ag-icons.js', () => ({ iconCheck: '', iconCopy: '', iconDownload: '', iconSpinner: '' }));
 vi.mock('./ag-modal.js', () => ({}));
 
 import { AgSupportReport } from './ag-support-report.js';
@@ -253,5 +253,38 @@ describe('reopening after a failure', () => {
         el._handleClose();
 
         expect(el._error).toBe('');
+    });
+});
+
+describe('collection state is unmistakable', () => {
+    /** Flatten a mocked lit template (and its nested templates) to one string. */
+    const flat = (value) => {
+        if (value == null) return '';
+        if (typeof value === 'string') return value;
+        if (Array.isArray(value)) return value.map(flat).join('');
+        if (value.strings) return value.strings.join(' ') + value.values.map(flat).join(' ');
+        return '';
+    };
+
+    it('shows a spinner and the warning tone while collecting', () => {
+        const el = new AgSupportReport();
+        el._loading = true;
+        el._error = '';
+        el._text = '';
+        const text = flat(el.render());
+        expect(text).toContain('support-report-status collecting');
+        expect(text).toContain('ag-spin');
+        expect(text).toContain('Collecting');
+    });
+
+    it('switches to the success tone once the report is ready', () => {
+        const el = new AgSupportReport();
+        el._loading = false;
+        el._error = '';
+        el._text = 'REPORT';
+        const text = flat(el.render());
+        expect(text).toContain('support-report-status ready');
+        expect(text).toContain('Report ready.');
+        expect(text).not.toContain('support-report-status collecting');
     });
 });
