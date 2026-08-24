@@ -182,6 +182,18 @@ reviewed the interface built on it. That is a working arrangement between the tw
 commercial one — HRA does not sponsor Audiogravi<sup>ty</sup>, and no claim of partnership or
 endorsement is made here or on audiogravity.app.
 
+The interface also **names audio engines that are separate products**, for the same reason —
+to show what is playing and what it is controlling:
+
+- **Roon** — Roon, Roon Bridge, Roon Server and the Roon logo (Roon Labs).
+- **HQPlayer** — HQPlayer, HQPlayer NAA and the HQPlayer logo (Signalyst).
+- **AirPlay** — AirPlay and the AirPlay logo (Apple). The box receives AirPlay through
+  **shairport-sync**, an independent implementation running on it; no Apple software is used
+  and it is not part of Apple's licensing programme.
+
+These names and logos are trademarks of their respective owners. Audiogravi<sup>ty</sup> is
+**not affiliated with, endorsed by, or sponsored by** any of them.
+
 ---
 
 *This file is provided in compliance with the license terms of the above projects.
