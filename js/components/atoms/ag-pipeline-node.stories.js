@@ -10,7 +10,7 @@ export default {
         },
         type: { 
             control: 'select', 
-            options: ['service', 'processing', 'alsa_output', 'device'] 
+            options: ['service', 'alsa_output', 'device'] 
         },
         device_type: {
             control: 'select',

@@ -39,7 +39,7 @@ const _truncate = (text, max, fallback = '') =>
  * @param {string} node.id - Unique identifier for the node.
  * @param {string} node.name - Display name of the node.
  * @param {string} node.status - Current status ('active', 'inactive', 'error').
- * @param {string} [node.type] - Node type ('service', 'processing', 'alsa_output', 'device').
+ * @param {string} [node.type] - Node type ('service', 'alsa_output', 'device').
  * @param {number} [node.x=0] - X coordinate.
  * @param {number} [node.y=0] - Y coordinate.
  * @param {number} [node.width=120] - Width of the node (for non-device types).
@@ -61,7 +61,11 @@ export const renderPipelineNode = (node) => {
     const x = node.x || 0;
     const y = node.y || 0;
     const name = node.name || 'Unknown';
-    const type = node.type || 'processing';
+    // Fallback for a node with no type. 'unknown' matches no branch below, so it
+    // lands on the generic render — exactly what the previous 'processing' default
+    // did, that type having had no branch of its own either. Renamed with the type
+    // itself, which the core no longer emits (CamillaDSP was never shipped).
+    const type = node.type || 'unknown';
     const metadata = node.metadata || {};
 
     const volumePath = "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";

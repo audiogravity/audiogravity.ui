@@ -618,3 +618,184 @@ describe('formatSupportReport — a failed measurement is never a negative diagn
         expect(text).toContain('(file does not exist)');
     });
 });
+
+describe('formatSupportReport — a probe that could not run never reads as a negative', () => {
+    it('a streaming account whose probe failed is unknown, not "not signed in"', () => {
+        // The regression this guards: `is_connected` is a property, the collector
+        // called it, the TypeError went into a bare except that wrote false, and
+        // every box reported "not signed in" while its accounts were connected.
+        const text = formatSupportReport({
+            report_version: 2,
+            streaming: {
+                qobuz: null,
+                tidal: false,
+                highresaudio: true,
+                probe_errors: { qobuz: "TypeError: 'bool' object is not callable" },
+            },
+        });
+        expect(text).toContain("qobuz");
+        expect(text).toMatch(/qobuz\s+unknown — TypeError/);
+        expect(text).toMatch(/tidal\s+not signed in/);
+        expect(text).toMatch(/highresaudio\s+signed in/);
+    });
+
+    it('renders a streaming service the core added that the UI never heard of', () => {
+        // A hardcoded service list would drop this line and still look complete.
+        const text = formatSupportReport({
+            report_version: 2,
+            streaming: { qobuz: true, deezer: false },
+        });
+        expect(text).toMatch(/deezer\s+not signed in/);
+    });
+
+    it('probe_errors is never rendered as if it were a streaming service', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            streaming: { qobuz: null, probe_errors: { qobuz: 'module not enabled' } },
+        });
+        expect(text).not.toMatch(/^\s*probe_errors/m);
+    });
+
+    it('a masked unit is not called missing', () => {
+        // The unit file exists; masking is deliberate. Calling it "not installed"
+        // sends the reader to reinstall software that is already there.
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_tuning: { units: [{ unit: 'audiogravity-pulse.service', load_state: 'masked' }] },
+        });
+        expect(text).toContain('MASKED');
+        expect(text).not.toContain('not installed on this box');
+    });
+
+    it('an unknown load state is reported neutrally, never as absence', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_tuning: { units: [{ unit: 'mpd.service', load_state: 'merged' }] },
+        });
+        expect(text).toContain('unit not loaded (merged)');
+        expect(text).not.toContain('not installed on this box');
+    });
+
+    it('a unit that is not installed is said to be missing, not tuned', () => {
+        // `systemctl show` answers for an absent unit with systemd's defaults, so
+        // the report used to print a full tuning line for software the box lacks.
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_tuning: {
+                units: [
+                    { unit: 'audiogravity-camilladsp.service', load_state: 'not-found' },
+                    { unit: 'mpd.service', load_state: 'loaded', configured: { nice: '0', cpu_sched: 'rr', cpu_sched_priority: '45', io_class: 'best-effort', io_priority: '4' } },
+                ],
+            },
+        });
+        expect(text).toContain('not installed on this box (not-found)');
+        expect(text).not.toMatch(/audiogravity-camilladsp\s+.*best-effort/);
+        expect(text).toMatch(/mpd\s+rr prio 45/);
+    });
+});
+
+describe('formatSupportReport — what the box does, not only what AG believes', () => {
+    it('tells two outputs of the same card apart', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [
+                    { card_name: 'PCH', hw: 'hw:1,0', label: 'PCH — CS4208 Analog' },
+                    { card_name: 'PCH', hw: 'hw:1,1', label: 'PCH — CS4208 Digital' },
+                ],
+                services: [],
+            },
+        });
+        expect(text).toContain('PCH — CS4208 Analog (hw:1,0)');
+        expect(text).toContain('PCH — CS4208 Digital (hw:1,1)');
+    });
+
+    it('never prints the same USB id twice on one line', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [{ card_name: 'Abacus', hw: 'hw:0,0', label: 'Abacus — USB Audio (USB 20b1:30ab)', usb_id: '20b1:30ab' }],
+                services: [],
+            },
+        });
+        expect(text).toContain('Abacus — USB Audio (USB 20b1:30ab) (hw:0,0)');
+        expect(text).not.toContain('[20b1:30ab]');
+    });
+
+    it('still names the USB id when the label does not carry it', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: { outputs: [{ card_name: 'Abacus', usb_id: '20b1:30ab' }], services: [] },
+        });
+        expect(text).toContain('Abacus [20b1:30ab]');
+    });
+
+    it('says nothing about the config device when the core did not send one', () => {
+        // A core predating these fields sends no key at all. Printing "no device in
+        // config" would assert a fact the report never carried.
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [],
+                services: [{ service_id: 'mpd', configured: true, output: { card_name: 'Abacus', device_id: 0 } }],
+            },
+        });
+        expect(text).toContain('AG-managed · Abacus (device 0)');
+        expect(text).not.toContain('no device in config');
+        expect(text).not.toContain('config says');
+    });
+
+    it('reports an unreadable config device as such, distinctly from an absent field', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [],
+                services: [{ service_id: 'mpd', configured: true, output: null, configured_device: null }],
+            },
+        });
+        expect(text).toContain('no device in config');
+    });
+
+    it('shows the device each config actually names', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [],
+                services: [
+                    { service_id: 'mpd', configured: true, output: { card_name: 'Abacus', device_id: 0 }, configured_device: 'hw:0,0', pinned_device: 'hw:0,0', device_matches_pin: true },
+                ],
+            },
+        });
+        expect(text).toContain('config says hw:0,0');
+        expect(text).not.toContain('does not match the pin');
+    });
+
+    it('flags a config that plays somewhere other than the pinned output', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [],
+                services: [
+                    { service_id: 'airplay', configured: true, output: { card_name: 'Abacus', device_id: 0 }, configured_device: 'hw:1,1', pinned_device: 'hw:0,0', device_matches_pin: false },
+                ],
+            },
+        });
+        expect(text).toContain('config says hw:1,1');
+        expect(text).toContain('does not match the pin (hw:0,0)');
+    });
+
+    it('says nothing about agreement when there is no pin to compare against', () => {
+        const text = formatSupportReport({
+            report_version: 2,
+            audio_stack: {
+                outputs: [],
+                services: [
+                    { service_id: 'mpd', configured: true, output: null, configured_device: 'hw:0,0', pinned_device: null },
+                ],
+            },
+        });
+        expect(text).toContain('not pinned');
+        expect(text).toContain('config says hw:0,0');
+        expect(text).not.toContain('does not match the pin');
+    });
+});

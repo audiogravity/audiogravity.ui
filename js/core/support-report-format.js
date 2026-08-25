@@ -15,6 +15,23 @@
 const LABEL_WIDTH = 18;
 
 /**
+ * What each non-`loaded` systemd LoadState means, in the reader's terms.
+ *
+ * Only `not-found` means the software is absent. The others all describe a unit file
+ * that EXISTS, so they must not send the reader to reinstall anything: `masked` is a
+ * deliberate override to /dev/null, `bad-setting` and `error` are a unit systemd could
+ * not parse or read, `stub` is a unit referenced but never written. Anything not listed
+ * here falls back to a neutral wording that still names the raw state.
+ */
+const LOAD_STATE_TEXT = {
+    'not-found': 'not installed on this box (not-found)',
+    masked: 'installed but MASKED — systemd is told to ignore this unit',
+    'bad-setting': 'unit file present but rejected by systemd (bad-setting)',
+    error: 'unit file present but could not be read (error)',
+    stub: 'referenced but no unit file was ever written (stub)',
+};
+
+/**
  * Format one label/value line.
  * @param {string} label - Field name.
  * @param {*} value - Field value; null/undefined/'' render as an em dash.
@@ -378,11 +395,41 @@ export function formatSupportReport(report) {
         const selected = stack.selected_output;
         out.push(line('Selected output', selected ? `${selected.card_name} (device ${selected.device_id})` : 'none'));
         for (const output of stack.outputs || []) {
-            out.push(line('  detected', `${output.card_name ?? output.name ?? '?'}${output.usb_id ? ` [${output.usb_id}]` : ''}`));
+            // `label` and `hw` are what tell two outputs of the same card apart. On a
+            // box with an onboard codec, card_name alone prints "PCH" twice and "HDMI"
+            // three times — five lines nobody can act on, and the analog/SPDIF pair is
+            // exactly where an AirPlay receiver ends up on the wrong socket.
+            const what = output.label ?? output.card_name ?? output.name ?? '?';
+            const where = output.hw ? ` (${output.hw})` : '';
+            // The label already spells the USB id out ("Abacus — USB Audio (USB
+            // 20b1:30ab)"); appending it again printed it twice on the same line.
+            const usb = output.usb_id && !what.includes(output.usb_id)
+                ? ` [${output.usb_id}]` : '';
+            out.push(line('  detected', `${what}${where}${usb}`));
         }
         for (const svc of stack.services || []) {
             const output = svc.output ? `${svc.output.card_name} (device ${svc.output.device_id})` : 'not pinned';
-            out.push(line(svc.service_id, `${svc.configured ? 'AG-managed' : 'hand-written'} · ${output}`));
+            // What the service is really told to play on, next to what AG believes.
+            // Showing the pin alone cannot reveal the one case worth a support report:
+            // the config says one device and the pin says another.
+            //
+            // undefined and null are NOT the same answer, and printing one for the
+            // other is the untruth this whole section exists to remove: a core that
+            // predates these fields sends no key at all, and "no device in config"
+            // would then assert something the report never received. Absent → say
+            // nothing; null → the core looked and found no device.
+            const device = svc.configured_device === undefined
+                ? ''
+                : (svc.configured_device
+                    ? ` · config says ${svc.configured_device}`
+                    : ' · no device in config');
+            const disagree = svc.device_matches_pin === false
+                ? `  ⚠ does not match the pin (${svc.pinned_device})`
+                : '';
+            out.push(line(
+                svc.service_id,
+                `${svc.configured ? 'AG-managed' : 'hand-written'} · ${output}${device}${disagree}`,
+            ));
         }
         for (const source of stack.library_sources || []) {
             out.push(line('  library source', `${source.kind ?? '?'} ${source.mountpoint ?? source.path ?? ''} ${source.label ?? ''}`.trim()));
@@ -433,6 +480,22 @@ export function formatSupportReport(report) {
             const label = (unit.unit || '').replace(/\.service$/, '');
             if (unit.error) {
                 out.push(line(label, `could not be read — ${unit.error}`));
+                continue;
+            }
+            // `systemctl show` answers for a unit that does not exist, filling every
+            // scheduling property with the default it WOULD apply. Printing that as a
+            // tuning line describes software the box does not have. The collector now
+            // carries load_state so the two can be told apart.
+            //
+            // Only `not-found` means absent. systemd also reports `masked` (the unit
+            // file is there, deliberately shorted to /dev/null — a routine step on an
+            // audiophile box), plus `bad-setting`, `error` and `stub`, where the file
+            // exists and something else is wrong. Calling any of those "not installed"
+            // sends the reader to reinstall software that is already there, and buries
+            // the real diagnostic in a parenthesis contradicting the sentence.
+            if (unit.load_state && unit.load_state !== 'loaded') {
+                out.push(line(label, LOAD_STATE_TEXT[unit.load_state]
+                    || `unit not loaded (${unit.load_state})`));
                 continue;
             }
             const cfg = unit.configured || {};
@@ -591,8 +654,21 @@ export function formatSupportReport(report) {
     if (streamingError) {
         out.push(streamingError);
     } else {
+        // Every key IS a service except the metadata ones listed here. Excluding the
+        // known non-services rather than listing the known services on purpose: a
+        // hardcoded list silently drops any service the core later probes, and the
+        // section would still look complete — a second place to keep in step with
+        // `_collect_streaming`, drifting in the direction that hides things.
+        // A value of null is a THIRD answer — the probe could not be run — and must
+        // never render as "not signed in", the shape this section already lied in.
+        const STREAMING_META_KEYS = ['probe_errors', 'error'];
+        const errors = streaming.probe_errors || {};
         for (const [name, connected] of Object.entries(streaming)) {
-            out.push(line(name, connected ? 'signed in' : 'not signed in'));
+            if (STREAMING_META_KEYS.includes(name)) continue;
+            const state = connected === null || connected === undefined
+                ? `unknown — ${errors[name] || 'could not be read'}`
+                : (connected ? 'signed in' : 'not signed in');
+            out.push(line(name, state));
         }
     }
 
