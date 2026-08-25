@@ -1476,7 +1476,8 @@ export class AgAudioPipeline extends LitElement {
         links = links.filter(l => l.link_type !== 'software');
 
         // Single-pass node indexing (replaces 12 sequential .filter() calls)
-        const processors = [];
+        // No 'processing' bucket: that type existed for CamillaDSP, which the core
+        // never shipped and no longer declares. It can never reach this loop.
         const alsaOutputs = [];
         const devices = [];
         const devicesByType = {
@@ -1484,8 +1485,7 @@ export class AgAudioPipeline extends LitElement {
             source: [], converter: [], amplifier: [], output: [], endpoint: [],
         };
         for (const n of nodes) {
-            if (n.type === 'processing') processors.push(n);
-            else if (n.type === 'alsa_output') alsaOutputs.push(n);
+            if (n.type === 'alsa_output') alsaOutputs.push(n);
             else if (n.type === 'device') {
                 devices.push(n);
                 if (n.device_type in devicesByType) devicesByType[n.device_type].push(n);
@@ -1504,17 +1504,6 @@ export class AgAudioPipeline extends LitElement {
 
         // Helper to get auto-calculated position if no manual position exists
         this._currentAutoPositions = positions;
-
-        // Position processors (hidden unless explicitly present)
-        processors.forEach((n, i) => {
-            const autoPos = { x: 200, y: calculateY(i, processors.length, canvasHeight) };
-            const manualPos = this.nodePositions[n.id];
-            n.x = manualPos ? manualPos.x : autoPos.x;
-            n.y = manualPos ? manualPos.y : autoPos.y;
-            positions[n.id] = { x: n.x, y: n.y };
-            n.width = 120;
-            n.height = 40;
-        });
 
         // Position ALSA outputs (normally hidden since services are internal)
         alsaOutputs.forEach((n, i) => {
