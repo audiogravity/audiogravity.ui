@@ -20,6 +20,7 @@
 import { LitElement, html } from 'lit';
 import { iconCheck, iconWarning, iconPencil, iconDownload, iconUpload } from '../../ag-icons.js';
 import './ag-modal.js';
+import { downloadTextFile } from '../../ui-helpers.js';
 
 export class AgJsonConfigModal extends LitElement {
     static properties = {
@@ -208,15 +209,7 @@ export class AgJsonConfigModal extends LitElement {
      */
     _handleDownload() {
         const content = this._editor ? this._editor.getValue() : (this.configText || '');
-        const blob = new Blob([content], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = this.filename || 'config.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        downloadTextFile(content, this.filename || 'config.json', 'application/json');
     }
 
     /** Open the native file picker for uploading a replacement file. */

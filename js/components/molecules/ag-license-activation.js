@@ -12,7 +12,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { showToast } from '../../ui-helpers.js';
+import { showToast, downloadTextFile } from '../../ui-helpers.js';
 import { planLabel } from '../utils-lit.js';
 
 const STORAGE_KEY = 'ag_pending_license_key';
@@ -157,13 +157,7 @@ export class AgLicenseActivation extends LitElement {
         if (!this._result?.lic_content) return;
         const key      = (this._result.license_key || 'audiogravity').slice(0, 12).toLowerCase();
         const filename = `audiogravity-${key}.lic`;
-        const blob     = new Blob([this._result.lic_content], { type: 'application/octet-stream' });
-        const url      = URL.createObjectURL(blob);
-        const a        = Object.assign(document.createElement('a'), { href: url, download: filename });
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        downloadTextFile(this._result.lic_content, filename, 'application/octet-stream');
     }
 
     /** @private Step 1 — enter and check the license key. */

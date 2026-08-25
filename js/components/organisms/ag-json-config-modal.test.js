@@ -15,7 +15,12 @@ vi.mock('lit', () => ({
 vi.mock('../../ag-icons.js', () => ({
     iconCheck: '', iconWarning: '', iconPencil: '', iconDownload: '', iconUpload: '',
 }));
+// The download mechanics (anchor in the document, object URL outliving the click) are
+// this helper's contract and are tested in ui-helpers.test.js. What belongs here is
+// WHAT this modal hands it: the live content, under the configured filename.
+vi.mock('../../ui-helpers.js', () => ({ downloadTextFile: vi.fn() }));
 
+import { downloadTextFile } from '../../ui-helpers.js';
 import { AgJsonConfigModal } from './ag-json-config-modal.js';
 
 /** Build a bare modal instance without mounting. */
@@ -35,8 +40,6 @@ function makeEl(overrides = {}) {
 describe('ag-json-config-modal file transfer', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        global.URL.createObjectURL = vi.fn(() => 'blob:mock');
-        global.URL.revokeObjectURL = vi.fn();
     });
     afterEach(() => {
         vi.restoreAllMocks();
@@ -45,30 +48,28 @@ describe('ag-json-config-modal file transfer', () => {
     describe('_handleDownload', () => {
         it('downloads the live editor content under the configured filename', () => {
             const el = makeEl({ _editor: { getValue: () => '{"a":1}' } });
-            const anchor = { href: '', download: '', click: vi.fn() };
-            vi.spyOn(document, 'createElement').mockReturnValue(anchor);
-            vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-            vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
 
             el._handleDownload();
 
-            expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
-            expect(anchor.download).toBe('audio-topology.json');
-            expect(anchor.href).toBe('blob:mock');
-            expect(anchor.click).toHaveBeenCalledTimes(1);
-            expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+            expect(downloadTextFile).toHaveBeenCalledWith(
+                '{"a":1}', 'audio-topology.json', 'application/json');
         });
 
         it('falls back to configText when there is no editor yet', () => {
             const el = makeEl({ _editor: null, configText: '{"c":3}' });
-            const anchor = { href: '', download: '', click: vi.fn() };
-            vi.spyOn(document, 'createElement').mockReturnValue(anchor);
-            vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-            vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
 
             el._handleDownload();
 
-            expect(anchor.click).toHaveBeenCalledTimes(1);
+            expect(downloadTextFile).toHaveBeenCalledWith(
+                '{"c":3}', 'audio-topology.json', 'application/json');
+        });
+
+        it('falls back to a default name when none is configured', () => {
+            const el = makeEl({ _editor: null, configText: '{}', filename: '' });
+
+            el._handleDownload();
+
+            expect(downloadTextFile).toHaveBeenCalledWith('{}', 'config.json', 'application/json');
         });
     });
 

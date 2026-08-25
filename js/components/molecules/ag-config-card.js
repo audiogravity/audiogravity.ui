@@ -29,6 +29,7 @@ import { LitElement, html, nothing } from 'lit';
 import { iconDownload } from '../../ag-icons.js';
 import { AgAudioOutput } from '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
+import { downloadTextFile } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';
 
 /** Shown on the download button when there is no file to take off the box. */
@@ -79,13 +80,7 @@ export class AgConfigCard extends LitElement {
         try {
             const data = await apiGet(`/audio_app_config/${this.service.id}/config?type=raw`);
             const filename = this.service.path.split('/').pop();
-            const blob = new Blob([data.content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadTextFile(data.content, filename);
         } catch (_) {
             // Silently ignore — download is best-effort
         }

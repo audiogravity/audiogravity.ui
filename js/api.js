@@ -9,7 +9,7 @@ export { hasCoreCredentials };
 // API UTILITIES
 // =====================
 
-import { getUserFriendlyError } from './ui-helpers.js';
+import { getUserFriendlyError, downloadBlob } from './ui-helpers.js';
 
 /**
  * Retry API call with exponential backoff
@@ -250,15 +250,7 @@ export async function apiDownload(endpoint, filename) {
         });
         if (!response.ok) throw new Error('Download failed');
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        downloadBlob(await response.blob(), filename);
     } catch (error) {
         console.error('Download error:', error);
         alert('Failed to download file');

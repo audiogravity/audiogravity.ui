@@ -260,7 +260,7 @@ export async function copyToClipboard(text) {
 }
 
 /**
- * Save text to a file on the visitor's machine.
+ * Save a Blob to a file on the visitor's machine.
  *
  * Two details decide whether this works or only looks like it does:
  *
@@ -271,19 +271,37 @@ export async function copyToClipboard(text) {
  *    reports success and no file is ever written. It is released on a later turn of
  *    the event loop instead, so the memory is still freed.
  *
- * @param {string} text - File contents.
+ * Takes a Blob so binary payloads go through the same two guarantees — a response
+ * body, a licence file — instead of each caller rewriting the dance for itself.
+ *
+ * @param {Blob} blob - Contents to save.
  * @param {string} filename - Name proposed to the visitor.
- * @param {string} [mimeType='text/plain;charset=utf-8'] - Content type of the blob.
  * @returns {void}
  */
-export function downloadTextFile(text, filename, mimeType = 'text/plain;charset=utf-8') {
-    const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+export function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
     const anchor = Object.assign(document.createElement('a'), { href: url, download: filename });
     anchor.style.display = 'none';
+    // In the document, not detached: several browsers ignore a programmatic click on
+    // an element that is not part of the page, and report nothing when they do.
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
+    // Deferred by one turn, never on the next line: click() does not download, it asks
+    // the browser to. Revoking straight after races the browser to the data and wins
+    // often enough — the click "succeeds", no error is raised, and no file is written.
     setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Offer text to the user as a file download.
+ *
+ * @param {string} text - File contents.
+ * @param {string} filename - Name offered to the browser.
+ * @param {string} [mimeType] - MIME type of the blob.
+ */
+export function downloadTextFile(text, filename, mimeType = 'text/plain;charset=utf-8') {
+    downloadBlob(new Blob([text], { type: mimeType }), filename);
 }
 
 // Global attachment for legacy code
