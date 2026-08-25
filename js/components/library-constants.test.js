@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS} from './library-constants.js';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS} from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -241,6 +241,17 @@ describe('SOURCE_MARKS — a source shown by its mark instead of its name', () =
         // An <img alt>, not a CSS background: a background shows nothing at all when the
         // file is missing, offline on a first load, or in forced-colours mode.
         expect(rendered).toContain('alt=\\"HIGHRESAUDIO\\"');
+    });
+
+    it('renders the source badge as a mask, so it survives the selected card', () => {
+        // .lib-src-card.active inverts .lib-src-ic to var(--text-primary) — black under
+        // the light theme. An <img> carrying the dark ink vanished there; measured in
+        // all four theme x selected combinations, only the mask stays contrasted.
+        const rendered = JSON.stringify(SOURCE_ICONS.src_highresaudio);
+        expect(rendered).toContain('lib-src-logo-hra');
+        expect(rendered).not.toContain('<img');
+        // Still named for anyone the image cannot reach.
+        expect(rendered).toContain('HIGHRESAUDIO');
     });
 
     it('leaves every other source to be named', () => {

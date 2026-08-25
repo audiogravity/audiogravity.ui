@@ -105,7 +105,8 @@
    alpha as a currentColor mask (like the AG icons) so they follow the theme and the
    active state, instead of an <img> that stays dark and vanishes on dark / active. */
 .lib-src-logo-roon,
-.lib-src-logo-tidal {
+.lib-src-logo-tidal,
+.lib-src-logo-hra {
     width: 24px;
     height: 24px;
     background-color: currentcolor;
@@ -121,6 +122,19 @@
     /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
     -webkit-mask: url("/pics/tidal.webp") center / contain no-repeat;
     mask: url("/pics/tidal.webp") center / contain no-repeat;
+}
+
+/* HIGHRESAUDIO joins the mask treatment, for the reason above rather than despite it.
+   Its artwork IS two-tone, and the full mark keeps both tones — see .lib-src-mark. But
+   this badge is 24px, where the mark measures 24x18 and nothing in it is legible either
+   way; what a reader gets at that size is a silhouette. As an <img> it carried the dark
+   ink, so it vanished on `.lib-src-card.active`, whose .lib-src-ic inverts to
+   var(--text-primary) — black under the light theme. Measured in all four cases (theme x
+   selected): the mask stays contrasted in each, the two-tone image in none. */
+.lib-src-logo-hra {
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/highresaudio.webp") center / contain no-repeat;
+    mask: url("/pics/highresaudio.webp") center / contain no-repeat;
 }
 
 /* A source's full mark, shown in place of its name above the album grid — see

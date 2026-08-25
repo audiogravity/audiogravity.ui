@@ -24,7 +24,7 @@ export const SOURCE_ICONS = {
     src_mpd: html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Local Library">${iconLibrary}</svg>`,
     src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
-    src_highresaudio: html`<img src="./pics/highresaudio.webp" alt="HIGHRESAUDIO" width="24" height="24" style="object-fit:contain">`,
+    src_highresaudio: html`<span class="lib-src-logo-hra" role="img" aria-label="HIGHRESAUDIO"></span>`,
     default: '♪',
 };
 
