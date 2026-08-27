@@ -17,6 +17,21 @@ describe('getUserFriendlyError', () => {
             .toBe('Network error. Please check your internet connection.');
     });
 
+    it('maps WebKit\'s "Load failed" to connection error', () => {
+        // Missing from the list until an iPad reported a switched-off box as a wrong password.
+        // Every screen going through this helper showed the raw browser sentence on iOS.
+        expect(getUserFriendlyError(new Error('Load failed')))
+            .toBe('Unable to connect to server. Please check your connection.');
+    });
+
+    it('does not turn a TypeError raised after a successful response into a connection error', () => {
+        // FetchController wraps its own onSuccess callback in the same try as the request, so this
+        // is what a `data.items.map` on a payload without `items` looks like — after an HTTP 200.
+        // Reporting it as a dead network hides a real bug behind a plausible excuse.
+        const bug = new TypeError("Cannot read properties of undefined (reading 'map')");
+        expect(getUserFriendlyError(bug)).toBe(bug.message);
+    });
+
     it('maps HTTP 401', () => {
         expect(getUserFriendlyError(new Error('HTTP 401')))
             .toBe('Invalid API key. Please check your configuration.');

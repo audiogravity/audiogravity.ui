@@ -10,6 +10,7 @@ export { hasCoreCredentials };
 // =====================
 
 import { getUserFriendlyError, downloadBlob } from './ui-helpers.js';
+import { asNetworkError } from './net-errors.js';
 
 /**
  * Retry API call with exponential backoff
@@ -121,7 +122,15 @@ export async function apiCall(endpoint, options = {}) {
             headers
         };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+        // Tagged here and nowhere wider: this is the only line that knows a failure was
+        // transport. The catch at the bottom of this function also covers onSuccess-style code
+        // in callers, so classifying there would call a caller's TypeError a dead network.
+        let response;
+        try {
+            response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+        } catch (transport) {
+            throw asNetworkError(transport);
+        }
 
         // The keyless probe's answer settles the verdict: 403 is the middleware's
         // "Invalid or missing API key"; anything else means the core does not gate on

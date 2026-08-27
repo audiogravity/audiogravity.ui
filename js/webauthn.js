@@ -8,6 +8,7 @@
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER } from './core/config.js';
 import { getAuthToken } from './auth.js';
+import { asNetworkError } from './net-errors.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,14 +49,37 @@ async function webauthnFetch(endpoint, body) {
     const token = getAuthToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-    });
+    let res;
+    try {
+        res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body)
+        });
+    } catch (transport) {
+        // Only this line knows the request never left. Tagging it here rather than inferring it
+        // later is what keeps a TypeError raised while decoding a challenge from being read as
+        // an unreachable box. See net-errors.js.
+        throw asNetworkError(transport);
+    }
     if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || `HTTP ${res.status}`);
+        // `{}` and not `{ detail: res.statusText }`, to match auth.js exactly. A fabricated detail
+        // is indistinguishable downstream from one the core wrote, and isGatewayError reads a 503
+        // by whether a detail is there — so the two sign-in paths answered differently on the same
+        // outage, the password form naming the box and the passkey panel printing a raw status
+        // line. Worse, `statusText` is populated over HTTP/1.1 and empty over HTTP/2, so the
+        // divergence showed in dev and hid in production.
+        const err = await res.json().catch(() => ({}));
+        // Only a string detail becomes the message. FastAPI answers a 422 with an array of field
+        // errors — a two-character username is enough to get one here — and `new Error(array)`
+        // stringifies to `[object Object]`, which is what the screen then showed.
+        const detail = typeof err.detail === 'string' ? err.detail : null;
+        const error = new Error(detail || `HTTP ${res.status}`);
+        // Same reason as auth.js: a caller must be able to tell a rejection from a box that
+        // never answered, and only the status says which. See net-errors.js.
+        error.status = res.status;
+        error.detail = detail;
+        throw error;
     }
     return res.json();
 }

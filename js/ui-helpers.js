@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { isNetworkError } from './net-errors.js';
 
 // Toast durations (ms)
 const TOAST_DURATION_DEFAULT = 4000;
@@ -8,8 +9,15 @@ const TOAST_ANIMATION_DELAY = 10;
 const TOAST_REMOVE_DELAY = 300;
 
 // User-friendly error messages (ENGLISH)
+//
+// The three transport wordings stay here as a safety net, for a failure that reached this
+// function already flattened into a plain Error and so has lost its shape. `Load failed` is
+// WebKit's, and it was missing: every iPhone and iPad therefore fell through to the raw
+// browser text. The shape test in getUserFriendlyError is what should catch these; this list
+// only covers what it cannot see.
 const ErrorMessages = {
     'Failed to fetch': 'Unable to connect to server. Please check your connection.',
+    'Load failed': 'Unable to connect to server. Please check your connection.',
     'NetworkError': 'Network error. Please check your internet connection.',
     'HTTP 401': 'Invalid API key. Please check your configuration.',
     'HTTP 403': 'Access denied. Insufficient permissions.',
@@ -26,7 +34,13 @@ const ErrorMessages = {
  * @returns {string} - User-friendly message
  */
 export function getUserFriendlyError(error) {
-    const message = error.message || '';
+    // Shape before wording: a failure that never reached the server is recognisable by carrying
+    // no HTTP status, in every engine, whereas its sentence differs in each of them.
+    if (isNetworkError(error)) return 'Unable to connect to server. Please check your connection.';
+
+    // `error?.` and not `error.`: the shape guard above returns false for null, and this line then
+    // threw — so the error reporter crashed instead of the error, taking the screen with it.
+    const message = error?.message || '';
 
     // Check for specific error patterns
     for (const [key, friendlyMsg] of Object.entries(ErrorMessages)) {
@@ -36,7 +50,7 @@ export function getUserFriendlyError(error) {
     }
 
     // Default message: use the error's own detail or message if available
-    return error.detail || error.message || 'An unexpected error occurred. Please try again.';
+    return error?.detail || error?.message || 'An unexpected error occurred. Please try again.';
 }
 
 /**

@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, JWT_ENABLED, IS_TEST_ENV } from './core/config.js';
+import { asNetworkError } from './net-errors.js';
 
 // =====================
 // AUTH STATE
@@ -231,18 +232,38 @@ function getAuthToken() {
 async function login(username, password) {
     try {
         // Note: La route /auth/login nécessite toujours l'API Key
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                [API_KEY_HEADER]: API_KEY
-            },
-            body: JSON.stringify({ username, password })
-        });
+        let response;
+        try {
+            response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [API_KEY_HEADER]: API_KEY
+                },
+                body: JSON.stringify({ username, password })
+            });
+        } catch (transport) {
+            // Only this line knows the request never left. See net-errors.js.
+            throw asNetworkError(transport);
+        }
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Erreur de connexion' }));
-            throw new Error(errorData.detail || 'Échec de connexion');
+            // English, and deliberately: this string reaches the login screen. It used to be
+            // French — invisible until a gateway answered 502 with an HTML body, which makes
+            // json() throw and puts this fallback in front of the reader.
+            const errorData = await response.json().catch(() => ({}));
+            // `error` as well as `detail`: slowapi words a rate-limit refusal under the former, so
+            // reading only `detail` turned a lockout into the bare string `HTTP 429`.
+            // Only a string detail becomes the message: FastAPI answers a 422 with an array of
+            // field errors, and `new Error(array)` stringifies to `[object Object]`.
+            const detail = typeof errorData.detail === 'string' ? errorData.detail : null;
+            const error = new Error(detail || errorData.error || `HTTP ${response.status}`);
+            // Carry the status, as api.js already does. Without it the caller has only the
+            // message text to go on, and telling a refused password from an unreachable box by
+            // reading text is what made an offline machine accuse its owner.
+            error.status = response.status;
+            error.detail = detail;
+            throw error;
         }
 
         const data = await response.json();
