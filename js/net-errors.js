@@ -114,3 +114,135 @@ export function connectionMessage(host) {
     const where = host ? ` at ${host}` : '';
     return `Cannot reach Audiogravity${where}. Check that the box is powered on and on your network.`;
 }
+
+// ── The fetch boundary ──────────────────────────────────────────────────────────────────────
+//
+// Everything above only works if the tag is set at the fetch site, and the first version had
+// that `try { fetch } catch → asNetworkError` block written three times verbatim, next to four
+// different ways of building an Error from a Response — three of them disagreeing on what
+// `detail` means. The consequences were measured, not imagined: the password form and the
+// passkey panel answered the same outage with different sentences; `apiCall` always set a detail,
+// so a rule written on "no detail" could never fire for the main client; a 422 reached the screen
+// as `[object Object]`. One boundary, used everywhere, is what makes the predicates honest.
+
+/**
+ * `fetch`, with a transport failure tagged as it is thrown.
+ *
+ * Nothing else changes: the Response comes back whatever its status, so a caller that needs to
+ * look at the status before deciding anything (the keyless probe in api.js) still can.
+ *
+ * @param {string} url - Absolute or same-origin URL.
+ * @param {RequestInit} [options] - Passed to `fetch` untouched.
+ * @returns {Promise<Response>} The response, ok or not.
+ * @throws {Error} Tagged with `isNetwork` when nothing answered.
+ */
+export async function fetchOrNetworkError(url, options) {
+    try {
+        return await fetch(url, options);
+    } catch (transport) {
+        throw asNetworkError(transport);
+    }
+}
+
+/**
+ * Turn a non-ok Response into the one Error shape every reader in this codebase expects.
+ *
+ * - `status`: the HTTP status, always.
+ * - `detail`: what the server *said*, as a string, or `null` when it said nothing — never a
+ *   fabricated `statusText`, never an array. A 422's array of field errors is joined into one
+ *   readable line, and kept raw under `validationErrors` for forms that want the fields.
+ * - `message`: `detail`, else the body's `error` (slowapi words a rate limit there), else
+ *   `HTTP <status>`.
+ *
+ * One response is special-cased, and it is ours. The service worker answers a GET that could
+ * not leave the device with a synthetic `503 {"error":"offline"}` rather than letting the
+ * browser reject — an iOS quirk. Read as an HTTP status it is a lie: nothing answered. It is
+ * turned back into the tagged transport failure it stands for, so the installed app on a phone
+ * reports a switched-off box the same way the browser tab does.
+ *
+ * @param {Response} response - A response with `ok === false`.
+ * @returns {Promise<never>} Always throws.
+ */
+export async function throwForStatus(response) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 503 && body?.error === 'offline') {
+        throw asNetworkError(new Error('offline'));
+    }
+    let detail = null;
+    let validationErrors;
+    if (typeof body?.detail === 'string') {
+        detail = body.detail;
+    } else if (Array.isArray(body?.detail)) {
+        validationErrors = body.detail;
+        detail = body.detail
+            .map(e => `${e?.loc ? e.loc.slice(1).join('.') : 'unknown'}: ${e?.msg ?? ''}`)
+            .join('; ');
+    }
+    const fromError = typeof body?.error === 'string' ? body.error : null;
+    const error = new Error(detail || fromError || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.detail = detail;
+    if (validationErrors) error.validationErrors = validationErrors;
+    throw error;
+}
+
+/**
+ * `fetch` that either returns an ok Response or throws in the shape above.
+ *
+ * @param {string} url - Absolute or same-origin URL.
+ * @param {RequestInit} [options] - Passed to `fetch` untouched.
+ * @returns {Promise<Response>} A response with `ok === true`.
+ */
+export async function fetchOrThrow(url, options) {
+    const response = await fetchOrNetworkError(url, options);
+    if (!response.ok) await throwForStatus(response);
+    return response;
+}
+
+// ── Sign-in ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What to tell someone whose sign-in just failed, and whether the box was reachable at all.
+ *
+ * Pure on purpose. It used to live in login.js and fire the connectivity re-probe itself, which
+ * put a side effect inside a function documented as returning a string — and kept it out of
+ * reach of any test that did not load the whole login page. The caller now reads `unreachable`
+ * and re-probes, and this table is tested against the responses the servers really send.
+ *
+ * @param {unknown} error - What the sign-in call threw.
+ * @param {object} opts
+ * @param {string} opts.unauthorized - What to say when the box refused (differs per path).
+ * @param {string} [opts.host] - Host the page was served from, named in the unreachable case.
+ * @param {boolean} [opts.detailOnUnauthorized=false] - Prefer the server's own 401 sentence when
+ *   it has one. Off for the password form, whose fixed line reads better than "Invalid
+ *   credentials"; on for passkeys, where "Credential not found" tells the reader the passkey was
+ *   revoked on the box, which the generic line hides.
+ * @returns {{ message: string, unreachable: boolean }}
+ */
+export function signInFailureMessage(error, { unauthorized, host, detailOnUnauthorized = false }) {
+    const e = error && typeof error === 'object' ? error : {};
+    // Two different failures, one meaning for the reader: nothing usable answered. The second is
+    // the commonest outage in production — the web server keeps serving the page while the core
+    // behind it is stopped, so the request is answered, with a 502 nobody can act on.
+    if (isNetworkError(e) || isGatewayError(e)) {
+        return { message: connectionMessage(host), unreachable: true };
+    }
+    const detail = typeof e.detail === 'string' ? e.detail : null;
+    let message;
+    switch (e.status) {
+        // The core allows five attempts a minute. Six wrong passwords is exactly what someone does
+        // when they think they are mistyping, and `HTTP 429` named the rule without stating it.
+        case 429: message = 'Too many sign-in attempts. Wait a minute, then try again.'; break;
+        case 401: message = (detailOnUnauthorized && detail) || unauthorized; break;
+        case 403: message = 'Access denied. Check your API key.'; break;
+        // A field refused before it was looked at: a username under three characters on the
+        // passkey route, over fifty on the password one. The detail is written for a developer.
+        case 422: message = 'Check the username you typed, then try again.'; break;
+        // The box is running and something in it threw. An unhandled error reaches Starlette,
+        // which answers plain text with no message — but "there and broken" is a different
+        // sentence from "off", and needs a different action.
+        case 500: message = detail || 'The box answered with an internal error. If it persists, send a support report.'; break;
+        default: message = detail || e.message || unauthorized;
+    }
+    return { message, unreachable: false };
+}

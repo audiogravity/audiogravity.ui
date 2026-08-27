@@ -2,6 +2,9 @@
  * Unit tests for auth.js — pure auth state checkers.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
+import { vi as v } from 'vitest';
+import { isNetworkError } from './net-errors.js';
+import { login } from './auth.js';
 import {
     AuthState, isAuthenticated, getCurrentUser, isAdmin, isGuest, getAuthToken,
 } from './auth.js';
@@ -99,5 +102,54 @@ describe('Auth state checkers', () => {
             AuthState.token = 'my-jwt-token';
             expect(getAuthToken()).toBe('my-jwt-token');
         });
+    });
+});
+
+describe('login() — the shape of a failure, which every sign-in message depends on', () => {
+    // Only the failure paths: success reaches saveAuth, which needs a browser. What matters here
+    // is the contract the login screen reads — status, string-or-null detail, transport tag.
+
+    it('refused password: 401 with the core\'s detail', async () => {
+        v.stubGlobal('fetch', v.fn().mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ detail: 'Invalid credentials' }) }));
+        const err = await login('admin', 'wrong').catch(e => e);
+        v.unstubAllGlobals();
+        expect(err.status).toBe(401);
+        expect(err.detail).toBe('Invalid credentials');
+        expect(isNetworkError(err)).toBe(false);
+    });
+
+    it('core stopped behind server.py: 502 with an HTML body, detail null', async () => {
+        v.stubGlobal('fetch', v.fn().mockResolvedValueOnce({ ok: false, status: 502, json: async () => { throw new SyntaxError('<html>'); } }));
+        const err = await login('admin', 'x').catch(e => e);
+        v.unstubAllGlobals();
+        expect(err.status).toBe(502);
+        expect(err.detail).toBeNull();
+    });
+
+    it('core crashed: Starlette\'s plain-text 500, detail null, not a network error', async () => {
+        v.stubGlobal('fetch', v.fn().mockResolvedValueOnce({ ok: false, status: 500, json: async () => { throw new SyntaxError('Internal Server Error'); } }));
+        const err = await login('admin', 'x').catch(e => e);
+        v.unstubAllGlobals();
+        expect(err.status).toBe(500);
+        expect(err.detail).toBeNull();
+        expect(isNetworkError(err)).toBe(false);
+    });
+
+    it('a field the core refused: 422 array joined into one line, kept raw underneath', async () => {
+        v.stubGlobal('fetch', v.fn().mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ detail: [{ loc: ['body', 'username'], msg: 'string too short' }] }) }));
+        const err = await login('ab', 'x').catch(e => e);
+        v.unstubAllGlobals();
+        expect(err.status).toBe(422);
+        expect(err.detail).toBe('username: string too short');
+        expect(err.validationErrors).toHaveLength(1);
+        expect(String(err.message)).not.toContain('[object Object]');
+    });
+
+    it('nothing answered: tagged, no status', async () => {
+        v.stubGlobal('fetch', v.fn().mockRejectedValueOnce(new TypeError('Load failed')));
+        const err = await login('admin', 'x').catch(e => e);
+        v.unstubAllGlobals();
+        expect(isNetworkError(err)).toBe(true);
+        expect(err.status).toBeUndefined();
     });
 });

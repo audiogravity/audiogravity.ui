@@ -8,7 +8,7 @@ import './components/atoms/ag-license-badge.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
-import { isNetworkError, isGatewayError, connectionMessage } from './net-errors.js';
+import { signInFailureMessage } from './net-errors.js';
 
 // Honour the persisted portrait lock on the login screen too — the app's
 // common.js / <ag-orientation-gate> don't run here, so without this an Android
@@ -113,53 +113,26 @@ function redirectToDashboard() {
 /**
  * The sentence to put in front of someone whose sign-in just failed.
  *
- * One function for all three sign-in paths — the password form, the passkey button and the
+ * One call for all three sign-in paths — the password form, the passkey button and the
  * auto-passkey panel — because having written the mapping twice is precisely what left the
- * third one showing WebKit's raw "Load failed", on the very device the report came from. A
- * fourth path added tomorrow inherits this instead of growing its own list.
- *
- * It re-probes the connection on purpose, and that is not a detail: the `API · OFFLINE` badge
- * above the form was the one element telling the truth while the message below contradicted it.
- * Whoever forgets the re-probe brings the contradiction back.
+ * third one showing WebKit's raw "Load failed", on the very device the report came from. The
+ * table itself lives in net-errors.js, where it is tested against the responses the servers
+ * really send; what stays here is the one side effect: when nothing answered, re-probe, so the
+ * `API · OFFLINE` badge above the form and the message below it never contradict each other.
  *
  * @param {Error} error - What the sign-in call threw.
  * @param {string} unauthorized - What to say when the box answered "no" (differs per path).
+ * @param {{ detailOnUnauthorized?: boolean }} [opts] - See signInFailureMessage.
  * @returns {string} A message for a person.
  */
-function signInErrorMessage(error, unauthorized) {
-    // Two different failures, one meaning for the reader: nothing usable answered. The second is
-    // the commonest outage in production — the web server keeps serving this page while the core
-    // behind it is stopped, so the request is answered, with a 502 nobody can act on.
-    if (isNetworkError(error) || isGatewayError(error)) {
-        checkConnectivity().then(renderStatus);
-        return connectionMessage(window.location.hostname);
-    }
-    // The core allows five sign-in attempts a minute. Six wrong passwords is exactly what someone
-    // does when they think they are mistyping, and the answer they got was `HTTP 429` — a number
-    // that names the rule without ever mentioning it, on the one screen where a person is already
-    // doubting themselves. slowapi words its own body under `error`, not `detail`, so nothing
-    // useful reaches us: the sentence has to be written here.
-    if (error?.status === 429) return 'Too many sign-in attempts. Wait a minute, then try again.';
-    if (error?.status === 401) return unauthorized;
-    if (error?.status === 403) return 'Access denied. Check your API key.';
-    // A 422 is a field the core refused before looking at it — a username under three characters
-    // on the passkey route, over fifty on this one. Its `detail` is an array of field objects
-    // written for a developer, so there is nothing here worth showing verbatim.
-    if (error?.status === 422) return 'Check the username you typed, then try again.';
-    // A 500 means the box is running and something in it threw. Starlette answers an unhandled
-    // exception with plain text and no JSON, so no detail survives to say more — but "the box is
-    // there and it broke" is still a different sentence from "the box is off", and the reader
-    // needs the one that sends them to a report rather than to the power switch.
-    if (error?.status === 500 && !error?.detail) {
-        return 'The box answered with an internal error. If it persists, send a support report.';
-    }
-    // `detail` before `message`: a 503 the core words for a reader — "WebAuthn not available" —
-    // arrives in the first and is worth more than the second. Only when it is a string: FastAPI
-    // answers a 422 with an *array* of field errors, and a username of two characters is enough to
-    // trigger one on the passkey route. Handing that array to textContent printed
-    // `[object Object]`, which is worse than the status line it replaced.
-    const detail = typeof error?.detail === 'string' ? error.detail : null;
-    return detail || error?.message || unauthorized;
+function signInErrorMessage(error, unauthorized, opts = {}) {
+    const { message, unreachable } = signInFailureMessage(error, {
+        unauthorized,
+        host: window.location.hostname,
+        ...opts,
+    });
+    if (unreachable) checkConnectivity().then(renderStatus);
+    return message;
 }
 
 /**
@@ -225,7 +198,7 @@ async function performPasskeyLogin() {
         // webauthn.js raises this before prompting). Its own case: nothing failed.
         const message = error.name === 'NoPasskeyError'
             ? 'No passkey registered for this account.'
-            : signInErrorMessage(error, 'Passkey verification failed. Try again.');
+            : signInErrorMessage(error, 'Passkey verification failed. Try again.', { detailOnUnauthorized: true });
         showError(message);
         setLoading(false, 'passkey');
     }
@@ -355,7 +328,7 @@ function tryAutoPasskeyLogin() {
                 // sees, so it is where an unreachable box is met first. It used to print the
                 // browser's raw sentence.
                 elements.autoPasskeyError.textContent =
-                    signInErrorMessage(err, 'Passkey verification failed. Try again.');
+                    signInErrorMessage(err, 'Passkey verification failed. Try again.', { detailOnUnauthorized: true });
                 elements.autoPasskeyError.style.display = '';
             }
             elements.autoPasskeyTrigger.disabled = false;

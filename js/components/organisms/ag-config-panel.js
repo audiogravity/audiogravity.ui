@@ -24,7 +24,7 @@ import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES, API_BASE_URL } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
-import { showToast, handleError } from '../../ui-helpers.js';
+import { showToast, handleError, getUserFriendlyError } from '../../ui-helpers.js';
 import { addToHistory } from '../../history.js';
 import { validateAudioConfig, showValidationModal } from '../../validation.js';
 import { FetchController } from '../../core/FetchController.js';
@@ -587,9 +587,9 @@ export class AgConfigPanel extends LitElement {
             const user = getCurrentUser();
             if (user) localStorage.removeItem(`passkey_offered_${user.username}`);
             localStorage.removeItem('passkey_auto');
-            showToast('Face ID / Touch ID disabled', 'success');
+            showToast('success', 'Passkeys', 'Face ID / Touch ID disabled.');
         } catch (err) {
-            showToast(err.message || 'Failed to remove passkeys', 'error');
+            showToast('error', 'Passkeys', getUserFriendlyError(err));
             await this._loadPasskeys();
         } finally {
             this.passkeysLoading = false;
@@ -609,11 +609,11 @@ export class AgConfigPanel extends LitElement {
             this.passkeysLoading = true;
             await registerPasskey(user.username, deviceName);
             localStorage.setItem('passkey_auto', 'true');
-            showToast('Passkey registered successfully', 'success');
+            showToast('success', 'Passkeys', 'Passkey registered successfully.');
             await this._loadPasskeys();
         } catch (err) {
             if (err.name !== 'NotAllowedError') {
-                showToast(err.message || 'Passkey registration failed', 'error');
+                showToast('error', 'Passkey registration failed', getUserFriendlyError(err));
             }
         } finally {
             this.passkeysLoading = false;
@@ -623,10 +623,10 @@ export class AgConfigPanel extends LitElement {
     async _deletePasskey(credentialId) {
         try {
             await apiDelete(`/auth/webauthn/credentials/${credentialId}`, false);
-            showToast('Passkey removed', 'success');
+            showToast('success', 'Passkeys', 'Passkey removed.');
             await this._loadPasskeys();
         } catch (err) {
-            showToast(err.message || 'Failed to remove passkey', 'error');
+            showToast('error', 'Passkeys', getUserFriendlyError(err));
         }
     }
 

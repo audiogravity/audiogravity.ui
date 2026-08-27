@@ -6,11 +6,9 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { apiGet, apiCall } from '../../api.js';
-import { API_BASE_URL, API_KEY_HEADER, API_KEY } from '../../core/config.js';
+import { apiGet, apiCall, apiUpload } from '../../api.js';
 import { LICENSE_TERMS_TITLE, LICENSE_TERMS_HTML } from '../../core/license-docs.js';
-import { getAuthToken } from '../../auth.js';
-import { showPasswordConfirm, showToast, copyToClipboard } from '../../ui-helpers.js';
+import { showPasswordConfirm, showToast, copyToClipboard, getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-license-badge.js';
 import { iconTrash, iconCreditCard, iconExternalLink, iconDownload, iconUpload, iconCopy } from '../../ag-icons.js';
 import { fmtIsoDate, isPast, planLabel } from '../utils-lit.js';
@@ -195,25 +193,11 @@ export class AgLicenseStatus extends LitElement {
 
         this._uploading = true;
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const headers = { [API_KEY_HEADER]: API_KEY };
-            const token = getAuthToken();
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const res = await fetch(`${API_BASE_URL}/license/upload`, {
-                method: 'POST',
-                headers,
-                body: formData,
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || `HTTP ${res.status}`);
-            }
-
-            this._status = await res.json();
+            // apiUpload, not a raw fetch: this was the one upload in the interface built on its
+            // own fetch call, so it sat outside the boundary that tags a transport failure —
+            // and an iPad in front of a switched-off box read WebKit's raw "Load failed" here,
+            // the very sentence the sign-in fix had just retired.
+            this._status = await apiUpload('/license/upload', file);
             // Wording follows what was actually installed. Hardcoded "lifetime", it told a
             // customer renewing a one-year licence that he had just bought a perpetual one.
             const ends = this._status?.expires_at;
@@ -221,7 +205,7 @@ export class AgLicenseStatus extends LitElement {
                 ends ? `Your license is active until ${fmtIsoDate(ends)}.`
                      : 'Your lifetime license is now active.');
         } catch (err) {
-            showToast('error', 'Activation failed', err.message || 'Could not activate the license.');
+            showToast('error', 'Activation failed', getUserFriendlyError(err));
         } finally {
             this._uploading = false;
             e.target.value = '';

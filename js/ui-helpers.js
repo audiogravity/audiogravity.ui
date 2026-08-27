@@ -10,15 +10,17 @@ const TOAST_REMOVE_DELAY = 300;
 
 // User-friendly error messages (ENGLISH)
 //
-// The three transport wordings stay here as a safety net, for a failure that reached this
-// function already flattened into a plain Error and so has lost its shape. `Load failed` is
-// WebKit's, and it was missing: every iPhone and iPad therefore fell through to the raw
-// browser text. The shape test in getUserFriendlyError is what should catch these; this list
-// only covers what it cannot see.
+// Every fetch that feeds this function now goes through the boundary in net-errors.js, which
+// tags a transport failure by shape; the shape test at the top of getUserFriendlyError is what
+// catches it. The three transport wordings below are kept for one reason only: a
+// FetchController may be given a custom `fetchFn`, and a rejection from code outside this
+// codebase arrives here as a plain Error with no tag. `Load failed` is WebKit's and was missing
+// until an iPad reported a switched-off box as a wrong password. All three map to the same
+// sentence as the shape test — one condition, one wording.
 const ErrorMessages = {
     'Failed to fetch': 'Unable to connect to server. Please check your connection.',
     'Load failed': 'Unable to connect to server. Please check your connection.',
-    'NetworkError': 'Network error. Please check your internet connection.',
+    'NetworkError': 'Unable to connect to server. Please check your connection.',
     'HTTP 401': 'Invalid API key. Please check your configuration.',
     'HTTP 403': 'Access denied. Insufficient permissions.',
     'HTTP 404': 'Resource not found.',

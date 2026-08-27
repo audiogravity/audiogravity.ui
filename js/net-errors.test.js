@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { asNetworkError, isNetworkError, isGatewayError, connectionMessage } from './net-errors.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { asNetworkError, isNetworkError, isGatewayError, connectionMessage, fetchOrThrow, throwForStatus, signInFailureMessage } from './net-errors.js';
 
 describe('isNetworkError', () => {
     // The regression that started all this: the first version read the browser's error text, and
@@ -146,5 +146,110 @@ describe('connectionMessage', () => {
 
     it('tells the reader what to do, not what failed', () => {
         expect(connectionMessage('box.local')).toMatch(/powered on/i);
+    });
+});
+
+describe('throwForStatus — one error shape for every caller', () => {
+    const res = (status, body) => ({ ok: false, status, json: async () => { if (body instanceof Error) throw body; return body; } });
+
+    it('turns the service worker\'s synthetic offline 503 back into a transport failure', async () => {
+        // sw.js answers a GET that could not leave the device with `503 {"error":"offline"}`
+        // instead of letting the browser reject — an iOS quirk. Read as a status it is a lie:
+        // nothing answered, and the installed app on a phone must say so like the tab does.
+        const err = await throwForStatus(res(503, { error: 'offline', status: 'offline' })).catch(e => e);
+        expect(isNetworkError(err)).toBe(true);
+        expect(isGatewayError(err)).toBe(false);
+    });
+
+    it('keeps a core 503 as what the core said', async () => {
+        const err = await throwForStatus(res(503, { detail: 'WebAuthn not available' })).catch(e => e);
+        expect(isNetworkError(err)).toBe(false);
+        expect(isGatewayError(err)).toBe(false);
+        expect(err.detail).toBe('WebAuthn not available');
+    });
+
+    it('leaves detail null when the body is not JSON — never statusText', async () => {
+        const err = await throwForStatus({ ...res(502, new SyntaxError('html')), statusText: 'Bad Gateway' }).catch(e => e);
+        expect(err.detail).toBeNull();
+        expect(err.message).toBe('HTTP 502');
+        expect(isGatewayError(err)).toBe(true);
+    });
+
+    it('reads slowapi\'s wording under `error`', async () => {
+        const err = await throwForStatus(res(429, { error: 'Rate limit exceeded: 5 per 1 minute' })).catch(e => e);
+        expect(err.message).toBe('Rate limit exceeded: 5 per 1 minute');
+        expect(err.detail).toBeNull();
+    });
+
+    it('joins a 422 field list into one line and keeps it raw underneath', async () => {
+        const err = await throwForStatus(res(422, { detail: [{ loc: ['body', 'username'], msg: 'too short' }, { loc: ['body', 'password'], msg: 'required' }] })).catch(e => e);
+        expect(err.detail).toBe('username: too short; password: required');
+        expect(err.message).toBe('username: too short; password: required');
+        expect(err.validationErrors).toHaveLength(2);
+    });
+});
+
+describe('fetchOrThrow', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('returns an ok response untouched', async () => {
+        const ok = { ok: true, status: 200 };
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(ok));
+        expect(await fetchOrThrow('/x')).toBe(ok);
+    });
+
+    it('tags a rejection at the fetch site', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')));
+        const err = await fetchOrThrow('/x').catch(e => e);
+        expect(isNetworkError(err)).toBe(true);
+    });
+});
+
+describe('signInFailureMessage — checked against what the servers really send', () => {
+    const opts = { unauthorized: 'Invalid username or password', host: '10.0.4.254' };
+    const http = (status, extra = {}) => Object.assign(new Error(`HTTP ${status}`), { status, detail: null }, extra);
+
+    it.each([
+        ['server.py with the core stopped — 502, HTML body', http(502)],
+        ['nothing answered', asNetworkError(new TypeError('Load failed'))],
+        ['a proxy 503 with no message', http(503)],
+    ])('%s → names the box and asks for a re-probe', (_n, err) => {
+        const r = signInFailureMessage(err, opts);
+        expect(r.unreachable).toBe(true);
+        expect(r.message).toContain('10.0.4.254');
+    });
+
+    it('a running core that crashed → an internal error, not a switched-off box', () => {
+        const r = signInFailureMessage(http(500), opts);
+        expect(r.unreachable).toBe(false);
+        expect(r.message).toMatch(/internal error/);
+        expect(r.message).not.toMatch(/powered on/);
+    });
+
+    it('six wrong passwords in a minute → the wait, not `HTTP 429`', () => {
+        const r = signInFailureMessage(http(429, { message: 'Rate limit exceeded' }), opts);
+        expect(r.message).toMatch(/Wait a minute/);
+    });
+
+    it('a refused field → a sentence, never the array', () => {
+        const r = signInFailureMessage(http(422, { detail: 'username: too short' }), opts);
+        expect(r.message).toBe('Check the username you typed, then try again.');
+    });
+
+    it('a wrong password keeps the form\'s own line over the core\'s "Invalid credentials"', () => {
+        const r = signInFailureMessage(http(401, { detail: 'Invalid credentials' }), opts);
+        expect(r.message).toBe('Invalid username or password');
+    });
+
+    it('a revoked passkey shows the core\'s sentence when the path asks for it', () => {
+        // "Credential not found" tells the reader the passkey was removed on the box; the
+        // generic "verification failed" would send them retrying against nothing.
+        const r = signInFailureMessage(http(401, { detail: 'Credential not found' }),
+            { ...opts, unauthorized: 'Passkey verification failed. Try again.', detailOnUnauthorized: true });
+        expect(r.message).toBe('Credential not found');
+    });
+
+    it('survives being handed nothing at all', () => {
+        expect(signInFailureMessage(undefined, opts).message).toBe(opts.unauthorized);
     });
 });

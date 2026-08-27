@@ -13,8 +13,10 @@ describe('getUserFriendlyError', () => {
     });
 
     it('maps "NetworkError" to network error', () => {
+        // One condition, one wording: this used to say something different from the other
+        // two transport sentences, for the same event.
         expect(getUserFriendlyError(new Error('NetworkError when attempting...')))
-            .toBe('Network error. Please check your internet connection.');
+            .toBe('Unable to connect to server. Please check your connection.');
     });
 
     it('maps WebKit\'s "Load failed" to connection error', () => {

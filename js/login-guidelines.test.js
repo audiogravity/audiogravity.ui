@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as acorn from 'acorn';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSS_ROOT = path.join(ROOT, 'css');
@@ -229,71 +230,51 @@ describe('login page — a button handed back must still work', () => {
     // Nothing on screen said so — the button looked exactly as it had the first time — and only a
     // reload brought it back. Reading the source is the only way to catch this: the fault is the
     // *combination* of two lines forty apart, and neither is wrong on its own.
+    //
+    // Read with a real parser. A hand-written bracket counter came first, and it could be
+    // disarmed by a stray `)` in a string or a comment: the slice truncated, the guard saw
+    // neither the `once` nor the re-enable, and passed on nothing at all.
     const LOGIN_JS = fs.readFileSync(path.join(ROOT, 'js', 'login.js'), 'utf8');
+    const AST = acorn.parse(LOGIN_JS, { ecmaVersion: 'latest', sourceType: 'module' });
 
     /**
-     * Blank out string literals and comments, keeping every offset intact.
-     *
-     * The paren scanner below counts brackets, and a `)` inside a message — `'Try again :)'` — or
-     * inside a comment would close the slice early. That failure is silent and it disarms the
-     * guard: a truncated slice contains neither the `once` nor the re-enable, so the check passes
-     * on nothing at all. Blanking rather than deleting keeps indices usable.
-     *
-     * @param {string} src - JavaScript source.
-     * @returns {string} Same length, with literal and comment contents replaced by spaces.
+     * Every node in the tree, depth first.
+     * @param {object} node - An ESTree node.
+     * @param {(n: object) => void} visit - Called once per node.
      */
-    function blankLiteralsAndComments(src) {
-        let out = '';
-        let i = 0;
-        while (i < src.length) {
-            const two = src.slice(i, i + 2);
-            if (two === '//' || two === '/*') {
-                const close = two === '//' ? src.indexOf('\n', i) : src.indexOf('*/', i + 2);
-                const stop = close === -1 ? src.length : (two === '//' ? close : close + 2);
-                out += ' '.repeat(stop - i);
-                i = stop;
-                continue;
-            }
-            const quote = src[i];
-            if (quote === '"' || quote === "'" || quote === '`') {
-                out += ' ';
-                i++;
-                while (i < src.length && src[i] !== quote) {
-                    if (src[i] === '\\') { out += '  '; i += 2; continue; }
-                    out += src[i] === '\n' ? '\n' : ' ';
-                    i++;
-                }
-                out += ' ';
-                i++;
-                continue;
-            }
-            out += src[i];
-            i++;
+    function walk(node, visit) {
+        if (!node || typeof node.type !== 'string') return;
+        visit(node);
+        for (const key of Object.keys(node)) {
+            const child = node[key];
+            if (Array.isArray(child)) child.forEach(c => walk(c, visit));
+            else if (child && typeof child.type === 'string') walk(child, visit);
         }
-        return out;
     }
 
-    const SOURCE = blankLiteralsAndComments(LOGIN_JS);
-
     /**
-     * The whole `addEventListener` call for one element, options object included.
-     *
-     * @param {string} element - Left-hand side, e.g. `elements.autoPasskeyTrigger`.
-     * @returns {string} Source of the call, from the opening to the matching close.
+     * The `<element>.addEventListener(...)` call expression, as source text.
+     * @param {string} element - Dotted receiver, e.g. `elements.autoPasskeyTrigger`.
+     * @returns {string} The whole call, options object included.
      */
     function listenerCall(element) {
-        const start = SOURCE.indexOf(`${element}.addEventListener(`);
-        expect(start, `${element}.addEventListener introuvable`).toBeGreaterThan(-1);
-        let depth = 0;
-        for (let i = SOURCE.indexOf('(', start); i < SOURCE.length; i++) {
-            if (SOURCE[i] === '(') depth++;
-            else if (SOURCE[i] === ')' && --depth === 0) return SOURCE.slice(start, i + 1);
-        }
-        throw new Error(`parenthèse non fermée pour ${element}`);
+        const [obj, prop] = element.split('.');
+        const found = [];
+        walk(AST, n => {
+            if (n.type !== 'CallExpression') return;
+            const c = n.callee;
+            if (c.type !== 'MemberExpression' || c.property.name !== 'addEventListener') return;
+            const recv = c.object;
+            if (recv.type === 'MemberExpression' && recv.object.name === obj && recv.property.name === prop) {
+                found.push(LOGIN_JS.slice(n.start, n.end));
+            }
+        });
+        expect(found, `${element}.addEventListener not found`).toHaveLength(1);
+        return found[0];
     }
 
     it('hands the auto-passkey trigger back to the user after a failure', () => {
-        // The premise the next test rests on, asserted on its own so that a slice gone wrong
+        // The premise the next test rests on, asserted on its own so that a lookup gone wrong
         // fails here — loudly — instead of letting the guard below pass over an empty string.
         expect(listenerCall('elements.autoPasskeyTrigger'))
             .toMatch(/elements\.autoPasskeyTrigger\.disabled\s*=\s*false/);
@@ -302,8 +283,8 @@ describe('login page — a button handed back must still work', () => {
     it('does not arm that trigger with { once: true }', () => {
         expect(
             /once:\s*true/.test(listenerCall('elements.autoPasskeyTrigger')),
-            "le gestionnaire réactive son propre bouton alors que { once: true } a déjà retiré "
-            + "l'écouteur : le clic suivant ne fait rien jusqu'au rechargement"
+            'the handler re-enables its own button after { once: true } has already removed the '
+            + 'listener: the next click does nothing until the page is reloaded'
         ).toBe(false);
     });
 
