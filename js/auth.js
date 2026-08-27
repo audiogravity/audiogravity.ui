@@ -4,7 +4,7 @@
  */
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, JWT_ENABLED, IS_TEST_ENV } from './core/config.js';
-import { fetchOrThrow } from './net-errors.js';
+import { fetchJson } from './net-errors.js';
 
 // =====================
 // AUTH STATE
@@ -224,17 +224,17 @@ function getAuthToken() {
 // =====================
 
 /**
- * Login utilisateur
- * @param {string} username - Nom d'utilisateur
- * @param {string} password - Mot de passe
- * @returns {Promise<object>} - Réponse de login avec token
+ * Sign in with a password and store the session.
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<object>} The login response (token, username, role, expiry).
  */
 async function login(username, password) {
     // /auth/login always requires the API key: there is no JWT yet.
     // Transport is tagged and a refusal carries its status and a string detail — see
     // net-errors.js. Telling a refused password from an unreachable box by reading message
     // text is what made an offline machine accuse its owner.
-    const response = await fetchOrThrow(`${API_BASE_URL}/auth/login`, {
+    const data = await fetchJson(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -242,7 +242,6 @@ async function login(username, password) {
         },
         body: JSON.stringify({ username, password })
     });
-    const data = await response.json();
 
     saveAuth(data.access_token, {
         username: data.username,

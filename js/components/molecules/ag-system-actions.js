@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiPost } from '../../api.js';
-import { showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
+import { showConfirm, showPasswordConfirm, showToast, getUserFriendlyError } from '../../ui-helpers.js';
 import { isAdmin } from '../../auth.js';
 import { iconRepeat, iconPowerCord, iconFileText } from '../../ag-icons.js';
 
@@ -55,7 +55,7 @@ export class AgSystemActions extends LitElement {
             this._startReconnectPolling(false);
         } catch (err) {
             this._restartingBackend = false;
-            showToast('error', 'Restart Failed', err.message || 'Unknown error');
+            showToast('error', 'Restart Failed', getUserFriendlyError(err));
         }
     }
 
@@ -94,7 +94,7 @@ export class AgSystemActions extends LitElement {
             showToast('warning', 'System Rebooting', 'Waiting for the system to come back online…');
             this._startReconnectPolling(true);
         } catch (err) {
-            showToast('error', 'Reboot Failed', err.message || 'Unknown error');
+            showToast('error', 'Reboot Failed', getUserFriendlyError(err));
         }
     }
 

@@ -188,8 +188,9 @@ async function performPasskeyLogin() {
         await new Promise(resolve => setTimeout(resolve, 300));
         redirectToDashboard();
     } catch (error) {
-        // User cancelled the authenticator dialog — don't show an error
-        if (error.name === 'NotAllowedError') {
+        // Cancelled or superseded authenticator dialog — nothing to report. WebKit rejects
+        // a ceremony replaced by another with AbortError, on a box that answered fine.
+        if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
             setLoading(false, 'passkey');
             return;
         }
@@ -229,7 +230,7 @@ async function offerPasskeySetup(username) {
                 localStorage.setItem(storageKey, 'enabled');
                 localStorage.setItem('passkey_auto', 'true');
             } catch (err) {
-                if (err.name !== 'NotAllowedError') {
+                if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
                     localStorage.setItem(storageKey, 'skipped');
                 }
             }
@@ -254,7 +255,21 @@ function hasRegisteredPasskey() {
     );
 }
 
-async function checkConnectivity() {
+let connectivityProbe = null;
+
+/**
+ * One probe in flight at a time: every failed sign-in asks for one, and five quick retries on
+ * the passkey panel used to send five concurrent requests at a box that had just not answered.
+ * @returns {Promise<boolean>}
+ */
+function checkConnectivity() {
+    if (!connectivityProbe) {
+        connectivityProbe = probeConnectivity().finally(() => { connectivityProbe = null; });
+    }
+    return connectivityProbe;
+}
+
+async function probeConnectivity() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     try {

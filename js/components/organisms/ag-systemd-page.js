@@ -1,4 +1,5 @@
 import { LitElement, html } from 'lit';
+import { validationField } from '../../net-errors.js';
 import {
     apiGet,
     apiPost,
@@ -159,7 +160,7 @@ export class AgSystemdPage extends LitElement {
                     errorContent += '<h4 class="validation-section-title">❌ Invalid Input Values</h4>';
                     errorContent += '<ul class="validation-list">';
                     validationError.validationErrors.forEach(err => {
-                        const field = err.loc ? err.loc.slice(1).join('.') : 'unknown';
+                        const field = validationField(err);
                         const fieldName = field.replace('properties.', '').replace(/_/g, ' ').toUpperCase();
                         errorContent += `<li class="validation-error"><strong>${escapeHtml(fieldName)}:</strong> ${escapeHtml(err.msg || 'Invalid value')}</li>`;
                     });

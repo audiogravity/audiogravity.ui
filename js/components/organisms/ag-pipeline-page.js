@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit';
+import { getUserFriendlyError } from '../../ui-helpers.js';
 import { AppState, EventEmitter, showToast } from '../../common.js';
 import { apiGet, apiPost } from '../../api.js';
 import { isGuest } from '../../auth.js';
@@ -147,7 +148,7 @@ export class AgPipelinePage extends LitElement {
             }
         } catch (error) {
             console.error('[Topology Modal] Save error:', error);
-            showToast('error', 'Save Failed', error.message || 'Unknown error');
+            showToast('error', 'Save Failed', getUserFriendlyError(error));
         } finally {
             modal._isLoading = false;
         }

@@ -9,8 +9,8 @@ export { hasCoreCredentials };
 // API UTILITIES
 // =====================
 
-import { getUserFriendlyError, downloadBlob } from './ui-helpers.js';
-import { fetchOrNetworkError, throwForStatus, fetchOrThrow, isNetworkError } from './net-errors.js';
+import { getUserFriendlyError, downloadBlob, showToast } from './ui-helpers.js';
+import { fetchOrNetworkError, throwForStatus, fetchOrThrow, fetchJson, readJson, isRetryableFailure } from './net-errors.js';
 
 /**
  * Retry API call with exponential backoff
@@ -28,11 +28,12 @@ export async function apiCallWithRetry(endpoint, options = {}, maxRetries = 3) {
         } catch (error) {
             lastError = error;
 
-            // Only a transport failure is worth a second try. "No status" used to stand in
-            // for that, and it also matched a 200 whose body was not JSON — replayed three
-            // times, seven seconds, for a response that would never parse. The fetch site
-            // now says which it was.
-            if (!isNetworkError(error)) {
+            // Only a transport failure the device has not already settled is worth a second
+            // try. "No status" used to stand in for that: it also matched a 200 whose body was
+            // not JSON, replayed three times for nothing. And the service worker's offline
+            // answer is final — retrying it three times per call, from every poller on the
+            // page, is what the installed app did to a switched-off box.
+            if (!isRetryableFailure(error)) {
                 throw error;
             }
 
@@ -143,7 +144,7 @@ export async function apiCall(endpoint, options = {}) {
 
         // 204 No Content / 205 Reset Content — no body to parse.
         if (response.status === 204 || response.status === 205) return null;
-        return await response.json();
+        return await readJson(response);
     } catch (error) {
         console.error(`API Error [${endpoint}] on ${API_BASE_URL}:`, error);
         // Add visual feedback for connection failure if on profiles tab
@@ -232,15 +233,11 @@ export async function apiDownload(endpoint, filename) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers
-        });
-        if (!response.ok) throw new Error('Download failed');
-
+        const response = await fetchOrThrow(`${API_BASE_URL}${endpoint}`, { headers });
         downloadBlob(await response.blob(), filename);
     } catch (error) {
         console.error('Download error:', error);
-        alert('Failed to download file');
+        showToast('error', 'Download failed', getUserFriendlyError(error));
     }
 }
 
@@ -257,12 +254,11 @@ export async function apiUpload(endpoint, file) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetchOrThrow(`${API_BASE_URL}${endpoint}`, {
+        return await fetchJson(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
             headers,
             body: formData
         });
-        return await response.json();
     } catch (error) {
         console.error('Upload error:', error);
         throw error;

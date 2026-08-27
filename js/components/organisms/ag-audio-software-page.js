@@ -14,6 +14,7 @@
  * @dependency ag-logs-modal (via ID)
  */
 import { LitElement, html } from 'lit';
+import { getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-filter-bar.js';
 import { iconRepeat, iconDownload } from '../../ag-icons.js';
 import {
@@ -721,7 +722,7 @@ export class AgAudioSoftwarePage extends LitElement {
                 showToast('error', 'Refresh Failed', result.message || 'Unknown error');
             }
         } catch (error) {
-            showToast('error', 'Refresh Failed', error.message || 'Unknown error');
+            showToast('error', 'Refresh Failed', getUserFriendlyError(error));
         } finally {
             this._isRefreshing = false;
         }

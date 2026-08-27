@@ -1,98 +1,74 @@
 /**
  * @module NetErrors
- * @description Telling "nothing answered" apart from "something answered, and said no".
+ * @description The one place that decides what a failed request means.
  *
- * The distinction matters because the two need opposite reactions from the reader: one sends
- * them to look at the machine, the other to look at what they typed. Getting it backwards is
- * not a cosmetic slip — a box that was switched off told its owner the password was wrong, on
- * an iPhone and an iPad, while the page's own `API · OFFLINE` badge said the truth two
- * centimetres above the message.
- *
- * That first version read the browser's error *text*, and the sentence differs per engine:
- * `Failed to fetch` in Chromium, `NetworkError when attempting to fetch resource.` in Gecko,
- * `Load failed` in WebKit. The list missed WebKit's, and `includes('failed')` matched it into
- * *Invalid username or password*.
- *
- * The obvious repair — treat any `TypeError` as unreachable — trades one guess for another, and
- * it was measured to be worse: `FetchController` wraps its own `onSuccess` callback in the same
- * `try` as the request, so a `data.items.map` on a payload without `items`, after a perfectly
- * successful 200, came out as "Unable to connect to server". A `TypeError` says something about
- * the code, nothing about the network.
- *
- * **Only the code that performed the fetch knows whether the failure was transport.** So it
- * says so, at the point where it knows: {@link asNetworkError} tags the rejection, and every
- * reader downstream asks {@link isNetworkError} instead of guessing. Nothing infers, nothing
- * reads wording, and a `TypeError` raised three call frames later stays what it is.
+ * Two facts shape everything here. A transport failure can only be recognised where the
+ * request was made — every engine words it differently, and a `TypeError` raised later in
+ * a caller's own code says nothing about the network — so the fetch site tags it and every
+ * reader asks. And a status alone does not say whether the *application* answered: a proxy
+ * fronting a stopped core says 502 with an HTML body, a crashed core says 500 in plain text,
+ * and only the presence of a message the server actually wrote tells them apart.
  */
 
+// ── Predicates ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Tag a rejection as "the request never reached anything".
+ * Tag a rejection as "nothing answered". Call it in the `catch` around a `fetch`, nowhere wider.
  *
- * Call it in the `catch` that wraps a `fetch` — and nowhere else. Wrapping anything wider
- * re-creates the very over-capture this module exists to stop.
- *
- * @param {unknown} error - Whatever `fetch` rejected with.
- * @returns {Error} The same error, tagged, ready to re-throw.
+ * @param {unknown} error - Whatever was rejected.
+ * @param {{ retryable?: boolean }} [opts] - `retryable: false` when the device already knows
+ *   the network is gone and a second attempt would only cost the box.
+ * @returns {Error} The same error, tagged.
  */
-export function asNetworkError(error) {
+export function asNetworkError(error, { retryable = true } = {}) {
     const tagged = error instanceof Error ? error : new Error(String(error));
     tagged.isNetwork = true;
+    if (!retryable) tagged.retryable = false;
     return tagged;
 }
 
 /**
- * Did this failure happen before anything answered?
+ * Did the request fail before anything answered?
  *
- * @param {unknown} error - Whatever was caught.
- * @returns {boolean} True only when the fetch boundary said so, or when our own timeout fired.
+ * A status wins over the tag: something answered. Nothing is inferred from the error's name —
+ * `AbortError` in particular is what a WebAuthn ceremony rejects with when another supersedes
+ * it, on a box that answered perfectly well.
+ *
+ * @param {unknown} error
+ * @returns {boolean}
  */
 export function isNetworkError(error) {
     if (!error || typeof error !== 'object') return false;
-    // Something answered — whatever it answered. This is the one certain signal, and it comes
-    // first so a tagged-but-answered error could never be read as unreachable.
     if (typeof error.status === 'number') return false;
-    if (error.isNetwork === true) return true;
-    // Our own deadline elapsing is, to the person waiting, the same event as nothing being
-    // there. Compared by name rather than with `instanceof`, which fails across realms.
-    return error.name === 'AbortError';
+    return error.isNetwork === true;
 }
 
-/** Statuses no part of the core ever returns, so they can only come from something in front. */
+/**
+ * Is a second attempt worth anything? Only for a transport failure the device has not
+ * already settled — the service worker's offline answer is final for as long as it lasts.
+ *
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isRetryableFailure(error) {
+    return isNetworkError(error) && error.retryable !== false;
+}
+
+/** Statuses the core never returns; only something in front of it does. */
 const GATEWAY_ONLY_STATUSES = new Set([502, 504]);
 
 /**
- * Did a gateway answer on the core's behalf, because the core did not?
+ * Did something answer *for* the core because the core did not?
  *
- * This is the shape of the commonest outage in production: the web server keeps serving the
- * interface while the core behind it is stopped, so the request *is* answered — with a 502 whose
- * HTML body makes `response.json()` throw, leaving a generic message and a status. Not a
- * transport failure by any technical reading, and exactly the same thing for the reader: the box
- * is there, the software is not.
+ * 502 and 504 always. 503 only when it carries no message: the core uses 503 to say things a
+ * reader can act on ("WebAuthn not available"), and `catalogueErrorMessage` in
+ * components/utils-lit.js shows that detail verbatim — the two must read a 503 the same way.
+ * 500 never: a running core that crashed answers 500 with no message, and that is a box to
+ * report, not a box to switch on. The front a real install deploys answers 502 when the core
+ * is stopped, so nothing is lost by leaving 500 alone.
  *
- * **500 is deliberately not here, and the reason is the more useful half of this comment.** An
- * earlier version of this module claimed every detail-less 5xx as a dead box, on the strength of
- * one measurement: this project's Vite dev server answers 500 with an empty body when the core is
- * stopped. That generalisation was wrong twice over. The core does *not* always word its errors
- * under `detail` — only `HTTPException` does; an unhandled exception reaches Starlette's
- * `ServerErrorMiddleware`, which answers `PlainTextResponse("Internal Server Error", 500)` with no
- * JSON at all (read in starlette, not assumed). So a core that is running and has just crashed in
- * a handler was announced as "check that the box is powered on", while the badge beside the
- * message said CONNECTED — the exact contradiction this module was written to end, inverted.
- *
- * And the generalisation bought nothing where it matters: the front a real install deploys,
- * `audiogravity-ui/server.py`, answers **502** when it cannot reach the core — measured against an
- * isolated copy of it. Production was already covered. The 500 rule only ever served a dev server,
- * at the price of lying about a live box. A 500 now shows what the server said, which for a
- * crashed core is a bug worth reporting rather than a machine worth walking to.
- *
- * 503 keeps its detail test, in the other direction: the core uses it to say things a reader can
- * act on — `WebAuthn not available`, on the sign-in path — while a proxy's 503 carries HTML and
- * leaves none. `catalogueErrorMessage` in components/utils-lit.js already reads a 503 that way,
- * verbatim; two helpers reading one status in opposite directions is how a codebase starts lying
- * to its user.
- *
- * @param {unknown} error - Whatever was caught.
- * @returns {boolean} True for 502 and 504, and for a 503 that carries no message of its own.
+ * @param {unknown} error
+ * @returns {boolean}
  */
 export function isGatewayError(error) {
     if (!error || typeof error !== 'object') return false;
@@ -101,40 +77,37 @@ export function isGatewayError(error) {
 }
 
 /**
- * The sentence shown when the box could not be reached, whichever of the two ways.
+ * The sentence for a box that could not be reached, naming the address that was tried.
  *
- * Names the address that was tried. The login page knows it — it prints it in its own header —
- * and naming it is what turns "it does not work" into something the reader can act on: the
- * difference between writing to support and walking over to look at the machine.
- *
- * @param {string} [host] - Host the page was served from, e.g. `window.location.hostname`.
- * @returns {string} A message for a person, not for a log.
+ * @param {string} [host] - `window.location.hostname` on the page that tried.
+ * @returns {string}
  */
 export function connectionMessage(host) {
     const where = host ? ` at ${host}` : '';
     return `Cannot reach Audiogravity${where}. Check that the box is powered on and on your network.`;
 }
 
-// ── The fetch boundary ──────────────────────────────────────────────────────────────────────
-//
-// Everything above only works if the tag is set at the fetch site, and the first version had
-// that `try { fetch } catch → asNetworkError` block written three times verbatim, next to four
-// different ways of building an Error from a Response — three of them disagreeing on what
-// `detail` means. The consequences were measured, not imagined: the password form and the
-// passkey panel answered the same outage with different sentences; `apiCall` always set a detail,
-// so a rule written on "no detail" could never fire for the main client; a 422 reached the screen
-// as `[object Object]`. One boundary, used everywhere, is what makes the predicates honest.
+// ── The fetch boundary ─────────────────────────────────────────────────────────────────────
+
+/** The body the service worker substitutes when a request could not leave the device. */
+const OFFLINE_MARKER = 'offline';
 
 /**
- * `fetch`, with a transport failure tagged as it is thrown.
+ * Dotted field name from one FastAPI validation error, minus the leading `body`/`query`.
  *
- * Nothing else changes: the Response comes back whatever its status, so a caller that needs to
- * look at the status before deciding anything (the keyless probe in api.js) still can.
+ * @param {{ loc?: Array<string|number> }} err
+ * @returns {string}
+ */
+export function validationField(err) {
+    return err?.loc ? err.loc.slice(1).join('.') : 'unknown';
+}
+
+/**
+ * `fetch` with a transport failure tagged. The Response comes back whatever its status.
  *
- * @param {string} url - Absolute or same-origin URL.
- * @param {RequestInit} [options] - Passed to `fetch` untouched.
- * @returns {Promise<Response>} The response, ok or not.
- * @throws {Error} Tagged with `isNetwork` when nothing answered.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
  */
 export async function fetchOrNetworkError(url, options) {
     try {
@@ -145,28 +118,44 @@ export async function fetchOrNetworkError(url, options) {
 }
 
 /**
- * Turn a non-ok Response into the one Error shape every reader in this codebase expects.
+ * Read a JSON body, telling a connection that dropped mid-body from a body that is not JSON.
  *
- * - `status`: the HTTP status, always.
- * - `detail`: what the server *said*, as a string, or `null` when it said nothing — never a
- *   fabricated `statusText`, never an array. A 422's array of field errors is joined into one
- *   readable line, and kept raw under `validationErrors` for forms that want the fields.
- * - `message`: `detail`, else the body's `error` (slowapi words a rate limit there), else
- *   `HTTP <status>`.
+ * A core restarting under a long GET closes the socket after the headers: the browser rejects
+ * the body read with a `TypeError`, which is a transport failure and worth one retry. A
+ * `SyntaxError` is a server that answered with something else, and no retry will change it.
  *
- * One response is special-cased, and it is ours. The service worker answers a GET that could
- * not leave the device with a synthetic `503 {"error":"offline"}` rather than letting the
- * browser reject — an iOS quirk. Read as an HTTP status it is a lie: nothing answered. It is
- * turned back into the tagged transport failure it stands for, so the installed app on a phone
- * reports a switched-off box the same way the browser tab does.
+ * @param {Response} response
+ * @returns {Promise<any>}
+ */
+export async function readJson(response) {
+    try {
+        return await response.json();
+    } catch (err) {
+        if (err instanceof TypeError) throw asNetworkError(err);
+        throw err;
+    }
+}
+
+/**
+ * Turn a non-ok Response into the one Error every reader expects.
  *
- * @param {Response} response - A response with `ok === false`.
- * @returns {Promise<never>} Always throws.
+ * - `status`: always.
+ * - `detail`: what the server said, as a string, or `null` — never a fabricated `statusText`,
+ *   never an array. A 422's field list is joined into one line and kept raw under
+ *   `validationErrors`. slowapi words a rate limit under `error`; that counts as said.
+ * - `message`: `detail`, else `HTTP <status>`.
+ *
+ * The service worker's `503 {"error":"offline"}` is not a status, it is the device saying the
+ * request never left: it becomes a tagged, non-retryable transport failure, so the installed
+ * app reports a switched-off box the way a browser tab does — once, not three times.
+ *
+ * @param {Response} response - With `ok === false`.
+ * @returns {Promise<never>}
  */
 export async function throwForStatus(response) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 503 && body?.error === 'offline') {
-        throw asNetworkError(new Error('offline'));
+    if (response.status === 503 && body?.error === OFFLINE_MARKER) {
+        throw asNetworkError(new Error(OFFLINE_MARKER), { retryable: false });
     }
     let detail = null;
     let validationErrors;
@@ -174,12 +163,11 @@ export async function throwForStatus(response) {
         detail = body.detail;
     } else if (Array.isArray(body?.detail)) {
         validationErrors = body.detail;
-        detail = body.detail
-            .map(e => `${e?.loc ? e.loc.slice(1).join('.') : 'unknown'}: ${e?.msg ?? ''}`)
-            .join('; ');
+        detail = body.detail.map(e => `${validationField(e)}: ${e?.msg ?? ''}`).join('; ');
+    } else if (typeof body?.error === 'string') {
+        detail = body.error;
     }
-    const fromError = typeof body?.error === 'string' ? body.error : null;
-    const error = new Error(detail || fromError || `HTTP ${response.status}`);
+    const error = new Error(detail || `HTTP ${response.status}`);
     error.status = response.status;
     error.detail = detail;
     if (validationErrors) error.validationErrors = validationErrors;
@@ -187,11 +175,11 @@ export async function throwForStatus(response) {
 }
 
 /**
- * `fetch` that either returns an ok Response or throws in the shape above.
+ * `fetch` that returns an ok Response or throws in the shape above.
  *
- * @param {string} url - Absolute or same-origin URL.
- * @param {RequestInit} [options] - Passed to `fetch` untouched.
- * @returns {Promise<Response>} A response with `ok === true`.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
  */
 export async function fetchOrThrow(url, options) {
     const response = await fetchOrNetworkError(url, options);
@@ -199,50 +187,57 @@ export async function fetchOrThrow(url, options) {
     return response;
 }
 
-// ── Sign-in ─────────────────────────────────────────────────────────────────────────────────
+/**
+ * `fetchOrThrow` followed by `readJson`.
+ *
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<any>}
+ */
+export async function fetchJson(url, options) {
+    return readJson(await fetchOrThrow(url, options));
+}
+
+// ── Sign-in ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * What to tell someone whose sign-in just failed, and whether the box was reachable at all.
+ * What to tell someone whose sign-in failed, and whether the box was reachable at all.
  *
- * Pure on purpose. It used to live in login.js and fire the connectivity re-probe itself, which
- * put a side effect inside a function documented as returning a string — and kept it out of
- * reach of any test that did not load the whole login page. The caller now reads `unreachable`
- * and re-probes, and this table is tested against the responses the servers really send.
+ * Pure: the caller re-probes the connection when `unreachable` is true. Tested against the
+ * responses the servers really send.
  *
  * @param {unknown} error - What the sign-in call threw.
  * @param {object} opts
  * @param {string} opts.unauthorized - What to say when the box refused (differs per path).
- * @param {string} [opts.host] - Host the page was served from, named in the unreachable case.
- * @param {boolean} [opts.detailOnUnauthorized=false] - Prefer the server's own 401 sentence when
- *   it has one. Off for the password form, whose fixed line reads better than "Invalid
- *   credentials"; on for passkeys, where "Credential not found" tells the reader the passkey was
- *   revoked on the box, which the generic line hides.
+ * @param {string} [opts.host] - Named in the unreachable case.
+ * @param {boolean} [opts.detailOnUnauthorized=false] - Prefer the server's own 401 sentence.
+ *   Off for the password form; on for passkeys, where "Credential not found" says the passkey
+ *   was revoked on the box, which the generic line hides.
  * @returns {{ message: string, unreachable: boolean }}
  */
 export function signInFailureMessage(error, { unauthorized, host, detailOnUnauthorized = false }) {
     const e = error && typeof error === 'object' ? error : {};
-    // Two different failures, one meaning for the reader: nothing usable answered. The second is
-    // the commonest outage in production — the web server keeps serving the page while the core
-    // behind it is stopped, so the request is answered, with a 502 nobody can act on.
     if (isNetworkError(e) || isGatewayError(e)) {
         return { message: connectionMessage(host), unreachable: true };
     }
     const detail = typeof e.detail === 'string' ? e.detail : null;
     let message;
     switch (e.status) {
-        // The core allows five attempts a minute. Six wrong passwords is exactly what someone does
-        // when they think they are mistyping, and `HTTP 429` named the rule without stating it.
         case 429: message = 'Too many sign-in attempts. Wait a minute, then try again.'; break;
         case 401: message = (detailOnUnauthorized && detail) || unauthorized; break;
         case 403: message = 'Access denied. Check your API key.'; break;
-        // A field refused before it was looked at: a username under three characters on the
-        // passkey route, over fifty on the password one. The detail is written for a developer.
         case 422: message = 'Check the username you typed, then try again.'; break;
-        // The box is running and something in it threw. An unhandled error reaches Starlette,
-        // which answers plain text with no message — but "there and broken" is a different
-        // sentence from "off", and needs a different action.
         case 500: message = detail || 'The box answered with an internal error. If it persists, send a support report.'; break;
-        default: message = detail || e.message || unauthorized;
+        default:
+            if (typeof e.status === 'number') {
+                message = detail || `The box answered with HTTP ${e.status}.`;
+            } else if (e.name === 'SecurityError') {
+                // WebAuthn refuses a relying-party ID that does not match the address — the
+                // usual case is a box opened by raw IP over plain HTTP.
+                message = 'Passkeys are not available at this address. Open Audiogravity over HTTPS by its name, or sign in with your password.';
+            } else {
+                message = 'Sign-in failed before the box answered. Reload the page and try again.';
+            }
     }
     return { message, unreachable: false };
 }

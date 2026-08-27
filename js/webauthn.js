@@ -8,7 +8,7 @@
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER } from './core/config.js';
 import { getAuthToken } from './auth.js';
-import { fetchOrThrow } from './net-errors.js';
+import { fetchJson } from './net-errors.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -51,12 +51,11 @@ async function webauthnFetch(endpoint, body) {
 
     // Same boundary as auth.js and api.js, deliberately: the two sign-in paths used to build
     // their errors differently and so answered the same outage with different sentences.
-    const res = await fetchOrThrow(`${API_BASE_URL}${endpoint}`, {
+    return fetchJson(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body)
     });
-    return res.json();
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

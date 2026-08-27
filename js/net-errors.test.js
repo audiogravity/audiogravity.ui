@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { asNetworkError, isNetworkError, isGatewayError, connectionMessage, fetchOrThrow, throwForStatus, signInFailureMessage } from './net-errors.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { asNetworkError, isNetworkError, isGatewayError, isRetryableFailure, connectionMessage, fetchOrThrow, throwForStatus, readJson, validationField, signInFailureMessage } from './net-errors.js';
 
 describe('isNetworkError', () => {
     // The regression that started all this: the first version read the browser's error text, and
@@ -33,12 +36,13 @@ describe('isNetworkError', () => {
         expect(isNetworkError(new TypeError('Load failed'))).toBe(false);
     });
 
-    it('treats our own timeout as nothing having answered', () => {
-        // checkConnectivity aborts after 3 s. To the person waiting, an abort and an unreachable
-        // host are the same event.
+    it('does not claim an AbortError', () => {
+        // WebKit rejects a WebAuthn ceremony superseded by another with AbortError — on a box
+        // that answered perfectly well. Reading the name as "nothing answered" told the owner
+        // to check the power on the passkey panel. Only the tag counts.
         const abort = new Error('The operation was aborted.');
         abort.name = 'AbortError';
-        expect(isNetworkError(abort)).toBe(true);
+        expect(isNetworkError(abort)).toBe(false);
     });
 
     it.each([401, 403, 404, 500, 502])('does not claim a %i as a network failure', (status) => {
@@ -175,10 +179,33 @@ describe('throwForStatus — one error shape for every caller', () => {
         expect(isGatewayError(err)).toBe(true);
     });
 
-    it('reads slowapi\'s wording under `error`', async () => {
+    it('reads slowapi\'s wording under `error` as something the server said', async () => {
+        // `detail` must carry it too: isGatewayError reads a 503 by whether a message exists,
+        // and a 503 worded under `error` was being thrown away as a dead box.
         const err = await throwForStatus(res(429, { error: 'Rate limit exceeded: 5 per 1 minute' })).catch(e => e);
         expect(err.message).toBe('Rate limit exceeded: 5 per 1 minute');
-        expect(err.detail).toBeNull();
+        expect(err.detail).toBe('Rate limit exceeded: 5 per 1 minute');
+        const said503 = await throwForStatus(res(503, { error: 'maintenance window' })).catch(e => e);
+        expect(isGatewayError(said503)).toBe(false);
+    });
+
+    it('marks the service worker\'s offline answer as final — not worth a retry', async () => {
+        // Retried three times per call, from every poller on the page, the installed app on a
+        // phone hammered a switched-off box the service worker had already given up on.
+        const err = await throwForStatus(res(503, { error: 'offline', status: 'offline' })).catch(e => e);
+        expect(isNetworkError(err)).toBe(true);
+        expect(isRetryableFailure(err)).toBe(false);
+        expect(isRetryableFailure(asNetworkError(new TypeError('Failed to fetch')))).toBe(true);
+        expect(isRetryableFailure(Object.assign(new Error('x'), { status: 500 }))).toBe(false);
+    });
+
+    it('uses the very literal the service worker writes', () => {
+        // sw.js cannot import from js/, so this parse is the only link between the two.
+        const sw = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'sw.js'), 'utf8');
+        const m = sw.match(/JSON\.stringify\(\{\s*error:\s*'([a-z]+)'[^}]*\}\),\s*\{\s*status:\s*(\d+)/);
+        expect(m, 'the offline answer in sw.js has moved or changed shape').not.toBeNull();
+        expect(m[1]).toBe('offline');
+        expect(Number(m[2])).toBe(503);
     });
 
     it('joins a 422 field list into one line and keeps it raw underneath', async () => {
@@ -186,6 +213,28 @@ describe('throwForStatus — one error shape for every caller', () => {
         expect(err.detail).toBe('username: too short; password: required');
         expect(err.message).toBe('username: too short; password: required');
         expect(err.validationErrors).toHaveLength(2);
+    });
+});
+
+describe('readJson', () => {
+    it('tags a body read the connection dropped, which a retry can fix', async () => {
+        const dropped = { json: async () => { throw new TypeError('The network connection was lost.'); } };
+        const err = await readJson(dropped).catch(e => e);
+        expect(isNetworkError(err)).toBe(true);
+    });
+
+    it('leaves a body that is not JSON alone — no retry will change it', async () => {
+        const bad = { json: async () => { throw new SyntaxError('Unexpected token <'); } };
+        const err = await readJson(bad).catch(e => e);
+        expect(isNetworkError(err)).toBe(false);
+        expect(err).toBeInstanceOf(SyntaxError);
+    });
+});
+
+describe('validationField', () => {
+    it('drops the leading body/query and joins the rest', () => {
+        expect(validationField({ loc: ['body', 'properties', 'nice'] })).toBe('properties.nice');
+        expect(validationField({})).toBe('unknown');
     });
 });
 
@@ -250,6 +299,21 @@ describe('signInFailureMessage — checked against what the servers really send'
     });
 
     it('survives being handed nothing at all', () => {
-        expect(signInFailureMessage(undefined, opts).message).toBe(opts.unauthorized);
+        expect(signInFailureMessage(undefined, opts).message).toMatch(/Reload the page/);
+    });
+
+    it('never shows a bare status line for a status it has no sentence for', () => {
+        expect(signInFailureMessage(http(404), opts).message).toBe('The box answered with HTTP 404.');
+    });
+
+    it('explains a WebAuthn SecurityError instead of quoting the engine', () => {
+        const err = Object.assign(new Error('The operation is insecure.'), { name: 'SecurityError' });
+        expect(signInFailureMessage(err, opts).message).toMatch(/HTTPS/);
+        expect(signInFailureMessage(err, opts).unreachable).toBe(false);
+    });
+
+    it('does not read a superseded WebAuthn ceremony as an unreachable box', () => {
+        const err = Object.assign(new Error('aborted'), { name: 'AbortError' });
+        expect(signInFailureMessage(err, opts).unreachable).toBe(false);
     });
 });

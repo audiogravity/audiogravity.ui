@@ -1,6 +1,6 @@
 import { html } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { isNetworkError } from './net-errors.js';
+import { isNetworkError, isGatewayError } from './net-errors.js';
 
 // Toast durations (ms)
 const TOAST_DURATION_DEFAULT = 4000;
@@ -10,25 +10,20 @@ const TOAST_REMOVE_DELAY = 300;
 
 // User-friendly error messages (ENGLISH)
 //
-// Every fetch that feeds this function now goes through the boundary in net-errors.js, which
-// tags a transport failure by shape; the shape test at the top of getUserFriendlyError is what
-// catches it. The three transport wordings below are kept for one reason only: a
-// FetchController may be given a custom `fetchFn`, and a rejection from code outside this
-// codebase arrives here as a plain Error with no tag. `Load failed` is WebKit's and was missing
-// until an iPad reported a switched-off box as a wrong password. All three map to the same
-// sentence as the shape test — one condition, one wording.
+// Keyed on message text, so only for errors that carry no status. A transport failure is not
+// recognised here by its wording — every fetch in this codebase goes through the boundary in
+// net-errors.js, which tags it, and getUserFriendlyError reads the tag. Gateway statuses are
+// read from the status for the same reason: this table and isGatewayError must not classify the
+// same 502 in opposite directions.
 const ErrorMessages = {
-    'Failed to fetch': 'Unable to connect to server. Please check your connection.',
-    'Load failed': 'Unable to connect to server. Please check your connection.',
-    'NetworkError': 'Unable to connect to server. Please check your connection.',
     'HTTP 401': 'Invalid API key. Please check your configuration.',
     'HTTP 403': 'Access denied. Insufficient permissions.',
     'HTTP 404': 'Resource not found.',
-    'HTTP 500': 'Server error. Please try again later.',
-    'HTTP 502': 'Bad gateway. Server is temporarily unavailable.',
-    'HTTP 503': 'Service temporarily unavailable. Please try again later.',
-    'HTTP 504': 'Gateway timeout. Server took too long to respond.'
+    'HTTP 500': 'Server error. Please try again later.'
 };
+
+/** The four toast types the component styles; anything else is a wrong argument order. */
+const TOAST_TYPES = new Set(['success', 'error', 'warning', 'info']);
 
 /**
  * Get a user-friendly error message from an Error object
@@ -36,9 +31,10 @@ const ErrorMessages = {
  * @returns {string} - User-friendly message
  */
 export function getUserFriendlyError(error) {
-    // Shape before wording: a failure that never reached the server is recognisable by carrying
-    // no HTTP status, in every engine, whereas its sentence differs in each of them.
-    if (isNetworkError(error)) return 'Unable to connect to server. Please check your connection.';
+    // Shape before wording: nothing answered, or only a proxy did on behalf of a stopped core.
+    if (isNetworkError(error) || isGatewayError(error)) {
+        return 'Unable to connect to server. Please check your connection.';
+    }
 
     // `error?.` and not `error.`: the shape guard above returns false for null, and this line then
     // threw — so the error reporter crashed instead of the error, taking the screen with it.
@@ -81,6 +77,12 @@ export function handleError(error, context = '') {
  * @param {number} duration - Duration in ms before auto-hide
  */
 export function showToast(type, title, message, duration = TOAST_DURATION_DEFAULT) {
+    // A wrong string is still a string: six calls once passed (message, type) and rendered an
+    // unstyled notice headed "success". Say so where it can be seen, and still show something.
+    if (!TOAST_TYPES.has(type)) {
+        console.error(`[toast] "${type}" is not a toast type — the call is showToast(type, title, message)`);
+        type = 'info';
+    }
     const container = document.getElementById('toastContainer');
     if (!container) return;
 

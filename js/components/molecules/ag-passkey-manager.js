@@ -76,7 +76,7 @@ export class AgPasskeyManager extends LitElement {
             showToast('success', 'Passkey Removed', `${deviceName} has been removed.`);
             await this._loadCredentials();
         } catch (err) {
-            showToast('error', 'Delete Failed', err.message || 'Unknown error');
+            showToast('error', 'Delete Failed', getUserFriendlyError(err));
         }
     }
 

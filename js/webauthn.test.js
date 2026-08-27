@@ -93,7 +93,7 @@ describe('webauthnFetch — what a refusal and a dead network look like to the c
         fetch.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({ error: 'Rate limit exceeded: 5 per 1 minute' }) });
         const err = await loginWithPasskey('alice').catch(e => e);
         expect(err.status).toBe(429);
-        expect(err.detail).toBeNull();
+        expect(err.detail).toBe('Rate limit exceeded: 5 per 1 minute');
         expect(err.message).toBe('Rate limit exceeded: 5 per 1 minute');
     });
 

@@ -11,6 +11,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
+import { isNetworkError, isGatewayError } from '../../net-errors.js';
 import { apiGet, apiPost } from '../../api.js';
 import { showToast, downloadTextFile } from '../../ui-helpers.js';
 import { planLabel } from '../utils-lit.js';
@@ -132,14 +133,18 @@ export class AgLicenseActivation extends LitElement {
             localStorage.removeItem(STORAGE_KEY);
             this._result = result;
             this._step   = 3;
-            this.dispatchEvent(new CustomEvent('license-activated', { detail: result, bubbles: true }));
-            window.dispatchEvent(new CustomEvent('ag:license-changed', { detail: { source: 'activation' } }));
-            showToast('success', 'License', 'License activated successfully.');
+            // Listeners run outside the try: a fault in one used to be read as the licence
+            // server being down, and the key was kept for a retry that would answer 409.
+            queueMicrotask(() => {
+                this.dispatchEvent(new CustomEvent('license-activated', { detail: result, bubbles: true }));
+                window.dispatchEvent(new CustomEvent('ag:license-changed', { detail: { source: 'activation' } }));
+                showToast('success', 'License', 'License activated successfully.');
+            });
         } catch (e) {
-            const status = e?.status ?? 0;
+            const status = e?.status;
             if (status === 409) {
                 this._activateError = 'This license is already activated on another machine.';
-            } else if (status === 503 || status === 0) {
+            } else if (status === 503 || isNetworkError(e) || isGatewayError(e)) {
                 this._activateError = 'License server temporarily unavailable. Please retry.';
                 localStorage.setItem(STORAGE_KEY, key);
             } else {

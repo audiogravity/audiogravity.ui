@@ -127,7 +127,7 @@ export class AgLicenseStatus extends LitElement {
         try {
             this._status = await apiGet('/license/status');
         } catch (err) {
-            this._error = err.message || 'Unable to fetch license status.';
+            this._error = getUserFriendlyError(err);
             showToast('error', 'License error', this._error);
         } finally {
             this._loading = false;
@@ -234,7 +234,7 @@ export class AgLicenseStatus extends LitElement {
             window.dispatchEvent(new CustomEvent('ag:license-changed'));
             showToast('success', 'License removed', 'The license has been deleted. Audiogravity is running in Starter Edition.');
         } catch (err) {
-            showToast('error', 'Deletion failed', err.message || 'Could not delete the license.');
+            showToast('error', 'Deletion failed', getUserFriendlyError(err));
         } finally {
             this._deleting = false;
         }
