@@ -99,6 +99,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
 | GET | `/library/highresaudio-playlists?type=editorial\|mine` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins |
 | GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
+| GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
 > **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
 > string and the ONLY value `/library/highresaudio-category` accepts; four categories come
@@ -113,6 +114,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > and to `POST /library/queue`, and no caller ever has to guess which tree it came from.
 > `type` still exists on both routes and stays authoritative when the prefix is absent.
 > An account with no playlist of its own answers `200 []`, not an error.
+
+> **HRA Vault — the id names its tree, and the tree is not the catalogue.** A purchased
+> album is listed as `vault:<album>_<transaction>`; the prefix travels back untouched to
+> `POST /library/queue` (`item_type` `album`, or `track` with a `vault:`-prefixed
+> `playlistAdd`). HRA keeps purchases on separate routes that do not answer for catalogue
+> ids and vice versa, so the prefix is what selects them — never the id's shape. A Vault id
+> is not a favourite: do not pass one to the favorites routes.
 
 > **HRA genres — `path` is the key, never the title.** Sub-genre titles repeat across genres,
 > and sixteen of them carry the name of a top-level genre (`Soundtrack/Soundtrack`), so only
@@ -385,8 +393,8 @@ core refuses the play instead, naming the daemon.
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`) |
-| POST | `/highresaudio/connection` | Log in — body `{username, password}` (401 on bad credentials / no subscription) |
+| GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`, `has_subscription`). `subscription` is HRA's own word for the session — `SUBSCRIPTION` or `NO SUBSCRIPTION`; `has_subscription` is `false` when the account can play only its purchases (the Vault): the catalogue, favourites and playlists refuse that session. `null` while disconnected. A client reading a core that predates the field must treat its absence as subscribed |
+| POST | `/highresaudio/connection` | Log in — body `{username, password}`. 401 when HRA issues no session (bad credentials). An account without a subscription IS connected, with `has_subscription: false` |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
 | GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
 

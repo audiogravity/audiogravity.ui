@@ -22,3 +22,22 @@ const Template = () => {
 };
 
 export const Default = Template.bind({});
+
+/**
+ * An account that bought albums but holds no subscription. HRA signs it in all the
+ * same; the line under the name says it can play its purchases only, which is why
+ * the browse will offer it the Vault alone. Rendered from a fixed state rather than
+ * from the core, so it shows without such an account at hand.
+ */
+export const PurchasesOnly = () => {
+    const el = document.createElement('ag-highresaudio-output');
+    el.style.cssText = 'display:block;max-width:420px;padding:8px;';
+    el._loadConnection = async () => {
+        el._connection = {
+            connected: true, username: 'listener@example.org',
+            subscription: 'NO SUBSCRIPTION', has_subscription: false,
+        };
+        el._loading = false;
+    };
+    return el;
+};

@@ -374,6 +374,12 @@ export class AgLibraryPage extends LitElement {
      */
     async _onSourcesChanged() {
         await Promise.all([this._syncActiveSource({ force: true }), this._loadUpnpServers()]);
+        // The browse stays mounted across tabs (the views only toggle a class), so
+        // nothing remounts it when an account changes on the sources view — it kept
+        // offering what the PREVIOUS account could do, however the reader came back
+        // to it. This event is the one signal every such change sends; reloading
+        // here repairs the browse for all of them, invisibly when it is off-screen.
+        this._refreshBrowse();
     }
 
     async _loadUpnpServers() {
@@ -470,10 +476,20 @@ export class AgLibraryPage extends LitElement {
         return normalizeSearchSources(raw, this._upnpServers);
     }
 
-    _navigate(view) {
+    /**
+     * Show a view, mapping 'browse' to the UPnP browser when the active source is
+     * one — the ONE home of that mapping. No reload: the tab bar goes through here,
+     * and a tab switch must stay free (the browse keeps its grid and its scroll).
+     * @param {string} view
+     */
+    _setView(view) {
         if (view === 'browse' && this._isUpnp(this._sourceId)) view = 'upnp-browser';
         this._view = view;
-        if (view === 'browse') this._refreshBrowse();
+    }
+
+    _navigate(view) {
+        this._setView(view);
+        if (this._view === 'browse') this._refreshBrowse();
     }
 
     _refreshBrowse() {
@@ -545,9 +561,7 @@ export class AgLibraryPage extends LitElement {
         this._artistId = '';
         this._artistName = '';
         const map = { browse: 'browse', search: 'search', queue: 'queue', library: 'library', radio: 'radio' };
-        let view = map[e.detail.tab] ?? 'browse';
-        if (view === 'browse' && this._isUpnp(this._sourceId)) view = 'upnp-browser';
-        this._view = view;
+        this._setView(map[e.detail.tab] ?? 'browse');
     }
 
     _isRoon(sourceId) {

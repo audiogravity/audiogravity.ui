@@ -25,7 +25,11 @@ vi.mock('lit', () => ({
 }));
 const apiGetMock = vi.fn(async () => []);
 vi.mock('../../api.js', () => ({ apiGet: (...a) => apiGetMock(...a) }));
-vi.mock('../../library-store.js', () => ({ subscribePlayerState: () => () => {} }));
+vi.mock('../../library-store.js', () => ({
+    subscribePlayerState: () => () => {},
+    getHraConnection: async () => null,
+    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+}));
 vi.mock('../utils-lit.js', () => ({
     coverUrl: () => '',
     loadWithState: async (_h, fn) => fn(),
