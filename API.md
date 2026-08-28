@@ -93,18 +93,20 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-categories` | HRA shop categories — `[{title, label}]`, in the order HRA publishes them |
 | GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
 | GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
-| GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]` |
+| GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]`, **alphabetical at both levels** |
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
 | GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
 | GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
-| GET | `/library/highresaudio-playlists?type=editorial\|mine` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins |
+| GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf |
 | GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
 | GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
 > **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
 > string and the ONLY value `/library/highresaudio-category` accepts; four categories come
 > back in German whatever the language asked for, so the core carries a `label` to display
-> instead (*Hörtipps* → *Tips*). `label` equals `title` for every other category. Passing a
+> instead — HRA's own English wording (*Hörtipps* → *Listening Tips*, *Top Alben* → *Top
+> Albums*, *Neuheiten* → *New Release*, *Neue Alben hinzugefügt* → *Recently Added*).
+> `label` equals `title` for every other category. Passing a
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
 
@@ -121,6 +123,26 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > `playlistAdd`). HRA keeps purchases on separate routes that do not answer for catalogue
 > ids and vice versa, so the prefix is what selects them — never the id's shape. A Vault id
 > is not a favourite: do not pass one to the favorites routes.
+
+> **HRA editorial shelves — `category`, and why omitting it is not the same as listing them all.**
+> HRA files its editorial selections on shelves (`New Releases`, `Recommended`, `Popular`,
+> `Moods`) and filters them server-side, so a client never pulls the whole tree to sort it.
+> The value is **not** checked against that list: HRA publishes no endpoint enumerating it,
+> an unknown value answers `200 []` rather than an error, and a shelf they add tomorrow
+> therefore works with no core release. **Omit `category` for every selection** — measured
+> 2026-08-28, the four shelves hold 1748 of 1762, so fourteen carry no category at all and
+> appear under no shelf. A client offering only the four hides them. Ignored for `type=mine`:
+> the account's own playlists have no such field.
+
+> **HRA ordering — what the core sorts, and what it leaves alone.** HIGHRESAUDIO publishes its
+> genres in no usable order and its search hits in none at all, and asked (2026-08-28) for the
+> alphabet. The core therefore sorts, case-folded, two things and only two: the **genres and
+> their sub-genres** on `/library/highresaudio-genres`, and the **artists** of
+> `/library/search?source_id=src_highresaudio`. Everything else keeps the order HIGHRESAUDIO
+> gives it — the shop categories (their own shelf order), the album grids, and the **albums** of
+> a search, which stay in relevance order. Artists are capped first and sorted second, so the
+> cap keeps the best matches and the alphabet only decides how they are shown. This is
+> unrelated to `sort=` on `/library/albums`, which streaming sources still ignore.
 
 > **HRA genres — `path` is the key, never the title.** Sub-genre titles repeat across genres,
 > and sixteen of them carry the name of a top-level genre (`Soundtrack/Soundtrack`), so only

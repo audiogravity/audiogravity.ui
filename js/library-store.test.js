@@ -290,7 +290,7 @@ describe('getSnapshot', () => {
 import { getHraCategories } from './library-store.js';
 
 describe('getHraCategories', () => {
-    const CATS = [{ title: 'Hörtipps', label: 'Tips' }];
+    const CATS = [{ title: 'Hörtipps', label: 'Listening Tips' }];
 
     beforeEach(() => { _apiGet.mockReset(); });
 

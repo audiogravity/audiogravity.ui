@@ -77,8 +77,10 @@ const HRA_GENRES_PILL = ['genres', 'Genres'];
 const HRA_PLAYLISTS_PILL = ['playlists', 'Playlists'];
 // Third entry: the shelf heading. It is NOT the pill label plus the word "playlists" —
 // that reading gave "Mine playlists". A button and a heading are not the same sentence.
+/** The tree HRA publishes itself — the only one with shelves under it. */
+const HRA_PLAYLIST_EDITORIAL = 'editorial';
 const HRA_PLAYLIST_KINDS = [
-    ['editorial', 'Editorial', 'Editorial playlists'],
+    [HRA_PLAYLIST_EDITORIAL, 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
 ];
 // The albums the account bought — HRA's VirtualVault, a second tree beside the
@@ -88,8 +90,26 @@ const HRA_PLAYLIST_KINDS = [
 // and answers NO SUBSCRIPTION to everything but its purchases — so a bar that
 // offered Favorites or a shelf would offer buttons that fail.
 const HRA_VAULT_PILL = ['vault', 'Vault'];
+// The shelves HRA files its editorial selections on — its own `category` field,
+// filtered server-side. Hard-coded rather than fetched: HRA publishes no endpoint
+// listing them, and the four are documented (three at §5.4 of their spec, `Moods`
+// measured live on 2026-08-28). Leading with "All" is what makes them a filter and
+// not a partition: fourteen selections carry no category at all — measured by
+// walking the whole tree, and they are titles like *Mr. Slowhand — Eric Clapton*,
+// not rubbish. Any shelf HRA adds later still appears under All until it is listed
+// here, and asking for an unknown one answers empty rather than failing.
+const HRA_PLAYLIST_ALL = '';
+const HRA_PLAYLIST_CATEGORIES = [
+    [HRA_PLAYLIST_ALL, 'All'],
+    ['New Releases', 'New Releases'],
+    ['Recommended', 'Recommended'],
+    ['Popular', 'Popular'],
+    ['Moods', 'Moods'],
+];
 /** Label of the pill that stands for a whole genre rather than one of its sub-genres. */
 const HRA_WHOLE_GENRE_LABEL = 'All';
+/** What a card or a row says to tell a playlist from an album, on every streaming source. */
+const PLAYLIST_TAG = 'Playlist';
 /**
  * Prefix marking a pill that addresses an HRA shop category by title. The title is a
  * key, not a display string: it is what the core takes on
@@ -112,6 +132,7 @@ export class AgLibraryBrowse extends LitElement {
         _hraGenres:   { state: true },
         _genre:       { state: true },
         _playlistKind: { state: true },
+        _playlistCategory: { state: true },
         _hraSubscribed: { state: true },
         _filter:      { state: true },
         _loading:     { state: true },
@@ -137,6 +158,8 @@ export class AgLibraryBrowse extends LitElement {
         this._genre       = null;
         /** @type {string} Which HRA playlist tree is shown: 'editorial' or 'mine'. */
         this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
+        /** @type {string} Which HRA shelf the editorial tree is narrowed to; '' = all. */
+        this._playlistCategory = HRA_PLAYLIST_ALL;
         /**
          * @type {boolean} Whether the HRA account may stream the catalogue — always
          * `hraHasSubscription(...)` of the last connection read, so "unknown" is
@@ -148,6 +171,7 @@ export class AgLibraryBrowse extends LitElement {
         this._edges       = new ScrollEdgesController(this); // filter-bar overflow markers
         this._genreEdges  = new ScrollEdgesController(this); // genre-strip overflow markers
         this._playlistEdges = new ScrollEdgesController(this); // playlist-strip markers
+        this._shelfEdges  = new ScrollEdgesController(this); // shelf-strip markers
         this._filter      = 'all';
         this._loading     = false;
         this._loadingMore = false;
@@ -178,11 +202,16 @@ export class AgLibraryBrowse extends LitElement {
     get _isVault() { return this._isHighresaudio && this._filter === HRA_VAULT_PILL[0]; }
 
     /**
-     * @returns {boolean} Whether the grid offers the ★. A purchase is not a favourite:
-     * the star addresses the catalogue by catalogue id, and a Vault id is not one —
-     * and on an account without a subscription the favourites are refused anyway.
+     * @returns {boolean} Whether the grid offers the ★. The star writes the item id to
+     * the service's ALBUM favourites, so it may only be offered where the grid holds
+     * albums. A purchase is not one — a Vault id is not a catalogue id, and an account
+     * without a subscription is refused the favourites anyway. Nor is a playlist: the
+     * star on a playlist card sent `editorial:42` to HRA's My Album, an id that route
+     * has never heard of. Same conflation as the untagged card, same answer.
      */
-    get _showsFavorites() { return this._isStreaming && !this._isVault; }
+    get _showsFavorites() {
+        return this._isStreaming && !this._isVault && !this._showsPlaylists;
+    }
 
     updated(changed) {
         // Reload on a source switch or when entering/leaving/changing artist mode.
@@ -195,6 +224,7 @@ export class AgLibraryBrowse extends LitElement {
                 : this._isHighresaudio ? this._hraLandingFilter : 'favorites';
             this._genre = null;
             this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
+            this._playlistCategory = HRA_PLAYLIST_ALL;
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
@@ -207,6 +237,7 @@ export class AgLibraryBrowse extends LitElement {
         watch(this._edges, 'filters');
         watch(this._genreEdges, 'genres');
         watch(this._playlistEdges, 'playlists');
+        watch(this._shelfEdges, 'shelves');
         // Only when the pills themselves can have changed. Measuring on every update
         // would read the strip's geometry right after a DOM mutation — a forced layout
         // per appended album page, and per ★ toggled anywhere in the app.
@@ -392,6 +423,11 @@ export class AgLibraryBrowse extends LitElement {
         }
         if (this._filter === HRA_PLAYLISTS_PILL[0]) {
             params.set('type', this._playlistKind);
+            // Only the editorial tree has shelves; the account's own playlists carry
+            // no category, and the core ignores the parameter there anyway.
+            if (this._showsEditorialShelves && this._playlistCategory) {
+                params.set('category', this._playlistCategory);
+            }
             return apiGet(`/library/highresaudio-playlists?${params}`);
         }
         if (this._filter === HRA_GENRES_PILL[0]) {
@@ -460,18 +496,35 @@ export class AgLibraryBrowse extends LitElement {
     // Playback helpers
     // ------------------------------------------------------------------
 
-    _albumOpts(album, action) {
+    /**
+     * @returns {string} The glyph shown behind a missing cover. One value for the card
+     * and the row: the same coverless playlist appears in both — the grid on top, the
+     * list below — so two answers would put a disc and a list side by side in one
+     * viewport for one item.
+     */
+    get _playlistFallback() { return this._showsPlaylists ? 'list' : 'album'; }
+
+    /**
+     * @returns {boolean} Whether the grid on screen holds playlists rather than albums.
+     * Every streaming service maps its playlists onto the album model so one grid
+     * renders both — which is why, until this was read at render time, nothing on a
+     * card told a playlist from an album. HIGHRESAUDIO's audit named that first.
+     */
+    get _showsPlaylists() {
         const TIDAL_PLAYLIST_FILTERS = ['playlists', 'editorial', 'charts'];
-        const isPlaylist = (this._isQobuz && this._filter === 'playlists')
+        return (this._isQobuz && this._filter === 'playlists')
             || (this._isTidal && TIDAL_PLAYLIST_FILTERS.includes(this._filter))
             // The id the core listed already names its family ('mine:5549'), so it
             // travels back untouched — the interface never builds one.
             || (this._isHighresaudio && this._filter === HRA_PLAYLISTS_PILL[0]);
+    }
+
+    _albumOpts(album, action) {
         return {
             sourceId:  this.sourceId,
             zoneId:    this.zoneId,
             itemId:    album.id,
-            itemType:  isPlaylist ? 'playlist' : 'album',
+            itemType:  this._showsPlaylists ? 'playlist' : 'album',
             action,
             artistId:  album.artist,
             hierarchy: 'browse',
@@ -524,7 +577,7 @@ export class AgLibraryBrowse extends LitElement {
                 <div class="lib-ac-wrap">
                     <ag-library-cover
                         cover=${cover}
-                        fallback="album"
+                        fallback=${this._playlistFallback}
                         size="120"
                     ></ag-library-cover>
                     <ag-library-add-btn
@@ -541,18 +594,26 @@ export class AgLibraryBrowse extends LitElement {
                 </div>
                 <div class="lib-ac-t">${album.title}</div>
                 <div class="lib-ac-a">${album.artist ?? ''}</div>
-                ${album.year ? html`<div class="lib-ac-fmt">${album.year}</div>` : nothing}
+                ${this._showsPlaylists
+                    // The slot an album gives its year, a playlist gives its kind:
+                    // the one word that keeps the two apart on an otherwise identical
+                    // card. A playlist has no year, so the slot is never contested.
+                    ? html`<div class="lib-ac-fmt">${PLAYLIST_TAG}</div>`
+                    : album.year ? html`<div class="lib-ac-fmt">${album.year}</div>` : nothing}
             </div>
         `;
     }
 
     _renderListRow(album) {
+        const byline = album.artist ?? '';
         return html`
             <ag-library-list-row
                 cover=${coverUrl(album.cover_token)}
-                fallback="album"
+                fallback=${this._playlistFallback}
                 title=${album.title}
-                subtitle=${album.artist ?? ''}
+                subtitle=${this._showsPlaylists
+                    ? (byline ? `${PLAYLIST_TAG} · ${byline}` : PLAYLIST_TAG)
+                    : byline}
                 actionable
                 @row-click=${() => this._playAlbum(album)}
                 @row-action=${() => this._addAlbumToQueue(album)}
@@ -630,6 +691,12 @@ export class AgLibraryBrowse extends LitElement {
         // use that very filter value for their own playlists, and without this guard
         // their grid was titled "Editorial playlists" too.
         if (this._isHighresaudio && this._filter === HRA_PLAYLISTS_PILL[0]) {
+            // A chosen shelf names the grid — "Popular", not "Editorial playlists",
+            // which the strip above already says. Same reasoning as a genre naming
+            // its own grid rather than repeating the word "Genres".
+            if (this._showsEditorialShelves && this._playlistCategory) {
+                return this._playlistCategory;
+            }
             const kind = HRA_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
             return kind ? kind[2] : HRA_PLAYLISTS_PILL[1];
         }
@@ -766,13 +833,50 @@ export class AgLibraryBrowse extends LitElement {
         });
     }
 
+    /** @returns {boolean} Whether HRA's editorial tree — the one with shelves — is up. */
+    get _showsEditorialShelves() {
+        return this._isHighresaudio
+            && this._filter === HRA_PLAYLISTS_PILL[0]
+            && this._playlistKind === HRA_PLAYLIST_EDITORIAL;
+    }
+
     /**
-     * @private Switch between HRA's two playlist trees.
+     * @private The shelf strip, under the two trees and only over the editorial one:
+     * 1762 selections in one undifferentiated pile is not a shelf, it is a heap. It
+     * sits below rather than replacing the trees, so "Mine" stays one tap away — and
+     * it opens on "All", so the grid is already full before anything is chosen.
+     */
+    _renderPlaylistCategories() {
+        if (!this._showsEditorialShelves) return nothing;
+        return this._renderStrip({
+            strip: 'shelves',
+            edges: this._shelfEdges,
+            pills: HRA_PLAYLIST_CATEGORIES,
+            active: this._playlistCategory,
+            pick: (cat) => this._setPlaylistCategory(cat),
+        });
+    }
+
+    /**
+     * @private Switch between HRA's two playlist trees. Leaving the editorial one
+     * takes its shelf with it: coming back to a narrowed tree with no strip on
+     * screen to widen it is a dead end.
      * @param {string} kind
      */
     _setPlaylistKind(kind) {
         if (kind === this._playlistKind) return;
         this._playlistKind = kind;
+        this._playlistCategory = HRA_PLAYLIST_ALL;
+        this._load();
+    }
+
+    /**
+     * @private Narrow the editorial tree to one HRA shelf, or widen it back with ''.
+     * @param {string} category
+     */
+    _setPlaylistCategory(category) {
+        if (category === this._playlistCategory) return;
+        this._playlistCategory = category;
         this._load();
     }
 
@@ -819,6 +923,7 @@ export class AgLibraryBrowse extends LitElement {
             ${this._renderFilters()}
             ${this._renderGenres()}
             ${this._renderPlaylistKinds()}
+            ${this._renderPlaylistCategories()}
 
             ${_error ? html`<div class="lib-empty">Error: ${_error}</div>`
               : _loading ? html`<div class="lib-loading">Loading…</div>`
