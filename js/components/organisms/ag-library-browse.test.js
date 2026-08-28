@@ -45,6 +45,20 @@ vi.mock('../molecules/ag-library-list-row.js', () => ({}));
 
 import { AgLibraryBrowse } from './ag-library-browse.js';
 
+/**
+ * Flatten a lit template to the text it would render — STRINGS INTERLEAVED WITH VALUES.
+ *
+ * Reading `tpl.values` alone is what makes a template assertion decorative: a literal
+ * attribute (`fallback="album"`) lives in `strings`, so a test looking for it in
+ * `values` passes whether the code interpolates or hardcodes. Verified by reverting
+ * the fix and watching the assertion hold.
+ */
+const text = (tpl) => {
+    if (!tpl || typeof tpl !== 'object') return String(tpl ?? '');
+    if (Array.isArray(tpl)) return tpl.map(text).join('');
+    return (tpl.strings ?? []).reduce((out, s, i) => out + s + text(tpl.values?.[i]), '');
+};
+
 function makeEl(overrides = {}) {
     return Object.assign(Object.create(AgLibraryBrowse.prototype), {
         sourceId: 'src_qobuz', zoneId: '', artistId: '', artistName: '',
@@ -99,7 +113,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
     // German title it relabels for display while keeping it as the addressing key.
     const CATEGORIES = [
         { title: 'Editors Choice', label: 'Editors Choice' },
-        { title: 'Hörtipps', label: 'Tips' },
+        { title: 'Hörtipps', label: 'Listening Tips' },
     ];
 
     /** An instance with the categories already loaded. */
@@ -111,12 +125,12 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     it('builds one pill per category, behind Favorites, in the order HRA publishes them', () => {
         expect(hraEl()._pills.map(([, label]) => label))
-            .toEqual(['Favorites', 'Vault', 'Genres', 'Playlists', 'Editors Choice', 'Tips']);
+            .toEqual(['Favorites', 'Vault', 'Genres', 'Playlists', 'Editors Choice', 'Listening Tips']);
     });
 
     it('shows the label but keys the pill on the title HRA answers with', () => {
         const [, tips] = hraEl()._pills.filter(([f]) => f.startsWith('cat:'));
-        expect(tips).toEqual(['cat:Hörtipps', 'Tips']);
+        expect(tips).toEqual(['cat:Hörtipps', 'Listening Tips']);
     });
 
     it('keeps the entries of our own until the categories arrive', () => {
@@ -148,7 +162,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
     it('_sectionLabel titles the grid with the displayed label, not the German title', () => {
         const el = hraEl();
         el._filter = 'cat:Hörtipps';
-        expect(el._sectionLabel).toBe('Tips');
+        expect(el._sectionLabel).toBe('Listening Tips');
     });
 
     it('takes the list from the store, which owns the caching', async () => {
@@ -501,15 +515,17 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
         }
     });
 
-    it('forgets which tree was open when the source changes', () => {
-        const el = plEl({ _playlistKind: 'mine' });
+    it('forgets which tree was open, and which shelf, when the source changes', () => {
+        const el = plEl({ _playlistKind: 'mine', _playlistCategory: 'Popular' });
         el._syncObserver = () => {};
         el._edges = { attach() {}, measure() {} };
         el._genreEdges = { attach() {}, measure() {} };
         el._playlistEdges = { attach() {}, measure() {} };
+        el._shelfEdges = { attach() {}, measure() {} };
         el.querySelector = () => null;
         el.updated(new Map([['sourceId', 'src_qobuz']]));
         expect(el._playlistKind).toBe('editorial');
+        expect(el._playlistCategory).toBe('');
     });
 
     it('titles the grid with the tree on screen', () => {
@@ -517,5 +533,157 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
         // reads "Mine", the shelf above the grid must read "My playlists".
         expect(plEl()._sectionLabel).toBe('Editorial playlists');
         expect(plEl({ _playlistKind: 'mine' })._sectionLabel).toBe('My playlists');
+    });
+});
+
+describe('ag-library-browse — a playlist is told from an album', () => {
+    // Every streaming service maps its playlists onto the album model, so one grid
+    // renders both — and nothing on a card said which was which. HIGHRESAUDIO's
+    // audit named it first: "it is very important that you differentiate".
+
+    it('knows the playlist grids of all three services, and no other pill', () => {
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' })._showsPlaylists).toBe(true);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists' })._showsPlaylists).toBe(true);
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'charts' })._showsPlaylists).toBe(true);
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' })._showsPlaylists).toBe(false);
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' })._showsPlaylists).toBe(false);
+        expect(makeEl({ sourceId: 'src_mpd', _filter: 'all' })._showsPlaylists).toBe(false);
+    });
+
+    it('tags a playlist card, in the slot an album gives its year', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists', _fav: { has: () => false } });
+        const card = text(el._renderAlbumCard({ id: 'editorial:1', title: 'Montreux', artist: 'Jazz' }));
+        expect(card).toContain('Playlist');
+    });
+
+    it('leaves an album card alone — its year, or nothing', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites', _fav: { has: () => false } });
+        const card = text(el._renderAlbumCard({ id: 'alb1', title: 'Kind of Blue', year: 1959 }));
+        expect(card).toContain('1959');
+        expect(card).not.toContain('Playlist');
+    });
+
+    it('says it on a list row too, ahead of the byline', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' });
+        const row = el._renderListRow({ id: 'editorial:1', title: 'Montreux', artist: 'Editor’s Pick' });
+        expect(row.values).toContain('Playlist · Editor’s Pick');
+        expect(row.values).toContain('list');   // not the album glyph behind the cover
+    });
+
+    it('queues from the same answer it renders from', () => {
+        const el = makeEl({ sourceId: 'src_tidal', _filter: 'editorial' });
+        expect(el._albumOpts({ id: 'p1', title: 'x' }, 'play').itemType).toBe('playlist');
+    });
+});
+
+describe('ag-library-browse — the ★ is offered only where the grid holds albums', () => {
+    // The star writes the item id to the service's ALBUM favourites. On a playlist
+    // grid it sent 'editorial:42' to HRA's My Album — an id that route has never
+    // heard of. Same album/playlist conflation as the untagged card.
+    it('is withheld on every playlist grid', () => {
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' })._showsFavorites).toBe(false);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists' })._showsFavorites).toBe(false);
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'editorial' })._showsFavorites).toBe(false);
+    });
+
+    it('is withheld on the Vault — a purchase id is not a catalogue id', () => {
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' })._showsFavorites).toBe(false);
+    });
+
+    it('stays on the album grids it was written for', () => {
+        expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' })._showsFavorites).toBe(true);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'new-releases' })._showsFavorites).toBe(true);
+        expect(makeEl({ sourceId: 'src_mpd', _filter: 'all' })._showsFavorites).toBe(false);
+    });
+
+    it('shows one glyph for one coverless item, card and row alike', () => {
+        // The grid on top and the list below render the SAME item in one viewport;
+        // two answers put a disc beside a list. The card used to hardcode the disc.
+        const pl = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists', _fav: { has: () => false } });
+        const alb = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites', _fav: { has: () => false } });
+        expect(pl._playlistFallback).toBe('list');
+        expect(alb._playlistFallback).toBe('album');
+        const item = { id: 'editorial:1', title: 'Montreux' };
+        // Flattened, so a hardcoded attribute is seen: it would read fallback="album".
+        expect(text(pl._renderAlbumCard(item))).toContain('fallback=list');
+        expect(text(pl._renderListRow(item))).toContain('fallback=list');
+        expect(text(alb._renderAlbumCard({ ...item, id: 'alb1' }))).toContain('fallback=album');
+    });
+});
+
+describe('ag-library-browse — HIGHRESAUDIO editorial shelves', () => {
+    // 1762 editorial selections arrived as one undifferentiated pile. HRA files them
+    // on four shelves via its own `category` field, filtered server-side.
+    const shelfEl = (over = {}) => makeEl({
+        sourceId: 'src_highresaudio', _filter: 'playlists',
+        _playlistKind: 'editorial', _playlistCategory: '',
+        // The real constructor gives every strip its own overflow controller; a bare
+        // instance has none, and _renderStrip reads `.overflows` off it.
+        _shelfEdges: { overflows: false, attach() {}, measure() {} },
+        _detachObserver() {}, _fav: { load() {} }, ...over,
+    });
+
+    beforeEach(() => apiGetMock.mockReset().mockResolvedValue([]));
+
+    it('offers All ahead of the four shelves — nothing can be hidden', () => {
+        const el = shelfEl();
+        expect(el._showsEditorialShelves).toBe(true);
+        // "All" first and selected by default: fourteen selections carry no category,
+        // so a bar of shelves alone would silently drop them.
+        const strip = text(el._renderPlaylistCategories());
+        for (const label of ['All', 'New Releases', 'Recommended', 'Popular', 'Moods']) {
+            expect(strip).toContain(label);
+        }
+        expect(strip.indexOf('All')).toBeLessThan(strip.indexOf('New Releases'));
+        expect(el._playlistCategory).toBe('');
+    });
+
+    it('asks HRA for the shelf rather than filtering 1762 here', async () => {
+        const el = shelfEl({ _playlistCategory: 'Popular' });
+        await el._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/highresaudio-playlists?');
+        expect(url).toContain('type=editorial');
+        expect(url).toContain('category=Popular');
+    });
+
+    it('sends no shelf on All, which is the only view holding the uncategorised', async () => {
+        await shelfEl({ _playlistCategory: '' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('category=');
+    });
+
+    it('shows no shelf strip over the account\'s own tree, and asks for none', async () => {
+        const el = shelfEl({ _playlistKind: 'mine', _playlistCategory: 'Popular' });
+        expect(el._showsEditorialShelves).toBe(false);
+        expect(el._renderPlaylistCategories()).toBe(null);   // `nothing` is mocked to null
+        await el._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('category=');
+    });
+
+    it('shows no shelf strip on any other pill', () => {
+        expect(shelfEl({ _filter: 'favorites' })._showsEditorialShelves).toBe(false);
+        expect(shelfEl({ _filter: 'vault' })._showsEditorialShelves).toBe(false);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists' })._showsEditorialShelves).toBe(false);
+    });
+
+    it('leaving the editorial tree drops its shelf — a narrowed tree with no strip is a dead end', () => {
+        const el = shelfEl({ _playlistCategory: 'Popular', _load() { this.loaded = true; } });
+        el._setPlaylistKind('mine');
+        expect(el._playlistCategory).toBe('');
+        expect(el.loaded).toBe(true);
+    });
+
+    it('picking a shelf reloads; picking the one already open does not', () => {
+        const el = shelfEl({ _load() { this.loads = (this.loads ?? 0) + 1; } });
+        el._setPlaylistCategory('Moods');
+        el._setPlaylistCategory('Moods');
+        expect(el.loads).toBe(1);
+        expect(el._playlistCategory).toBe('Moods');
+    });
+
+    it('the chosen shelf names the grid, and All gives the tree its name back', () => {
+        expect(shelfEl({ _playlistCategory: 'Popular' })._sectionLabel).toBe('Popular');
+        expect(shelfEl({ _playlistCategory: '' })._sectionLabel).toBe('Editorial playlists');
+        expect(shelfEl({ _playlistKind: 'mine' })._sectionLabel).toBe('My playlists');
     });
 });
