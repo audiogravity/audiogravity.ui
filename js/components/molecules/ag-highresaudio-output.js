@@ -19,6 +19,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
+import { rememberHraConnection, forgetHraAccount, hraHasSubscription } from '../../library-store.js';
 import { SOURCE_ICONS, SOURCE_LABELS } from '../library-constants.js';
 import '../atoms/ag-status-indicator.js';
 
@@ -74,6 +75,10 @@ export class AgHighresaudioOutput extends LitElement {
             this._connection = conn;
             this._connecting = false;
             if (conn?.connected) {
+                // The store caches what this account may do; a new account must not
+                // inherit the answer of the previous one. The POST's own body IS the
+                // fresh answer, so it seeds the cache instead of being thrown away.
+                rememberHraConnection(conn);
                 this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
             }
         } catch (err) {
@@ -92,6 +97,7 @@ export class AgHighresaudioOutput extends LitElement {
         this._connection = null;
         this._connecting = false;
         this._error = '';
+        forgetHraAccount();
         this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         await this._loadConnection();
     }
@@ -110,10 +116,21 @@ export class AgHighresaudioOutput extends LitElement {
         return this._connection?.connected ? this._renderConnected() : this._renderDisconnected();
     }
 
+    /**
+     * @private The line under the name, connected: who is signed in, and — when the
+     * account holds no subscription — that it can play its purchases only. Said here,
+     * next to the account, rather than discovered pill by pill in the browse.
+     * @returns {string}
+     */
+    get _connectedDesc() {
+        const c = this._connection;
+        const who = c?.username || 'Connected';
+        return hraHasSubscription(c) ? who : `${who} · purchases only, no subscription`;
+    }
+
     /** @private */
     _renderConnected() {
-        const c = this._connection;
-        const desc = c.username || 'Connected';
+        const desc = this._connectedDesc;
         return html`
             <div class="lib-qb-card connected">
                 <div class="lib-qb-card-hd">

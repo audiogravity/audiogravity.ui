@@ -319,3 +319,134 @@ describe('getHraCategories', () => {
         expect(await getHraCategories({ force: true })).toEqual([]);
     });
 });
+
+// ---------------------------------------------------------------------------
+// getHraConnection — the one bit the browse needs: does the account subscribe?
+//
+// An account with purchases and no subscription is signed in all the same, and
+// can play its purchases only. The browse reads `has_subscription` to offer it
+// the Vault alone; anything it cannot read is "subscribed", the state every
+// account had before the field existed.
+// ---------------------------------------------------------------------------
+
+import {
+    getHraConnection, rememberHraConnection, forgetHraAccount, hraHasSubscription,
+    getHraGenres, getFavoriteAlbumIds,
+} from './library-store.js';
+
+describe('hraHasSubscription', () => {
+    it('narrows only on an explicit false — absent, null and unknown all read as subscribed', () => {
+        expect(hraHasSubscription({ has_subscription: false })).toBe(false);
+        expect(hraHasSubscription({ has_subscription: true })).toBe(true);
+        expect(hraHasSubscription({ connected: true })).toBe(true);   // core predates the field
+        expect(hraHasSubscription(null)).toBe(true);                  // no answer at all
+    });
+});
+
+describe('getHraConnection', () => {
+    const CONN = { connected: true, username: 'a@b.co', has_subscription: false };
+
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('reads /highresaudio/connection and hands the object through', async () => {
+        _apiGet.mockResolvedValueOnce(CONN);
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).toHaveBeenCalledWith('/highresaudio/connection');
+    });
+
+    it('serves the cached answer to the next pill switch', async () => {
+        _apiGet.mockResolvedValueOnce(CONN);
+        await getHraConnection();
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks again once the sources card forgot it — a new account must not inherit the old answer', async () => {
+        _apiGet.mockResolvedValueOnce(CONN);
+        await getHraConnection();
+        forgetHraAccount();
+        _apiGet.mockResolvedValueOnce({ ...CONN, has_subscription: true });
+        expect((await getHraConnection()).has_subscription).toBe(true);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('a request in flight when the account changes can neither stamp the cache nor answer for it', async () => {
+        // The forget-between-completed-fetches case above is the easy half. The
+        // defect this pins: sign-out/sign-in while a GET is still in the air — the
+        // old account's answer must not land in the new account's cache, and a
+        // caller asking AFTER the change must get a fresh fetch, not the old flight.
+        const OLD = { connected: true, username: 'old@x', has_subscription: true };
+        const NEW = { connected: true, username: 'new@x', has_subscription: false };
+        let resolveOld;
+        _apiGet.mockReturnValueOnce(new Promise((r) => { resolveOld = r; }));
+        const askedBefore = getHraConnection();     // the old account's flight
+        forgetHraAccount();
+        _apiGet.mockResolvedValueOnce(NEW);
+        const askedAfter = getHraConnection();      // must open its own flight
+        resolveOld(OLD);                            // the old answer lands late
+        expect(await askedAfter).toEqual(NEW);
+        expect(await askedBefore).not.toEqual(OLD); // never the forgotten account
+        // And the cache holds the new account's answer, not the resurrected one.
+        _apiGet.mockClear();
+        expect(await getHraConnection()).toEqual(NEW);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('a sign-in seeds the cache from the POST body — no second round-trip for the browse', async () => {
+        rememberHraConnection(CONN);
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('seeding with something unusable leaves the cache empty rather than poisoned', async () => {
+        rememberHraConnection('not an object');
+        _apiGet.mockResolvedValueOnce(CONN);
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers null rather than throwing when the core is unreachable, and does not keep it', async () => {
+        _apiGet.mockRejectedValueOnce(new Error('503'));
+        expect(await getHraConnection()).toBeNull();
+        _apiGet.mockResolvedValueOnce(CONN);
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers null to a body that is not an object, and never caches it', async () => {
+        // A truthy non-object, deliberately — null would pass even with the guard on
+        // the read path only, since a falsy value cannot be stamped anywhere. What
+        // this pins is sanitize-at-the-WRITE: a proxy's maintenance page must not
+        // become a "fresh" cache entry that every later hit serves raw.
+        _apiGet.mockResolvedValueOnce('<html>maintenance</html>');
+        expect(await getHraConnection()).toBeNull();
+        _apiGet.mockResolvedValueOnce(CONN);
+        expect(await getHraConnection()).toEqual(CONN);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+        // And the plain 204 → null case still holds.
+        forgetHraAccount();
+        _apiGet.mockReset().mockResolvedValueOnce(null);
+        expect(await getHraConnection()).toBeNull();
+    });
+});
+
+describe('forgetHraAccount', () => {
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('drops every cache scoped to the account — favourites and genres too, not just the connection', async () => {
+        // Kept, the previous account's stars would show AND write against the new
+        // account for the length of their TTLs (the genres claim "fixed for an
+        // account" in their own cache comment — for AN account, not for all).
+        _apiGet.mockResolvedValueOnce(['alb1']);                                  // ★ ids
+        await getFavoriteAlbumIds('src_highresaudio');
+        _apiGet.mockResolvedValueOnce([{ title: 'Jazz', path: 'Jazz' }]);         // genres
+        await getHraGenres();
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+        forgetHraAccount();
+        _apiGet.mockResolvedValueOnce([]);
+        await getFavoriteAlbumIds('src_highresaudio');
+        _apiGet.mockResolvedValueOnce([]);
+        await getHraGenres();
+        expect(_apiGet).toHaveBeenCalledTimes(4);   // both were re-asked, not served
+    });
+});

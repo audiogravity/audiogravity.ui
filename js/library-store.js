@@ -43,6 +43,14 @@ const TTL_ROON_STATUS = 10_000;
 // (HRA refusing a session comes back as one) must not leave the pill bar bare for a
 // screen that stays open for days.
 const TTL_HRA_CATEGORIES = 3_600_000;
+// The HIGHRESAUDIO connection — read for one bit, whether the account holds a
+// subscription, which decides what the browse may offer. Long for the same reason
+// as the categories: the state changes only when someone signs in or out on the
+// sources card, and that card SAYS so (rememberHraConnection / forgetHraAccount) —
+// explicit invalidation is the mechanism, not the TTL. Short, every quiet minute
+// put one serialized round-trip in front of the next grid, and a core busy
+// re-establishing its HRA session held every pill's loader hostage.
+const TTL_HRA_CONNECTION = 3_600_000;
 
 // Offline snapshot — last known player state persisted to localStorage so the
 // player is not empty when the page is loaded without a network connection.
@@ -59,6 +67,9 @@ const zones    = { value: null, fetchedAt: 0, inFlight: null };
 const roonState = { value: null, fetchedAt: 0, inFlight: null };
 const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
+// `gen` counts account changes: a flight started under an older generation may
+// neither stamp this entry nor answer a caller who asked after the change.
+const hraConnection = { value: null, fetchedAt: 0, inFlight: null, gen: 0 };
 
 /**
  * Last output failure already announced, so the toast fires on the transition
@@ -294,6 +305,115 @@ export async function getHraCategories({ force = false } = {}) {
  */
 export async function getHraGenres({ force = false } = {}) {
     return hraList(hraGenres, '/library/highresaudio-genres', { force });
+}
+
+/**
+ * Whether an HRA connection may stream the catalogue — the ONE home of the
+ * "absent means subscribed" contract, wherever the connection object is read.
+ *
+ * `has_subscription: false` is the only value that narrows anything: it is what
+ * the core answers for an account HRA signed in without a subscription (it can
+ * play its purchases and nothing else — catalogue, favourites and playlists all
+ * answer NO SUBSCRIPTION to that session). An absent field is a core that
+ * predates it, an unknown state, or no answer at all — every account had the
+ * full bar before the field existed, and an unanswered question must not hide
+ * the shelves.
+ *
+ * @param {{has_subscription?: boolean|null}|null|undefined} conn - As the
+ *        connection endpoint answers it, or null/undefined for "unknown".
+ * @returns {boolean} True when the catalogue may be offered.
+ */
+export function hraHasSubscription(conn) {
+    return conn?.has_subscription !== false;
+}
+
+/** @returns {object|null} The body if it is a usable connection object, else null. */
+function _sanitizeHraConnection(body) {
+    return (body && typeof body === 'object') ? body : null;
+}
+
+/**
+ * Resolve the HIGHRESAUDIO connection state, as `/highresaudio/connection` reports it.
+ *
+ * The browse and the search read one field of it, through {@link hraHasSubscription}:
+ * whether the account may be offered the catalogue, or its purchases alone.
+ *
+ * `null` on any failure, and never cached — a caller reads `null` as "unknown",
+ * which {@link hraHasSubscription} maps to the full bar, so a core that cannot
+ * answer costs nothing but a retry. Only sanitized objects are ever stamped into
+ * the cache, so a cache hit cannot serve what the fetch path would have refused.
+ *
+ * The entry carries a generation counter: {@link forgetHraAccount} bumps it, so a
+ * request that was in flight when the account changed can neither stamp the cache
+ * nor be handed to a caller who asked after the change — it was the previous
+ * account's question.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<{connected: boolean, has_subscription?: boolean|null}|null>}
+ */
+export async function getHraConnection({ force = false } = {}) {
+    if (!force && isFresh(hraConnection, TTL_HRA_CONNECTION)) return hraConnection.value;
+    if (!hraConnection.inFlight) {
+        const gen = hraConnection.gen;
+        hraConnection.inFlight = apiGet('/highresaudio/connection')
+            .then((body) => {
+                const conn = _sanitizeHraConnection(body);
+                if (gen === hraConnection.gen && conn) {
+                    hraConnection.value = conn;
+                    hraConnection.fetchedAt = Date.now();
+                }
+                // Superseded by an account change: answer with what is known NOW
+                // (the seeded new connection, or null), never with the old account's.
+                return gen === hraConnection.gen ? conn : hraConnection.value;
+            })
+            .catch(() => null)
+            .finally(() => {
+                // A newer generation owns the slot — its own flight may sit there.
+                if (gen === hraConnection.gen) hraConnection.inFlight = null;
+            });
+    }
+    return hraConnection.inFlight;
+}
+
+/**
+ * Seed the connection cache from a sign-in's own answer. The POST returns the very
+ * object the GET would — throwing it away bought a round-trip the browse pays,
+ * serialized, in front of its first grid. Everything cached for the previous
+ * account is dropped first: a sign-in IS an account change.
+ *
+ * @param {object|null|undefined} conn - The POST /highresaudio/connection response.
+ */
+export function rememberHraConnection(conn) {
+    forgetHraAccount();
+    const clean = _sanitizeHraConnection(conn);
+    if (clean) {
+        hraConnection.value = clean;
+        hraConnection.fetchedAt = Date.now();
+    }
+}
+
+/**
+ * Drop everything cached about the HRA *account* — the sources card calls this on
+ * sign-out (sign-in goes through {@link rememberHraConnection}, which starts here).
+ *
+ * All of it, not just the connection: the favourites Set and the categories and
+ * genres ("fixed for an account", says their own cache comment) are the previous
+ * account's answers too — kept, its stars would show and WRITE against the new
+ * account for the length of a TTL. The generation bump orphans any request still
+ * in flight, so a slow answer cannot resurrect what was just forgotten.
+ */
+export function forgetHraAccount() {
+    hraConnection.gen += 1;
+    hraConnection.value = null;
+    hraConnection.fetchedAt = 0;
+    hraConnection.inFlight = null;
+    hraCategories.value = null;
+    hraCategories.fetchedAt = 0;
+    hraGenres.value = null;
+    hraGenres.fetchedAt = 0;
+    _favorites.delete('src_highresaudio');
+    _notifyFavorites('src_highresaudio');
 }
 
 /**

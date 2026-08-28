@@ -15,6 +15,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
+import { getHraConnection, hraHasSubscription } from '../../library-store.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
@@ -32,6 +33,7 @@ export class AgLibrarySearch extends LitElement {
         _loading:  { state: true },
         _error:    { state: true },
         _hraFilters: { state: true },
+        _hraSubscribed: { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -54,6 +56,13 @@ export class AgLibrarySearch extends LitElement {
         this._searchToken = 0;
         /** @type {{composer: string, label: string}} HRA search filters. */
         this._hraFilters = { composer: '', label: '' };
+        /**
+         * @type {boolean} Whether the HRA account may search the catalogue —
+         * hraHasSubscription() of the last connection read, so a plain boolean.
+         * A purchases-only account has nothing searchable: the catalogue search
+         * answers NO SUBSCRIPTION, and its purchases live in the browse's Vault.
+         */
+        this._hraSubscribed = true;
         this._fav      = new FavoritesController(this);   // streaming album ★ state
     }
 
@@ -78,6 +87,16 @@ export class AgLibrarySearch extends LitElement {
         if (changed.has('sourceId') && !this._isHighresaudio && !this.isEmptyHraFilters) {
             this._hraFilters = { composer: '', label: '' };
         }
+        // What the account may search is the browse's question too, and the store
+        // answers both from one cache. Read on every arrival at HRA: an account
+        // change invalidates that cache, so coming back re-asks.
+        if (changed.has('sourceId') && this._isHighresaudio) this._loadHraConnection();
+    }
+
+    /** @private Read whether the account may search the catalogue. */
+    async _loadHraConnection() {
+        const conn = await getHraConnection();
+        if (this._isHighresaudio) this._hraSubscribed = hraHasSubscription(conn);
     }
 
     /** @returns {boolean} True when no HRA filter is set. */
@@ -139,6 +158,16 @@ export class AgLibrarySearch extends LitElement {
     async _search() {
         if (!this.sourceId || !this._query.trim()) return;
         this._error = '';
+        // Said here rather than discovered as a failed request: the catalogue
+        // search answers NO SUBSCRIPTION for this account on every query, so
+        // running it would only dress the same fact as an error.
+        if (this._isHighresaudio && !this._hraSubscribed) {
+            this._results = null;
+            this._error = 'This HIGHRESAUDIO account has no streaming subscription, and '
+                        + 'search covers the catalogue. Its purchases are in the browse, '
+                        + 'under Vault.';
+            return;
+        }
         const q = this._query.trim();
         // HRA cannot search on fewer than three characters, and the filtered endpoint
         // answers nothing rather than refusing. Left silent, "U2" with a composer set
@@ -178,7 +207,11 @@ export class AgLibrarySearch extends LitElement {
             if (token !== this._searchToken) return;
             this._results = results;
         });
-        if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — album ★ state
+        // Same guard as the browse: a known purchases-only account's ★ request is
+        // refused upstream and never cached, so it would repeat on every search.
+        if (this._isStreaming && !(this._isHighresaudio && !this._hraSubscribed)) {
+            this._fav.load(this.sourceId);   // non-blocking — album ★ state
+        }
     }
 
     _itemOpts(itemId, itemType, artistId, itemTitle, action) {
@@ -278,7 +311,7 @@ export class AgLibrarySearch extends LitElement {
                 ` : nothing}
             </div>
 
-            ${this._isHighresaudio ? html`
+            ${this._isHighresaudio && this._hraSubscribed ? html`
                 <ag-hra-search-filters
                     @hra-filters-change=${(e) => this._onHraFilters(e)}
                 ></ag-hra-search-filters>

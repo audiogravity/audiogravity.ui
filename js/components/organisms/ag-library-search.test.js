@@ -25,10 +25,13 @@ vi.mock('../utils-lit.js', () => ({
 vi.mock('../../library-api.js', () => ({
     queueItem: vi.fn(), queueWithFeedback: vi.fn(), playWithFeedback: vi.fn(),
 }));
+const getHraConnectionMock = vi.fn(async () => null);
 vi.mock('../../library-store.js', () => ({
     getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
     setAlbumFavorited: vi.fn(),
     subscribeFavorites: vi.fn(() => () => {}),
+    getHraConnection: (...args) => getHraConnectionMock(...args),
+    hraHasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
 vi.mock('../molecules/ag-hra-search-filters.js', () => ({}));
@@ -43,6 +46,7 @@ const el = (over = {}) => Object.assign(Object.create(AgLibrarySearch.prototype)
     _results: null,
     _loading: false,
     _error: '',
+    _hraSubscribed: true,
     _debounce: null,
     _searchToken: 0,
     _hraFilters: { composer: '', label: '' },
@@ -136,5 +140,43 @@ describe('ag-library-search — where a HIGHRESAUDIO search goes', () => {
         vi.runAllTimers();
         expect(host._search).toHaveBeenCalledTimes(1);
         vi.useRealTimers();
+    });
+});
+
+describe('ag-library-search — an account without a subscription', () => {
+    // The catalogue search answers NO SUBSCRIPTION to such an account on every
+    // query. The browse already narrows itself to the Vault; a search tab that
+    // kept offering the catalogue was the same defect one screen over.
+    beforeEach(() => { apiGetMock.mockReset(); apiGetMock.mockResolvedValue([]); });
+
+    it('says where the purchases are instead of running a search that cannot answer', async () => {
+        const host = el({ _query: 'queen', _hraSubscribed: false });
+        await host._search();
+        expect(apiGetMock).not.toHaveBeenCalled();
+        expect(host._results).toBeNull();
+        expect(host._error).toContain('Vault');
+    });
+
+    it('does not ask for the ★ Set its account is refused', async () => {
+        const favLoad = vi.fn();
+        const host = el({ _query: 'queen', _hraSubscribed: false, _fav: { load: favLoad } });
+        await host._search();
+        expect(favLoad).not.toHaveBeenCalled();
+    });
+
+    it('leaves every other source alone — the flag only means something on HRA', async () => {
+        const host = el({ sourceId: 'src_qobuz', _query: 'queen', _hraSubscribed: false });
+        await host._search();
+        expect(apiGetMock).toHaveBeenCalled();
+        expect(host._error).toBe('');
+    });
+
+    it('reads the connection through the store when arriving on HRA', async () => {
+        getHraConnectionMock.mockClear();
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: false });
+        const host = el({ _hraSubscribed: true });
+        await host._loadHraConnection();
+        expect(getHraConnectionMock).toHaveBeenCalledTimes(1);
+        expect(host._hraSubscribed).toBe(false);
     });
 });

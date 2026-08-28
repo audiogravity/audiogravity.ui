@@ -25,12 +25,17 @@ vi.mock('../utils-lit.js', () => ({
 vi.mock('../../library-api.js', () => ({ queueItem: vi.fn(), queueWithFeedback: vi.fn() }));
 const getHraCategoriesMock = vi.fn();
 const getHraGenresMock = vi.fn();
+const getHraConnectionMock = vi.fn();
 vi.mock('../../library-store.js', () => ({
     getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
     setAlbumFavorited: vi.fn(),
     subscribeFavorites: vi.fn(() => () => {}),
     getHraCategories: (...args) => getHraCategoriesMock(...args),
     getHraGenres: (...args) => getHraGenresMock(...args),
+    getHraConnection: (...args) => getHraConnectionMock(...args),
+    // The real predicate, restated: it is the contract under test here (absent
+    // means subscribed), and the store's own tests pin the original.
+    hraHasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
@@ -42,7 +47,14 @@ import { AgLibraryBrowse } from './ag-library-browse.js';
 
 function makeEl(overrides = {}) {
     return Object.assign(Object.create(AgLibraryBrowse.prototype), {
-        sourceId: 'src_qobuz', zoneId: '', artistId: '', artistName: '', ...overrides,
+        sourceId: 'src_qobuz', zoneId: '', artistId: '', artistName: '',
+        // What the real constructor guarantees and _load() now relies on BEFORE its
+        // first await: a numeric generation counter (++undefined is NaN, and
+        // NaN !== NaN reads as "superseded" — every load would return early), and
+        // the subscription flag already folded to a boolean.
+        _loadToken: 0,
+        _hraSubscribed: true,
+        ...overrides,
     });
 }
 
@@ -99,7 +111,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     it('builds one pill per category, behind Favorites, in the order HRA publishes them', () => {
         expect(hraEl()._pills.map(([, label]) => label))
-            .toEqual(['Favorites', 'Genres', 'Playlists', 'Editors Choice', 'Tips']);
+            .toEqual(['Favorites', 'Vault', 'Genres', 'Playlists', 'Editors Choice', 'Tips']);
     });
 
     it('shows the label but keys the pill on the title HRA answers with', () => {
@@ -107,9 +119,9 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         expect(tips).toEqual(['cat:Hörtipps', 'Tips']);
     });
 
-    it('keeps the two entries of our own until the categories arrive', () => {
+    it('keeps the entries of our own until the categories arrive', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] })._pills)
-            .toEqual([['favorites', 'Favorites'], ['genres', 'Genres'],
+            .toEqual([['favorites', 'Favorites'], ['vault', 'Vault'], ['genres', 'Genres'],
                       ['playlists', 'Playlists']]);
     });
 
@@ -150,8 +162,8 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         getHraCategoriesMock.mockResolvedValue([]);
         const el = makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] });
         await el._loadHraCategories();
-        expect(el._pills).toEqual([['favorites', 'Favorites'], ['genres', 'Genres'],
-                                   ['playlists', 'Playlists']]);
+        expect(el._pills).toEqual([['favorites', 'Favorites'], ['vault', 'Vault'],
+                                   ['genres', 'Genres'], ['playlists', 'Playlists']]);
     });
 
     it('asks again on every load while the list is missing — Refresh repairs the bar', async () => {
@@ -206,6 +218,141 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         });
         await el._load();
         expect(getHraCategoriesMock).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('ag-library-browse — HIGHRESAUDIO Vault', () => {
+    // The purchases: a second tree with its own route, and the only thing an account
+    // without a subscription may play. HRA signs such an account in all the same and
+    // answers NO SUBSCRIPTION to everything else, so the bar must not offer the rest.
+    const CATEGORIES = [{ title: 'Editors Choice', label: 'Editors Choice' }];
+
+    /** An HRA instance ready for _load(): the collaborators _load touches, stubbed. */
+    function loadable(overrides = {}) {
+        return makeEl({
+            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            _filter: 'favorites', _detachObserver() {}, _fav: { load() {} }, ...overrides,
+        });
+    }
+
+    beforeEach(() => {
+        apiGetMock.mockReset().mockResolvedValue([]);
+        getHraCategoriesMock.mockReset().mockResolvedValue(CATEGORIES);
+        getHraConnectionMock.mockReset();
+    });
+
+    it('_fetchPage asks the Vault route, paged like the others', async () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' });
+        await el._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/highresaudio-vault?');
+        expect(url).toContain('offset=0');
+        expect(url).not.toContain('source_id');
+    });
+
+    it('a subscribed account sees the Vault beside Favorites, ahead of the shelves', async () => {
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: true });
+        const el = loadable();
+        await el._load();
+        expect(el._pills.map(([f]) => f)).toEqual(
+            ['favorites', 'vault', 'genres', 'playlists', 'cat:Editors Choice']);
+        expect(el._filter).toBe('favorites');
+    });
+
+    it('an account without a subscription gets the Vault alone, and lands on it', async () => {
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: false });
+        const el = loadable();
+        await el._load();
+        expect(el._pills).toEqual([['vault', 'Vault']]);
+        expect(el._filter).toBe('vault');
+    });
+
+    it('never asks for the shelves on an account that cannot play them', async () => {
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: false });
+        await loadable()._load();
+        expect(getHraCategoriesMock).not.toHaveBeenCalled();
+    });
+
+    it('reads the connection before fetching a page, so the first request is the right one', async () => {
+        // Without the wait the fresh source would fire a Favorites request the account
+        // cannot make, then correct itself. The order of the two calls is the proof.
+        const order = [];
+        getHraConnectionMock.mockImplementation(async () => {
+            order.push('connection');
+            return { connected: true, has_subscription: false };
+        });
+        const el = loadable({ _fetchPage: async () => { order.push('page'); return []; } });
+        await el._load();
+        expect(order[0]).toBe('connection');
+    });
+
+    it('an answer it cannot read is "subscribed" — the state every account had before the field', async () => {
+        for (const answer of [null, undefined, { connected: true }]) {
+            getHraConnectionMock.mockResolvedValue(answer);
+            const el = loadable();
+            await el._load();
+            expect(el._hraSubscribed).toBe(true);
+            expect(el._pills.map(([f]) => f)).toContain('favorites');
+        }
+    });
+
+    it('a load superseded during the connection wait does not blank what its successor rendered', async () => {
+        // The await put a resumption point before the state resets. Token taken
+        // late, two quick loads — Refresh then a pill switch, say — ended with the
+        // FIRST one resuming after the second had filled the grid, and wiping it:
+        // its resets ran unconditionally, only its page fetch checked the token.
+        let answerConnection;
+        getHraConnectionMock.mockReturnValue(new Promise((r) => { answerConnection = r; }));
+        const el = loadable();
+        const staleLoad = el._load();                  // parked on the connection await
+        // The successor has come and gone: newer generation, grid rendered.
+        el._loadToken += 1;
+        el._albums = [{ id: 'fresh' }];
+        el._offset = 1;
+        el._hasMore = true;
+        answerConnection({ connected: true, has_subscription: true });
+        await staleLoad;
+        expect(el._albums).toEqual([{ id: 'fresh' }]); // not blanked by the loser
+        expect(el._offset).toBe(1);
+        expect(el._hasMore).toBe(true);
+    });
+
+    it('does not ask for the ★ Set of an account whose favourites are refused', async () => {
+        // The request fails upstream and is never cached, so it would repeat on
+        // every single load — the comment above the guard said "must never ask"
+        // while the line below it asked anyway.
+        const favLoad = vi.fn();
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: false });
+        await loadable({ _fav: { load: favLoad } })._load();
+        expect(favLoad).not.toHaveBeenCalled();
+        getHraConnectionMock.mockResolvedValue({ connected: true, has_subscription: true });
+        await loadable({ _fav: { load: favLoad } })._load();
+        expect(favLoad).toHaveBeenCalledTimes(1);   // a subscribed account still gets it
+    });
+
+    it('offers no ★ on a purchase — a Vault id is not a catalogue id', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' });
+        expect(el._showsFavorites).toBe(false);
+        el._filter = 'favorites';
+        expect(el._showsFavorites).toBe(true);
+    });
+
+    it('keeps the ★ on the other streaming sources', () => {
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'favorites' })._showsFavorites).toBe(true);
+        expect(makeEl({ sourceId: 'src_mpd', _filter: 'all' })._showsFavorites).toBe(false);
+    });
+
+    it('titles the grid after the pill', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'vault', _hraCategories: [] });
+        expect(el._sectionLabel).toBe('Vault');
+    });
+
+    it('queues a purchase as an album, with the prefixed id exactly as listed', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' });
+        const opts = el._albumOpts({ id: 'vault:alb_txn', title: 'Sampler' }, 'play');
+        expect(opts.itemId).toBe('vault:alb_txn');
+        expect(opts.itemType).toBe('album');
     });
 });
 
@@ -312,9 +459,9 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
 
     beforeEach(() => apiGetMock.mockReset().mockResolvedValue([]));
 
-    it('offers Playlists next to Favorites and Genres', () => {
-        expect(plEl()._pills.map(([f]) => f).slice(0, 3))
-            .toEqual(['favorites', 'genres', 'playlists']);
+    it('offers Playlists next to Favorites, the Vault and Genres', () => {
+        expect(plEl()._pills.map(([f]) => f).slice(0, 4))
+            .toEqual(['favorites', 'vault', 'genres', 'playlists']);
     });
 
     it('asks for the tree that is on screen', async () => {

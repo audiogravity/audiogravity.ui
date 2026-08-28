@@ -19,6 +19,14 @@ vi.mock('lit', () => ({
 const { apiPost, apiDelete } = vi.hoisted(() => ({ apiPost: vi.fn(), apiDelete: vi.fn() }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost, apiDelete }));
 vi.mock('../utils-lit.js', () => ({ loadConnection: vi.fn() }));
+const { rememberHraConnection, forgetHraAccount } = vi.hoisted(() => ({
+    rememberHraConnection: vi.fn(), forgetHraAccount: vi.fn(),
+}));
+vi.mock('../../library-store.js', () => ({
+    rememberHraConnection,
+    forgetHraAccount,
+    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+}));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
 import { AgHighresaudioOutput } from './ag-highresaudio-output.js';
@@ -66,6 +74,59 @@ describe('AgHighresaudioOutput render', () => {
         expect(html).toContain('HIGHRESAUDIO');
         expect(html).toContain('a@b.co');
         expect(html).toContain('Disconnect');
+        expect(html).not.toContain('purchases only');
+    });
+
+    it('says next to the account that it can play its purchases only', () => {
+        // An account without a subscription is signed in all the same; the browse
+        // will offer it the Vault alone, and this line is where that is explained.
+        const el = makeEl({ connected: true, username: 'a@b.co',
+                            subscription: 'NO SUBSCRIPTION', has_subscription: false });
+        const html = renderToString(el.render());
+        expect(html).toContain('a@b.co · purchases only, no subscription');
+    });
+
+    it('reads an absent flag as a subscription — a core that predates the field', () => {
+        const el = makeEl({ connected: true, username: 'a@b.co' });
+        expect(renderToString(el.render())).not.toContain('purchases only');
+    });
+});
+
+describe('AgHighresaudioOutput keeps the store honest about the account', () => {
+    beforeEach(() => {
+        apiPost.mockReset(); apiDelete.mockReset();
+        rememberHraConnection.mockReset(); forgetHraAccount.mockReset();
+    });
+
+    it('a sign-in seeds the store with the POST body — the GET the browse would pay is already answered', async () => {
+        const el = makeEl(null);
+        el.querySelector = () => ({ username: { value: 'a@b.co' }, password: { value: 'pw' } });
+        el.dispatchEvent = vi.fn();
+        const conn = { connected: true, has_subscription: false };
+        apiPost.mockResolvedValue(conn);
+        await el._connect();
+        expect(rememberHraConnection).toHaveBeenCalledTimes(1);
+        expect(rememberHraConnection).toHaveBeenCalledWith(conn);
+    });
+
+    it('not after a sign-in that failed — nothing changed', async () => {
+        const el = makeEl(null);
+        el.querySelector = () => ({ username: { value: 'a@b.co' }, password: { value: 'pw' } });
+        el.dispatchEvent = vi.fn();
+        apiPost.mockRejectedValue(new Error('401'));
+        await el._connect();
+        expect(rememberHraConnection).not.toHaveBeenCalled();
+        expect(forgetHraAccount).not.toHaveBeenCalled();
+    });
+
+    it('a sign-out forgets the whole account, not just the connection', async () => {
+        const el = makeEl({ connected: true, username: 'a@b.co' });
+        el._disconnect = AgHighresaudioOutput.prototype._disconnect.bind(el);
+        el._loadConnection = async () => {};
+        el.dispatchEvent = vi.fn();
+        apiDelete.mockResolvedValue({ ok: true });
+        await el._disconnect();
+        expect(forgetHraAccount).toHaveBeenCalledTimes(1);
     });
 });
 

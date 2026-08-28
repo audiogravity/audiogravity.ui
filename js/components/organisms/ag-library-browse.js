@@ -21,7 +21,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
-import { getHraCategories, getHraGenres } from '../../library-store.js';
+import { getHraCategories, getHraGenres, getHraConnection, hraHasSubscription } from '../../library-store.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { ScrollEdgesController } from '../../core/ScrollEdgesController.js';
@@ -81,6 +81,13 @@ const HRA_PLAYLIST_KINDS = [
     ['editorial', 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
 ];
+// The albums the account bought — HRA's VirtualVault, a second tree beside the
+// streaming catalogue with its own routes. It sits with Favorites, ahead of the two
+// ways of arranging the catalogue: both are the listener's own. And it is the ONLY
+// pill an account without a subscription gets: HRA still signs such an account in,
+// and answers NO SUBSCRIPTION to everything but its purchases — so a bar that
+// offered Favorites or a shelf would offer buttons that fail.
+const HRA_VAULT_PILL = ['vault', 'Vault'];
 /** Label of the pill that stands for a whole genre rather than one of its sub-genres. */
 const HRA_WHOLE_GENRE_LABEL = 'All';
 /**
@@ -105,6 +112,7 @@ export class AgLibraryBrowse extends LitElement {
         _hraGenres:   { state: true },
         _genre:       { state: true },
         _playlistKind: { state: true },
+        _hraSubscribed: { state: true },
         _filter:      { state: true },
         _loading:     { state: true },
         _loadingMore: { state: true },
@@ -129,6 +137,13 @@ export class AgLibraryBrowse extends LitElement {
         this._genre       = null;
         /** @type {string} Which HRA playlist tree is shown: 'editorial' or 'mine'. */
         this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
+        /**
+         * @type {boolean} Whether the HRA account may stream the catalogue — always
+         * `hraHasSubscription(...)` of the last connection read, so "unknown" is
+         * already folded to true (the state every account had before the core
+         * reported it) and every reader may treat this as a plain boolean.
+         */
+        this._hraSubscribed = true;
         this._fav         = new FavoritesController(this);   // streaming album ★ state
         this._edges       = new ScrollEdgesController(this); // filter-bar overflow markers
         this._genreEdges  = new ScrollEdgesController(this); // genre-strip overflow markers
@@ -159,10 +174,25 @@ export class AgLibraryBrowse extends LitElement {
     /** @returns {boolean} Whether the active source is a streaming service (pills-driven). */
     get _isStreaming() { return this._isQobuz || this._isTidal || this._isHighresaudio; }
 
+    /** @returns {boolean} Whether the HRA purchases are on screen. */
+    get _isVault() { return this._isHighresaudio && this._filter === HRA_VAULT_PILL[0]; }
+
+    /**
+     * @returns {boolean} Whether the grid offers the ★. A purchase is not a favourite:
+     * the star addresses the catalogue by catalogue id, and a Vault id is not one —
+     * and on an account without a subscription the favourites are refused anyway.
+     */
+    get _showsFavorites() { return this._isStreaming && !this._isVault; }
+
     updated(changed) {
         // Reload on a source switch or when entering/leaving/changing artist mode.
         if ((changed.has('sourceId') || changed.has('artistId')) && this.sourceId) {
-            this._filter = this._isStreaming ? 'favorites' : 'all';
+            // For HRA the landing pill depends on the account; the last known
+            // subscription state decides here, and _load() re-decides once the
+            // connection has answered — same expression both times, so the bar and
+            // the filter cannot disagree for a frame.
+            this._filter = !this._isStreaming ? 'all'
+                : this._isHighresaudio ? this._hraLandingFilter : 'favorites';
             this._genre = null;
             this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
             Promise.resolve().then(() => this._load());
@@ -206,6 +236,26 @@ export class AgLibraryBrowse extends LitElement {
         if (this._isHighresaudio) this._hraCategories = cats;
     }
 
+    /**
+     * @private Read whether the account holds a subscription. The absent-means-
+     * subscribed contract lives in {@link hraHasSubscription}, not here.
+     */
+    async _loadHraConnection() {
+        const conn = await getHraConnection();
+        if (this._isHighresaudio) this._hraSubscribed = hraHasSubscription(conn);
+    }
+
+    /**
+     * @private Where a fresh HRA browse lands: its purchases when the account
+     * cannot stream the catalogue, the favourites otherwise. The one home of that
+     * decision — `updated()` uses it with the last known subscription state, and
+     * `_load()` re-applies it once the connection has actually answered.
+     * @returns {string}
+     */
+    get _hraLandingFilter() {
+        return this._hraSubscribed ? HRA_FAVORITES_PILL[0] : HRA_VAULT_PILL[0];
+    }
+
     disconnectedCallback() {
         super.disconnectedCallback();
         this._detachObserver();
@@ -217,26 +267,49 @@ export class AgLibraryBrowse extends LitElement {
 
     async _load() {
         if (!this.sourceId) return;
-        if (this._isHighresaudio && !this._hraCategories.length) this._loadHraCategories();
-        // Same for the genres, and for the same reason: the pill cannot ask again once
-        // it is the chosen one (_setFilter returns early), so a tree that failed to
-        // arrive would stay missing. Refresh reloads, and Refresh repairs both.
-        if (this._isHighresaudio && this._filter === HRA_GENRES_PILL[0]
-            && !this._hraGenres.length) {
-            this._loadHraGenres();
-        }
-        this._detachObserver();
         // Every load opens a new generation. A page requested under the previous sort can
         // still be in flight — switching pill now reloads on MPD too, which it did not
         // before — and it would append onto the fresh list, mixing two orders and pushing
         // _offset past albums nobody ever fetched. The token is checked after each await,
         // where the result comes back, not before it is asked for.
+        //
+        // Taken BEFORE the connection await below, not after: taken late, a
+        // superseded HRA load resumed on a source that had already rendered, wrote
+        // its filter, blanked the fresh grid with a newer token and re-fetched under
+        // the wrong sort. Everything an older generation does past its await is now
+        // refused, connection included.
         const token = ++this._loadToken;
+        if (this._isHighresaudio) {
+            // Awaited, unlike the two lists below: it decides which pills exist at
+            // all, and which one a fresh source lands on. An account without a
+            // subscription must land on its purchases, not on a Favorites request
+            // that HRA refuses — and it must never ask for the shelves or the tree.
+            await this._loadHraConnection();
+            if (token !== this._loadToken) return;   // superseded while we waited
+            if (!this._hraSubscribed) {
+                this._filter = this._hraLandingFilter;
+            } else {
+                if (!this._hraCategories.length) this._loadHraCategories();
+                // Same for the genres, and for the same reason: the pill cannot ask
+                // again once it is the chosen one (_setFilter returns early), so a
+                // tree that failed to arrive would stay missing. Refresh reloads,
+                // and Refresh repairs both.
+                if (this._filter === HRA_GENRES_PILL[0] && !this._hraGenres.length) {
+                    this._loadHraGenres();
+                }
+            }
+        }
+        this._detachObserver();
         this._albums      = [];
         this._offset      = 0;
         this._hasMore     = false;
         this._loadingMore = false;   // a stale in-flight page must not hold the gate shut
-        if (this._isStreaming) this._fav.load(this.sourceId);   // non-blocking — star state fills in
+        // The ★ Set is the account's too: for a known purchases-only account the
+        // request is refused upstream and never cached, so it would be re-sent, and
+        // re-refused, on every single load.
+        if (this._isStreaming && !(this._isHighresaudio && !this._hraSubscribed)) {
+            this._fav.load(this.sourceId);   // non-blocking — star state fills in
+        }
         await loadWithState(this, async () => {
             const page = await this._fetchPage(0);
             if (token !== this._loadToken) return;   // superseded while we waited
@@ -314,6 +387,9 @@ export class AgLibraryBrowse extends LitElement {
             offset: String(offset),
             limit:  String(PAGE_SIZE),
         });
+        if (this._filter === HRA_VAULT_PILL[0]) {
+            return apiGet(`/library/highresaudio-vault?${params}`);
+        }
         if (this._filter === HRA_PLAYLISTS_PILL[0]) {
             params.set('type', this._playlistKind);
             return apiGet(`/library/highresaudio-playlists?${params}`);
@@ -455,7 +531,7 @@ export class AgLibraryBrowse extends LitElement {
                         variant="card"
                         @click=${(e) => { e.stopPropagation(); this._addAlbumToQueue(album); }}
                     ></ag-library-add-btn>
-                    ${this._isStreaming ? html`
+                    ${this._showsFavorites ? html`
                         <ag-library-fav-btn
                             variant="card"
                             ?favorite=${this._fav.has(album.id)}
@@ -500,8 +576,13 @@ export class AgLibraryBrowse extends LitElement {
         if (this._isQobuz) return QOBUZ_PILLS;
         if (this._isTidal) return TIDAL_PILLS;
         if (this._isHighresaudio) {
+            // The flag is a plain boolean: hraHasSubscription() already folded
+            // "unknown" to true at the write, so only a connection that SAID
+            // no subscription narrows the bar.
+            if (!this._hraSubscribed) return [HRA_VAULT_PILL];
             return [
                 HRA_FAVORITES_PILL,
+                HRA_VAULT_PILL,
                 HRA_GENRES_PILL,
                 HRA_PLAYLISTS_PILL,
                 ...this._hraCategories.map((c) => [`${HRA_CAT}${c.title}`, c.label]),
