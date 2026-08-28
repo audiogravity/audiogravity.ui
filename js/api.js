@@ -9,7 +9,8 @@ export { hasCoreCredentials };
 // API UTILITIES
 // =====================
 
-import { getUserFriendlyError, downloadBlob } from './ui-helpers.js';
+import { getUserFriendlyError, downloadBlob, showToast } from './ui-helpers.js';
+import { fetchOrNetworkError, throwForStatus, fetchOrThrow, fetchJson, readJson, isRetryableFailure } from './net-errors.js';
 
 /**
  * Retry API call with exponential backoff
@@ -27,9 +28,12 @@ export async function apiCallWithRetry(endpoint, options = {}, maxRetries = 3) {
         } catch (error) {
             lastError = error;
 
-            // Don't retry on HTTP 4xx/5xx — these are definitive server responses.
-            // Network-level errors (TypeError, no .status) stay retryable.
-            if (error.status !== undefined && error.status >= 400) {
+            // Only a transport failure the device has not already settled is worth a second
+            // try. "No status" used to stand in for that: it also matched a 200 whose body was
+            // not JSON, replayed three times for nothing. And the service worker's offline
+            // answer is final — retrying it three times per call, from every poller on the
+            // page, is what the installed app did to a switched-off box.
+            if (!isRetryableFailure(error)) {
                 throw error;
             }
 
@@ -121,7 +125,10 @@ export async function apiCall(endpoint, options = {}) {
             headers
         };
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+        // The transport tag is set inside fetchOrNetworkError and nowhere wider: the catch at
+        // the bottom of this function also covers onSuccess-style code in callers, so
+        // classifying there would call a caller's TypeError a dead network.
+        const response = await fetchOrNetworkError(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
         // The keyless probe's answer settles the verdict: 403 is the middleware's
         // "Invalid or missing API key"; anything else means the core does not gate on
@@ -130,33 +137,14 @@ export async function apiCall(endpoint, options = {}) {
             _recordVerdict(response.status === 403 ? 'locked' : 'open');
         }
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-
-            // Handle Pydantic validation errors (422)
-            if (response.status === 422 && Array.isArray(errorData.detail)) {
-                const validationErrors = errorData.detail.map(err => {
-                    const field = err.loc ? err.loc.slice(1).join('.') : 'unknown';
-                    return `${field}: ${err.msg}`;
-                }).join('; ');
-                const error = new Error(validationErrors);
-                error.detail = validationErrors;
-                error.validationErrors = errorData.detail;
-                error.status = 422;
-                throw error;
-            }
-
-            // Handle other errors
-            const errorMessage = errorData.detail || `HTTP ${response.status}`;
-            const error = new Error(errorMessage);
-            error.detail = errorMessage;
-            error.status = response.status;
-            throw error;
-        }
+        // One error shape for every caller — status, a string detail or null, the 422 field
+        // list under validationErrors. This used to be built here with its own rules; see
+        // throwForStatus for why the rules must be the same everywhere.
+        if (!response.ok) await throwForStatus(response);
 
         // 204 No Content / 205 Reset Content — no body to parse.
         if (response.status === 204 || response.status === 205) return null;
-        return await response.json();
+        return await readJson(response);
     } catch (error) {
         console.error(`API Error [${endpoint}] on ${API_BASE_URL}:`, error);
         // Add visual feedback for connection failure if on profiles tab
@@ -245,15 +233,11 @@ export async function apiDownload(endpoint, filename) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers
-        });
-        if (!response.ok) throw new Error('Download failed');
-
+        const response = await fetchOrThrow(`${API_BASE_URL}${endpoint}`, { headers });
         downloadBlob(await response.blob(), filename);
     } catch (error) {
         console.error('Download error:', error);
-        alert('Failed to download file');
+        showToast('error', 'Download failed', getUserFriendlyError(error));
     }
 }
 
@@ -270,18 +254,11 @@ export async function apiUpload(endpoint, file) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        return await fetchJson(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
             headers,
             body: formData
         });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: response.statusText }));
-            throw new Error(error.detail || 'Upload failed');
-        }
-
-        return await response.json();
     } catch (error) {
         console.error('Upload error:', error);
         throw error;

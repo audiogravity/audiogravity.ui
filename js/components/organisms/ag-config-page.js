@@ -17,6 +17,7 @@
  * @dependency ag-config-editor
  */
 import { LitElement, html } from 'lit';
+import { getUserFriendlyError } from '../../ui-helpers.js';
 import {
     apiGet,
     apiPost,
@@ -311,7 +312,7 @@ export class AgConfigPage extends LitElement {
 
         } catch (error) {
             addToHistory('config', `Failed to save ${this.selectedServiceId} configuration`, false);
-            showToast('error', 'Save Failed', error.message || 'Unknown error');
+            showToast('error', 'Save Failed', getUserFriendlyError(error));
         }
     }
 

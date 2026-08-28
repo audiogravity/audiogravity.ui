@@ -8,6 +8,7 @@ import './components/atoms/ag-license-badge.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
+import { signInFailureMessage } from './net-errors.js';
 
 // Honour the persisted portrait lock on the login screen too — the app's
 // common.js / <ag-orientation-gate> don't run here, so without this an Android
@@ -110,6 +111,31 @@ function redirectToDashboard() {
 }
 
 /**
+ * The sentence to put in front of someone whose sign-in just failed.
+ *
+ * One call for all three sign-in paths — the password form, the passkey button and the
+ * auto-passkey panel — because having written the mapping twice is precisely what left the
+ * third one showing WebKit's raw "Load failed", on the very device the report came from. The
+ * table itself lives in net-errors.js, where it is tested against the responses the servers
+ * really send; what stays here is the one side effect: when nothing answered, re-probe, so the
+ * `API · OFFLINE` badge above the form and the message below it never contradict each other.
+ *
+ * @param {Error} error - What the sign-in call threw.
+ * @param {string} unauthorized - What to say when the box answered "no" (differs per path).
+ * @param {{ detailOnUnauthorized?: boolean }} [opts] - See signInFailureMessage.
+ * @returns {string} A message for a person.
+ */
+function signInErrorMessage(error, unauthorized, opts = {}) {
+    const { message, unreachable } = signInFailureMessage(error, {
+        unauthorized,
+        host: window.location.hostname,
+        ...opts,
+    });
+    if (unreachable) checkConnectivity().then(renderStatus);
+    return message;
+}
+
+/**
  * Perform login
  */
 async function performLogin(username, password) {
@@ -128,15 +154,7 @@ async function performLogin(username, password) {
     } catch (error) {
         console.error('Login error:', error);
 
-        // Map common error messages
-        let message = error.message;
-        if (message.includes('401') || message.includes('failed') || message.includes('Unauthorized')) {
-            message = 'Invalid username or password';
-        } else if (message.includes('403')) {
-            message = 'Access denied. Check your API key.';
-        }
-
-        showError(message);
+        showError(signInErrorMessage(error, 'Invalid username or password'));
         setLoading(false);
 
         // Shake the form
@@ -170,20 +188,18 @@ async function performPasskeyLogin() {
         await new Promise(resolve => setTimeout(resolve, 300));
         redirectToDashboard();
     } catch (error) {
-        // User cancelled the authenticator dialog — don't show an error
-        if (error.name === 'NotAllowedError') {
+        // Cancelled or superseded authenticator dialog — nothing to report. WebKit rejects
+        // a ceremony replaced by another with AbortError, on a box that answered fine.
+        if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
             setLoading(false, 'passkey');
             return;
         }
         console.error('Passkey login error:', error);
-        let message = error.message;
-        if (error.name === 'NoPasskeyError') {
-            // No passkey for the typed username (server returns 200 with empty
-            // allowCredentials; webauthn.js raises this before prompting).
-            message = 'No passkey registered for this account.';
-        } else if (message.includes('401') || message.includes('failed')) {
-            message = 'Passkey verification failed. Try again.';
-        }
+        // No passkey for the typed username (server returns 200 with empty allowCredentials;
+        // webauthn.js raises this before prompting). Its own case: nothing failed.
+        const message = error.name === 'NoPasskeyError'
+            ? 'No passkey registered for this account.'
+            : signInErrorMessage(error, 'Passkey verification failed. Try again.', { detailOnUnauthorized: true });
         showError(message);
         setLoading(false, 'passkey');
     }
@@ -214,7 +230,7 @@ async function offerPasskeySetup(username) {
                 localStorage.setItem(storageKey, 'enabled');
                 localStorage.setItem('passkey_auto', 'true');
             } catch (err) {
-                if (err.name !== 'NotAllowedError') {
+                if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
                     localStorage.setItem(storageKey, 'skipped');
                 }
             }
@@ -239,7 +255,21 @@ function hasRegisteredPasskey() {
     );
 }
 
-async function checkConnectivity() {
+let connectivityProbe = null;
+
+/**
+ * One probe in flight at a time: every failed sign-in asks for one, and five quick retries on
+ * the passkey panel used to send five concurrent requests at a box that had just not answered.
+ * @returns {Promise<boolean>}
+ */
+function checkConnectivity() {
+    if (!connectivityProbe) {
+        connectivityProbe = probeConnectivity().finally(() => { connectivityProbe = null; });
+    }
+    return connectivityProbe;
+}
+
+async function probeConnectivity() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     try {
@@ -309,13 +339,22 @@ function tryAutoPasskeyLogin() {
         } catch (err) {
             console.error('[Passkey] Auto-login error:', err.name, err.message);
             if (err.name !== 'NotAllowedError') {
-                elements.autoPasskeyError.textContent = err.message || 'Authentication failed';
+                // This panel — not the form — is the first thing a passkey-registered iPhone
+                // sees, so it is where an unreachable box is met first. It used to print the
+                // browser's raw sentence.
+                elements.autoPasskeyError.textContent =
+                    signInErrorMessage(err, 'Passkey verification failed. Try again.', { detailOnUnauthorized: true });
                 elements.autoPasskeyError.style.display = '';
             }
             elements.autoPasskeyTrigger.disabled = false;
             elements.autoPasskeyCancel.disabled = false;
         }
-    }, { once: true });
+    });
+    // Deliberately not `{ once: true }`. The catch above hands the button back to the user, and
+    // with `once` the listener was already gone: the retry it invited did nothing at all, until
+    // the page was reloaded. A button that comes back enabled must still work. Double-submits are
+    // prevented by the `disabled = true` at the top of the handler, which is the guard that
+    // belongs here — it lasts exactly as long as the attempt does.
 
     elements.autoPasskeyCancel.addEventListener('click', () => {
         showLoginForm();

@@ -8,6 +8,7 @@
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER } from './core/config.js';
 import { getAuthToken } from './auth.js';
+import { fetchJson } from './net-errors.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,16 +49,13 @@ async function webauthnFetch(endpoint, body) {
     const token = getAuthToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Same boundary as auth.js and api.js, deliberately: the two sign-in paths used to build
+    // their errors differently and so answered the same outage with different sentences.
+    return fetchJson(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body)
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || `HTTP ${res.status}`);
-    }
-    return res.json();
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

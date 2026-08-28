@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiCall } from '../../api.js';
-import { showConfirm, showToast } from '../../ui-helpers.js';
+import { showConfirm, showToast, getUserFriendlyError } from '../../ui-helpers.js';
 import { registerPasskey, isWebAuthnAvailable } from '../../webauthn.js';
 import { getCurrentUser } from '../../auth.js';
 import { iconKey, iconTrash, iconCheck, iconRepeat, iconPlus } from '../../ag-icons.js';
@@ -76,7 +76,7 @@ export class AgPasskeyManager extends LitElement {
             showToast('success', 'Passkey Removed', `${deviceName} has been removed.`);
             await this._loadCredentials();
         } catch (err) {
-            showToast('error', 'Delete Failed', err.message || 'Unknown error');
+            showToast('error', 'Delete Failed', getUserFriendlyError(err));
         }
     }
 
@@ -97,7 +97,7 @@ export class AgPasskeyManager extends LitElement {
             if (err.name === 'NotAllowedError') {
                 showToast('warning', 'Cancelled', 'Passkey registration was cancelled.');
             } else {
-                showToast('error', 'Registration Failed', err.message || 'Unknown error');
+                showToast('error', 'Registration Failed', getUserFriendlyError(err));
             }
         } finally {
             this._registering = false;

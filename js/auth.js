@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, JWT_ENABLED, IS_TEST_ENV } from './core/config.js';
+import { fetchJson } from './net-errors.js';
 
 // =====================
 // AUTH STATE
@@ -223,41 +224,31 @@ function getAuthToken() {
 // =====================
 
 /**
- * Login utilisateur
- * @param {string} username - Nom d'utilisateur
- * @param {string} password - Mot de passe
- * @returns {Promise<object>} - Réponse de login avec token
+ * Sign in with a password and store the session.
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<object>} The login response (token, username, role, expiry).
  */
 async function login(username, password) {
-    try {
-        // Note: La route /auth/login nécessite toujours l'API Key
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                [API_KEY_HEADER]: API_KEY
-            },
-            body: JSON.stringify({ username, password })
-        });
+    // /auth/login always requires the API key: there is no JWT yet.
+    // Transport is tagged and a refusal carries its status and a string detail — see
+    // net-errors.js. Telling a refused password from an unreachable box by reading message
+    // text is what made an offline machine accuse its owner.
+    const data = await fetchJson(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            [API_KEY_HEADER]: API_KEY
+        },
+        body: JSON.stringify({ username, password })
+    });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Erreur de connexion' }));
-            throw new Error(errorData.detail || 'Échec de connexion');
-        }
+    saveAuth(data.access_token, {
+        username: data.username,
+        role: data.role
+    }, data.expires_in_hours, data.persistent_auth);
 
-        const data = await response.json();
-
-        // Sauvegarder l'authentification
-        saveAuth(data.access_token, {
-            username: data.username,
-            role: data.role
-        }, data.expires_in_hours, data.persistent_auth);
-
-        return data;
-    } catch (error) {
-        console.error('Erreur de login:', error);
-        throw error;
-    }
+    return data;
 }
 
 /**

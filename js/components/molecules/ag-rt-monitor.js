@@ -10,6 +10,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
+import { getUserFriendlyError } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';
 import { iconSpinner } from '../../ag-icons.js';
 
@@ -52,7 +53,7 @@ export class AgRtMonitor extends LitElement {
             this._processes = Array.isArray(data) ? data : [];
             this._error = null;
         } catch (e) {
-            this._error = e.message || 'Failed to load';
+            this._error = getUserFriendlyError(e);
         } finally {
             this._loading = false;
         }

@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { loginWithPasskey } from './webauthn.js';
+import { isNetworkError } from './net-errors.js';
 
 const okJson = (body) => ({ ok: true, json: async () => body });
 
@@ -71,5 +72,43 @@ describe('loginWithPasskey', () => {
 
         expect(navigator.credentials.get).toHaveBeenCalledTimes(1);
         expect(res).toMatchObject({ access_token: 't2' });
+    });
+});
+
+describe('webauthnFetch — what a refusal and a dead network look like to the caller', () => {
+    // Until now only `ok: true` was ever mocked, so the branch every sign-in message depends on
+    // ran untested. These are the responses the servers really send.
+    beforeEach(() => { vi.stubGlobal('fetch', vi.fn()); });
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    it('carries the status and the core\'s own sentence on a 401', async () => {
+        fetch.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ detail: 'Credential not found' }) });
+        const err = await loginWithPasskey('alice').catch(e => e);
+        expect(err.status).toBe(401);
+        expect(err.detail).toBe('Credential not found');
+        expect(isNetworkError(err)).toBe(false);
+    });
+
+    it('reads a slowapi rate limit, which is worded under `error`, not `detail`', async () => {
+        fetch.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({ error: 'Rate limit exceeded: 5 per 1 minute' }) });
+        const err = await loginWithPasskey('alice').catch(e => e);
+        expect(err.status).toBe(429);
+        expect(err.detail).toBe('Rate limit exceeded: 5 per 1 minute');
+        expect(err.message).toBe('Rate limit exceeded: 5 per 1 minute');
+    });
+
+    it('leaves detail null on a proxy 502 whose body is HTML', async () => {
+        fetch.mockResolvedValueOnce({ ok: false, status: 502, json: async () => { throw new SyntaxError('not JSON'); } });
+        const err = await loginWithPasskey('alice').catch(e => e);
+        expect(err.status).toBe(502);
+        expect(err.detail).toBeNull();
+        expect(err.message).toBe('HTTP 502');
+    });
+
+    it('tags a transport failure whatever the engine calls it', async () => {
+        fetch.mockRejectedValueOnce(new TypeError('Load failed'));
+        const err = await loginWithPasskey('alice').catch(e => e);
+        expect(isNetworkError(err)).toBe(true);
+        expect(err.status).toBeUndefined();
     });
 });

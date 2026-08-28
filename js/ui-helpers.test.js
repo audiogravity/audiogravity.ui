@@ -4,17 +4,43 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render } from 'lit';
-import { getUserFriendlyError, showPasswordConfirm, downloadBlob, downloadTextFile } from './ui-helpers.js';
+import { getUserFriendlyError, showPasswordConfirm, downloadBlob, downloadTextFile, showToast } from './ui-helpers.js';
+import { asNetworkError } from './net-errors.js';
 
 describe('getUserFriendlyError', () => {
-    it('maps "Failed to fetch" to connection error', () => {
-        expect(getUserFriendlyError(new Error('Failed to fetch')))
-            .toBe('Unable to connect to server. Please check your connection.');
+    it('reads a tagged transport failure, whatever the engine called it', () => {
+        // The tag is set at the fetch site; no wording is read here. The three engine sentences
+        // used to be listed by text, which caught a caller's TypeError that merely contained the
+        // word "NetworkError" and called a code bug a dead network.
+        for (const wording of ['Failed to fetch', 'NetworkError when attempting...', 'Load failed']) {
+            expect(getUserFriendlyError(asNetworkError(new TypeError(wording))))
+                .toBe('Unable to connect to server. Please check your connection.');
+        }
     });
 
-    it('maps "NetworkError" to network error', () => {
-        expect(getUserFriendlyError(new Error('NetworkError when attempting...')))
-            .toBe('Network error. Please check your internet connection.');
+    it('does not turn an untagged TypeError into a connection error', () => {
+        // FetchController wraps its own onSuccess callback in the same try as the request, so this
+        // is what a `data.items.map` on a payload without `items` looks like — after an HTTP 200.
+        for (const wording of ['Load failed', "Cannot read properties of undefined (reading 'map')"]) {
+            const bug = new TypeError(wording);
+            expect(getUserFriendlyError(bug)).toBe(bug.message);
+        }
+    });
+
+    it('reads a gateway answer the same way net-errors does', () => {
+        // A 502 said "Bad gateway" here and "cannot reach the box" on the login screen, for the
+        // one outage both see most: the core stopped behind the front.
+        expect(getUserFriendlyError(Object.assign(new Error('HTTP 502'), { status: 502, detail: null })))
+            .toBe('Unable to connect to server. Please check your connection.');
+        expect(getUserFriendlyError(Object.assign(new Error('HTTP 503'), { status: 503, detail: null })))
+            .toBe('Unable to connect to server. Please check your connection.');
+        expect(getUserFriendlyError(Object.assign(new Error('WebAuthn not available'), { status: 503, detail: 'WebAuthn not available' })))
+            .toBe('WebAuthn not available');
+    });
+
+    it('survives being handed nothing', () => {
+        expect(getUserFriendlyError(undefined)).toBe('An unexpected error occurred. Please try again.');
+        expect(getUserFriendlyError(null)).toBe('An unexpected error occurred. Please try again.');
     });
 
     it('maps HTTP 401', () => {
@@ -37,11 +63,6 @@ describe('getUserFriendlyError', () => {
             .toBe('Server error. Please try again later.');
     });
 
-    it('maps HTTP 503', () => {
-        expect(getUserFriendlyError(new Error('HTTP 503')))
-            .toBe('Service temporarily unavailable. Please try again later.');
-    });
-
     it('returns error.detail when available', () => {
         const err = { message: 'unknown', detail: 'Custom detail message' };
         expect(getUserFriendlyError(err)).toBe('Custom detail message');
@@ -55,6 +76,24 @@ describe('getUserFriendlyError', () => {
     it('returns default for empty error', () => {
         expect(getUserFriendlyError({}))
             .toBe('An unexpected error occurred. Please try again.');
+    });
+});
+
+describe('showToast — the type comes first, and a wrong one is said aloud', () => {
+    it('coerces an unknown type and reports the call', () => {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        document.body.appendChild(container);
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            showToast('Passkey removed', 'success');
+            const toast = container.querySelector('ag-toast-notification');
+            expect(toast.type).toBe('info');
+            expect(spy).toHaveBeenCalledWith(expect.stringMatching(/showToast\(type, title, message\)/));
+        } finally {
+            spy.mockRestore();
+            container.remove();
+        }
     });
 });
 

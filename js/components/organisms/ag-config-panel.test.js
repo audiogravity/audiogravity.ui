@@ -33,3 +33,29 @@ describe('Settings panel — the API key is not editable from here', () => {
         expect(SOURCE).not.toMatch(/\bsetApiKey\b/);
     });
 });
+
+describe('Settings panel — every toast names its type first', () => {
+    /*
+     * showToast(type, title, message). Six calls in the passkey section had it as
+     * (message, type): the toast component received "Passkey removed" as its type and
+     * "success" as its title, so the notice rendered unstyled with the word "success" for a
+     * heading. Nothing failed — a wrong string is still a string — which is why it lasted.
+     */
+    const TYPES = new Set(['success', 'error', 'warning', 'info']);
+
+    it('passes one of the four toast types as the first argument', () => {
+        const firstArgs = [...SOURCE.matchAll(/showToast\(\s*(['"`])([^'"`]*)\1/g)].map(m => m[2]);
+        expect(firstArgs.length).toBeGreaterThan(0);
+        const wrong = firstArgs.filter(a => !TYPES.has(a));
+        expect(wrong, `showToast called with a message where its type belongs: ${wrong.join(' | ')}`)
+            .toEqual([]);
+    });
+
+    it('never starts a toast call with an expression instead of a type literal', () => {
+        // `showToast(err.message || …, 'error')` — the inverted form — begins with an
+        // identifier, not a quote. The check above cannot see it; this one can.
+        const unquoted = [...SOURCE.matchAll(/showToast\(\s*([^'"`\s)][^,)]*)/g)].map(m => m[1].trim());
+        expect(unquoted, `toast calls whose first argument is not a literal: ${unquoted.join(' | ')}`)
+            .toEqual([]);
+    });
+});

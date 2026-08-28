@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as acorn from 'acorn';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSS_ROOT = path.join(ROOT, 'css');
@@ -219,5 +220,78 @@ describe('login page — scale discipline (règles 15 et 16)', () => {
             if (!/text-transform:\s*uppercase/.test(body)) offenders.push(selector.trim().split('\n').pop());
         }
         expect(offenders, `11px sur du texte lu : ${offenders.join(', ')}`).toEqual([]);
+    });
+});
+
+describe('login page — a button handed back must still work', () => {
+    // The auto-passkey panel is what a passkey-registered phone sees first, and its retry button
+    // was dead: the listener was registered with `{ once: true }` while the failure path set
+    // `disabled = false`, so the page invited a second attempt it had already made impossible.
+    // Nothing on screen said so — the button looked exactly as it had the first time — and only a
+    // reload brought it back. Reading the source is the only way to catch this: the fault is the
+    // *combination* of two lines forty apart, and neither is wrong on its own.
+    //
+    // Read with a real parser. A hand-written bracket counter came first, and it could be
+    // disarmed by a stray `)` in a string or a comment: the slice truncated, the guard saw
+    // neither the `once` nor the re-enable, and passed on nothing at all.
+    const LOGIN_JS = fs.readFileSync(path.join(ROOT, 'js', 'login.js'), 'utf8');
+    const AST = acorn.parse(LOGIN_JS, { ecmaVersion: 'latest', sourceType: 'module' });
+
+    /**
+     * Every node in the tree, depth first.
+     * @param {object} node - An ESTree node.
+     * @param {(n: object) => void} visit - Called once per node.
+     */
+    function walk(node, visit) {
+        if (!node || typeof node.type !== 'string') return;
+        visit(node);
+        for (const key of Object.keys(node)) {
+            const child = node[key];
+            if (Array.isArray(child)) child.forEach(c => walk(c, visit));
+            else if (child && typeof child.type === 'string') walk(child, visit);
+        }
+    }
+
+    /**
+     * The `<element>.addEventListener(...)` call expression, as source text.
+     * @param {string} element - Dotted receiver, e.g. `elements.autoPasskeyTrigger`.
+     * @returns {string} The whole call, options object included.
+     */
+    function listenerCall(element) {
+        const [obj, prop] = element.split('.');
+        const found = [];
+        walk(AST, n => {
+            if (n.type !== 'CallExpression') return;
+            const c = n.callee;
+            if (c.type !== 'MemberExpression' || c.property.name !== 'addEventListener') return;
+            const recv = c.object;
+            if (recv.type === 'MemberExpression' && recv.object.name === obj && recv.property.name === prop) {
+                found.push(LOGIN_JS.slice(n.start, n.end));
+            }
+        });
+        expect(found, `${element}.addEventListener not found`).toHaveLength(1);
+        return found[0];
+    }
+
+    it('hands the auto-passkey trigger back to the user after a failure', () => {
+        // The premise the next test rests on, asserted on its own so that a lookup gone wrong
+        // fails here — loudly — instead of letting the guard below pass over an empty string.
+        expect(listenerCall('elements.autoPasskeyTrigger'))
+            .toMatch(/elements\.autoPasskeyTrigger\.disabled\s*=\s*false/);
+    });
+
+    it('does not arm that trigger with { once: true }', () => {
+        expect(
+            /once:\s*true/.test(listenerCall('elements.autoPasskeyTrigger')),
+            'the handler re-enables its own button after { once: true } has already removed the '
+            + 'listener: the next click does nothing until the page is reloaded'
+        ).toBe(false);
+    });
+
+    it('still guards against a double submit while the attempt runs', () => {
+        // Dropping `once` is only safe because this line is there. If it goes, `once` was doing
+        // work after all and this suite must be revisited rather than deleted.
+        expect(listenerCall('elements.autoPasskeyTrigger'))
+            .toMatch(/elements\.autoPasskeyTrigger\.disabled\s*=\s*true/);
     });
 });

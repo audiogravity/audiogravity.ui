@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { isNetworkError, isGatewayError } from './net-errors.js';
 
 // Toast durations (ms)
 const TOAST_DURATION_DEFAULT = 4000;
@@ -8,17 +9,21 @@ const TOAST_ANIMATION_DELAY = 10;
 const TOAST_REMOVE_DELAY = 300;
 
 // User-friendly error messages (ENGLISH)
+//
+// Keyed on message text, so only for errors that carry no status. A transport failure is not
+// recognised here by its wording — every fetch in this codebase goes through the boundary in
+// net-errors.js, which tags it, and getUserFriendlyError reads the tag. Gateway statuses are
+// read from the status for the same reason: this table and isGatewayError must not classify the
+// same 502 in opposite directions.
 const ErrorMessages = {
-    'Failed to fetch': 'Unable to connect to server. Please check your connection.',
-    'NetworkError': 'Network error. Please check your internet connection.',
     'HTTP 401': 'Invalid API key. Please check your configuration.',
     'HTTP 403': 'Access denied. Insufficient permissions.',
     'HTTP 404': 'Resource not found.',
-    'HTTP 500': 'Server error. Please try again later.',
-    'HTTP 502': 'Bad gateway. Server is temporarily unavailable.',
-    'HTTP 503': 'Service temporarily unavailable. Please try again later.',
-    'HTTP 504': 'Gateway timeout. Server took too long to respond.'
+    'HTTP 500': 'Server error. Please try again later.'
 };
+
+/** The four toast types the component styles; anything else is a wrong argument order. */
+const TOAST_TYPES = new Set(['success', 'error', 'warning', 'info']);
 
 /**
  * Get a user-friendly error message from an Error object
@@ -26,7 +31,14 @@ const ErrorMessages = {
  * @returns {string} - User-friendly message
  */
 export function getUserFriendlyError(error) {
-    const message = error.message || '';
+    // Shape before wording: nothing answered, or only a proxy did on behalf of a stopped core.
+    if (isNetworkError(error) || isGatewayError(error)) {
+        return 'Unable to connect to server. Please check your connection.';
+    }
+
+    // `error?.` and not `error.`: the shape guard above returns false for null, and this line then
+    // threw — so the error reporter crashed instead of the error, taking the screen with it.
+    const message = error?.message || '';
 
     // Check for specific error patterns
     for (const [key, friendlyMsg] of Object.entries(ErrorMessages)) {
@@ -36,7 +48,7 @@ export function getUserFriendlyError(error) {
     }
 
     // Default message: use the error's own detail or message if available
-    return error.detail || error.message || 'An unexpected error occurred. Please try again.';
+    return error?.detail || error?.message || 'An unexpected error occurred. Please try again.';
 }
 
 /**
@@ -65,6 +77,12 @@ export function handleError(error, context = '') {
  * @param {number} duration - Duration in ms before auto-hide
  */
 export function showToast(type, title, message, duration = TOAST_DURATION_DEFAULT) {
+    // A wrong string is still a string: six calls once passed (message, type) and rendered an
+    // unstyled notice headed "success". Say so where it can be seen, and still show something.
+    if (!TOAST_TYPES.has(type)) {
+        console.error(`[toast] "${type}" is not a toast type — the call is showToast(type, title, message)`);
+        type = 'info';
+    }
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
