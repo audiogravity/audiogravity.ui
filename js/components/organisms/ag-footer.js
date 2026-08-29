@@ -107,7 +107,8 @@ export class AgFooter extends LitElement {
                     <img src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:var(--footer-height); height:var(--footer-height); border-radius:var(--radius-sm); display:block">
                 </div>
                 
-                <span><a href="https://audiogravity.app" target="_blank" rel="noopener">Audiogravi<sup>ty</sup></a> © 2026 — <a
+                <span><a href="https://audiogravity.app" target="_blank" rel="noopener"><span
+                            class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> © 2026 — <a
                         href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a></span>
 
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">

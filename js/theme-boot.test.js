@@ -14,7 +14,7 @@
  * deferred or module script runs after the page is drawn, which is the whole
  * problem it exists to solve.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -126,5 +126,58 @@ describe('theme boot — its copies match their source', () => {
         // Safari in private mode throws on localStorage access; the defaults
         // have to stand rather than the script dying and taking the paint with it.
         expect(BOOT).toMatch(/try\s*\{[\s\S]*localStorage[\s\S]*catch/);
+    });
+
+    it('carries the whole Safari remedy, not just the node swap', () => {
+        // The routine is no longer only a before-first-paint one: <ag-theme-toggle> calls
+        // it again on every flip, through window.agApplyAppearance. In standalone mode
+        // Safari caches theme-color at launch and recreating the node is NOT enough —
+        // updateThemeColorMeta() calls the history signal "the only reliable workaround",
+        // and paints the root background for the safe-area zones. Both were missing here
+        // while this file only ever ran once, when neither mattered.
+        expect(COMMON).toMatch(/history\.replaceState/);
+        expect(BOOT, "aucun signal d'historique").toMatch(/history\.replaceState/);
+        expect(COMMON).toMatch(/documentElement\.style\.backgroundColor/);
+        expect(BOOT, 'le fond de la racine n’est pas peint').toMatch(/style\.backgroundColor/);
+    });
+});
+
+describe('theme boot — reachable from the interface, and safe there', () => {
+    /** Run the file the way a page does, in this document. */
+    function boot() {
+        new Function(BOOT)();
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        delete window.agApplyAppearance;
+        document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
+        document.documentElement.classList.remove('dark-mode');
+    });
+
+    it('exposes the routine the appearance switch calls', () => {
+        boot();
+        expect(typeof window.agApplyAppearance).toBe('function');
+    });
+
+    it('paints the chrome of a theme it knows', () => {
+        boot();
+        window.agApplyAppearance('gravity', true);
+        expect(document.querySelector('meta[name="theme-color"]').content).toBe('#12141C');
+        expect(document.documentElement.classList.contains('dark-mode')).toBe(true);
+    });
+
+    it('falls back rather than throwing on a theme it does not know', () => {
+        // Themes are extensible, and this is now fed whatever data-theme the document
+        // carries. A throw here would land AFTER the palette and the stored preference
+        // had changed — the switch left half applied, and its ag-change never fired.
+        boot();
+        expect(() => window.agApplyAppearance('a-theme-added-later', true)).not.toThrow();
+        const painted = document.querySelector('meta[name="theme-color"]').content;
+        const fallback = BOOT.match(/var DEFAULT_THEME = '(\w+)'/)[1];
+        const expected = BOOT.match(
+            new RegExp(`${fallback}:\\s*\\{\\s*light:\\s*'(#[0-9A-Fa-f]{6})',\\s*dark:\\s*'(#[0-9A-Fa-f]{6})'`),
+        )[2];
+        expect(painted).toBe(expected);
     });
 });

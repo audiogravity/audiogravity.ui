@@ -5,6 +5,7 @@
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config.js';
 import './components/atoms/ag-license-badge.js';
+import './components/atoms/ag-theme-toggle.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
@@ -118,7 +119,7 @@ function redirectToDashboard() {
  * third one showing WebKit's raw "Load failed", on the very device the report came from. The
  * table itself lives in net-errors.js, where it is tested against the responses the servers
  * really send; what stays here is the one side effect: when nothing answered, re-probe, so the
- * `API · OFFLINE` badge above the form and the message below it never contradict each other.
+ * `CORE · OFFLINE` badge above the form and the message below it never contradict each other.
  *
  * @param {Error} error - What the sign-in call threw.
  * @param {string} unauthorized - What to say when the box answered "no" (differs per path).
@@ -286,8 +287,17 @@ async function probeConnectivity() {
     }
 }
 
+/**
+ * Paint the connectivity badge above the sign-in form and on the auto-passkey panel.
+ *
+ * The label names the core, not "API": what the probe reaches is the box's own core
+ * server, and that is the word the rest of the interface, the installer and the service
+ * unit all use for it. "API" named a protocol nobody signing in has to think about.
+ *
+ * @param {boolean} ok - Whether /health answered.
+ */
 function renderStatus(ok) {
-    const html = `<span class="status-label">API ·</span> <span class="status-dot${ok ? ' connected' : ''}">${ok ? '● CONNECTED' : '● OFFLINE'}</span>`;
+    const html = `<span class="status-label">CORE ·</span> <span class="status-dot${ok ? ' connected' : ''}">${ok ? '● CONNECTED' : '● OFFLINE'}</span>`;
     [elements.loginStatus, elements.autoPasskeyStatus].forEach(el => { if (el) el.innerHTML = html; });
 }
 
@@ -406,7 +416,7 @@ async function loadLicenseBadge() {
  * Load API version
  */
 function loadVersion() {
-    elements.versionInfo.innerHTML = `<a class="version-link" href="https://audiogravity.app" target="_blank" rel="noopener">Audiogravi<sup>ty</sup></a> &copy; 2026 — <a class="version-link" href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a>`;
+    elements.versionInfo.innerHTML = `<a class="version-link" href="https://audiogravity.app" target="_blank" rel="noopener"><span class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> &copy; 2026 — <a class="version-link" href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a>`;
 }
 
 // =====================

@@ -209,10 +209,48 @@ describe('fonts — served from disk, everywhere', () => {
         }
     });
 
-    it('covers the weights the UI actually uses (400-700)', () => {
-        const weights = [...FONTS_CSS.matchAll(/font-weight:\s*([^;]+);/g)].map(m => m[1].trim());
-        expect(weights.length).toBe(FONT_URLS.length);
-        for (const w of weights) expect(w).toBe('400 700');
+    it('covers the weights the UI actually asks of each family', () => {
+        // A declared range CLAMPS the variation, whatever the file holds. Both Inter
+        // subsets carry a wght axis running 100-900 — read off the woff2 themselves —
+        // but the faces were declared `400 700` because that is what the CDN <link>
+        // used to request, so the wordmark's `font-weight: 900` rendered at 700 and
+        // nothing anywhere reported it. Widening the declaration costs zero bytes: it
+        // is the same file.
+        const declared = {};
+        for (const [, body] of FONTS_CSS.matchAll(/@font-face\s*\{([\s\S]*?)\}/g)) {
+            const family = body.match(/font-family:\s*([^;]+);/)[1].trim().replace(/['"]/g, '');
+            const weight = body.match(/font-weight:\s*([^;]+);/)[1].trim();
+            (declared[family] ??= []).push(weight);
+        }
+        expect(Object.keys(declared).sort()).toEqual([...FAMILIES].sort());
+        for (const [family, weights] of Object.entries(declared)) {
+            expect(weights.length, `${family} n'a pas ses deux sous-ensembles`).toBe(2);
+            expect(new Set(weights).size, `${family} déclare deux plages différentes`).toBe(1);
+        }
+        expect(declared.Inter[0]).toBe('400 900');
+        expect(declared['JetBrains Mono'][0]).toBe('400 700');
+    });
+
+    it('declares an interface face heavy enough for the heaviest rule in the tree', () => {
+        // Derived rather than restated: whoever writes a heavier weight than the face
+        // covers gets told here instead of watching it render one step lighter. Every
+        // numeric font-weight in the sources belongs to the interface face — the only
+        // monospace text is code and values, never a display weight.
+        const files = [...listCss(CSS_ROOT), ...listJs(path.join(ROOT, 'js'))]
+            .filter(f => path.relative(ROOT, f) !== path.join('css', 'fonts.css'));
+        let heaviest = 0;
+        for (const file of files) {
+            const src = /\.css$/.test(file)
+                ? stripCssComments(fs.readFileSync(file, 'utf8'))
+                : stripJsComments(fs.readFileSync(file, 'utf8'));
+            for (const m of src.matchAll(/font-weight:\s*(\d{3})\b/g)) {
+                heaviest = Math.max(heaviest, Number(m[1]));
+            }
+        }
+        expect(heaviest, 'aucun font-weight numérique trouvé').toBeGreaterThan(0);
+        const top = Number(FONTS_CSS.match(/font-family:\s*Inter;[\s\S]*?font-weight:\s*\d+\s+(\d+);/)[1]);
+        expect(top, `une règle demande ${heaviest}, la face s'arrête à ${top}`)
+            .toBeGreaterThanOrEqual(heaviest);
     });
 
     it('declares latin last in each family, so the shared marks do not pull latin-ext', () => {

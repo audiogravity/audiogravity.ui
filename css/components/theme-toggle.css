@@ -1,0 +1,33 @@
+/**
+ * @module ThemeToggle
+ * @description The light/dark appearance button (<ag-theme-toggle>).
+ * Where it sits is the host page's business — the login card places it in css/login.css.
+ */
+
+.ag-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-tertiary);
+
+    /* Sizes the glyph, not text: the SVG inside is drawn at 1em. */
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.ag-theme-toggle:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.ag-theme-toggle:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}

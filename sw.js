@@ -41,7 +41,6 @@ const CACHE_URLS = [
     '/pics/favicon-16x16.png',
     '/pics/logo_audiogravity_light.png',
     '/pics/logo_audiogravity_dark.png',
-    '/pics/audiogravity.svg',
     // CDN dependencies (Chart.js, CodeMirror). Inter is not among them any more:
     // it is a hashed asset in assets/, precached by the Workbox manifest above.
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',

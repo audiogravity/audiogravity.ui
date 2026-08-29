@@ -187,9 +187,13 @@
 <body class="login-page">
     <div class="login-container">
         <div class="login-card">
+            <!-- Light/dark appearance. The theme itself is chosen in the app's
+                 configuration panel; this only flips its palette. -->
+            <ag-theme-toggle></ag-theme-toggle>
+
             <!-- Logo/Header -->
             <div class="login-header">
-                <img src="pics/audiogravity.svg" alt="Audiogravity" class="login-logo">
+                <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
                 <p class="login-subtitle" id="loginMeta"></p>
                 <p class="auto-passkey-status" id="login-status"></p>
                 <p class="login-license-status" id="loginLicense"></p>
@@ -197,7 +201,7 @@
 
             <!-- Auto passkey panel -->
             <div id="autoPasskeyPanel" style="display:none" class="auto-passkey-panel">
-                <img src="pics/audiogravity.svg" alt="Audiogravity" class="login-logo">
+                <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
                 <p class="auto-passkey-meta" id="autoPasskeyMeta"></p>
 
                 <button type="button" id="autoPasskeyTrigger" class="auto-passkey-key-box" title="Tap to authenticate">
