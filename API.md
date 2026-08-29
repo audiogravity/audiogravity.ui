@@ -5,8 +5,13 @@ The UI communicates with the core exclusively via:
 - **SSE** — real-time event stream at `/sse/dashboard`
 - **WebSocket** — PTY terminal at `/sysinfo/terminal/ws`
 
-Full interactive documentation is available at **`/docs`** (Swagger UI) on a
-running Audiogravi<sup>ty</sup> core.
+Full interactive documentation is available at **`/docs`** (Swagger UI) — but only on a
+core whose `API_DOCS_ENABLED` is on. It ships **off**: `/docs`, `/redoc` and
+`/openapi.json` answer without an API key, since Swagger fetches the schema from the
+browser with no header of its own, so a box that left them mounted would serve the map of
+its whole API to anything on the network. Off, the three routes answer **404** — they are
+unmounted, not hidden. `.env.dev` carries the switch on, which is where the interface's
+own tooling reads the schema.
 
 ---
 
@@ -456,7 +461,7 @@ core refuses the play instead, naming the daemon.
 | GET | `/performance/rt-processes` | Real-time scheduling per audio process |
 
 **Benchmarks** — start a test, then poll it by `{test_id}`. **No UI screen calls
-these today**; see `/docs` for their request/response shape.
+these today**; see `/docs` for their request/response shape (on a core that serves it).
 
 | Method | Path | Description |
 |---|---|---|
@@ -788,7 +793,7 @@ service can have no file yet — writing one creates it.
 ### Other
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Root — service identity |
+| GET | `/` | Root — service identity, and the `endpoints` map of what this core serves. `endpoints.docs` is present only when the interactive reference is switched on, which is how the interface decides whether to offer it |
 | GET | `/health` | Backend health check |
 | GET | `/status` | Backend status |
 | GET | `/stats/tabs` | Per-tab usage counters |
@@ -799,7 +804,8 @@ service can have no file yet — writing one creates it.
 
 ### Routes absent from `/docs`
 
-Four real routes are deliberately kept out of the OpenAPI schema. They are not for the
+Four real routes are deliberately kept out of the OpenAPI schema — a different thing from
+the schema being unmounted altogether, which is what `API_DOCS_ENABLED=false` does. They are not for the
 UI — they are called by a renderer or by the browser's `<img>`/`<audio>` tag — but they
 exist, so hunting for them in Swagger is a dead end.
 
@@ -835,5 +841,6 @@ only**: the player reads the renderer's transport state and upcoming track from
 
 ---
 
-*For the complete schema of each request/response, run a local backend and
-open `/docs` (Swagger UI) or `/redoc`.*
+*For the complete schema of each request/response, run a local backend with
+`API_DOCS_ENABLED=true` (the default in `.env.dev`) and open `/docs` (Swagger UI) or
+`/redoc`.*

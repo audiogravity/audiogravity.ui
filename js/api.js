@@ -60,6 +60,14 @@ export async function apiCallWithRetry(endpoint, options = {}, maxRetries = 3) {
  * explicitly left open.
  */
 const PUBLIC_ENDPOINTS = new Set([
+    // '/' is the entry point, and the core serves it without a key. Its absence here was
+    // not theoretical: the configuration panel has fetched it at every page load for as
+    // long as it has existed, so on a keyless client it WAS the probe the gate lets
+    // through to settle the verdict — and it answers 200 whatever the key situation, so
+    // the verdict was recorded as 'open' and the suppression never engaged for that
+    // session. Once locked, the same call is refused locally, which would now also hide
+    // the API reference on a core that does serve it.
+    '/',
     '/status', '/health',
     '/push/vapid-public-key', '/push/subscribe', '/push/unsubscribe',
 ]);
