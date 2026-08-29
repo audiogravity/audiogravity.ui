@@ -1,0 +1,62 @@
+/**
+ * @module Wordmark
+ * @description The Audiogravity wordmark, set as text.
+ *
+ * It used to be an <img>, and the file behind it was never a drawn logo: two Inkscape
+ * <text> nodes asking for Helvetica, never converted to paths. A box without Helvetica —
+ * every Linux and every Android this interface runs on — got whatever fontconfig
+ * substituted, so the mark rendered differently from device to device, and dark mode had
+ * to repaint it with `filter: brightness(0) invert(1)` because an image cannot take a
+ * colour. Text set in Inter, which ships inside the UI package, renders identically
+ * everywhere and reads `color` like anything else. The retired file is kept as a source
+ * in audiogravity.design/ag-icon-logo/wordmark/, with a note saying why it is not one.
+ *
+ * The treatment is the landing page's (audiogravity.site/assets/style.css, .hero-h1):
+ * Inter 900, letter-spacing -.05em, and `ty` as a superscript at .38em of the mark. The
+ * markup is `Audiogravi<sup>ty</sup>` at every call-site, which is the brand rule.
+ *
+ * Weight 900 is only reachable because css/fonts.css declares the Inter faces over
+ * 400-900. A narrower declared range CLAMPS the variation whatever the file holds, so
+ * this file and that declaration have to stay in step — js/wordmark.test.js checks it.
+ *
+ * Sizes live at the call-sites (layout.css, login.css) rather than here: each one sizes
+ * the mark against the bar or the card it sits in.
+ */
+
+.ag-wordmark {
+    /* Inline-block, never a flex container, and never a bare text node inside one: a
+       flex container turns the <sup> into a flex item of its own, where it takes `gap`
+       as blank space on both sides and splits the brand in two. The landing hit exactly
+       that in its announce bar. An inline-block keeps the whole mark in one inline
+       formatting context whatever the parent does. */
+    display: inline-block;
+    font-family: var(--font-family);
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    white-space: nowrap;
+
+    /* No `color` here on purpose. The mark inherits, which is right in both situations
+       it meets: as a logo it inherits --text-primary from the body — that is what
+       replaced the dark-mode `filter` the <img> needed — and inside a footer line or a
+       link it keeps the colour of the text around it, hover included. Declaring a colour
+       would repaint those links and freeze them on hover. */
+}
+
+/* The mark inside running text — a footer line, a sentence, a link.
+   Inline rather than inline-block: a link's underline stops at an atomic inline box, so
+   the brand would sit un-underlined in the middle of an underlined line. Safe only here,
+   where the <sup> is nested in a link and never a direct child of a flex container —
+   which is the very thing the inline-block above defends against. */
+.ag-wordmark--in-text {
+    display: inline;
+}
+
+/* rule 12 exception — .38em is a ratio of the mark's own size, not a step of the type
+   scale: the superscript has to follow the wordmark whatever size the call-site gives
+   it. Same value as the landing's .hero-h1 sup. */
+.ag-wordmark sup {
+    font-size: 0.38em;
+    font-weight: inherit;
+    vertical-align: super;
+}

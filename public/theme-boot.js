@@ -59,25 +59,65 @@
         }
     }
 
+    /**
+     * Stamp an appearance on the root element and repaint the browser chrome.
+     *
+     * Called once before the first paint, and again by <ag-theme-toggle> every time
+     * someone flips the palette — the runtime case is why the full Safari remedy below
+     * is here rather than only in updateThemeColorMeta().
+     *
+     * @param {string} theme A theme name; anything unknown falls back to the default.
+     * @param {boolean} dark Whether the dark palette applies.
+     */
+    function applyAppearance(theme, dark) {
+        var root = document.documentElement;
+        root.setAttribute('data-theme', theme);
+        root.classList.toggle('dark-mode', dark);
+
+        // Themes are extensible — a contributor adds a css/themes/*.css and an entry in
+        // the registry — and this function is now reachable from outside with whatever
+        // data-theme the document carries. Without the fallback, an unknown name throws
+        // here, AFTER the palette and the stored preference have already changed, which
+        // would leave the toggle half applied. The default is theme-boot's own, not
+        // updateThemeColorMeta's 'slate': it is the theme the interface actually falls
+        // back to everywhere else.
+        var chrome = CHROME[theme] || CHROME[DEFAULT_THEME];
+        var color = chrome[dark ? 'dark' : 'light'];
+
+        // Removed and recreated rather than updated in place. Safari ignores
+        // setAttribute on this tag in standalone mode, which is the one place the
+        // browser chrome is actually visible — updateThemeColorMeta() in common.js
+        // carries the same note and does the same thing. index.html ships a static
+        // tag that would otherwise survive untouched on an iPhone's home screen;
+        // login.html has none, and gets one here.
+        var existing = document.querySelector('meta[name="theme-color"]');
+        if (existing) existing.parentNode.removeChild(existing);
+        var meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        meta.setAttribute('content', color);
+        document.head.appendChild(meta);
+
+        // The other two thirds of the same remedy, both from updateThemeColorMeta():
+        // the root background paints the safe-area and overscroll zones, and replacing
+        // the history entry is the only signal that makes Safari in standalone mode
+        // re-read a theme-color it cached at launch. Recreating the node is not enough
+        // there. Harmless on the boot call, load-bearing on every later one — a
+        // logged-out home-screen launch sits on login.html, where the toggle is.
+        root.style.backgroundColor = color;
+        try {
+            history.replaceState(history.state, '', location.href);
+        } catch (e) { /* environments that disallow history */ }
+    }
+
     var theme = String(stored('theme') || DEFAULT_THEME).toLowerCase().trim();
     if (THEMES.indexOf(theme) === -1) theme = DEFAULT_THEME;
 
-    var dark = stored('darkMode') === true;
+    applyAppearance(theme, stored('darkMode') === true);
 
-    var root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    root.classList.toggle('dark-mode', dark);
-
-    // Removed and recreated rather than updated in place. Safari ignores
-    // setAttribute on this tag in standalone mode, which is the one place the
-    // browser chrome is actually visible — updateThemeColorMeta() in common.js
-    // carries the same note and does the same thing. index.html ships a static
-    // tag that would otherwise survive untouched on an iPhone's home screen;
-    // login.html has none, and gets one here.
-    var existing = document.querySelector('meta[name="theme-color"]');
-    if (existing) existing.parentNode.removeChild(existing);
-    var meta = document.createElement('meta');
-    meta.setAttribute('name', 'theme-color');
-    meta.setAttribute('content', CHROME[theme][dark ? 'dark' : 'light']);
-    document.head.appendChild(meta);
+    // Exposed for <ag-theme-toggle>, which flips the appearance after this has run.
+    // The toggle owns the storage and the class on <body>; the chrome colours belong
+    // here, and copying them a third time is exactly what js/theme-boot.test.js
+    // exists to prevent. A page that somehow loaded without this file still works —
+    // the toggle treats the hook as optional.
+    window.agApplyAppearance = applyAppearance;
 })();

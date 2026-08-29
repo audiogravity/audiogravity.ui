@@ -13,8 +13,14 @@
  *     fonts.gstatic.com outright — a remote @font-face could never have
  *     applied there, whatever the <link> said.
  *
- * One variable file per subset covers weights 400-700, the range the CDN used
- * to be asked for, so nothing about the rendering changes.
+ * One variable file per subset. Both hold a wght axis running 100-900 — read off
+ * the files themselves with fontTools, not off the CDN request that fetched them.
+ * The faces below were nevertheless declared `400 700`, the range the <link> used
+ * to ask for, and a declared range CLAMPS the variation: `font-weight: 900` was
+ * silently rendering at 700. Declaring 400-900 costs zero bytes, since it is the
+ * same file, and is what lets the wordmark reach the weight the landing page uses
+ * (see css/components/wordmark.css). Nothing under 400 is asked for anywhere, so
+ * the lower bound stays where it was.
  *
  * Declaring a face costs nothing until a rule asks for it: a page showing no
  * monospace never fetches JetBrains Mono. That is why this belongs in the
@@ -47,7 +53,7 @@
 @font-face {
     font-family: Inter;
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 400 900;
     font-display: swap;
     src: url('../fonts/inter-latin-ext.woff2') format('woff2');
     unicode-range:
@@ -59,7 +65,7 @@
 @font-face {
     font-family: Inter;
     font-style: normal;
-    font-weight: 400 700;
+    font-weight: 400 900;
     font-display: swap;
     src: url('../fonts/inter-latin.woff2') format('woff2');
     unicode-range:

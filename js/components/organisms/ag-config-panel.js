@@ -24,6 +24,7 @@ import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES, API_BASE_URL } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
+import { setDarkMode } from '../../appearance.js';
 import { showToast, handleError, getUserFriendlyError } from '../../ui-helpers.js';
 import { addToHistory } from '../../history.js';
 import { validateAudioConfig, showValidationModal } from '../../validation.js';
@@ -503,12 +504,9 @@ export class AgConfigPanel extends LitElement {
     }
 
     _handleDarkMode(e) {
-        this.darkMode = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.darkMode = this.darkMode;
-        if (MemoryCache) MemoryCache.set('darkMode', this.darkMode);
-        document.body.classList.toggle('dark-mode', this.darkMode);
-        document.documentElement.classList.toggle('dark-mode', this.darkMode);
-        if (EventEmitter) EventEmitter.emit('theme-changed', { darkMode: this.darkMode });
+        // The sequence lives in appearance.js, which the login page's <ag-theme-toggle>
+        // calls too — the same storage key, the same two elements, the same event.
+        this.darkMode = setDarkMode(e.detail ? e.detail.checked : e.target.checked);
     }
 
     _handleCompactMode(e) {

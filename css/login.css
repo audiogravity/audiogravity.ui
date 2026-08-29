@@ -35,6 +35,7 @@
 
 /* Card de connexion */
 .login-card {
+    position: relative;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -43,21 +44,28 @@
     animation: fadeInUp 0.4s ease-out;
 }
 
+/* The appearance toggle sits in the card's corner rather than in the flow: it is not a
+   step of signing in, and the card's own contents get swapped for the auto-passkey panel
+   without it having to move. */
+.login-card ag-theme-toggle {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+}
+
 /* Header */
 .login-header {
     text-align: center;
     margin-bottom: var(--spacing-xl);
 }
 
+/* rule 12 exception — the wordmark on the sign-in card is the largest thing on the page
+   and answers to the card, not to the type scale, whose top step (28px) would shrink the
+   mark by a third against the 48px image it replaces. The mark takes --text-primary from
+   css/components/wordmark.css, so the dark-mode invert filter this rule used to need is
+   gone. Centred by .login-header's text-align. */
 .login-logo {
-    height: 48px;
-    width: auto;
-    display: block;
-    margin: 0 auto;
-}
-
-.dark-mode .login-logo {
-    filter: invert(1);
+    font-size: 42px;
 }
 
 .login-header h1 {
@@ -449,8 +457,10 @@
         padding: var(--spacing-lg);
     }
 
+    /* rule 12 exception — same ratio to the card as the desktop size above, on a card
+       that has itself lost a step of padding. */
     .login-logo {
-        height: 40px;
+        font-size: 34px;
     }
 }
 

@@ -215,14 +215,12 @@ body.is-offline .offline-banner {
     margin: 0;
 }
 
-.logo-svg {
-    height: 32px;
-    width: auto;
-    transition: filter var(--transition-normal);
-}
-
-body.dark-mode .logo-svg {
-    filter: brightness(0) invert(1);
+/* The wordmark in the title bar. It takes the top step of the scale, which lands on the
+   height the drawn logo used to occupy in a 55px bar; the mark itself is styled by
+   css/components/wordmark.css, and takes --text-primary in every theme, so the dark-mode
+   filter that used to repaint the image is gone. */
+.app-logo {
+    font-size: var(--font-size-xxl);
 }
 
 /* NAVIGATION TABS */
@@ -512,9 +510,12 @@ body.dark-mode .logo-svg {
 }
 
 .tabs--vertical .tabs-logo {
-    display: block;
-    width: 80px;
-    height: auto;
+    display: inline-block;
+
+    /* sm rather than a larger step: it reproduces the width the 80px image had in the
+       225px sidebar, where the mark shares its row with the licence badge and the
+       connection dot. */
+    font-size: var(--font-size-sm);
     opacity: 0.85;
     margin: 0;
 }
@@ -552,10 +553,6 @@ body.dark-mode .logo-svg {
     text-overflow: ellipsis;
     flex-shrink: 1;
     min-width: 0;
-}
-
-body.dark-mode .tabs-logo {
-    filter: brightness(0) invert(1);
 }
 
 /* Bouton masquer/afficher sidebar */

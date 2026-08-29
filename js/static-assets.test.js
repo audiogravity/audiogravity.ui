@@ -1,0 +1,106 @@
+/**
+ * Every static file the shell promises is a file the box actually ships.
+ *
+ * Three different places name assets by path — the service worker's app-shell list, the
+ * notification options in the same file, and the web manifest — and all three had entries
+ * pointing at nothing:
+ *
+ *   - five of eleven same-origin app-shell entries, three of them icons under names the
+ *     repository has never carried (`apple-touch-icon.png` for `apple-touch-180.png`,
+ *     `favicon-32x32.png` for `favicon-32.png`, `favicon-16x16.png` for `favicon-16.png`)
+ *     and two logos that exist nowhere;
+ *   - a push notification asking for `android-chrome-192x192.png` and
+ *     `favicon-32x32.png`, so every notification fell back to the browser's own glyph;
+ *   - a manifest icon entry for an SVG, at `"sizes": "any"` — the entry a browser prefers
+ *     for a scalable surface — which the interface no longer ships at all.
+ *
+ * None of it failed loudly. `cache.add` catches its own rejection, a notification icon
+ * that 404s is simply not drawn, and a manifest icon that 404s falls through to the next
+ * one. That is precisely why they have to be asserted: the only symptom is an absence.
+ *
+ * Same-origin paths only. The CDN entries in the app-shell list are the other half of its
+ * job, and reaching for them would put a network call in the unit suite.
+ */
+import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SW = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+const MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'site.webmanifest'), 'utf8'));
+
+/**
+ * Whether a URL the page would request resolves to a file in the repository. publicDir is
+ * copied verbatim into the build, and the HTML entry points sit at the root.
+ * @param {string} url Same-origin path, leading slash optional.
+ * @returns {boolean}
+ */
+function ships(url) {
+    if (url === '/') return fs.existsSync(path.join(ROOT, 'index.html'));
+    const rel = url.replace(/^\//, '');
+    return [path.join('public', rel), rel].some(c => fs.existsSync(path.join(ROOT, c)));
+}
+
+/** The same-origin entries of the service worker's app-shell list, in order. */
+function shellUrls() {
+    const block = SW.match(/const CACHE_URLS = \[([\s\S]*?)\];/);
+    return block
+        ? [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1]).filter(u => !u.startsWith('http'))
+        : null;
+}
+
+/** Every manifest entry that names an image, wherever it sits. */
+function manifestIcons() {
+    const out = [];
+    const collect = (list, where) => (list ?? []).forEach(i => out.push({ src: i.src, where }));
+    collect(MANIFEST.icons, 'icons');
+    collect(MANIFEST.screenshots, 'screenshots');
+    for (const s of MANIFEST.shortcuts ?? []) collect(s.icons, `shortcut "${s.name}"`);
+    return out;
+}
+
+describe('the app shell lists files the box actually serves', () => {
+    it('finds the list', () => {
+        expect(shellUrls(), 'CACHE_URLS est introuvable').not.toBeNull();
+        expect(shellUrls().length).toBeGreaterThan(4);
+    });
+
+    it('ships every same-origin entry it promises to precache', () => {
+        const missing = shellUrls().filter(url => !ships(url));
+        expect(missing, `précachés mais absents du dépôt :\n  ${missing.join('\n  ')}`).toEqual([]);
+    });
+
+    it('ships every image the service worker names elsewhere', () => {
+        // The notification icon and badge are not in the list, so the case above cannot
+        // see them — and they carried the same wrong names for as long.
+        const refs = [...new Set([...SW.matchAll(/'(\/pics\/[^']+)'/g)].map(m => m[1]))];
+        expect(refs.length, "aucune image nommée dans sw.js").toBeGreaterThan(0);
+        const missing = refs.filter(url => !ships(url));
+        expect(missing, `nommées par sw.js, absentes du dépôt :\n  ${missing.join('\n  ')}`).toEqual([]);
+    });
+});
+
+describe('the manifest points at icons that exist', () => {
+    it('declares some', () => {
+        expect(manifestIcons().length).toBeGreaterThan(2);
+    });
+
+    it('ships every one of them', () => {
+        const missing = manifestIcons().filter(i => !ships(i.src));
+        expect(missing.map(i => `${i.where} — ${i.src}`),
+            'icônes déclarées mais absentes du dépôt').toEqual([]);
+    });
+
+    it('offers a square icon for every purpose it declares', () => {
+        // The retired entry was a wordmark five and a half times wider than tall, offered
+        // at `sizes: "any"` — which is what a browser reaches for first on a scalable
+        // surface. An app icon is square; a logotype stretched into one is not a logo.
+        for (const purpose of new Set((MANIFEST.icons ?? []).map(i => i.purpose ?? 'any'))) {
+            const square = (MANIFEST.icons ?? []).filter(
+                i => (i.purpose ?? 'any') === purpose && /^(\d+)x\1$/.test(i.sizes ?? ''),
+            );
+            expect(square.length, `purpose "${purpose}" n'a aucune icône carrée`).toBeGreaterThan(0);
+        }
+    });
+});

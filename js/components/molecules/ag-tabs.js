@@ -718,7 +718,7 @@ export class AgTabs extends LitElement {
     render() {
         return html`
             <div class="tabs-logo-bar">
-                <img class="tabs-logo" src="pics/audiogravity.svg" alt="Audiogravity">
+                <span class="ag-wordmark tabs-logo">Audiogravi<sup>ty</sup></span>
                 <ag-license-badge
                     status="${this._licenseStatus}"
                     .daysRemaining="${this._licenseDaysRemaining}"

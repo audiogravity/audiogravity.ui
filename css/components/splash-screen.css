@@ -70,14 +70,13 @@
     fill: none;
 }
 
-/* Same fixed palette as the screen itself: painted before any theme exists
-   (guidelines, rule 6 exception). */
+/* The brand itself comes from css/components/wordmark.css, like everywhere else. What
+   stays here is what belongs to this screen: its size under the 120px mark, and the
+   fixed colour — this is painted before any theme exists, so it can read no token
+   (guidelines, rule 6 exception). The mark declares no colour of its own, which is
+   what lets it take this one. */
 .splash-wordmark {
-    font-family: var(--font-family, 'Inter', sans-serif);
-    font-size: var(--font-size-xl);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: var(--font-size-xxl);
     color: #e8eaf0;
     opacity: 0.92;
 }
