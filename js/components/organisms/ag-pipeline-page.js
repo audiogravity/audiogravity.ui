@@ -189,7 +189,7 @@ export class AgPipelinePage extends LitElement {
                 <div class="amp-mobile-view">
                     <div class="pipeline-zone tab-zone amp-mobile-bar">
                         <div class="tab-title-container">
-                            <h2>AUDIO DSP PIPELINE</h2>
+                            <h2>AUDIO PIPELINE</h2>
                             <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                             ${!isGuest() ? html`
                                 <span class="badge warning clickable"
@@ -207,7 +207,7 @@ export class AgPipelinePage extends LitElement {
                 <!-- Visualizer Zone -->
                 <div class="pipeline-zone tab-zone">
                     <div class="tab-title-container">
-                        <h2>AUDIO DSP PIPELINE</h2>
+                        <h2>AUDIO PIPELINE</h2>
                         <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                         <ag-badge type="info" label="LIVE" pulse></ag-badge>
                         ${!isGuest() ? html`<span class="badge warning clickable" style="margin-left: auto" @click=${this._openTopologyConfigModal}>CONFIG</span>` : ''}
