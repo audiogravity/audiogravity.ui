@@ -11,7 +11,8 @@ export default {
             options: ['slate', 'minimal', 'gravity']
         },
         animations: { control: 'boolean' },
-        pushSubscribed: { control: 'boolean' }
+        pushSubscribed: { control: 'boolean' },
+        docsUrl: { control: 'text' },
     },
 };
 
@@ -21,6 +22,7 @@ const Template = (args) => html`
     
     <ag-config-panel 
         ?active="${args.active}"
+        ._docsUrl="${args.docsUrl ?? null}"
         .theme="${args.theme}"
         .animations="${args.animations}"
         .pushSubscribed="${args.pushSubscribed}"
@@ -31,12 +33,25 @@ const Template = (args) => html`
   </div>
 `;
 
+// `_docsUrl` comes from the core's entry point in the application — the API reference is
+// a setting on the box, off by default — and is set by hand here to render both states.
 export const SidebarOpen = Template.bind({});
 SidebarOpen.args = {
     active: true,
     theme: 'slate',
     animations: true,
-    pushSubscribed: false
+    pushSubscribed: false,
+    docsUrl: null,
+};
+
+/** With the reference switched on: the version line gains the icon that opens it. */
+export const WithApiReference = Template.bind({});
+WithApiReference.args = {
+    active: true,
+    theme: 'slate',
+    animations: true,
+    pushSubscribed: false,
+    docsUrl: 'http://audiogravity.local/api/docs',
 };
 
 export const Subscribed = Template.bind({});

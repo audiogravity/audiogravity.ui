@@ -21,10 +21,11 @@
 import { LitElement, html } from 'lit';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
-import { AppState, MemoryCache, EventEmitter, THEMES, API_BASE_URL } from '../../common.js';
+import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
 import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
 import { setDarkMode } from '../../appearance.js';
+import { docsUrlFrom, openApiDocs } from '../../api-docs.js';
 import { showToast, handleError, getUserFriendlyError } from '../../ui-helpers.js';
 import { addToHistory } from '../../history.js';
 import { validateAudioConfig, showValidationModal } from '../../validation.js';
@@ -46,6 +47,8 @@ export class AgConfigPanel extends LitElement {
         lockPortrait: { type: Boolean },
         theme: { type: String },
         bwVersion: { type: String },
+        /** URL of the API reference, or null when this core does not serve it. */
+        _docsUrl: { type: String, state: true },
         themes: { type: Array },
         pushSubscribed: { type: Boolean },
         passkeys: { type: Array },
@@ -56,6 +59,11 @@ export class AgConfigPanel extends LitElement {
         super();
         this.active = false;
         this.bwVersion = '--';
+        this._docsUrl = null;
+        // Whether the entry point has answered at all, which is not the same question as
+        // whether it named a reference: `null` is the normal state of a box that serves
+        // none, and re-asking on every opening for that would be a request per gesture.
+        this._rootAnswered = false;
         this.pushSubscribed = false;
         this.passkeys = [];
         this.passkeysLoading = false;
@@ -120,6 +128,12 @@ export class AgConfigPanel extends LitElement {
             autoFetch: false,
             fetchFn: async () => {
                 let rootInfo = await apiGet('/');
+                // Whether this core serves its API reference is in the same answer, so it
+                // is read here rather than asked for again. `/status`, the fallback, does
+                // not carry it — a core that only answers there keeps the button hidden,
+                // which is the safe way round.
+                this._docsUrl = docsUrlFrom(rootInfo);
+                this._rootAnswered = true;
                 if (!rootInfo || !rootInfo.version) {
                     rootInfo = await apiGet('/status');
                 }
@@ -218,6 +232,11 @@ export class AgConfigPanel extends LitElement {
                 this.requestUpdate(); // Force Lit to re-evaluate properties
             }
             if (isWebAuthnAvailable()) this._loadPasskeys();
+            // Asked again on each opening until the core has answered once. The panel is
+            // built before the box is necessarily up — a PWA cold start while it boots —
+            // and a single failed attempt would otherwise leave the version at "--" and
+            // the API reference hidden for the life of the page.
+            if (!this._rootAnswered) this.loadVersions();
         }
     }
 
@@ -630,19 +649,7 @@ export class AgConfigPanel extends LitElement {
 
 
     _openApiDocs() {
-        const fullApiUrl = API_BASE_URL.startsWith('http')
-            ? API_BASE_URL
-            : window.location.origin + API_BASE_URL;
-
-        const docsUrl = `${fullApiUrl}/docs?url=${fullApiUrl}/openapi.json`;
-
-        const agDocsModal = document.getElementById('agDocsModal');
-        if (agDocsModal) {
-            agDocsModal.open('API Reference (Swagger)', docsUrl);
-        } else {
-            // Fallback to new tab if modal not found
-            window.open(docsUrl, '_blank');
-        }
+        openApiDocs(this._docsUrl);
     }
 
     /**
@@ -760,12 +767,12 @@ export class AgConfigPanel extends LitElement {
                         </button>
                         <div class="version-info">
                             <span>
-                                <span class="version-label">Version:</span>
                                 <span class="version-wrapper">
                                     <span>v${this.bwVersion}</span>
+                                    ${this._docsUrl ? html`
                                     <span class="version-icon clickable" title="Open API Documentation (Swagger)" @click=${this._openApiDocs}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
-                                    </span>
+                                    </span>` : ''}
                                 </span>
                             </span>
                         </div>

@@ -1,5 +1,6 @@
 import { LitElement, html } from 'lit';
-import { EventEmitter, UI_VERSION, API_BASE_URL, apiGet, AppState } from '../../common.js';
+import { EventEmitter, API_BASE_URL, AppState } from '../../common.js';
+import { apiDocsUrl, openApiDocs } from '../../api-docs.js';
 import { iconApiTree } from '../../ag-icons.js';
 
 /**
@@ -18,13 +19,16 @@ import { iconApiTree } from '../../ag-icons.js';
 export class AgFooter extends LitElement {
     static properties = {
         apiUrl: { type: String },
-        connected: { type: Boolean }
+        connected: { type: Boolean },
+        /** URL of the API reference, or null when this core does not serve it. */
+        _docsUrl: { type: String, state: true },
     };
 
     constructor() {
         super();
         this.apiUrl = 'Connecting...';
         this.connected = false;
+        this._docsUrl = null;
     }
 
     createRenderRoot() {
@@ -59,6 +63,9 @@ export class AgFooter extends LitElement {
             if (this.connected) {
                 const baseUrl = API_BASE_URL.startsWith('http') ? API_BASE_URL : window.location.origin + API_BASE_URL;
                 this.apiUrl = baseUrl;
+                // Asked once per page and shared with the configuration panel: the core
+                // serves the API reference only if its owner turned it on.
+                apiDocsUrl().then(url => { this._docsUrl = url; });
             } else {
                 this.apiUrl = 'Connecting...';
             }
@@ -86,18 +93,7 @@ export class AgFooter extends LitElement {
     }
 
     _openApiDocs() {
-        const fullApiUrl = API_BASE_URL.startsWith('http')
-            ? API_BASE_URL
-            : window.location.origin + API_BASE_URL;
-
-        const docsUrl = `${fullApiUrl}/docs?url=${fullApiUrl}/openapi.json`;
-
-        const agDocsModal = document.getElementById('agDocsModal');
-        if (agDocsModal) {
-            agDocsModal.open('API Reference (Swagger)', docsUrl);
-        } else {
-            window.open(docsUrl, '_blank');
-        }
+        openApiDocs(this._docsUrl);
     }
 
     render() {
@@ -112,7 +108,11 @@ export class AgFooter extends LitElement {
                         href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a></span>
 
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                    <span id="footerApiUrl">API: ${this.apiUrl}</span>
+                    <!-- The address of the box's core, named the way the sign-in badge,
+                         the installer and the service unit name it. The button beside it
+                         keeps "API": what it opens really is the API reference. -->
+                    <span id="footerApiUrl">CORE: ${this.apiUrl}</span>
+                    ${this._docsUrl ? html`
                     <div class="has-tooltip">
                         <button class="icon-btn" id="footerApiDocsBtn" title="API Documentation"
                             @click="${this._openApiDocs}"
@@ -124,7 +124,7 @@ export class AgFooter extends LitElement {
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
                         </button>
                         <div class="tooltip tooltip-top">Open API Documentation (Swagger UI)</div>
-                    </div>
+                    </div>` : ''}
                 </div>
             </footer>
         `;
