@@ -2,13 +2,14 @@
  * @module Wordmark
  * @description The Audiogravity wordmark, set as text.
  *
- * It used to be public/pics/audiogravity.svg, which was never a drawn logo: the file
- * holds two Inkscape <text> nodes asking for Helvetica, never converted to paths. A box
- * without Helvetica — every Linux and every Android this interface runs on — got
- * whatever fontconfig substituted, so the mark rendered differently from device to
- * device, and dark mode had to repaint it with `filter: brightness(0) invert(1)`
- * because an image cannot take a colour. Text set in Inter, which ships inside the UI
- * package, renders identically everywhere and reads `color` like anything else.
+ * It used to be an <img>, and the file behind it was never a drawn logo: two Inkscape
+ * <text> nodes asking for Helvetica, never converted to paths. A box without Helvetica —
+ * every Linux and every Android this interface runs on — got whatever fontconfig
+ * substituted, so the mark rendered differently from device to device, and dark mode had
+ * to repaint it with `filter: brightness(0) invert(1)` because an image cannot take a
+ * colour. Text set in Inter, which ships inside the UI package, renders identically
+ * everywhere and reads `color` like anything else. The retired file is kept as a source
+ * in audiogravity.design/ag-icon-logo/wordmark/, with a note saying why it is not one.
  *
  * The treatment is the landing page's (audiogravity.site/assets/style.css, .hero-h1):
  * Inter 900, letter-spacing -.05em, and `ty` as a superscript at .38em of the mark. The

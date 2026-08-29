@@ -1,8 +1,8 @@
 /**
  * The Audiogravity wordmark, wherever the interface shows it.
  *
- * It was an <img> pointing at public/pics/audiogravity.svg, and that file was never a
- * drawn logo: two Inkscape <text> nodes asking for Helvetica, never converted to paths.
+ * It was an <img> pointing at an SVG, and that file was never a drawn logo: two Inkscape
+ * <text> nodes asking for Helvetica, never converted to paths.
  * On a box without Helvetica — every Linux and every Android the interface runs on — the
  * mark was drawn in whatever fontconfig substituted, so it differed from device to
  * device while looking deliberate on the machine it was authored on. Nothing in a test
@@ -27,11 +27,13 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 const WORDMARK_CSS = read('css', 'components', 'wordmark.css');
 const MAIN_CSS = read('css', 'main.css');
 
-/** Where the mark stands as a logo, and the class sizing it there. */
+/** Where the mark stands as a logo, and the classes sizing it there. */
 const CALL_SITES = [
-    { file: 'index.html', size: 'app-logo' },
-    { file: 'login.html', size: 'login-logo' },
-    { file: path.join('js', 'components', 'molecules', 'ag-tabs.js'), size: 'tabs-logo' },
+    // Two on the app shell: the splash screen painted before anything else, then the
+    // title bar of the interface itself.
+    { file: 'index.html', sizes: ['splash-wordmark', 'app-logo'] },
+    { file: 'login.html', sizes: ['login-logo'] },
+    { file: path.join('js', 'components', 'molecules', 'ag-tabs.js'), sizes: ['tabs-logo'] },
 ];
 
 /** Where it appears inside a line of text — a footer credit, in both shells. */
@@ -64,12 +66,13 @@ describe('the wordmark is text, at every call-site', () => {
         expect(MAIN_CSS).toMatch(/@import\s+'components\/wordmark\.css';/);
     });
 
-    for (const { file, size } of CALL_SITES) {
+    for (const { file, sizes } of CALL_SITES) {
         it(`${file} writes the brand as markup, in the shared class`, () => {
             const src = read(...file.split(path.sep));
-            const marks = [...src.matchAll(/class="ag-wordmark ([\w-]+)">Audiogravi<sup>ty<\/sup><\/span>/g)];
+            const marks = [...src.matchAll(/class="ag-wordmark ([\w-]+)">Audiogravi<sup>ty<\/sup><\/span>/g)]
+                .map(m => m[1]);
             expect(marks.length, 'aucune marque rendue en texte').toBeGreaterThan(0);
-            for (const [, sizeClass] of marks) expect(sizeClass).toBe(size);
+            expect([...new Set(marks)].sort()).toEqual([...sizes].sort());
         });
     }
 
@@ -87,8 +90,10 @@ describe('the wordmark is text, at every call-site', () => {
     }
 
     it('leaves the drawn logo behind everywhere, precache included', () => {
-        // The file itself stays in public/pics/ — this is about what the interface
-        // fetches and paints, not about what the repo keeps.
+        // The file has moved to audiogravity.design, where retired sources live: an
+        // interface repository ships what it serves.
+        expect(fs.existsSync(path.join(ROOT, 'public', 'pics', 'audiogravity.svg')),
+            "l'ancien SVG est de retour dans public/pics/").toBe(false);
         const offenders = [];
         for (const file of ['index.html', 'login.html', 'sw.js',
             path.join('js', 'components', 'molecules', 'ag-tabs.js')]) {

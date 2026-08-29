@@ -36,11 +36,14 @@ const CACHE_URLS = [
     // Runs before the first paint; a cache miss here would put the white flash
     // back on exactly the cold loads this file exists to fix.
     '/theme-boot.js',
-    '/pics/apple-touch-icon.png',
-    '/pics/favicon-32x32.png',
-    '/pics/favicon-16x16.png',
-    '/pics/logo_audiogravity_light.png',
-    '/pics/logo_audiogravity_dark.png',
+    // The icons, under the names public/pics/ actually ships. The three of them were
+    // listed as apple-touch-icon.png, favicon-32x32.png and favicon-16x16.png — names no
+    // file in the repository has ever carried — beside two logo_audiogravity_*.png that
+    // exist nowhere at all. cache.add() catches its own failure, so five 404s per install
+    // were logged and nothing else happened; the icons were simply never precached.
+    '/pics/apple-touch-180.png',
+    '/pics/favicon-32.png',
+    '/pics/favicon-16.png',
     // CDN dependencies (Chart.js, CodeMirror). Inter is not among them any more:
     // it is a hashed asset in assets/, precached by the Workbox manifest above.
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
@@ -249,8 +252,12 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'Audiogravity';
     const options = {
         body: data.message || 'New notification from Audiogravity',
-        icon: '/pics/android-chrome-192x192.png',
-        badge: '/pics/favicon-32x32.png',
+        // Under the names public/pics/ ships. These read android-chrome-192x192.png and
+        // favicon-32x32.png, neither of which exists — the same wrong-name defect the
+        // app-shell list carried, and just as silent: a notification whose icon 404s is
+        // shown with the browser's default glyph, and nothing reports it.
+        icon: '/pics/pwa-192.png',
+        badge: '/pics/favicon-32.png',
         vibrate: [200, 100, 200],
         tag: data.tag || 'audiogravity-notification',
         requireInteraction: data.requireInteraction || false,
