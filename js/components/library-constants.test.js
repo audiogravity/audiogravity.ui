@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS} from './library-constants.js';
+import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -234,13 +234,41 @@ describe('SOURCE_MARKS — a source shown by its mark instead of its name', () =
         expect(SOURCE_MARKS.src_highresaudio).toBeDefined();
     });
 
-    it('carries both theme variants and the name for anyone the image cannot reach', () => {
-        const rendered = JSON.stringify(SOURCE_MARKS.src_highresaudio);
-        expect(rendered).toContain('hra-logo-light.webp');
-        expect(rendered).toContain('hra-logo-dark.webp');
-        // An <img alt>, not a CSS background: a background shows nothing at all when the
-        // file is missing, offline on a first load, or in forced-colours mode.
-        expect(rendered).toContain('alt=\\"HIGHRESAUDIO\\"');
+    it('gives Qobuz, Tidal and Roon one too — these logos ARE the name written out', () => {
+        expect(SOURCE_MARKS.src_qobuz).toBeDefined();
+        expect(SOURCE_MARKS.src_tidal).toBeDefined();
+        expect(SOURCE_MARKS.src_roon).toBeDefined();
+    });
+
+    it('marks every id Roon answers to, not just one of them', () => {
+        // A box running Roon Server reports one id, a Roon Bridge the other. Marking one
+        // would show the brand on one box and name it on the next.
+        for (const id of ROON_IDS) expect(SOURCE_MARKS[id], id).toBeDefined();
+        expect(SOURCE_MARKS['src_mono-sgen']).toBe(SOURCE_MARKS.src_roon);
+    });
+
+    it.each([
+        ['src_highresaudio', 'hra-logo', 'HIGHRESAUDIO'],
+        ['src_qobuz', 'qobuz-logo', 'Qobuz'],
+        ['src_tidal', 'tidal-logo', 'Tidal'],
+        ['src_roon', 'roon-logo', 'Roon'],
+    ])('%s carries both theme variants and the name for anyone the image cannot reach',
+        (id, file, name) => {
+            const rendered = JSON.stringify(SOURCE_MARKS[id]);
+            expect(rendered).toContain(`${file}-light.webp`);
+            expect(rendered).toContain(`${file}-dark.webp`);
+            // An <img alt>, not a CSS background: a background shows nothing at all when
+            // the file is missing, offline on a first load, or in forced-colours mode.
+            expect(rendered).toContain(`alt=\\"${name}\\"`);
+        });
+
+    it('sizes the two wide marks apart from HIGHRESAUDIO', () => {
+        // Their artwork is 3.7:1 and 7.5:1 against HRA's 1.4:1, so the height that suits
+        // one would draw a 280px-wide Tidal beside a 55px HRA. The class is what the
+        // stylesheet hangs the per-brand height on; without it they fall back to 40px.
+        expect(JSON.stringify(SOURCE_MARKS.src_qobuz)).toContain('lib-src-mark-qobuz');
+        expect(JSON.stringify(SOURCE_MARKS.src_tidal)).toContain('lib-src-mark-tidal');
+        expect(JSON.stringify(SOURCE_MARKS.src_roon)).toContain('lib-src-mark-roon');
     });
 
     it('renders the source badge as a mask, so it survives the selected card', () => {
@@ -255,8 +283,12 @@ describe('SOURCE_MARKS — a source shown by its mark instead of its name', () =
     });
 
     it('leaves every other source to be named', () => {
-        // The header's fallback is the normal path; a second mark is a deliberate act,
-        // not something that should arrive by copy-paste.
-        expect(Object.keys(SOURCE_MARKS)).toEqual(['src_highresaudio']);
+        // The header's fallback is the normal path; a further mark is a deliberate act,
+        // not something that should arrive by copy-paste. The four that have one are the
+        // streaming services and Roon, whose logos ARE their names written out — the local
+        // library and a UPnP server are named, because naming them says more than a glyph
+        // would, and because a UPnP server's name is its own, not a brand's.
+        expect(Object.keys(SOURCE_MARKS).sort())
+            .toEqual(['src_highresaudio', 'src_mono-sgen', 'src_qobuz', 'src_roon', 'src_tidal']);
     });
 });

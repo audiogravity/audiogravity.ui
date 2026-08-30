@@ -81,6 +81,39 @@ describe('the app shell lists files the box actually serves', () => {
     });
 });
 
+describe('the marks the library shows exist too', () => {
+    // SOURCE_MARKS names a .webp per brand per theme. They are binaries: they arrive as
+    // untracked files, and `git commit -a` does not pick them up — the interface would
+    // then ship a header naming four brands and showing none. The alt text saves the
+    // reader, not the release.
+    const MARKS = fs.readFileSync(
+        path.join(ROOT, 'js', 'components', 'library-constants.js'), 'utf8');
+
+    it('finds the marks', () => {
+        expect([...MARKS.matchAll(/\.\/pics\/([\w-]+\.webp)/g)].length).toBeGreaterThan(4);
+    });
+
+    it('ships every file they name, in both variants', () => {
+        const named = [...new Set([...MARKS.matchAll(/\.\/pics\/([\w-]+\.webp)/g)].map(m => m[1]))];
+        const missing = named.filter(f => !fs.existsSync(path.join(ROOT, 'public', 'pics', f)));
+        expect(missing, `nommés par SOURCE_MARKS, absents de public/pics :\n  ${missing.join('\n  ')}`)
+            .toEqual([]);
+    });
+
+    it('gives each mark a light and a dark variant', () => {
+        // One of the two missing is invisible in whichever theme the author was not in.
+        const named = [...new Set([...MARKS.matchAll(/\.\/pics\/([\w-]+)-(light|dark)\.webp/g)]
+            .map(m => m[1]))];
+        expect(named.length).toBeGreaterThan(2);
+        for (const base of named) {
+            for (const variant of ['light', 'dark']) {
+                const f = path.join(ROOT, 'public', 'pics', `${base}-${variant}.webp`);
+                expect(fs.existsSync(f), `${base}-${variant}.webp`).toBe(true);
+            }
+        }
+    });
+});
+
 describe('the manifest points at icons that exist', () => {
     it('declares some', () => {
         expect(manifestIcons().length).toBeGreaterThan(2);
