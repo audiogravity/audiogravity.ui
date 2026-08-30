@@ -50,21 +50,21 @@ export const SOURCE_MARKS = {
              alt="HIGHRESAUDIO" width="55" height="40">
         <img class="lib-src-mark lib-src-mark-dark" src="./pics/hra-logo-dark.webp"
              alt="HIGHRESAUDIO" width="55" height="40">`,
-    // Qobuz and Tidal are wordmarks like HIGHRESAUDIO's, and are sized apart from it in
-    // css/components/library-sources.css: their artwork is far wider than tall (3.7:1 and
-    // 7.5:1 against HRA's 1.4:1), so one height for the three would put a 280px Tidal
-    // beside a 55px HRA. The measurement that matters to the eye is the height of the
-    // lettering, not the height of the box.
+    // Qobuz, Tidal and Roon are wordmarks like HIGHRESAUDIO's, and each is sized apart
+    // from the others in css/components/library-sources.css — see there for the measured
+    // reason: their proportions run from 3.7:1 to 7.5:1, and the share of the image their
+    // name occupies runs from 11 % to 99 %, so neither one height nor one width makes
+    // four comparable marks.
     src_qobuz: html`
         <img class="lib-src-mark lib-src-mark-qobuz lib-src-mark-light" src="./pics/qobuz-logo-light.webp"
-             alt="Qobuz" width="88" height="24">
+             alt="Qobuz" width="74" height="20">
         <img class="lib-src-mark lib-src-mark-qobuz lib-src-mark-dark" src="./pics/qobuz-logo-dark.webp"
-             alt="Qobuz" width="88" height="24">`,
+             alt="Qobuz" width="74" height="20">`,
     src_tidal: html`
         <img class="lib-src-mark lib-src-mark-tidal lib-src-mark-light" src="./pics/tidal-logo-light.webp"
-             alt="Tidal" width="105" height="14">
+             alt="Tidal" width="98" height="13">
         <img class="lib-src-mark lib-src-mark-tidal lib-src-mark-dark" src="./pics/tidal-logo-dark.webp"
-             alt="Tidal" width="105" height="14">`,
+             alt="Tidal" width="98" height="13">`,
 };
 
 /* Roon answers to two source ids — a box running Roon Server reports one, a Roon Bridge
@@ -73,9 +73,9 @@ export const SOURCE_MARKS = {
    it over them keeps the two from drifting apart. */
 const roonMark = html`
     <img class="lib-src-mark lib-src-mark-roon lib-src-mark-light" src="./pics/roon-logo-light.webp"
-         alt="Roon" width="100" height="24">
+         alt="Roon" width="63" height="15">
     <img class="lib-src-mark lib-src-mark-roon lib-src-mark-dark" src="./pics/roon-logo-dark.webp"
-         alt="Roon" width="100" height="24">`;
+         alt="Roon" width="63" height="15">`;
 for (const id of ROON_IDS) SOURCE_MARKS[id] = roonMark;
 
 /* ─── Stream origin / provider (Now Playing badge) ───

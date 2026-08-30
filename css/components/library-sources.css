@@ -157,10 +157,32 @@
     object-fit: contain;
 }
 
-/* Each mark is sized on the height of its own lettering, not on the height of its file.
-   The four artworks are 1.4:1 (HRA), 3.7:1 (Qobuz), 7.5:1 (Tidal) and 4.2:1 (Roon), so
-   the 40px that suits the first would draw a 280px-wide Tidal beside it. Measured
-   against the source name these replace, which sits on --font-size-md.
+/* One height per mark, because these four artworks do not hold the same thing.
+   Measured — the share of each image its own name occupies:
+
+     HIGHRESAUDIO  11 %   its logo is a vertical composition, the word wedged between
+                          two blocks; giving that word the size of the others would need
+                          a box 129px tall and 177 wide, so it is set on the image and
+                          its name simply reads small. It is the odd one out by nature.
+     Qobuz         99 %   symbol on the left, the word filling the height
+     Roon          83 %
+     Tidal         86 %
+
+   So equal boxes give neither equal names nor equal weight, and this rule used to claim
+   it sized each mark "on the height of its own lettering" — it did not.
+
+   What the eye reads as "bigger" turned out to be two different things, measured as the
+   ink each mark actually paints on screen (opaque pixels at its rendered size):
+
+     Qobuz  520 px²   Tidal  501 px²   Roon  936 px²   HIGHRESAUDIO  390 px²
+
+   Roon carried nearly twice Qobuz's ink — a filled square and heavy letterforms — so it
+   genuinely was heavier, and 15px brings the two level. Tidal's ink already matched
+   Qobuz's: what made it loom was its LENGTH, 120px against 74, its logotype being widely
+   spaced by design. No height fixes that without shrinking the word, so it is a
+   compromise, set at 13px for a 98px footprint. HIGHRESAUDIO keeps the 40px its own
+   composition needs. The proportions (1.4:1, 3.7:1, 4.2:1, 7.5:1) are the other reason
+   one height for the four would draw a 280px-wide Tidal.
 
    max-height, not height, for the same reason `width` is auto above: when the image does
    not paint, the box has to hold the alt text. Measured with a broken src — at 14px the
@@ -172,9 +194,9 @@
 .lib-src-mark-tidal,
 .lib-src-mark-roon { height: auto; }
 
-.lib-src-mark-qobuz { max-height: 24px; }
-.lib-src-mark-tidal { max-height: 14px; }
-.lib-src-mark-roon { max-height: 24px; }
+.lib-src-mark-qobuz { max-height: 20px; }
+.lib-src-mark-tidal { max-height: 13px; }
+.lib-src-mark-roon { max-height: 15px; }
 
 .lib-src-mark-dark { display: none; }
 
