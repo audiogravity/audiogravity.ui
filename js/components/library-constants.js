@@ -34,12 +34,15 @@ export const SOURCE_ICONS = {
  * identity has a single home — the header used to build this inline, which put the
  * same thing in two files.
  *
- * Two <img> rather than a CSS background: a background paints nothing when the file
- * is missing, when the browser is in forced-colours mode, or on a first offline load,
- * and the line would then show a pulsing dot beside an empty box with no name at all.
- * An <img> falls back to its alt text, which is the name. The variants are the
- * owner's own positive and negative artwork; CSS shows one and hides the other, and a
- * hidden one is not announced twice.
+ * The four that have one are the streaming services and Roon, whose logos ARE their
+ * names written out; the local library and a UPnP server are named, because naming them
+ * says more than a glyph would.
+ *
+ * Two <img> rather than a CSS background: a background paints nothing when the file is
+ * missing, when the browser is in forced-colours mode, or on a first offline load, and
+ * the line would then be empty with nothing to say which source is open. An <img> falls
+ * back to its alt text, which is the name. The variants are positive and negative
+ * artwork; CSS shows one and hides the other, and a hidden one is not announced twice.
  */
 export const SOURCE_MARKS = {
     src_highresaudio: html`
@@ -47,7 +50,33 @@ export const SOURCE_MARKS = {
              alt="HIGHRESAUDIO" width="55" height="40">
         <img class="lib-src-mark lib-src-mark-dark" src="./pics/hra-logo-dark.webp"
              alt="HIGHRESAUDIO" width="55" height="40">`,
+    // Qobuz and Tidal are wordmarks like HIGHRESAUDIO's, and are sized apart from it in
+    // css/components/library-sources.css: their artwork is far wider than tall (3.7:1 and
+    // 7.5:1 against HRA's 1.4:1), so one height for the three would put a 280px Tidal
+    // beside a 55px HRA. The measurement that matters to the eye is the height of the
+    // lettering, not the height of the box.
+    src_qobuz: html`
+        <img class="lib-src-mark lib-src-mark-qobuz lib-src-mark-light" src="./pics/qobuz-logo-light.webp"
+             alt="Qobuz" width="88" height="24">
+        <img class="lib-src-mark lib-src-mark-qobuz lib-src-mark-dark" src="./pics/qobuz-logo-dark.webp"
+             alt="Qobuz" width="88" height="24">`,
+    src_tidal: html`
+        <img class="lib-src-mark lib-src-mark-tidal lib-src-mark-light" src="./pics/tidal-logo-light.webp"
+             alt="Tidal" width="105" height="14">
+        <img class="lib-src-mark lib-src-mark-tidal lib-src-mark-dark" src="./pics/tidal-logo-dark.webp"
+             alt="Tidal" width="105" height="14">`,
 };
+
+/* Roon answers to two source ids — a box running Roon Server reports one, a Roon Bridge
+   the other — and both must show the same mark, or the line would name the brand on one
+   box and show it on the next. ROON_IDS is the list; writing the entry once and mapping
+   it over them keeps the two from drifting apart. */
+const roonMark = html`
+    <img class="lib-src-mark lib-src-mark-roon lib-src-mark-light" src="./pics/roon-logo-light.webp"
+         alt="Roon" width="100" height="24">
+    <img class="lib-src-mark lib-src-mark-roon lib-src-mark-dark" src="./pics/roon-logo-dark.webp"
+         alt="Roon" width="100" height="24">`;
+for (const id of ROON_IDS) SOURCE_MARKS[id] = roonMark;
 
 /* ─── Stream origin / provider (Now Playing badge) ───
  * The backend now-playing payload tags each item with an `origin` kind

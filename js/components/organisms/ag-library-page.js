@@ -154,27 +154,27 @@ ag-lib-tabbar {
     stroke-linecap: round; stroke-linejoin: round;
     cursor: pointer;
 }
+/* Names the source being browsed — which is what this line is for, and all it is for.
+ *
+ * It used to open on a green pulsing dot, with the name in the success colour. Neither
+ * carried any state: there was no other value the dot could take, so it said "live" at
+ * the one moment that is true by construction — you have just picked this source and its
+ * grid is already filled below. That spends the vocabulary of a status light on something
+ * invariant, which is what leaves a reader unable to believe it the day a source really
+ * is in trouble. It also animated for as long as the page stayed open.
+ *
+ * The class name is kept: it is what the four call-sites already hang on. */
 .lib-live {
     font-family: var(--font-family);
     font-size: var(--font-size-sm);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--color-success-text);
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.lib-live::before {
-    content: "";
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--color-success);
-    box-shadow: 0 0 8px var(--color-success);
-    animation: lib-pulse 2s infinite;
-}
-@keyframes lib-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-body.no-animations .lib-live::before { box-shadow: none; animation: none; }
 
 /* Body / scroll */
 .lib-body { display: block; }
@@ -632,8 +632,8 @@ export class AgLibraryPage extends LitElement {
      *   source's own mark when it has one (SOURCE_MARKS). Both render as a child
      *   binding, so a fragment is as valid here as a string.
      * @returns {import('lit').TemplateResult|typeof nothing} The line, or nothing when
-     *   there is no source to name — an empty string would otherwise leave the pulsing
-     *   dot alone with no word beside it. A fragment is always truthy, which is correct:
+     *   there is no source to name — the row would otherwise take its space and its
+     *   spacing for no content at all. A fragment is always truthy, which is correct:
      *   a source that has a mark always has something to show.
      */
     _contextLine(label) {
@@ -676,9 +676,9 @@ export class AgLibraryPage extends LitElement {
             ? (this._upnpName || 'UPnP')
             : (SOURCE_META[_sourceId]?.label ?? _sourceId.replace('src_', ''));
 
-        // A source with a mark of its own is shown by it rather than named — today only
-        // HIGHRESAUDIO, whose logo IS a wordmark, so setting the name beside it would say
-        // the same thing twice. Anything without a mark is named, as before.
+        // A source with a mark of its own is shown by it rather than named — HIGHRESAUDIO,
+        // Qobuz, Tidal and Roon, whose logos ARE wordmarks, so setting the name beside one
+        // would say the same thing twice. Anything without a mark is named, as before.
         const srcLabel = SOURCE_MARKS[_sourceId] ?? srcName;
 
         return html`

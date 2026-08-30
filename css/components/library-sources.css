@@ -157,6 +157,25 @@
     object-fit: contain;
 }
 
+/* Each mark is sized on the height of its own lettering, not on the height of its file.
+   The four artworks are 1.4:1 (HRA), 3.7:1 (Qobuz), 7.5:1 (Tidal) and 4.2:1 (Roon), so
+   the 40px that suits the first would draw a 280px-wide Tidal beside it. Measured
+   against the source name these replace, which sits on --font-size-md.
+
+   max-height, not height, for the same reason `width` is auto above: when the image does
+   not paint, the box has to hold the alt text. Measured with a broken src — at 14px the
+   word still renders, because nothing here hides overflow; but that is the parent's
+   business, not this rule's, and a `overflow: hidden` added upstream one day would clip
+   the name with nothing to say why. The rendered size is identical when the file
+   arrives, checked in both cases. */
+.lib-src-mark-qobuz,
+.lib-src-mark-tidal,
+.lib-src-mark-roon { height: auto; }
+
+.lib-src-mark-qobuz { max-height: 24px; }
+.lib-src-mark-tidal { max-height: 14px; }
+.lib-src-mark-roon { max-height: 24px; }
+
 .lib-src-mark-dark { display: none; }
 
 body.dark-mode .lib-src-mark-light { display: none; }
