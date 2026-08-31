@@ -68,6 +68,7 @@ const roonState = { value: null, fetchedAt: 0, inFlight: null };
 const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
 const hraLabels = { value: null, fetchedAt: 0, inFlight: null };
+const hraSearchFilters = { value: null, fetchedAt: 0, inFlight: null };
 // One entry per grouping — genre and theme are two lists, and sharing a cache between
 // them would serve one under the other's heading.
 const hraPlaylistGroups = {
@@ -346,6 +347,45 @@ export async function getHraPlaylistGroups(kind, { force = false } = {}) {
 }
 
 /**
+ * Resolve what a HIGHRESAUDIO search can be narrowed and ordered by: the eleven audio
+ * formats, the moods grouped by family, and the nine sort orders.
+ *
+ * An object rather than a list, so it cannot go through {@link getHraCategories}'
+ * helper — but under the same rules: cached for the page, and a half-empty answer
+ * never kept, so the next visit asks again rather than leaving the advanced form with
+ * two empty menus for as long as it stays open.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<{formats: Array<object>, moods: Array<object>, sorts: Array<object>}>}
+ *   all three empty on any failure
+ */
+export async function getHraSearchFilters({ force = false } = {}) {
+    const empty = { formats: [], moods: [], sorts: [] };
+    if (!force && isFresh(hraSearchFilters, TTL_HRA_CATEGORIES)) return hraSearchFilters.value;
+    const inFlight = hraSearchFilters.inFlight
+        ?? fetchInto(hraSearchFilters, '/library/highresaudio-search-filters');
+    return inFlight
+        .then((value) => {
+            const filters = { ...empty, ...(value ?? {}) };
+            // The formats and the moods come from two calls on HRA's side, and it
+            // reports some failures as a 200 with nothing in it. The orders are the
+            // core's own list and are always there, so they cannot vouch for the rest.
+            //
+            // What is CACHED is the filled-in object, not the body that came back: a
+            // core older than this branch answers {formats, moods} with no `sorts` at
+            // all, and the cache hit would then hand a caller a shape the fetch never
+            // returns. The form reads `sorts` straight into a `.filter()`, so the
+            // second reader — a source switched away from HRA and back — threw and
+            // took the whole form down until a reload.
+            if (!filters.formats.length || !filters.moods.length) hraSearchFilters.value = null;
+            else hraSearchFilters.value = filters;
+            return filters;
+        })
+        .catch(() => empty);
+}
+
+/**
  * Whether an HRA connection may stream the catalogue — the ONE home of the
  * "absent means subscribed" contract, wherever the connection object is read.
  *
@@ -460,6 +500,11 @@ export function forgetHraAccount() {
         entry.value = null;
         entry.fetchedAt = 0;
     }
+    // The search filters are catalogue-wide rather than account-wide, so this is not
+    // correcting anything — it is keeping ONE rule ("nothing HRA outlives a sign-out")
+    // instead of a list of exceptions, which is what the shelves above got wrong.
+    hraSearchFilters.value = null;
+    hraSearchFilters.fetchedAt = 0;
     _favorites.delete('src_highresaudio');
     _notifyFavorites('src_highresaudio');
 }

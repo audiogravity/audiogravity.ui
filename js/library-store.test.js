@@ -529,3 +529,64 @@ describe('forgetHraAccount — the two shelves added with the menu restructure',
         expect(_apiGet).toHaveBeenCalledTimes(6);   // all three re-asked, none served
     });
 });
+
+// ---------------------------------------------------------------------------
+// getHraSearchFilters — what the advanced search can be narrowed and ordered by
+//
+// An object, not a list, so it cannot go through the helper the shelves use — but
+// under the same rule: a half-empty answer is a failure HRA reports as a 200, and
+// caching it would leave the form's three menus bare for as long as it stays open.
+// ---------------------------------------------------------------------------
+
+import { getHraSearchFilters } from './library-store.js';
+
+describe('getHraSearchFilters', () => {
+    const FILTERS = {
+        formats: [{ value: 'fl192', label: 'FLAC 192' }],
+        moods: [{ value: 'Dreamy', label: 'Dreamy', group: 'positive' }],
+        sorts: [{ value: '', label: 'Default' }],
+    };
+
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('asks again after an answer missing one of HRA\'s two lists', async () => {
+        // The orders always come back — they are the core's own list — so they cannot
+        // vouch for the two that HRA answers.
+        _apiGet.mockResolvedValueOnce({ formats: [], moods: [], sorts: FILTERS.sorts });
+        expect((await getHraSearchFilters()).formats).toEqual([]);
+        _apiGet.mockResolvedValueOnce(FILTERS);
+        expect((await getHraSearchFilters()).formats).toHaveLength(1);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('serves the cached answer once it has a whole one', async () => {
+        _apiGet.mockResolvedValueOnce(FILTERS);
+        await getHraSearchFilters();
+        await getHraSearchFilters();
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('serves the cache in the same shape it serves a fetch', async () => {
+        // A core older than this branch answers {formats, moods} with no `sorts`. The
+        // fetch path fills it in; caching the body as it came meant the SECOND reader
+        // — a source switched away from HRA and back builds a new form — got no
+        // `sorts` at all, and the form reads it straight into a .filter().
+        _apiGet.mockResolvedValueOnce({ formats: FILTERS.formats, moods: FILTERS.moods });
+        expect((await getHraSearchFilters()).sorts).toEqual([]);
+        expect((await getHraSearchFilters()).sorts).toEqual([]);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers with three empty lists rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getHraSearchFilters()).toEqual({ formats: [], moods: [], sorts: [] });
+    });
+
+    it('is dropped on sign-out with everything else HRA', async () => {
+        _apiGet.mockResolvedValue(FILTERS);
+        await getHraSearchFilters();
+        forgetHraAccount();
+        await getHraSearchFilters();
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+});

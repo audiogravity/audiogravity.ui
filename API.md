@@ -100,8 +100,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
 | GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]`, **alphabetical at both levels** |
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
-| GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
-| GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
+| GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed and ordered by: `{formats, moods, sorts}` |
+| GET | `/library/highresaudio-search` | HRA search narrowed by `q`, `artist`, `composer`, `label`, `release`, `format`, `mood`, `genre`, `subgenre` and ordered by `sort` — albums only. **Every parameter is optional**; an unknown `sort` answers `400` — see below |
 | GET | `/library/highresaudio-labels` | HRA record labels — `[{title, label}]`, same shape as the categories, in the order HRA publishes them |
 | GET | `/library/highresaudio-label?label=<title>` | Album grid of one record label (`2L`, `ECM`…). Unknown titles answer `200 []` |
 | GET | `/library/highresaudio-charts` | HRA's chart — the albums their own front page ranks. Paged with `offset`/`limit`; publishes no total |
@@ -118,6 +118,21 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > `label` equals `title` for every other category. Passing a
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
+
+> **HRA advanced search — every parameter optional, and two traps of theirs.** A criterion
+> is a search of its own: `label=ECM` alone answers with twenty albums, so `q` is not
+> required and a three-character minimum does not apply here (it belongs to their quick
+> search). `release` is HRA's own name for the year an album went ONLINE, not the year it
+> was recorded — *Innuendo* is production year 1991 and `release=2026`. `sort` takes one of
+> the nine values `/library/highresaudio-search-filters` publishes (`+` ascending, `-`
+> descending — HRA's own web client labels these the other way round, the values here are
+> the measured ones); anything else answers `400`, because HRA does not ignore an order it
+> does not know, it returns nothing at all. **Percent-encode the `+`** (`sort=%2Btitle`):
+> a query string decodes a literal `+` as a space. A leading space is read back as the `+`
+> it was, so `sort=+title` works too — no order legitimately begins with one. Two behaviours of theirs are passed through
+> untouched, deliberately: a `format` DISCARDS `q` (measured — `q=queen` and `q=london`
+> with `format=fl192` return the same fifty albums), and the direction of `+/-importDate`
+> is ignored.
 
 > **HRA playlists — the id names its own family.** The two trees have independent id
 > sequences, so a listing returns `editorial:1845` / `mine:5549` rather than a bare number:

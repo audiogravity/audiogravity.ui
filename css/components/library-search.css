@@ -92,20 +92,67 @@
     display: block;
 }
 
-/* HIGHRESAUDIO search filters (ag-hra-search-filters).
-   A row under the search bar, aligned on the same 20px gutter, that wraps rather than
-   scrolls: unlike the pill bars, neither field can be skipped over — each one narrows
-   the answer, so none of them may end up off-screen. */
+/* HIGHRESAUDIO advanced search (ag-hra-search-filters).
+   Under the search bar, on the same 20px gutter. Folded away by default: seven controls
+   between the box and the results would push every ordinary search off the screen, and
+   the form is what a minority of searches need. Open, it is a grid that reflows rather
+   than a strip that scrolls — unlike the pill bars, no criterion may end up off-screen,
+   since each one silently narrows the answer. */
 .lib-hraf {
     margin: 0 20px 14px;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--spacing-sm);
 }
 
-.lib-hraf-input {
-    flex: 1 1 140px;
+.lib-hraf-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px var(--spacing-sm);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.lib-hraf-toggle.open {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+/* How many criteria the results are narrowed by. It is on the toggle because that is
+   all that stays visible when the form is folded away, and a search narrowed by
+   something invisible is the failure this whole form exists to end. */
+.lib-hraf-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    border-radius: var(--radius-full);
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0;
+}
+
+.lib-hraf-form {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-sm);
+}
+
+.lib-hraf-input,
+.lib-hraf-select {
     min-width: 0;
     padding: 8px 10px;
     appearance: none;
@@ -119,13 +166,34 @@
 
 .lib-hraf-input::placeholder { color: var(--text-tertiary); }
 
-.lib-hraf-clear {
+/* Full width of the grid, whatever the number of columns it settled on. */
+.lib-hraf-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+}
+
+.lib-hraf-clear,
+.lib-hraf-apply {
     font-family: var(--font-family);
     font-size: var(--font-size-xxs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.lib-hraf-clear {
     color: var(--text-tertiary);
     background: transparent;
     border: 0;
-    cursor: pointer;
+}
+
+.lib-hraf-apply {
+    color: var(--bg-primary);
+    background: var(--text-primary);
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 4px var(--spacing-md);
 }

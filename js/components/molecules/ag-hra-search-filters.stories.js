@@ -5,32 +5,70 @@ export default {
     tags: ['autodocs'],
 };
 
+/** The option lists as the core publishes them, trimmed to what a story needs. */
+const FORMATS = [
+    { value: 'fl44', label: 'FLAC 44.1' },
+    { value: 'fl96', label: 'FLAC 96' },
+    { value: 'fl192', label: 'FLAC 192' },
+];
+const MOODS = [
+    { value: 'Dreamy', label: 'Dreamy', group: 'positive' },
+    { value: 'Uplifting', label: 'Uplifting', group: 'positive' },
+    { value: 'Melancholic', label: 'Melancholic', group: 'negative' },
+];
+const SORTS = [
+    { value: '', label: 'Default' },
+    { value: '+title', label: 'Title ascending' },
+    { value: '-title', label: 'Title descending' },
+    { value: '-releaseDate', label: 'Release date descending' },
+];
+
 /**
- * The filter row of a HIGHRESAUDIO search: composer and record label.
+ * HIGHRESAUDIO's advanced search, copied from their own application: artist, composer,
+ * label, year, format, mood and the order. The eighth criterion, the free text, is the
+ * search box of the view above and is not part of this component.
  *
- * Two filters HRA offers are not here, and both for measured reasons: a **format**
- * makes HRA discard the words typed altogether (the same fifty albums come back for
- * any search term), and a **mood** takes about a minute to answer cold.
+ * Two things here are deliberate and measured. Setting a **format** makes HRA discard
+ * the words typed — `queen` and `london` in FLAC 192 return the same fifty albums —
+ * and it is offered anyway, because their application offers it and a form that behaves
+ * differently from the one people know is the worse surprise. And the form is applied
+ * by its **Search** button rather than on every change: a cold filtered search takes
+ * tens of seconds on HRA (59s measured by mood), so seven controls firing one each
+ * would queue behind one another.
  *
- * Nothing is fetched — the two fields are free text — so this story needs no backend.
- * The `Clear` button appears only once something is set.
+ * The option lists come from `/library/highresaudio-search-filters`. Storybook has no
+ * backend, so the stories seed them the way an answer would.
  */
-const Template = () => {
+const Template = ({ open = false } = {}) => {
     const el = document.createElement('ag-hra-search-filters');
     el.style.cssText = 'display:block;max-width:640px;padding:8px;';
     el.addEventListener('hra-filters-change', (e) => console.log('hra-filters-change', e.detail));
+    queueMicrotask(() => {
+        // `_loaded` stands in for the fetch: set, the toggle opens without asking.
+        el._loaded = true;
+        el._formats = FORMATS;
+        el._moods = MOODS;
+        el._sorts = SORTS;
+        el._open = open;
+        el.requestUpdate?.();
+    });
     return el;
 };
 
-export const Default = Template.bind({});
+/** Folded away, which is how it sits above every ordinary search. */
+export const Default = () => Template();
 
-/** Pre-filled, so the `Clear` button and the emitted detail are both visible. */
-export const Filled = () => {
-    const el = Template();
-    // The row owns its state; a story sets it the way a click would.
+/** Open, with the seven controls and the two lists HRA publishes. */
+export const Open = () => Template({ open: true });
+
+/** Filled in and applied: the `Clear` button is out, and the toggle carries the count. */
+export const Applied = () => {
+    const el = Template({ open: true });
     queueMicrotask(() => {
-        el._composer = 'Arvo Pärt';
+        el._artist = 'Arvo Pärt';
         el._label = 'ECM';
+        el._sort = '-releaseDate';
+        el._apply();
         el.requestUpdate?.();
     });
     return el;
