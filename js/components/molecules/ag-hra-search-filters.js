@@ -9,10 +9,14 @@
  * first would only ask which one to type in.
  *
  * ## Why these eight and not others
- * The list is HRA's, copied deliberately, defects included (see below). Two of their shop
- * fields are absent for measured reasons: `album` is accepted and then SILENTLY IGNORED
- * by the streaming API (`artist=Queen&album=Innuendo` returns exactly the same eight
- * albums as `artist=Queen` alone), and genre has its own shelf on the browse.
+ * The list is HRA's APPLICATION's, copied deliberately, defects included (see below).
+ * That is the whole rule, and it is what settles the two absentees. `album` belongs to
+ * their SHOP's nine-field form, a different back-end, and is not on the application's:
+ * parity alone leaves it out. The measurement only says nothing was lost — the streaming
+ * API accepts it and disregards it, and on 2026-08-31 `artist=Queen&release=2026`
+ * returned the same thirteen albums id for id with no album, with `Innuendo`, and with a
+ * nonsense value. Genre is out for a different reason again: it has its own shelf on the
+ * browse.
  *
  * ## The defect that will be reported as a bug, and is not ours
  * Setting a format DISCARDS the words typed: `queen` and `london` with FLAC 192 both
@@ -22,11 +26,24 @@
  * shows the format filter works correctly alongside the structured fields: artist +
  * FLAC 96 narrows as it should.
  *
+ * ## Mood is offered, and HRA disregards it
+ * Measured on 2026-08-31, on a result small enough not to be capped: the same thirteen
+ * albums came back id for id with no mood, with *Amused*, and with *Melancholic* — two
+ * moods of opposite families — and the same held on four other shapes. A mood on its own
+ * answers nothing at all — the same signature as `album`, measured the same day.
+ *
+ * It is kept all the same, and the difference with `album` is not the measurement: mood
+ * IS a field of their application and `album` is not, so parity puts one on the form and
+ * leaves the other off. A parameter accepted and disregarded is besides a defect of a
+ * class that is not this control's property — `album` and the direction of `importDate`
+ * are the other two known cases. All three are reported to them.
+ *
  * ## Why a Search button rather than searching on every change
- * This is the one slow endpoint HRA exposes — 22s measured on a cold format query, 59s on
- * a mood, then instant on a repeat. Seven controls that each fire a search would be seven
- * of those, and the core lets only two run at once so the rest queue behind them. The
- * form is applied once, when it is asked for.
+ * This is the one slow endpoint HRA exposes: measured through the box on 2026-08-31,
+ * three different cold searches each ran past thirty seconds and came back in about a
+ * second on the retry, their side having cached them. Seven controls that each fire a
+ * search would be seven of those, and the core lets only two run at once so the rest
+ * queue behind them. The form is applied once, when it is asked for.
  *
  * @element ag-hra-search-filters
  *

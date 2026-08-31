@@ -120,7 +120,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > the answer is `200 []`.
 
 > **HRA advanced search — every parameter optional, and two traps of theirs.** A criterion
-> is a search of its own: `label=ECM` alone answers with twenty albums, so `q` is not
+> is a search of its own: `label=ECM` alone fills a page, so `q` is not
 > required and a three-character minimum does not apply here (it belongs to their quick
 > search). `release` is HRA's own name for the year an album went ONLINE, not the year it
 > was recorded — *Innuendo* is production year 1991 and `release=2026`. `sort` takes one of

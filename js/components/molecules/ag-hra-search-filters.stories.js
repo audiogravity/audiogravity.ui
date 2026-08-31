@@ -32,9 +32,12 @@ const SORTS = [
  * the words typed — `queen` and `london` in FLAC 192 return the same fifty albums —
  * and it is offered anyway, because their application offers it and a form that behaves
  * differently from the one people know is the worse surprise. And the form is applied
- * by its **Search** button rather than on every change: a cold filtered search takes
- * tens of seconds on HRA (59s measured by mood), so seven controls firing one each
- * would queue behind one another.
+ * by its **Search** button rather than on every change: a cold filtered search runs past
+ * thirty seconds on HRA and comes back in about a second on the retry (measured through
+ * the box), so seven controls firing one each would queue behind one another.
+ *
+ * **Mood is offered and HRA disregards it** — measured, the same albums come back with
+ * it, without it, and with a mood of the opposite family. It is theirs, so it is here.
  *
  * The option lists come from `/library/highresaudio-search-filters`. Storybook has no
  * backend, so the stories seed them the way an answer would.
