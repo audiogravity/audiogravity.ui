@@ -118,10 +118,22 @@ export class AgLibrarySearch extends LitElement {
     }
 
     /**
+     * @returns {boolean} Whether an HRA criterion NARROWS the catalogue. The order is
+     * not one of them: it arranges an answer, it does not produce one. Measured on the
+     * box 2026-08-31 — an order on its own, in either direction, returns an empty list
+     * rather than the head of the catalogue, and so does a request with no criterion at
+     * all. Asking anyway would spend the slowest call HRA has on a certain nothing.
+     */
+    get _hraNarrowed() {
+        const { sort, ...narrowing } = this._hraFilters;
+        return this._isHighresaudio && Object.values(narrowing).some(Boolean);
+    }
+
+    /**
      * @private The advanced form was applied or cleared: run what it asks for.
      *
      * A criterion is a search of its own — HRA's advanced endpoint requires no term,
-     * and `label=ECM` alone answers with twenty albums. This used to run only when the
+     * and `label=ECM` alone fills a page. This used to run only when the
      * box held something, so filling in a filter and pressing Search did nothing at
      * all, silently: the one visible symptom of a rule borrowed from the plain search.
      *
@@ -142,7 +154,7 @@ export class AgLibrarySearch extends LitElement {
         clearTimeout(this._debounce);
         // Emptying the box does not empty the screen when the advanced form is set:
         // its criteria are a search on their own, and that is the one still standing.
-        if (!this._query.trim() && !this._hasHraFilters) { this._results = null; return; }
+        if (!this._query.trim() && !this._hraNarrowed) { this._results = null; this._error = ''; return; }
         this._debounce = setTimeout(() => this._search(), 400);
     }
 
@@ -190,7 +202,16 @@ export class AgLibrarySearch extends LitElement {
 
     async _search() {
         if (!this.sourceId) return;
-        if (!this._query.trim() && !this._hasHraFilters) return;
+        if (!this._query.trim() && !this._hraNarrowed) {
+            // An order with nothing to arrange: HRA answers with an empty list, so
+            // this says why instead of showing "no results" for a search that never
+            // had a chance — and instead of spending its slowest call to learn it.
+            this._results = null;
+            this._error = this._hasHraFilters
+                ? 'An order arranges results — add something to search for.'
+                : '';
+            return;
+        }
         this._error = '';
         // Said here rather than discovered as a failed request: the catalogue
         // search answers NO SUBSCRIPTION for this account on every query, so
@@ -324,7 +345,7 @@ export class AgLibrarySearch extends LitElement {
         // Something was asked for — by typing, or by the advanced form on its own. The
         // second is why this is not just `_query`: a search on criteria alone would
         // otherwise sit under "Search your library", as if nothing had been asked.
-        const asked = Boolean(_query) || this._hasHraFilters;
+        const asked = Boolean(_query) || this._hraNarrowed;
 
         return html`
             <div class="lib-search-bar">
@@ -387,7 +408,7 @@ export class AgLibrarySearch extends LitElement {
                 </div>
             ` : nothing}
 
-            ${!asked ? html`
+            ${!asked && !_error ? html`
                 <div class="lib-empty" style="padding-top:60px">
                     Search your library
                 </div>

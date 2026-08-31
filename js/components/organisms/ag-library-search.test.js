@@ -110,7 +110,7 @@ describe('ag-library-search — where a HIGHRESAUDIO search goes', () => {
         // The defect the whole form was rebuilt around: this ran only when the box
         // held something, so filling in a criterion and pressing Search did nothing
         // at all. HRA's advanced endpoint needs no term — `label=ECM` alone answers
-        // with twenty albums.
+        // with a full page of them.
         const host = el({ _query: '', _hraFilters: filters({ label: 'ECM' }) });
         await host._search();
         expect(lastUrl()).toContain('/library/highresaudio-search?');
@@ -143,6 +143,26 @@ describe('ag-library-search — where a HIGHRESAUDIO search goes', () => {
         await el({ _query: 'U2', _hraFilters: filters({ composer: 'Mozart' }) })._search();
         expect(lastUrl()).toContain('/library/highresaudio-search?');
         expect(lastUrl()).toContain('q=U2');
+    });
+
+    it('does not send an order with nothing to arrange, and says why', async () => {
+        // Measured on the box: an order on its own returns an empty list, in either
+        // direction, and so does a request with no criterion at all. Sending it would
+        // spend HRA's slowest call to come back with "no results for those criteria",
+        // which reads as an empty catalogue rather than as a question missing half.
+        const host = el({ _query: '', _hraFilters: filters({ sort: '-importDate' }) });
+        await host._search();
+        expect(apiGetMock).not.toHaveBeenCalled();
+        expect(host._error).toContain('add something to search for');
+        expect(host._results).toBeNull();
+    });
+
+    it('sends the order along once there is something to arrange', async () => {
+        const host = el({ _query: '', _hraFilters: filters({ label: 'ECM', sort: '-title' }) });
+        await host._search();
+        expect(lastUrl()).toContain('label=ECM');
+        expect(lastUrl()).toContain('sort=-title');
+        expect(host._error).toBe('');
     });
 
     it('drops the results when the form is cleared with an empty box', async () => {
