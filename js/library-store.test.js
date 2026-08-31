@@ -450,3 +450,82 @@ describe('forgetHraAccount', () => {
         expect(_apiGet).toHaveBeenCalledTimes(4);   // both were re-asked, not served
     });
 });
+
+// ---------------------------------------------------------------------------
+// getHraLabels / getHraPlaylistGroups — the two shelves added with HIGHRESAUDIO's
+// own menu structure. Same rules as the categories: cached for the page, an empty
+// answer never kept.
+// ---------------------------------------------------------------------------
+
+import { getHraLabels, getHraPlaylistGroups } from './library-store.js';
+
+describe('getHraLabels', () => {
+    const LABELS = [{ title: '2L', label: '2L' }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('asks the core for the labels route', async () => {
+        _apiGet.mockResolvedValueOnce(LABELS);
+        expect(await getHraLabels()).toEqual(LABELS);
+        expect(_apiGet).toHaveBeenCalledWith('/library/highresaudio-labels');
+    });
+
+    it('serves the cached list once it has one', async () => {
+        expect(await getHraLabels()).toEqual(LABELS);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('answers with an empty list rather than throwing', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getHraLabels({ force: true })).toEqual([]);
+    });
+});
+
+describe('getHraPlaylistGroups', () => {
+    const GENRES = [{ title: 'Jazz', label: 'Jazz' }];
+    const THEMES = [{ title: 'Relax', label: 'Relax' }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('asks for the grouping it was given', async () => {
+        _apiGet.mockResolvedValueOnce(GENRES);
+        expect(await getHraPlaylistGroups('genre')).toEqual(GENRES);
+        expect(_apiGet).toHaveBeenCalledWith('/library/highresaudio-playlist-groups?type=genre');
+    });
+
+    it('keeps the two groupings in caches of their own', async () => {
+        // One shared entry would serve the themes under the genre strip, and the
+        // second call would never reach the core to notice.
+        _apiGet.mockResolvedValueOnce(THEMES);
+        expect(await getHraPlaylistGroups('theme')).toEqual(THEMES);
+        expect(await getHraPlaylistGroups('genre')).toEqual(GENRES);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers an unknown grouping with an empty list, asking the core nothing', async () => {
+        expect(await getHraPlaylistGroups('mood')).toEqual([]);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+});
+
+describe('forgetHraAccount — the two shelves added with the menu restructure', () => {
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('drops the labels and both playlist groupings too — they missed the purge (review)', async () => {
+        // Same "fixed for AN account" hour as the categories: left uncleared, a
+        // sign-out/sign-in served the previous account's labels and groupings for
+        // up to an hour.
+        _apiGet.mockResolvedValue([{ title: 'x', label: 'x' }]);
+        await getHraLabels();
+        await getHraPlaylistGroups('genre');
+        await getHraPlaylistGroups('theme');
+        expect(_apiGet).toHaveBeenCalledTimes(3);
+
+        forgetHraAccount();
+
+        await getHraLabels();
+        await getHraPlaylistGroups('genre');
+        await getHraPlaylistGroups('theme');
+        expect(_apiGet).toHaveBeenCalledTimes(6);   // all three re-asked, none served
+    });
+});

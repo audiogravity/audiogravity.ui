@@ -102,7 +102,11 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
 | GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
 | GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
-| GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf |
+| GET | `/library/highresaudio-labels` | HRA record labels — `[{title, label}]`, same shape as the categories, in the order HRA publishes them |
+| GET | `/library/highresaudio-label?label=<title>` | Album grid of one record label (`2L`, `ECM`…). Unknown titles answer `200 []` |
+| GET | `/library/highresaudio-charts` | HRA's chart — the albums their own front page ranks. Paged with `offset`/`limit`; publishes no total |
+| GET | `/library/highresaudio-playlist-groups?type=genre\|theme` | The genres or the themes HRA files its editorial playlists under — `[{title, label}]`, **alphabetical** |
+| GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…\|&group_type=genre\|theme&group=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf; `group_type`+`group` browse it by one of HRA's groupings instead — see below |
 | GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
 | GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
@@ -121,6 +125,22 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > and to `POST /library/queue`, and no caller ever has to guess which tree it came from.
 > `type` still exists on both routes and stays authoritative when the prefix is absent.
 > An account with no playlist of its own answers `200 []`, not an error.
+
+> **HRA playlist groupings — a filter over the editorial tree, not a third tree.** `genre`
+> and `theme` are HRA's own groupings OF the selections they publish, so a grouped browse
+> asks for `type=editorial` and names the grouping beside it: `group_type` and `group`
+> travel together, and **exactly one of them is refused** — a `group` with no `group_type`
+> answers `200 []` rather than the whole tree under that group's name. `group_type`+`group`
+> are **mutually exclusive with `category`**: HRA serves the three from three different
+> endpoints, not as three filters of one, so `category` is ignored when a grouping is given.
+> A grouping filters rather than partitions — measured over the 1764 selections, the 9
+> genres reach 1699 of them and the 10 themes 1021; the rest carry no such field and are
+> reachable only through the unfiltered tree. Unknown group titles answer `200 []`.
+
+> **HRA labels — five of the seven duplicate a shop category.** `ECM`, `Pentatone`,
+> `Warner`, `Universal` and `Sony` serve the same albums as the `… Highlights` categories;
+> only `2L` and `audite` are theirs alone. That is HRA's catalogue, not a fault, and nothing
+> is de-duplicated: a client showing both shelves shows those albums twice, deliberately.
 
 > **HRA Vault — the id names its tree, and the tree is not the catalogue.** A purchased
 > album is listed as `vault:<album>_<transaction>`; the prefix travels back untouched to

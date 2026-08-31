@@ -67,6 +67,13 @@ const zones    = { value: null, fetchedAt: 0, inFlight: null };
 const roonState = { value: null, fetchedAt: 0, inFlight: null };
 const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
+const hraLabels = { value: null, fetchedAt: 0, inFlight: null };
+// One entry per grouping — genre and theme are two lists, and sharing a cache between
+// them would serve one under the other's heading.
+const hraPlaylistGroups = {
+    genre: { value: null, fetchedAt: 0, inFlight: null },
+    theme: { value: null, fetchedAt: 0, inFlight: null },
+};
 // `gen` counts account changes: a flight started under an older generation may
 // neither stamp this entry nor answer a caller who asked after the change.
 const hraConnection = { value: null, fetchedAt: 0, inFlight: null, gen: 0 };
@@ -308,6 +315,37 @@ export async function getHraGenres({ force = false } = {}) {
 }
 
 /**
+ * Resolve the record labels HIGHRESAUDIO publishes — one pill each under the Labels
+ * shelf. Same `{title, label}` shape and same rules as {@link getHraCategories}.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getHraLabels({ force = false } = {}) {
+    return hraList(hraLabels, '/library/highresaudio-labels', { force });
+}
+
+/**
+ * Resolve the genres or the themes HIGHRESAUDIO files its editorial playlists under.
+ *
+ * A grouping filters that tree rather than partitioning it: measured over the 1764
+ * selections, the genres reach 1699 of them and the themes 1021, the rest carrying no
+ * such field. Same `{title, label}` shape as the categories.
+ *
+ * @param {'genre'|'theme'} kind - Which grouping to list.
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on failure or an
+ *   unknown kind
+ */
+export async function getHraPlaylistGroups(kind, { force = false } = {}) {
+    const entry = hraPlaylistGroups[kind];
+    if (!entry) return [];
+    return hraList(entry, `/library/highresaudio-playlist-groups?type=${kind}`, { force });
+}
+
+/**
  * Whether an HRA connection may stream the catalogue — the ONE home of the
  * "absent means subscribed" contract, wherever the connection object is read.
  *
@@ -412,6 +450,16 @@ export function forgetHraAccount() {
     hraCategories.fetchedAt = 0;
     hraGenres.value = null;
     hraGenres.fetchedAt = 0;
+    // The two shelves added with the menu restructure live under the same
+    // "fixed for an account" hour as the categories — left uncleared, a sign-out/
+    // sign-in served the previous account's labels and groupings for up to an hour
+    // (review finding: they simply missed this function when they were added).
+    hraLabels.value = null;
+    hraLabels.fetchedAt = 0;
+    for (const entry of Object.values(hraPlaylistGroups)) {
+        entry.value = null;
+        entry.fetchedAt = 0;
+    }
     _favorites.delete('src_highresaudio');
     _notifyFavorites('src_highresaudio');
 }

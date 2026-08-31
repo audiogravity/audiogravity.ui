@@ -26,6 +26,8 @@ vi.mock('../../library-api.js', () => ({ queueItem: vi.fn(), queueWithFeedback: 
 const getHraCategoriesMock = vi.fn();
 const getHraGenresMock = vi.fn();
 const getHraConnectionMock = vi.fn();
+const getHraLabelsMock = vi.fn();
+const getHraPlaylistGroupsMock = vi.fn();
 vi.mock('../../library-store.js', () => ({
     getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
     setAlbumFavorited: vi.fn(),
@@ -33,6 +35,8 @@ vi.mock('../../library-store.js', () => ({
     getHraCategories: (...args) => getHraCategoriesMock(...args),
     getHraGenres: (...args) => getHraGenresMock(...args),
     getHraConnection: (...args) => getHraConnectionMock(...args),
+    getHraLabels: (...args) => getHraLabelsMock(...args),
+    getHraPlaylistGroups: (...args) => getHraPlaylistGroupsMock(...args),
     // The real predicate, restated: it is the contract under test here (absent
     // means subscribed), and the store's own tests pin the original.
     hraHasSubscription: (conn) => conn?.has_subscription !== false,
@@ -123,30 +127,62 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     beforeEach(() => apiGetMock.mockReset());
 
-    it('builds one pill per category, behind Favorites, in the order HRA publishes them', () => {
-        expect(hraEl()._pills.map(([, label]) => label))
-            .toEqual(['Favorites', 'Vault', 'Genres', 'Playlists', 'Editors Choice', 'Listening Tips']);
+    it('keeps the categories off the filter bar, which is the seven shelves and fixed', () => {
+        // The fourteen categories used to sit on this bar, which is what made it
+        // eighteen pills long — the remark that started the restructure. They live on
+        // the strip below their own shelf now, so the bar does not grow with them.
+        expect(hraEl()._pills.map(([, label]) => label)).toEqual(
+            ['Favorites', 'Vault', 'Categories', 'Charts', 'Playlists', 'Labels', 'Genres'],
+        );
     });
 
-    it('shows the label but keys the pill on the title HRA answers with', () => {
-        const [, tips] = hraEl()._pills.filter(([f]) => f.startsWith('cat:'));
-        expect(tips).toEqual(['cat:Hörtipps', 'Listening Tips']);
-    });
-
-    it('keeps the entries of our own until the categories arrive', () => {
+    it('is the same bar before the categories have arrived', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] })._pills)
-            .toEqual([['favorites', 'Favorites'], ['vault', 'Vault'], ['genres', 'Genres'],
-                      ['playlists', 'Playlists']]);
+            .toEqual(hraEl()._pills);
+    });
+
+    it('shows the label but keys the strip on the title HRA answers with', () => {
+        expect(hraEl()._categoryPills).toContainEqual(['Hörtipps', 'Listening Tips']);
+    });
+
+    it('leads the strip with the entries HIGHRESAUDIO asked for, keeping the rest behind', () => {
+        // Their six named first, in their order; everything else they publish follows,
+        // in theirs. Nothing is dropped: the three absent from their own plan all serve
+        // real albums, and hiding them would put catalogue out of reach.
+        const el = makeEl({
+            sourceId: 'src_highresaudio',
+            _hraCategories: [
+                { title: 'Bestsellers', label: 'Bestsellers' },
+                { title: 'Editors Choice', label: 'Editors Choice' },
+                { title: 'UNAMAS', label: 'UNAMAS' },
+                { title: 'Neuheiten', label: 'New Release' },
+            ],
+        });
+        expect(el._categoryPills.map(([, label]) => label))
+            .toEqual(['New Release', 'Editors Choice', 'Bestsellers', 'UNAMAS']);
     });
 
     it('_fetchPage asks for the category by title', async () => {
         apiGetMock.mockResolvedValue([]);
         const el = hraEl();
-        el._filter = 'cat:Hörtipps';
+        el._filter = 'categories';
+        el._category = 'Hörtipps';
         await el._fetchPage(0);
         const url = apiGetMock.mock.calls[0][0];
         expect(url).toContain('/library/highresaudio-category?');
         expect(url).toContain(`category=${encodeURIComponent('Hörtipps')}`);
+    });
+
+    it('_fetchPage asks for nothing while the categories are still in flight', async () => {
+        // The shelf has no "everything" view to fall back on, so an unchosen category
+        // must not become a request without one — which the core would answer with the
+        // whole library.
+        apiGetMock.mockResolvedValue([]);
+        const el = makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] });
+        el._filter = 'categories';
+
+        expect(await el._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
     });
 
     it('_fetchPage still routes the Favorites pill to the generic album list', async () => {
@@ -161,7 +197,8 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
 
     it('_sectionLabel titles the grid with the displayed label, not the German title', () => {
         const el = hraEl();
-        el._filter = 'cat:Hörtipps';
+        el._filter = 'categories';
+        el._category = 'Hörtipps';
         expect(el._sectionLabel).toBe('Listening Tips');
     });
 
@@ -172,18 +209,32 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         expect(el._hraCategories).toEqual(CATEGORIES);
     });
 
-    it('a failed list leaves Favorites alone rather than an empty bar', async () => {
+    it('a failed list leaves an empty strip, never a broken bar', async () => {
         getHraCategoriesMock.mockResolvedValue([]);
         const el = makeEl({ sourceId: 'src_highresaudio', _hraCategories: [] });
         await el._loadHraCategories();
-        expect(el._pills).toEqual([['favorites', 'Favorites'], ['vault', 'Vault'],
-                                   ['genres', 'Genres'], ['playlists', 'Playlists']]);
+        expect(el._categoryPills).toEqual([]);
+        expect(el._pills.map(([f]) => f)).toContain('categories');
     });
 
-    it('asks again on every load while the list is missing — Refresh repairs the bar', async () => {
+    it('asks again on every load while the list is missing — Refresh repairs the strip', async () => {
         // The categories used to be fetched on a source CHANGE only. A source restored
         // at boot changes once: if that one attempt failed (an HRA session still warming
         // up), nothing in the app could ask again short of switching source and back.
+        getHraCategoriesMock.mockReset().mockResolvedValue([]);
+        apiGetMock.mockResolvedValue([]);
+        const el = makeEl({
+            sourceId: 'src_highresaudio', _hraCategories: [], _filter: 'categories',
+            _detachObserver() {}, _fav: { load() {} },
+        });
+        await el._load();
+        await el._load();
+        expect(getHraCategoriesMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not fetch the categories on a browse that is not showing them', async () => {
+        // The bar no longer holds them, so a browse landing on Favorites has no use for
+        // the list — one request per browse that bought nothing (sobriety).
         getHraCategoriesMock.mockReset().mockResolvedValue([]);
         apiGetMock.mockResolvedValue([]);
         const el = makeEl({
@@ -191,8 +242,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
             _detachObserver() {}, _fav: { load() {} },
         });
         await el._load();
-        await el._load();
-        expect(getHraCategoriesMock).toHaveBeenCalledTimes(2);
+        expect(getHraCategoriesMock).not.toHaveBeenCalled();
     });
 
     it('asks for the genre tree again on every load while it is missing', async () => {
@@ -270,7 +320,7 @@ describe('ag-library-browse — HIGHRESAUDIO Vault', () => {
         const el = loadable();
         await el._load();
         expect(el._pills.map(([f]) => f)).toEqual(
-            ['favorites', 'vault', 'genres', 'playlists', 'cat:Editors Choice']);
+            ['favorites', 'vault', 'categories', 'charts', 'playlists', 'labels', 'genres']);
         expect(el._filter).toBe('favorites');
     });
 
@@ -473,9 +523,10 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
 
     beforeEach(() => apiGetMock.mockReset().mockResolvedValue([]));
 
-    it('offers Playlists next to Favorites, the Vault and Genres', () => {
-        expect(plEl()._pills.map(([f]) => f).slice(0, 4))
-            .toEqual(['favorites', 'vault', 'genres', 'playlists']);
+    it('offers Playlists among the seven shelves', () => {
+        expect(plEl()._pills.map(([f]) => f))
+            .toEqual(['favorites', 'vault', 'categories', 'charts', 'playlists',
+                      'labels', 'genres']);
     });
 
     it('asks for the tree that is on screen', async () => {
@@ -522,10 +573,14 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
         el._genreEdges = { attach() {}, measure() {} };
         el._playlistEdges = { attach() {}, measure() {} };
         el._shelfEdges = { attach() {}, measure() {} };
+        el._entryEdges = { attach() {}, measure() {} };
         el.querySelector = () => null;
         el.updated(new Map([['sourceId', 'src_qobuz']]));
         expect(el._playlistKind).toBe('editorial');
         expect(el._playlistCategory).toBe('');
+        expect(el._playlistGroup).toBe('');
+        expect(el._category).toBe('');
+        expect(el._label).toBe('');
     });
 
     it('titles the grid with the tree on screen', () => {
@@ -611,6 +666,42 @@ describe('ag-library-browse — the ★ is offered only where the grid holds alb
     });
 });
 
+describe('ag-library-browse — banner covers', () => {
+    // HRA's editorial covers are teasers, 410 × 205 on all 32 sampled across their
+    // catalogue (2026-08-30). A square cell cropped them to their middle half, which is
+    // what Lothar reported. The same reasoning as the fallback glyph above: the card and
+    // the row show the same item in one viewport, so they must agree.
+    const el = (o = {}) => makeEl({
+        sourceId: 'src_highresaudio', _filter: 'playlists', _playlistKind: 'editorial',
+        _fav: { has: () => false }, ...o,
+    });
+    const item = { id: 'editorial:1845', title: 'Montreux Jazz Festival' };
+
+    it('marks HRA editorial artwork as a banner, card and row alike', () => {
+        const pl = el();
+        expect(pl._bannerCovers).toBe(true);
+        expect(text(pl._renderAlbumCard(item))).toContain('?wide=true');
+        expect(text(pl._renderListRow(item))).toContain('?wide=true');
+    });
+
+    it("leaves the account's own HRA playlists square — their artwork has no measured shape", () => {
+        const mine = el({ _playlistKind: 'mine' });
+        expect(mine._bannerCovers).toBe(false);
+        expect(text(mine._renderAlbumCard(item))).toContain('?wide=false');
+        expect(text(mine._renderListRow(item))).toContain('?wide=false');
+    });
+
+    it('leaves Qobuz and Tidal playlists square — their covers are square', () => {
+        expect(el({ sourceId: 'src_qobuz' })._bannerCovers).toBe(false);
+        expect(el({ sourceId: 'src_tidal', _filter: 'editorial' })._bannerCovers).toBe(false);
+    });
+
+    it('leaves the HRA album grids square — only the playlists are banners', () => {
+        expect(el({ _filter: 'favorites' })._bannerCovers).toBe(false);
+        expect(el({ _filter: 'vault' })._bannerCovers).toBe(false);
+    });
+});
+
 describe('ag-library-browse — HIGHRESAUDIO editorial shelves', () => {
     // 1762 editorial selections arrived as one undifferentiated pile. HRA files them
     // on four shelves via its own `category` field, filtered server-side.
@@ -685,5 +776,267 @@ describe('ag-library-browse — HIGHRESAUDIO editorial shelves', () => {
         expect(shelfEl({ _playlistCategory: 'Popular' })._sectionLabel).toBe('Popular');
         expect(shelfEl({ _playlistCategory: '' })._sectionLabel).toBe('Editorial playlists');
         expect(shelfEl({ _playlistKind: 'mine' })._sectionLabel).toBe('My playlists');
+    });
+});
+
+describe('ag-library-browse — the Labels and Charts shelves', () => {
+    // What the core answers on /library/highresaudio-labels: HRA's own order.
+    const LABELS = [
+        { title: 'ECM', label: 'ECM' },
+        { title: '2L', label: '2L' },
+        { title: 'audite', label: 'audite' },
+    ];
+
+    const el = (o = {}) => makeEl({ sourceId: 'src_highresaudio', _hraLabels: LABELS, ...o });
+
+    beforeEach(() => {
+        apiGetMock.mockReset().mockResolvedValue([]);
+        getHraLabelsMock.mockReset().mockResolvedValue(LABELS);
+    });
+
+    it('leads the strip with the labels HIGHRESAUDIO asked for', () => {
+        expect(el()._labelPills.map(([, label]) => label)).toEqual(['2L', 'audite', 'ECM']);
+    });
+
+    it('asks for one label by title', async () => {
+        const it_ = el({ _filter: 'labels', _label: '2L' });
+        await it_._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/highresaudio-label?');
+        expect(url).toContain('label=2L');
+    });
+
+    it('asks for nothing while the labels are still in flight', async () => {
+        const it_ = el({ _hraLabels: [], _filter: 'labels', _label: '' });
+        expect(await it_._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('opens on the first label once the list lands, without waiting for a tap', async () => {
+        // HRA serves no "every label" view, so a shelf that waited would just be empty.
+        const it_ = el({ _hraLabels: [], _filter: 'labels', _label: '', _load: vi.fn() });
+        await it_._loadHraLabels();
+        expect(it_._label).toBe('2L');       // the strip's first, not the answer's first
+        expect(it_._load).toHaveBeenCalled();
+    });
+
+    it('leaves the choice alone when the reader has already made one', async () => {
+        const it_ = el({ _filter: 'labels', _label: 'ECM', _load: vi.fn() });
+        await it_._loadHraLabels();
+        expect(it_._label).toBe('ECM');
+        expect(it_._load).not.toHaveBeenCalled();
+    });
+
+    it('titles the grid with the label on screen', () => {
+        expect(el({ _filter: 'labels', _label: 'audite' })._sectionLabel).toBe('audite');
+    });
+
+    it('Charts asks for the chart route and needs no second choice', async () => {
+        await el({ _filter: 'charts' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('/library/highresaudio-charts?');
+    });
+
+    it('Charts is titled by its own shelf, having no strip to name it', () => {
+        expect(el({ _filter: 'charts' })._sectionLabel).toBe('Charts');
+    });
+});
+
+describe('ag-library-browse — playlists by genre and by theme', () => {
+    const GROUPS = { genre: [{ title: 'Jazz', label: 'Jazz' }], theme: [{ title: 'Relax', label: 'Relax' }] };
+
+    const el = (o = {}) => makeEl({
+        sourceId: 'src_highresaudio', _filter: 'playlists',
+        _playlistKind: 'genre', _playlistGroup: 'Jazz',
+        _hraPlaylistGroups: GROUPS, _fav: { has: () => false }, ...o,
+    });
+
+    beforeEach(() => {
+        apiGetMock.mockReset().mockResolvedValue([]);
+        getHraPlaylistGroupsMock.mockReset().mockResolvedValue(GROUPS.genre);
+    });
+
+    it('browses the editorial tree, naming the grouping beside it', async () => {
+        // A grouping is not a third tree: asking for `type=genre` would be a tree HRA
+        // has never heard of.
+        await el()._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/highresaudio-playlists?');
+        expect(url).toContain('type=editorial');
+        expect(url).toContain('group_type=genre');
+        expect(url).toContain('group=Jazz');
+    });
+
+    it('sends no shelf alongside a grouping — HRA serves them from different endpoints', async () => {
+        await el({ _playlistCategory: 'Popular' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('category=');
+    });
+
+    it('asks for nothing until a group is chosen', async () => {
+        expect(await el({ _playlistGroup: '' })._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('shows the shelf strip over the editorial tree and the group strip over a grouping', () => {
+        expect(el({ _playlistKind: 'editorial' })._showsEditorialShelves).toBe(true);
+        expect(el({ _playlistKind: 'editorial' })._showsPlaylistGroups).toBe(false);
+        expect(el()._showsPlaylistGroups).toBe(true);
+        expect(el()._showsEditorialShelves).toBe(false);
+        expect(el({ _playlistKind: 'mine' })._showsPlaylistGroups).toBe(false);
+    });
+
+    it('treats a grouping as editorial artwork — those are the 2:1 teasers too', () => {
+        expect(el()._bannerCovers).toBe(true);
+        expect(el({ _playlistKind: 'theme', _playlistGroup: 'Relax' })._bannerCovers).toBe(true);
+        expect(el({ _playlistKind: 'mine' })._bannerCovers).toBe(false);
+    });
+
+    it('opens a grouping on its first entry when its list is already in memory', () => {
+        const it_ = el({ _playlistKind: 'editorial', _load: vi.fn() });
+        it_._setPlaylistKind('theme');
+        expect(it_._playlistGroup).toBe('Relax');
+        expect(getHraPlaylistGroupsMock).not.toHaveBeenCalled();
+    });
+
+    it('fetches a grouping the first time it is opened, then opens on its first entry', async () => {
+        const it_ = el({
+            _playlistKind: 'editorial', _hraPlaylistGroups: { genre: [], theme: [] },
+            _load: vi.fn(),
+        });
+        it_._setPlaylistKind('genre');
+        expect(getHraPlaylistGroupsMock).toHaveBeenCalledWith('genre');
+        await it_._loadHraPlaylistGroups('genre');
+        expect(it_._playlistGroup).toBe('Jazz');
+    });
+
+    it('keeps the two groupings apart in state', async () => {
+        const it_ = el({ _hraPlaylistGroups: { genre: [], theme: [] }, _load: vi.fn() });
+        getHraPlaylistGroupsMock.mockResolvedValue(GROUPS.theme);
+        await it_._loadHraPlaylistGroups('theme');
+        expect(it_._hraPlaylistGroups.theme).toEqual(GROUPS.theme);
+        expect(it_._hraPlaylistGroups.genre).toEqual([]);
+    });
+
+    it('titles the grid with the group, not with the grouping', () => {
+        expect(el()._sectionLabel).toBe('Jazz');
+        expect(el({ _playlistGroup: '' })._sectionLabel).toBe('Playlists by genre');
+    });
+
+    it('leaving a grouping takes its choice with it', () => {
+        const it_ = el({ _load: vi.fn() });
+        it_._setPlaylistKind('mine');
+        expect(it_._playlistGroup).toBe('');
+    });
+});
+
+describe('ag-library-browse — review fixes on the shelves', () => {
+    beforeEach(() => apiGetMock.mockReset());
+
+    it('a groups list landing after the reader left Playlists changes nothing on screen', async () => {
+        // _playlistKind survives leaving the shelf, so without the visibility guard a
+        // slow fetch picked a group and reloaded — blanking the Favorites grid the
+        // reader had moved to. The guard its sibling _openFirstEntry always had.
+        getHraPlaylistGroupsMock.mockResolvedValue([{ title: 'Jazz', label: 'Jazz' }]);
+        const el = makeEl({
+            sourceId: 'src_highresaudio', _filter: 'favorites',
+            _playlistKind: 'genre', _playlistGroup: '',
+            _hraPlaylistGroups: { genre: [], theme: [] }, _load: vi.fn(),
+        });
+
+        await el._loadHraPlaylistGroups('genre');
+
+        expect(el._hraPlaylistGroups.genre).toEqual([{ title: 'Jazz', label: 'Jazz' }]);
+        expect(el._playlistGroup).toBe('');
+        expect(el._load).not.toHaveBeenCalled();
+    });
+
+    it('still opens the grouping when its shelf IS on screen', async () => {
+        getHraPlaylistGroupsMock.mockResolvedValue([{ title: 'Jazz', label: 'Jazz' }]);
+        const el = makeEl({
+            sourceId: 'src_highresaudio', _filter: 'playlists',
+            _playlistKind: 'genre', _playlistGroup: '',
+            _hraPlaylistGroups: { genre: [], theme: [] }, _load: vi.fn(),
+        });
+
+        await el._loadHraPlaylistGroups('genre');
+
+        expect(el._playlistGroup).toBe('Jazz');
+        expect(el._load).toHaveBeenCalled();
+    });
+
+    it('re-measures the filter bar when the subscription state is learned', () => {
+        // The bar jumps between one pill (Vault) and seven on that flag; the old code
+        // only healed the overflow markers by accident, via the categories arriving.
+        const measured = vi.fn();
+        const el = makeEl({
+            sourceId: 'src_highresaudio',
+            _syncObserver() {},
+            _edges: { attach() {}, measure: measured },
+            _genreEdges: { attach() {}, measure() {} },
+            _playlistEdges: { attach() {}, measure() {} },
+            _shelfEdges: { attach() {}, measure() {} },
+            _entryEdges: { attach() {}, measure() {} },
+        });
+        el.querySelector = () => null;
+
+        el.updated(new Map([['_hraSubscribed', false]]));
+
+        expect(measured).toHaveBeenCalled();
+    });
+
+    it('keeps a category in its asked-for place even when the core re-words its label', () => {
+        // The order is keyed on the TITLE — the stable addressing key — so a display
+        // relabel ('New Release' → 'New Releases') cannot silently send the category
+        // to the back of the strip and change where the shelf lands.
+        const el = makeEl({
+            sourceId: 'src_highresaudio',
+            _hraCategories: [
+                { title: 'Editors Choice', label: 'Editors Choice' },
+                { title: 'Neuheiten', label: 'New Releases' },   // drifted wording
+            ],
+        });
+        expect(el._categoryPills[0]).toEqual(['Neuheiten', 'New Releases']);
+    });
+});
+
+describe('ag-library-browse — the two design calls settled with the user', () => {
+    beforeEach(() => apiGetMock.mockReset());
+
+    it('a shelf reopened finds the entry its reader left it on', () => {
+        // Playlists always kept its tree and shelf across the same gesture; Categories
+        // and Labels reset to their first entry, so one bar remembered two ways.
+        const el = makeEl({
+            sourceId: 'src_highresaudio', _filter: 'charts', _category: 'Bestsellers',
+            _hraCategories: [{ title: 'Neuheiten', label: 'New Release' },
+                             { title: 'Bestsellers', label: 'Bestsellers' }],
+            _load: vi.fn(),
+        });
+
+        el._setFilter('categories');
+
+        expect(el._category).toBe('Bestsellers');
+    });
+
+    it('still opens on the first entry when nothing has been chosen yet', () => {
+        const el = makeEl({
+            sourceId: 'src_highresaudio', _filter: 'charts', _category: '',
+            _hraCategories: [{ title: 'Editors Choice', label: 'Editors Choice' },
+                             { title: 'Neuheiten', label: 'New Release' }],
+            _load: vi.fn(),
+        });
+
+        el._setFilter('categories');
+
+        expect(el._category).toBe('Neuheiten');   // the strip's first, in Lothar's order
+    });
+
+    it('reads a grouping key that is not a word on its own', () => {
+        // ⚠️ What this does NOT pin: that the word comes from the strip's label rather
+        // than from the state key. For both kinds that exist today the two coincide
+        // ('genre' → 'Genre' → 'genre'), so no assertion can tell them apart — a first
+        // version of this test asserted exactly that and passed with the fix reverted.
+        // What is left is the half that has content: an unfamiliar key falls back to
+        // itself instead of throwing, so the empty state still renders.
+        expect(makeEl({ _playlistKind: 'by_mood' })._playlistKindLabel).toBe('by_mood');
+        expect(makeEl({ _playlistKind: 'genre' })._playlistKindLabel).toBe('genre');
     });
 });
