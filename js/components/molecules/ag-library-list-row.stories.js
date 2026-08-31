@@ -10,6 +10,7 @@ export default {
         title:      { control: 'text' },
         subtitle:   { control: 'text' },
         actionable: { control: 'boolean' },
+        wide:       { control: 'boolean' },
     },
 };
 
@@ -21,6 +22,7 @@ const Template = (args) => html`
         title="${args.title}"
         subtitle="${args.subtitle}"
         ?actionable="${args.actionable}"
+        ?wide="${args.wide}"
         @row-click=${() => console.log('row-click')}
         @row-action=${() => console.log('row-action')}>
     </ag-library-list-row>
@@ -52,4 +54,19 @@ NoAction.args = {
     title: 'Playlists',
     subtitle: '',
     actionable: false,
+};
+
+/**
+ * A row whose artwork is a 2:1 banner (HIGHRESAUDIO's editorial playlists). The row keeps
+ * the height it has everywhere else — the thumbnail takes twice the width instead — so a
+ * list mixing both shapes does not change rhythm from one row to the next.
+ */
+export const BannerRow = Template.bind({});
+BannerRow.args = {
+    cover: 'https://picsum.photos/seed/agbannerrow/410/205',
+    fallback: 'list',
+    title: 'Montreux Jazz Festival — The Greatest Live Performances',
+    subtitle: 'Playlist · Editor’s Pick',
+    actionable: true,
+    wide: true,
 };

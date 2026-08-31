@@ -1,19 +1,35 @@
 /**
  * @module LibraryListRow
- * @description Styles for the ag-library-list-row molecule. The cover-cell
- * (40×40) and the trailing "+ add" button (.lib-lr-add) live in
- * library-cover.css; this file owns the row layout and the title/subtitle
- * typography.
+ * @description Styles for the ag-library-list-row molecule. The cover cell and the
+ * trailing "+ add" button (.lib-lr-add) live in library-cover.css; this file owns the
+ * row layout and the title/subtitle typography.
  */
 
 .lib-list-row {
     display: grid;
-    grid-template-columns: 40px 1fr auto;
+
+    /* The cover column takes the width of the cover, rather than naming one: the cell is
+       square at 40px on most rows and a 2:1 banner at 80×40 on HIGHRESAUDIO's editorial
+       playlists. Hard-coded at 40px, the wider cell overflowed its column and printed
+       itself over the first third of every title — seen on screen, not in a test, since
+       nothing here lays out under jsdom. */
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 12px;
     padding: 10px 20px;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
+}
+
+/* The trailing controls, in ONE of the three columns. A row can carry both the ★ and
+   the + — every album row of a streaming search does — and as two grid items that is a
+   fourth item in a three-column grid: it wrapped onto a second line, left-aligned under
+   the cover, with the star stranded on the right of the first. Since 2026-07-13 (the
+   commit that put the star on search rows), and only ever visible there. */
+.lib-lr-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .lib-lr-col {

@@ -23,6 +23,16 @@ import { iconSearch } from '../../ag-icons.js';
 import '../molecules/ag-library-list-row.js';
 import '../molecules/ag-hra-search-filters.js';
 
+/**
+ * The HRA advanced criteria, unset. Their names are the query parameters the core
+ * takes, so the search builds its request by walking this object rather than by
+ * listing seven fields again.
+ * @type {Readonly<Record<string, string>>}
+ */
+const EMPTY_HRA_FILTERS = Object.freeze({
+    artist: '', composer: '', label: '', release: '', format: '', mood: '', sort: '',
+});
+
 export class AgLibrarySearch extends LitElement {
     static properties = {
         sourceId:  { type: String, attribute: 'source-id' },
@@ -54,8 +64,12 @@ export class AgLibrarySearch extends LitElement {
         this._debounce = null;
         /** Generation counter: an answer that resolves under an older token is dropped. */
         this._searchToken = 0;
-        /** @type {{composer: string, label: string}} HRA search filters. */
-        this._hraFilters = { composer: '', label: '' };
+        /**
+         * @type {{artist: string, composer: string, label: string, release: string,
+         *         format: string, mood: string, sort: string}}
+         * The HRA advanced criteria currently in effect, as the form applied them.
+         */
+        this._hraFilters = { ...EMPTY_HRA_FILTERS };
         /**
          * @type {boolean} Whether the HRA account may search the catalogue —
          * hraHasSubscription() of the last connection read, so a plain boolean.
@@ -74,10 +88,9 @@ export class AgLibrarySearch extends LitElement {
     /** @returns {boolean} Whether the active source is HIGHRESAUDIO. */
     get _isHighresaudio() { return this.sourceId === 'src_highresaudio'; }
 
-    /** @returns {boolean} Whether an HRA filter is set, which changes where the search goes. */
+    /** @returns {boolean} Whether an HRA criterion is set, which changes where the search goes. */
     get _hasHraFilters() {
-        const f = this._hraFilters;
-        return this._isHighresaudio && Boolean(f.composer || f.label);
+        return this._isHighresaudio && !this.isEmptyHraFilters;
     }
 
     updated(changed) {
@@ -85,7 +98,7 @@ export class AgLibrarySearch extends LitElement {
         // destroys it and coming back builds an empty one. Its values must go with it:
         // kept, they narrowed every later search with no control on screen to undo it.
         if (changed.has('sourceId') && !this._isHighresaudio && !this.isEmptyHraFilters) {
-            this._hraFilters = { composer: '', label: '' };
+            this._hraFilters = { ...EMPTY_HRA_FILTERS };
         }
         // What the account may search is the browse's question too, and the store
         // answers both from one cache. Read on every arrival at HRA: an account
@@ -99,14 +112,31 @@ export class AgLibrarySearch extends LitElement {
         if (this._isHighresaudio) this._hraSubscribed = hraHasSubscription(conn);
     }
 
-    /** @returns {boolean} True when no HRA filter is set. */
+    /** @returns {boolean} True when no HRA criterion is set. */
     get isEmptyHraFilters() {
-        return !this._hraFilters.composer && !this._hraFilters.label;
+        return !Object.values(this._hraFilters).some(Boolean);
     }
 
     /**
-     * @private A filter changed: re-run the search when there is something to search
-     * for, and drop stale results when the filters are cleared with an empty box.
+     * @returns {boolean} Whether an HRA criterion NARROWS the catalogue. The order is
+     * not one of them: it arranges an answer, it does not produce one. Measured on the
+     * box 2026-08-31 — an order on its own, in either direction, returns an empty list
+     * rather than the head of the catalogue, and so does a request with no criterion at
+     * all. Asking anyway would spend the slowest call HRA has on a certain nothing.
+     */
+    get _hraNarrowed() {
+        const { sort, ...narrowing } = this._hraFilters;
+        return this._isHighresaudio && Object.values(narrowing).some(Boolean);
+    }
+
+    /**
+     * @private The advanced form was applied or cleared: run what it asks for.
+     *
+     * A criterion is a search of its own — HRA's advanced endpoint requires no term,
+     * and `label=ECM` alone fills a page. This used to run only when the
+     * box held something, so filling in a filter and pressing Search did nothing at
+     * all, silently: the one visible symptom of a rule borrowed from the plain search.
+     *
      * @param {CustomEvent} e
      */
     _onHraFilters(e) {
@@ -115,19 +145,34 @@ export class AgLibrarySearch extends LitElement {
         // unfiltered request after this one, and the slower filtered answer can land
         // first and be overwritten by it.
         clearTimeout(this._debounce);
-        if (this._query.trim()) this._search();
+        if (this._query.trim() || this._hasHraFilters) this._search();
+        else this._results = null;   // cleared with an empty box: nothing left to show
     }
 
     _onInput(e) {
         this._query = e.target.value;
         clearTimeout(this._debounce);
-        if (!this._query.trim()) { this._results = null; return; }
+        // Emptying the box does not empty the screen when the advanced form is set:
+        // its criteria are a search on their own, and that is the one still standing.
+        if (!this._query.trim() && !this._hraNarrowed) { this._results = null; this._error = ''; return; }
         this._debounce = setTimeout(() => this._search(), 400);
     }
 
     _onKeydown(e) {
         if (e.key === 'Enter') { clearTimeout(this._debounce); this._search(); }
-        if (e.key === 'Escape') { this._query = ''; this._results = null; }
+        if (e.key === 'Escape') this._clearQuery();
+    }
+
+    /**
+     * @private Empty the search box. The advanced criteria are not the box's, so they
+     * stay — and what is on screen was narrowed by the words too, so it is asked
+     * again rather than left standing for a search nobody is running any more.
+     */
+    _clearQuery() {
+        this._query = '';
+        clearTimeout(this._debounce);
+        if (this._hasHraFilters) this._search();
+        else this._results = null;
     }
 
     /** Return the group key of the currently active source. */
@@ -156,7 +201,17 @@ export class AgLibrarySearch extends LitElement {
     }
 
     async _search() {
-        if (!this.sourceId || !this._query.trim()) return;
+        if (!this.sourceId) return;
+        if (!this._query.trim() && !this._hraNarrowed) {
+            // An order with nothing to arrange: HRA answers with an empty list, so
+            // this says why instead of showing "no results" for a search that never
+            // had a chance — and instead of spending its slowest call to learn it.
+            this._results = null;
+            this._error = this._hasHraFilters
+                ? 'An order arranges results — add something to search for.'
+                : '';
+            return;
+        }
         this._error = '';
         // Said here rather than discovered as a failed request: the catalogue
         // search answers NO SUBSCRIPTION for this account on every query, so
@@ -169,14 +224,6 @@ export class AgLibrarySearch extends LitElement {
             return;
         }
         const q = this._query.trim();
-        // HRA cannot search on fewer than three characters, and the filtered endpoint
-        // answers nothing rather than refusing. Left silent, "U2" with a composer set
-        // looked like a catalogue without U2 in it.
-        if (this._hasHraFilters && q.length < 3) {
-            this._results = null;
-            this._error = 'HIGHRESAUDIO needs at least three characters to search with a filter.';
-            return;
-        }
         // A slow filtered search (HRA takes tens of seconds on a cold one) can resolve
         // after a later, faster one. The token is checked where the answer comes back.
         const token = ++this._searchToken;
@@ -186,10 +233,14 @@ export class AgLibrarySearch extends LitElement {
             // than stale. Unfiltered, nothing changes: the ordinary search still
             // covers all three, on every source.
             if (this._hasHraFilters) {
-                const f = this._hraFilters;
-                const params = new URLSearchParams({ q, limit: '50' });
-                if (f.composer) params.set('composer', f.composer);
-                if (f.label) params.set('label', f.label);
+                // The criteria are named after the parameters the core takes, so the
+                // request is the form itself minus what is unset — nothing to keep in
+                // step when a criterion is added or dropped.
+                const params = new URLSearchParams({ limit: '50' });
+                if (q) params.set('q', q);
+                for (const [key, value] of Object.entries(this._hraFilters)) {
+                    if (value) params.set(key, value);
+                }
                 const albums = await apiGet(`/library/highresaudio-search?${params}`);
                 if (token !== this._searchToken) return;   // superseded while we waited
                 this._results = { query: q, source_id: this.sourceId, artists: [], albums, tracks: [] };
@@ -291,6 +342,10 @@ export class AgLibrarySearch extends LitElement {
     render() {
         const { _query, _results, _loading, _error } = this;
         const hasResults = _results && (_results.tracks?.length || _results.albums?.length || _results.artists?.length);
+        // Something was asked for — by typing, or by the advanced form on its own. The
+        // second is why this is not just `_query`: a search on criteria alone would
+        // otherwise sit under "Search your library", as if nothing had been asked.
+        const asked = Boolean(_query) || this._hraNarrowed;
 
         return html`
             <div class="lib-search-bar">
@@ -305,7 +360,7 @@ export class AgLibrarySearch extends LitElement {
                     autocomplete="off"
                 />
                 ${_query ? html`
-                    <button class="lib-search-cancel" @click=${() => { this._query = ''; this._results = null; }}>
+                    <button class="lib-search-cancel" @click=${() => this._clearQuery()}>
                         Cancel
                     </button>
                 ` : nothing}
@@ -347,11 +402,13 @@ export class AgLibrarySearch extends LitElement {
                 ` : nothing}
             ` : nothing}
 
-            ${!_loading && !_error && !hasResults && _query ? html`
-                <div class="lib-empty">No results for "${_query}"</div>
+            ${!_loading && !_error && !hasResults && asked ? html`
+                <div class="lib-empty">
+                    ${_query ? `No results for "${_query}"` : 'No results for those criteria'}
+                </div>
             ` : nothing}
 
-            ${!_query ? html`
+            ${!asked && !_error ? html`
                 <div class="lib-empty" style="padding-top:60px">
                     Search your library
                 </div>

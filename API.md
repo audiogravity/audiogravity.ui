@@ -100,9 +100,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
 | GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]`, **alphabetical at both levels** |
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
-| GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed by: `{formats, moods}` |
-| GET | `/library/highresaudio-search?q=…` | HRA search narrowed by `format`, `mood`, `composer`, `artist`, `label`, `genre`, `subgenre` — albums only |
-| GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf |
+| GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed and ordered by: `{formats, moods, sorts}` |
+| GET | `/library/highresaudio-search` | HRA search narrowed by `q`, `artist`, `composer`, `label`, `release`, `format`, `mood`, `genre`, `subgenre` and ordered by `sort` — albums only. **Every parameter is optional**; an unknown `sort` answers `400` — see below |
+| GET | `/library/highresaudio-labels` | HRA record labels — `[{title, label}]`, same shape as the categories, in the order HRA publishes them |
+| GET | `/library/highresaudio-label?label=<title>` | Album grid of one record label (`2L`, `ECM`…). Unknown titles answer `200 []` |
+| GET | `/library/highresaudio-charts` | HRA's chart — the albums their own front page ranks. Paged with `offset`/`limit`; publishes no total |
+| GET | `/library/highresaudio-playlist-groups?type=genre\|theme` | The genres or the themes HRA files its editorial playlists under — `[{title, label}]`, **alphabetical** |
+| GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…\|&group_type=genre\|theme&group=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf; `group_type`+`group` browse it by one of HRA's groupings instead — see below |
 | GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
 | GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
@@ -115,12 +119,43 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
 
+> **HRA advanced search — every parameter optional, and two traps of theirs.** A criterion
+> is a search of its own: `label=ECM` alone fills a page, so `q` is not
+> required and a three-character minimum does not apply here (it belongs to their quick
+> search). `release` is HRA's own name for the year an album went ONLINE, not the year it
+> was recorded — *Innuendo* is production year 1991 and `release=2026`. `sort` takes one of
+> the nine values `/library/highresaudio-search-filters` publishes (`+` ascending, `-`
+> descending — HRA's own web client labels these the other way round, the values here are
+> the measured ones); anything else answers `400`, because HRA does not ignore an order it
+> does not know, it returns nothing at all. **Percent-encode the `+`** (`sort=%2Btitle`):
+> a query string decodes a literal `+` as a space. A leading space is read back as the `+`
+> it was, so `sort=+title` works too — no order legitimately begins with one. Two behaviours of theirs are passed through
+> untouched, deliberately: a `format` DISCARDS `q` (measured — `q=queen` and `q=london`
+> with `format=fl192` return the same fifty albums), and the direction of `+/-importDate`
+> is ignored.
+
 > **HRA playlists — the id names its own family.** The two trees have independent id
 > sequences, so a listing returns `editorial:1845` / `mine:5549` rather than a bare number:
 > the id you were given travels back untouched to `/library/highresaudio-playlist-tracks`
 > and to `POST /library/queue`, and no caller ever has to guess which tree it came from.
 > `type` still exists on both routes and stays authoritative when the prefix is absent.
 > An account with no playlist of its own answers `200 []`, not an error.
+
+> **HRA playlist groupings — a filter over the editorial tree, not a third tree.** `genre`
+> and `theme` are HRA's own groupings OF the selections they publish, so a grouped browse
+> asks for `type=editorial` and names the grouping beside it: `group_type` and `group`
+> travel together, and **exactly one of them is refused** — a `group` with no `group_type`
+> answers `200 []` rather than the whole tree under that group's name. `group_type`+`group`
+> are **mutually exclusive with `category`**: HRA serves the three from three different
+> endpoints, not as three filters of one, so `category` is ignored when a grouping is given.
+> A grouping filters rather than partitions — measured over the 1764 selections, the 9
+> genres reach 1699 of them and the 10 themes 1021; the rest carry no such field and are
+> reachable only through the unfiltered tree. Unknown group titles answer `200 []`.
+
+> **HRA labels — five of the seven duplicate a shop category.** `ECM`, `Pentatone`,
+> `Warner`, `Universal` and `Sony` serve the same albums as the `… Highlights` categories;
+> only `2L` and `audite` are theirs alone. That is HRA's catalogue, not a fault, and nothing
+> is de-duplicated: a client showing both shelves shows those albums twice, deliberately.
 
 > **HRA Vault — the id names its tree, and the tree is not the catalogue.** A purchased
 > album is listed as `vault:<album>_<transaction>`; the prefix travels back untouched to

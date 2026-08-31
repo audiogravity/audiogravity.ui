@@ -12,7 +12,10 @@ ag-library-cover {
 .ag-libcv {
     position: relative;
     width: var(--ag-libcv-size, 40px);
-    height: var(--ag-libcv-size, 40px);
+
+    /* Square unless the atom's `wide` attribute set a height of its own — see
+       ag-library-cover.js for what makes a cover a banner rather than a square. */
+    height: var(--ag-libcv-h, var(--ag-libcv-size, 40px));
     background: var(--bg-tertiary);
     color: var(--text-secondary);
     overflow: hidden;
@@ -25,6 +28,14 @@ ag-library-cover {
     width: 45%;
     height: 45%;
     flex-shrink: 0;
+}
+
+/* In a 2:1 cell the glyph must be sized on the SHORT side: at 45% of the width it
+   would be taller than the cell it sits in, and the square viewBox would then scale
+   it down to the height anyway — a size nobody chose. */
+.ag-libcv--wide .ag-libcv-icon {
+    width: auto;
+    height: 45%;
 }
 
 .ag-libcv-img {

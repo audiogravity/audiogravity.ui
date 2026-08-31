@@ -450,3 +450,143 @@ describe('forgetHraAccount', () => {
         expect(_apiGet).toHaveBeenCalledTimes(4);   // both were re-asked, not served
     });
 });
+
+// ---------------------------------------------------------------------------
+// getHraLabels / getHraPlaylistGroups — the two shelves added with HIGHRESAUDIO's
+// own menu structure. Same rules as the categories: cached for the page, an empty
+// answer never kept.
+// ---------------------------------------------------------------------------
+
+import { getHraLabels, getHraPlaylistGroups } from './library-store.js';
+
+describe('getHraLabels', () => {
+    const LABELS = [{ title: '2L', label: '2L' }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('asks the core for the labels route', async () => {
+        _apiGet.mockResolvedValueOnce(LABELS);
+        expect(await getHraLabels()).toEqual(LABELS);
+        expect(_apiGet).toHaveBeenCalledWith('/library/highresaudio-labels');
+    });
+
+    it('serves the cached list once it has one', async () => {
+        expect(await getHraLabels()).toEqual(LABELS);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('answers with an empty list rather than throwing', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getHraLabels({ force: true })).toEqual([]);
+    });
+});
+
+describe('getHraPlaylistGroups', () => {
+    const GENRES = [{ title: 'Jazz', label: 'Jazz' }];
+    const THEMES = [{ title: 'Relax', label: 'Relax' }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('asks for the grouping it was given', async () => {
+        _apiGet.mockResolvedValueOnce(GENRES);
+        expect(await getHraPlaylistGroups('genre')).toEqual(GENRES);
+        expect(_apiGet).toHaveBeenCalledWith('/library/highresaudio-playlist-groups?type=genre');
+    });
+
+    it('keeps the two groupings in caches of their own', async () => {
+        // One shared entry would serve the themes under the genre strip, and the
+        // second call would never reach the core to notice.
+        _apiGet.mockResolvedValueOnce(THEMES);
+        expect(await getHraPlaylistGroups('theme')).toEqual(THEMES);
+        expect(await getHraPlaylistGroups('genre')).toEqual(GENRES);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers an unknown grouping with an empty list, asking the core nothing', async () => {
+        expect(await getHraPlaylistGroups('mood')).toEqual([]);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+});
+
+describe('forgetHraAccount — the two shelves added with the menu restructure', () => {
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('drops the labels and both playlist groupings too — they missed the purge (review)', async () => {
+        // Same "fixed for AN account" hour as the categories: left uncleared, a
+        // sign-out/sign-in served the previous account's labels and groupings for
+        // up to an hour.
+        _apiGet.mockResolvedValue([{ title: 'x', label: 'x' }]);
+        await getHraLabels();
+        await getHraPlaylistGroups('genre');
+        await getHraPlaylistGroups('theme');
+        expect(_apiGet).toHaveBeenCalledTimes(3);
+
+        forgetHraAccount();
+
+        await getHraLabels();
+        await getHraPlaylistGroups('genre');
+        await getHraPlaylistGroups('theme');
+        expect(_apiGet).toHaveBeenCalledTimes(6);   // all three re-asked, none served
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getHraSearchFilters — what the advanced search can be narrowed and ordered by
+//
+// An object, not a list, so it cannot go through the helper the shelves use — but
+// under the same rule: a half-empty answer is a failure HRA reports as a 200, and
+// caching it would leave the form's three menus bare for as long as it stays open.
+// ---------------------------------------------------------------------------
+
+import { getHraSearchFilters } from './library-store.js';
+
+describe('getHraSearchFilters', () => {
+    const FILTERS = {
+        formats: [{ value: 'fl192', label: 'FLAC 192' }],
+        moods: [{ value: 'Dreamy', label: 'Dreamy', group: 'positive' }],
+        sorts: [{ value: '', label: 'Default' }],
+    };
+
+    beforeEach(() => { _apiGet.mockReset(); forgetHraAccount(); });
+
+    it('asks again after an answer missing one of HRA\'s two lists', async () => {
+        // The orders always come back — they are the core's own list — so they cannot
+        // vouch for the two that HRA answers.
+        _apiGet.mockResolvedValueOnce({ formats: [], moods: [], sorts: FILTERS.sorts });
+        expect((await getHraSearchFilters()).formats).toEqual([]);
+        _apiGet.mockResolvedValueOnce(FILTERS);
+        expect((await getHraSearchFilters()).formats).toHaveLength(1);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('serves the cached answer once it has a whole one', async () => {
+        _apiGet.mockResolvedValueOnce(FILTERS);
+        await getHraSearchFilters();
+        await getHraSearchFilters();
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('serves the cache in the same shape it serves a fetch', async () => {
+        // A core older than this branch answers {formats, moods} with no `sorts`. The
+        // fetch path fills it in; caching the body as it came meant the SECOND reader
+        // — a source switched away from HRA and back builds a new form — got no
+        // `sorts` at all, and the form reads it straight into a .filter().
+        _apiGet.mockResolvedValueOnce({ formats: FILTERS.formats, moods: FILTERS.moods });
+        expect((await getHraSearchFilters()).sorts).toEqual([]);
+        expect((await getHraSearchFilters()).sorts).toEqual([]);
+        expect(_apiGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers with three empty lists rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getHraSearchFilters()).toEqual({ formats: [], moods: [], sorts: [] });
+    });
+
+    it('is dropped on sign-out with everything else HRA', async () => {
+        _apiGet.mockResolvedValue(FILTERS);
+        await getHraSearchFilters();
+        forgetHraAccount();
+        await getHraSearchFilters();
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+});
