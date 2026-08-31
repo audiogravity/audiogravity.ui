@@ -65,3 +65,37 @@ describe('ag-library-list-row — the cover cell', () => {
         expect(grid[1].trim().split(/\s+/)[0]).toBe('auto');
     });
 });
+
+describe('ag-library-list-row — the trailing controls', () => {
+    // Same trap as the cover column, and it went unseen the same way: jsdom lays
+    // nothing out, so an item too many in the grid renders identically to a row that
+    // fits. Every album row of a streaming search carries both the ★ and the +, and
+    // as two grid items in three columns the + wrapped onto a second line, on the far
+    // left under the cover. Guarded on the count, which jsdom does answer for.
+    it('puts the star and the + in one cell, so the row stays on three items', async () => {
+        const el = await mount({ title: 'Innuendo', favoritable: true, actionable: true });
+        const row = el.querySelector('.lib-list-row');
+        const actions = row.querySelector('.lib-lr-actions');
+
+        expect(row.children).toHaveLength(3);
+        expect(actions.querySelector('ag-library-fav-btn')).not.toBeNull();
+        expect(actions.querySelector('ag-library-add-btn')).not.toBeNull();
+    });
+
+    it('adds no empty cell to a row that carries neither', async () => {
+        // An always-rendered wrapper would leave a trailing gap on every plain row.
+        const el = await mount({ title: 'Kind of Blue' });
+
+        expect(el.querySelector('.lib-lr-actions')).toBeNull();
+        expect(el.querySelector('.lib-list-row').children).toHaveLength(2);
+    });
+
+    it('keeps the grid at three columns', () => {
+        // The other way to fix the wrap is a fourth column, and it is the wrong one:
+        // a row with a single trailing control would then carry an empty track, whose
+        // gap is real width at the end of every such row.
+        const grid = CSS.match(/grid-template-columns:\s*([^;]+);/);
+
+        expect(grid[1].trim().split(/\s+/)).toHaveLength(3);
+    });
+});

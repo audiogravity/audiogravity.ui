@@ -5,6 +5,11 @@
  * The row click and the action button click are reported as two separate events
  * so the consumer can drive different behaviours (play vs queue).
  *
+ * The trailing controls share ONE cell (`.lib-lr-actions`) rather than taking one
+ * each. The row is a three-column grid, so a row carrying both the star and the +
+ * — every album row of a streaming search — put the fourth item on a second line,
+ * left-aligned under the cover.
+ *
  * @element ag-library-list-row
  *
  * @attr {string}  cover        - Cover URL (empty → ag-library-cover shows fallback)
@@ -82,14 +87,18 @@ export class AgLibraryListRow extends LitElement {
                     <span class="lib-lr-t">${this.title}</span>
                     ${this.subtitle ? html`<span class="lib-lr-a">${this.subtitle}</span>` : nothing}
                 </div>
-                ${this.favoritable ? html`
-                    <ag-library-fav-btn variant="row" ?favorite=${this.favorite}></ag-library-fav-btn>
-                ` : nothing}
-                ${this.actionable ? html`
-                    <ag-library-add-btn
-                        label=${this.actionLabel}
-                        @click=${this._onAction}>
-                    </ag-library-add-btn>
+                ${this.favoritable || this.actionable ? html`
+                    <div class="lib-lr-actions">
+                        ${this.favoritable ? html`
+                            <ag-library-fav-btn variant="row" ?favorite=${this.favorite}></ag-library-fav-btn>
+                        ` : nothing}
+                        ${this.actionable ? html`
+                            <ag-library-add-btn
+                                label=${this.actionLabel}
+                                @click=${this._onAction}>
+                            </ag-library-add-btn>
+                        ` : nothing}
+                    </div>
                 ` : nothing}
             </div>
         `;

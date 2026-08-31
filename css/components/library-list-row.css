@@ -21,6 +21,17 @@
     cursor: pointer;
 }
 
+/* The trailing controls, in ONE of the three columns. A row can carry both the ★ and
+   the + — every album row of a streaming search does — and as two grid items that is a
+   fourth item in a three-column grid: it wrapped onto a second line, left-aligned under
+   the cover, with the star stranded on the right of the first. Since 2026-07-13 (the
+   commit that put the star on search rows), and only ever visible there. */
+.lib-lr-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
 .lib-lr-col {
     display: flex;
     flex-direction: column;
