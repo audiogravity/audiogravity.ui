@@ -64,3 +64,47 @@ describe('ag-library-cover — deferred image loading', () => {
         expect(el.querySelector('img.ag-libcv-img')).toBeNull();
     });
 });
+
+/**
+ * The 2:1 cell.
+ *
+ * HIGHRESAUDIO's editorial playlists are banners, not covers — 410 × 205, every one of
+ * the 32 sampled across their catalogue on 2026-08-30. Shown in a square cell with
+ * `object-fit: cover`, only the middle 205 × 205 survived, so half of a composition laid
+ * out horizontally was thrown away. The height is a derived value, which is what makes it
+ * worth a test: nothing on screen says whether it was recomputed after `size` changed.
+ */
+describe('ag-library-cover — banner artwork', () => {
+    it('is square by default: the height matches the width', async () => {
+        const el = await mount({ size: 120 });
+
+        expect(el.style.getPropertyValue('--ag-libcv-size')).toBe('120px');
+        expect(el.style.getPropertyValue('--ag-libcv-h')).toBe('120px');
+        expect(el.querySelector('.ag-libcv').classList.contains('ag-libcv--wide')).toBe(false);
+    });
+
+    it('halves the height when the artwork is a banner', async () => {
+        const el = await mount({ size: 120, wide: true });
+
+        expect(el.style.getPropertyValue('--ag-libcv-size')).toBe('120px');
+        expect(el.style.getPropertyValue('--ag-libcv-h')).toBe('60px');
+        expect(el.querySelector('.ag-libcv').classList.contains('ag-libcv--wide')).toBe(true);
+    });
+
+    it('recomputes the height when the size alone changes on a cell already wide', async () => {
+        const el = await mount({ size: 120, wide: true });
+        el.size = 80;
+        await el.updateComplete;
+
+        expect(el.style.getPropertyValue('--ag-libcv-h')).toBe('40px');
+    });
+
+    it('restores a square cell when the artwork stops being a banner', async () => {
+        const el = await mount({ size: 120, wide: true });
+        el.wide = false;
+        await el.updateComplete;
+
+        expect(el.style.getPropertyValue('--ag-libcv-h')).toBe('120px');
+        expect(el.querySelector('.ag-libcv').classList.contains('ag-libcv--wide')).toBe(false);
+    });
+});

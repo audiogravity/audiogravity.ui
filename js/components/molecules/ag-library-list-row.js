@@ -15,6 +15,10 @@
  * @attr {string}  action-label - aria/tooltip for the action button (default: "Add to queue")
  * @attr {boolean} favoritable  - When true, render the trailing ★ Favorites toggle
  * @attr {boolean} favorite     - Filled star (item already in Favorites)
+ * @attr {boolean} wide         - The cover is a 2:1 banner (see ag-library-cover's `wide`).
+ *                                The row keeps the height it always had and the thumbnail
+ *                                takes twice the width, so the rhythm of a list mixing both
+ *                                shapes does not change from one row to the next.
  *
  * @fires row-click   - Bubbles. Row body clicked.
  * @fires row-action  - Bubbles. Action button clicked (stopPropagation handled internally).
@@ -37,7 +41,11 @@ export class AgLibraryListRow extends LitElement {
         actionLabel: { type: String, attribute: 'action-label' },
         favoritable: { type: Boolean },
         favorite:    { type: Boolean },
+        wide:        { type: Boolean },
     };
+
+    /** The row's thumbnail height, in pixels — the atom's own default, kept whatever the shape. */
+    static COVER_HEIGHT = 40;
 
     createRenderRoot() { return this; }
 
@@ -51,6 +59,7 @@ export class AgLibraryListRow extends LitElement {
         this.actionLabel = 'Add to queue';
         this.favoritable = false;
         this.favorite    = false;
+        this.wide        = false;
     }
 
     _onRowClick = () => emit(this, 'row-click');
@@ -63,7 +72,12 @@ export class AgLibraryListRow extends LitElement {
     render() {
         return html`
             <div class="lib-list-row" @click=${this._onRowClick}>
-                <ag-library-cover cover=${this.cover} fallback=${this.fallback}></ag-library-cover>
+                <ag-library-cover
+                    cover=${this.cover}
+                    fallback=${this.fallback}
+                    ?wide=${this.wide}
+                    size=${this.wide ? AgLibraryListRow.COVER_HEIGHT * 2 : AgLibraryListRow.COVER_HEIGHT}
+                ></ag-library-cover>
                 <div class="lib-lr-col">
                     <span class="lib-lr-t">${this.title}</span>
                     ${this.subtitle ? html`<span class="lib-lr-a">${this.subtitle}</span>` : nothing}

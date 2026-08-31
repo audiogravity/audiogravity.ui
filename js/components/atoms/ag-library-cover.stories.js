@@ -11,6 +11,7 @@ export default {
             options: ['list', 'album', 'container', 'track', 'radio', 'next', 'queue', 'play'],
         },
         size: { control: 'number' },
+        wide: { control: 'boolean' },
     },
 };
 
@@ -18,6 +19,7 @@ const Template = (args) => html`
   <ag-library-cover
     cover="${args.cover ?? ''}"
     fallback="${args.fallback}"
+    ?wide="${args.wide}"
     size="${args.size}">
   </ag-library-cover>
 `;
@@ -63,3 +65,24 @@ export const CardWithOverlay = (args) => html`
   </div>
 `;
 CardWithOverlay.args = { cover: 'https://picsum.photos/seed/agcard/240' };
+
+/**
+ * A 2:1 banner. HIGHRESAUDIO's editorial playlists carry teasers, not covers — every one
+ * of the 32 sampled across their catalogue measured 410 × 205. Shown beside the square
+ * above, which is what the same artwork looked like before: the middle half of it.
+ */
+export const Banner = Template.bind({});
+Banner.args = {
+    cover: 'https://picsum.photos/seed/agbanner/410/205',
+    fallback: 'list',
+    size: 120,
+    wide: true,
+};
+
+export const BannerWithoutCover = Template.bind({});
+BannerWithoutCover.args = {
+    cover: '',
+    fallback: 'list',
+    size: 120,
+    wide: true,
+};
