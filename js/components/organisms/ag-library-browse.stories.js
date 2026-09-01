@@ -181,6 +181,167 @@ export const QobuzPlaylists = {
     }),
 };
 
+/** The shelves the core lists on /library/tidal-shelves — the ones that hold something. */
+const TIDAL_SHELVES = [
+    // `holds` is stated by the core, not guessed: Exclusif is 281 playlists and no
+    // album, and a client that assumed albums queued a playlist id through the album
+    // route — which fails — and offered a ★ that files it in the album favourites.
+    { title: 'exclusive', label: 'Exclusif', holds: 'playlists' },
+    { title: 'new', label: 'Nouveautés', holds: 'albums' },
+    { title: 'recommended', label: 'Sélection TIDAL', holds: 'albums' },
+    { title: 'top', label: 'Top 20', holds: 'albums' },
+];
+
+/** Tidal's moods. They hold playlists and never albums. */
+const TIDAL_MOODS = [
+    { title: 'concentrate', label: 'Concentration' },
+    { title: 'relax', label: 'Détente' },
+    { title: 'love', label: 'Romantique' },
+    { title: 'party', label: 'Soirée' },
+    { title: 'workout', label: 'Sport' },
+];
+
+/**
+ * Tidal's genres. One level: Tidal publishes no sub-genre, so `subgenres` stays empty.
+ * The path is its slug, which differs from the name — `Film` is *Bandes originales*,
+ * and sorting on the slug rather than the label is what put that one first.
+ */
+const TIDAL_GENRES = [
+    { title: 'Bandes originales', path: 'Film', subgenres: [] },
+    { title: 'Blues', path: 'Blues', subgenres: [] },
+    { title: 'Classique', path: 'Classical', subgenres: [] },
+    { title: 'Hip Hop / Rap', path: 'Hiphop', subgenres: [] },
+    { title: 'Jazz', path: 'Jazz', subgenres: [] },
+];
+
+/** Tidal Shelves: the catalogue shelves that hold something, on the shared strip. */
+export const TidalShelves = {
+    render: () => mount('src_tidal', {
+        _filter: 'shelves', _tidalShelves: TIDAL_SHELVES, _category: 'top',
+    }),
+    play: standsOn((el) => {
+        expect(el._filter).toBe('shelves');
+        expect(el._sectionLabel).toBe('Top 20');
+    }),
+};
+
+/** Tidal Playlists: its three surfaces on one strip — editors', account's, charts. */
+export const TidalPlaylists = {
+    render: () => mount('src_tidal', { _filter: 'playlists', _playlistKind: 'charts' }),
+    play: standsOn((el) => {
+        expect(el._sectionLabel).toBe('Charts');
+        expect(el._showsPlaylists).toBe(true);
+    }),
+};
+
+/** Tidal Moods: the shelf HIGHRESAUDIO has and Qobuz cannot offer. */
+export const TidalMoods = {
+    render: () => mount('src_tidal', {
+        _filter: 'moods', _tidalMoods: TIDAL_MOODS, _mood: 'relax',
+    }),
+    play: standsOn((el) => {
+        expect(el._sectionLabel).toBe('Détente');
+        expect(el._showsPlaylists).toBe(true);   // moods hold playlists, never albums
+    }),
+};
+
+/** Tidal Genres: twenty of them, and no drill-down — Tidal publishes no sub-genre. */
+export const TidalGenres = {
+    render: () => mount('src_tidal', {
+        _filter: 'genres', _genres: TIDAL_GENRES, _genre: 'Film',
+    }),
+    play: standsOn((el) => {
+        // Nothing to drill into, so the strip stays the list with the chosen genre
+        // marked — the next one is one tap away. It used to collapse to a single inert
+        // "All": a strip of one button that goes back to where it already is.
+        expect(el._genrePills.map(([, l]) => l)).toContain('Jazz');
+        expect(el._genrePills.length).toBe(TIDAL_GENRES.length);
+        expect(el._sectionLabel).toBe('Bandes originales');
+    }),
+};
+
+/** What Tidal puts on its own Explore page, flattened into one strip in its order. */
+const TIDAL_EXPLORE = [
+    { title: 'pages/genre_jazz', label: 'Jazz' },
+    { title: 'pages/genre_classical', label: 'Classical' },
+    { title: 'pages/record_labels', label: 'Record Labels' },
+    { title: 'pages/music_school', label: 'Music School' },
+    { title: 'pages/m_1980s', label: '1980s' },
+    { title: 'pages/m_1990s', label: '1990s' },
+    { title: 'pages/hires', label: 'HiRes' },
+    { title: 'pages/explore_top_music', label: 'Top' },
+];
+
+/** A page that HOLDS content: its sections go on the strip below. */
+const TIDAL_PAGE_HIRES = {
+    title: 'HiRes',
+    links: [],
+    sections: [
+        { title: 'pages/data/d6efe672-074c-403f-9a45-c681d4cb387f',
+          label: 'Headphone Classics', holds: 'playlists' },
+        { title: 'pages/data/f2cd0c7e-9d51-4e10-bb8c-6ca14990d4ca',
+          label: 'Classic Albums', holds: 'albums' },
+    ],
+};
+
+/** A page that LEADS ON: its links replace the strip, and it has no grid of its own. */
+const TIDAL_PAGE_LABELS = {
+    title: 'Record Labels',
+    sections: [],
+    links: [
+        { title: 'pages/m_aftermath', label: 'Aftermath' },
+        { title: 'pages/death_row', label: 'Death Row Records' },
+        { title: 'pages/m_def_jam_40', label: 'Def Jam' },
+        { title: 'pages/m_motown', label: 'Motown' },
+    ],
+};
+
+/** Tidal Explore: its 42 entries, none open yet. */
+export const TidalExplore = {
+    render: () => mount('src_tidal', {
+        _filter: 'explore', _explore: TIDAL_EXPLORE, _page: null, _pageEntry: '',
+    }),
+    play: standsOn((el) => {
+        expect(el._filter).toBe('explore');
+        expect(el._explorePills.map(([, l]) => l)).toContain('HiRes');
+    }),
+};
+
+/**
+ * Tidal Explore, on a page that holds content: HiRes and its two sections, the second
+ * chosen. This is the one shelf with three strips — the bar, the entries, the sections.
+ */
+export const TidalExplorePage = {
+    render: () => mount('src_tidal', {
+        _filter: 'explore', _explore: TIDAL_EXPLORE, _pageEntry: 'pages/hires',
+        _page: TIDAL_PAGE_HIRES, _section: TIDAL_PAGE_HIRES.sections[1].title,
+    }),
+    play: standsOn((el) => {
+        expect(el._sectionLabel).toBe('HiRes · Classic Albums');
+    }),
+};
+
+/**
+ * Tidal Explore, on a page that only leads on: Record Labels and the 52 pages behind
+ * it. The strip drills in place with a way back, as the genres do, and there is no
+ * section strip — a page of links has no grid of its own.
+ */
+export const TidalExploreLinks = {
+    render: () => mount('src_tidal', {
+        _filter: 'explore', _explore: TIDAL_EXPLORE,
+        _pageLinks: TIDAL_PAGE_LABELS.links, _pageEntry: '',
+        _page: TIDAL_PAGE_LABELS, _section: '',
+    }),
+    play: standsOn((el) => {
+        expect(el._explorePills.map(([, l]) => l)).toContain('Def Jam');
+        // No section strip: a page of links holds no grid. Asserted on the condition
+        // rather than on the return value — `nothing` is a symbol in the real runtime
+        // and null only in the unit harness, so comparing it there proves the mock.
+        expect(el._page.sections).toEqual([]);
+        expect(el._section).toBe('');
+    }),
+};
+
 /** Qobuz Purchases: the albums the account bought, an ordinary album grid. */
 export const QobuzPurchases = {
     render: () => mount('src_qobuz', { _filter: 'purchases' }),

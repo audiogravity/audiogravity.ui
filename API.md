@@ -94,9 +94,16 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/qobuz-purchases` | Albums the account bought. Unlike HRA's Vault the ids carry **no marker** — a purchased album reads and plays through the ordinary Qobuz path |
 | GET | `/library/qobuz-playlists?type=editorial\|mine` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `qobuz-playlist-tracks` on its own. `type` defaults to `editorial`; any other value is **422** |
 | GET | `/library/qobuz-playlist-tracks` | Tracks of a Qobuz playlist, of either tree |
+| GET | `/library/tidal-shelves` | Tidal catalogue shelves — `[{title, label, holds}]`, same shape as `qobuz-shelves`. Shelves that hold nothing are left out: Tidal's own `hasAlbums` flag is **not** trusted (one shelf sets it and answers 404, another clears it and holds 281 playlists), so the core asks. **Read `holds`** — a shelf serves albums *or* playlists, *Exclusif* is 281 playlists and no album, and both arrive in the album model |
+| GET | `/library/tidal-genres` | Tidal genres — `[{title, path, subgenres}]`, alphabetical **by displayed label**. `subgenres` is always `[]`: Tidal publishes none, so the strip never drills. **`path` is opaque** — Tidal's slug differs from its name (`Hiphop` displays as *Hip Hop / Rap*, `Film` as *Bandes originales*) |
+| GET | `/library/tidal-moods` | Tidal moods — same shape as `tidal-shelves`. They hold playlists, never albums |
+| GET | `/library/tidal-list?kind=shelves\|genres\|moods&path=<key>` | The grid of one entry of one of the three lists above. `kind` says which list, `path` is that entry's key. An unknown `path` yields `[]`, never an error. Any other `kind` is **422** |
+| GET | `/library/tidal-explore` | The entries of Tidal's own Explore tree — its genres, moods and activities, decades, and New / Top / Videos / HiRes / Clean Content, flattened into one strip in Tidal's order. Each `title` is a page path for `tidal-page` |
+| GET | `/library/tidal-page?path=<pages/…>` | One Explore page: `{title, links, sections}`. It holds **either** `links` to further pages (*Record Labels* is 52 of them) **or** `sections` of content — drill the links in place, show the sections as a strip. A section's `title` is the opaque key for `tidal-section`, and its `holds` says whether the grid will be albums or playlists. A `path` not shaped like one of Tidal's is **400**: it reaches a URL on the box's authenticated session |
+| GET | `/library/tidal-section?key=<pages/data/…>` | The grid of one section — albums, or playlists mapped to the album model. Pages properly; the key is the section's own handle, the only one Tidal offers, since it reorders the modules between calls. A malformed `key` is **400** |
 | GET | `/library/tidal-featured` | Tidal editorial discovery |
-| GET | `/library/tidal-charts` | Tidal charts |
-| GET | `/library/tidal-editorial` | Tidal editorial playlists |
+| GET | `/library/tidal-charts` | Tidal's chart playlists, from its own Top page. Tidal exposes **no** chart endpoint (`charts`, `charts/albums`, `pages/charts` all 404). Nothing keys on a heading: the previous reading kept modules whose *title* held `chart`, Tidal renamed that row, and this answered empty for everyone |
+| GET | `/library/tidal-editorial` | The playlists Tidal's editors put on its home page, **minus** the chart ones — those have a shelf of their own and were appearing under both. Still answers (un-deduplicated) if the chart page cannot be read |
 | GET | `/library/tidal-playlists` | Tidal user playlists |
 | GET | `/library/tidal-playlist-tracks` | Tracks of a Tidal playlist |
 | GET | `/library/highresaudio-categories` | HRA shop categories — `[{title, label}]`, in the order HRA publishes them |
@@ -176,11 +183,22 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > appear under no shelf. A client offering only the four hides them. Ignored for `type=mine`:
 > the account's own playlists have no such field.
 
+> **`holds` — what a shelf's grid is made of, and why it is stated.** Every shelf list
+> (`highresaudio-categories`, `-labels`, `qobuz-shelves`, `tidal-shelves`, `tidal-moods`,
+> and each `sections` entry of `tidal-page`) carries `holds`: `albums`, `playlists`, or
+> **empty, which means albums** — what every shelf held before one did not. Playlists are
+> mapped onto the album model on every source, so nothing in a grid row tells the two
+> apart; a client that assumes albums queues a playlist id through the album route, which
+> **fails**, and offers a ★ that files it in the album favourites, which does not. Only
+> Tidal sets it today (its *Exclusif* shelf is 281 playlists and no album). Do not infer
+> it from a row's shape — that is the mistake this field exists to close.
+
 > **Ordering — what the core sorts, and what it leaves alone.** HIGHRESAUDIO publishes its
 > genres in no usable order and its search hits in none at all, and asked (2026-08-28) for the
-> alphabet. The core therefore sorts, case-folded, three things and only three: the **genres and
-> their sub-genres** on `/library/highresaudio-genres` and on `/library/qobuz-genres` (Qobuz
-> publishes its own in a running order that reads as none on a strip), and the **artists** of
+> alphabet. The core therefore sorts, case-folded, the lists that carry an order nobody
+> can read: the **genres and their sub-genres** on `/library/highresaudio-genres` and on
+> `/library/qobuz-genres`, Tidal's three lists (`tidal-shelves`, `-genres`, `-moods` — sorted
+> on the **displayed label**, since its addressing key is a slug that differs), and the **artists** of
 > `/library/search?source_id=src_highresaudio`. Everything else keeps the order the source
 > gives it — Qobuz's shelves included — the shop categories (their own shelf order), the album grids, and the **albums** of
 > a search, which stay in relevance order. Artists are capped first and sorted second, so the
