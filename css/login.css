@@ -59,6 +59,44 @@
     margin-bottom: var(--spacing-xl);
 }
 
+/* Icon and wordmark on one line, the way the licence server's sign-in sets them.
+   A flex row, and the mark stays an inline-block inside it — a flex container turns every
+   inline child into an item of its own, and the <sup> of the brand would then take the
+   gap as blank space on both sides. */
+.login-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+/* rule 12 exception — a square of artwork, not text: the value is the geometry of an
+   image, which the type scale has nothing to say about.
+
+   36px, set against the wordmark beside it rather than picked: the mark is 42px, so its
+   capitals stand 30px, and the licence server's own sign-in has its icon standing a
+   little taller than its letters — that is what makes the two read as one lockup instead
+   of a stamp next to a word. The file is 180px, so it stays sharp past 3x. The corner
+   radius keeps the same proportion the licence server uses, 22 % of the side. */
+.login-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    flex: none;
+    display: block;
+}
+
+/* The icon is the application's own artwork — a near-black square — so on a dark card it
+   loses its edges and leaves the glyph floating with no bounds. Measured: the card is
+   #0a0a0a under Minimal, #12141c under Gravity, against a square that is darker still.
+   A hairline gives it back its shape without inventing a second, lighter icon: what the
+   owner sees here stays what they see on their home screen. `box-sizing: border-box` is
+   set globally, so the 36px holds — the border eats into the square rather than growing
+   it, and the row does not shift between themes. */
+body.dark-mode .login-brand-icon {
+    border: 1px solid var(--border-color);
+}
+
 /* rule 12 exception — the wordmark on the sign-in card is the largest thing on the page
    and answers to the card, not to the type scale, whose top step (28px) would shrink the
    mark by a third against the 48px image it replaces. The mark takes --text-primary from

@@ -193,7 +193,15 @@
 
             <!-- Logo/Header -->
             <div class="login-header">
-                <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
+                <div class="login-brand">
+                    <!-- The application's own icon, as the licence server's sign-in shows
+                         it. apple-touch-180.png rather than pwa-512.png: same artwork,
+                         61 kB instead of 465, and already in the service worker's
+                         precache — so it costs nothing to draw here. -->
+                    <img class="login-brand-icon" src="pics/apple-touch-180.png" alt="" aria-hidden="true"
+                         width="36" height="36">
+                    <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
+                </div>
                 <p class="login-subtitle" id="loginMeta"></p>
                 <p class="auto-passkey-status" id="login-status"></p>
                 <p class="login-license-status" id="loginLicense"></p>
