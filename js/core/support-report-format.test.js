@@ -799,3 +799,139 @@ describe('formatSupportReport — what the box does, not only what AG believes',
         expect(text).not.toContain('does not match the pin');
     });
 });
+
+describe('formatSupportReport — the facts a certificate incident turns on', () => {
+    it('dates the served certificate, not only its expiry', () => {
+        // The day a certificate was reissued is the day devices trusting it stopped.
+        // It used to be computable only by subtracting the issuing policy from the
+        // expiry, by hand.
+        const out = formatSupportReport({
+            web_ui: {
+                certificate: {
+                    subject: '192.168.178.84',
+                    not_before: '2026-08-31T17:44:35+00:00',
+                    not_after: '2028-12-03T17:44:35+00:00',
+                    days_left: 824,
+                },
+            },
+        });
+        expect(out).toContain('issued 2026-08-31T17:44:35+00:00');
+    });
+
+    it('dates and fingerprints the authority, which an upgrade never reissues', () => {
+        const out = formatSupportReport({
+            web_ui: {
+                ca: {
+                    available: true, bootstrap_port: 8081, subject: 'Audiogravity Local CA',
+                    signature_verified: true,
+                    not_before: '2026-08-20T19:15:00+00:00',
+                    fingerprint_sha256: 'ab12cd34',
+                },
+            },
+        });
+        expect(out).toContain('CA created');
+        expect(out).toContain('ab12cd34');
+    });
+
+    it('says a leased address is leased', () => {
+        const out = formatSupportReport({
+            network: {
+                links: [{ name: 'wlan0', type: 'wifi', mtu: 1500, up: true,
+                    bitrate: '390 MBit/s', addr_source: 'dynamic' }],
+            },
+        });
+        expect(out).toContain('dynamic');
+    });
+
+    it('reports the name the box announces, as avahi gives it', () => {
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'HiRasp.local' } },
+        });
+        expect(out).toContain('HiRasp.local');
+        expect(out).toContain('avahi-daemon active');
+    });
+
+    it('still says something on a box where nothing announces the name', () => {
+        // The shape this line exists for: avahi missing, so the .local the certificate
+        // promises answers to nothing. Dropping the line left the report silent there.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'inactive', announced: null } },
+        });
+        expect(out).toContain('mDNS');
+        expect(out).toContain('not announced');
+    });
+
+    it('does not turn "could not ask" into "announces nothing"', () => {
+        // avahi running, the read failed: unknown. Printing "not answered" there would
+        // accuse a box that may be fine.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: null } },
+        });
+        expect(out).toContain('unknown · avahi-daemon active');
+    });
+
+    it('omits the issue date rather than printing undefined', () => {
+        // The interface and the core install as separate packages: a newer interface
+        // reading an older core's report must not paste `issued undefined` into a mail.
+        const out = formatSupportReport({
+            web_ui: { certificate: { subject: 'box', not_after: 'b', days_left: 10 } },
+        });
+        const certLine = out.split('\n').find(l => l.includes('Certificate'));
+        expect(certLine).toBeDefined();
+        expect(certLine).not.toContain('issued');
+        expect(certLine).not.toContain('undefined');
+    });
+
+    it('compares the announced name without case, as DNS does', () => {
+        // RFC 4343, and two producers: avahi on one side, openssl and the hostname on
+        // the other. A difference of case is not a mismatch.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'HiRasp.local' } },
+            web_ui: {
+                certificate: { subject: '192.168.178.84', not_after: 'b', days_left: 10,
+                    san_dns: ['localhost', 'hirasp.local'], san_ips: [] },
+            },
+        });
+        expect(out).not.toContain('NOT in the certificate');
+    });
+
+    it('flags an announced name the certificate does not carry', () => {
+        // The certificate is built from the whole hostname, avahi announces the first
+        // label only. On a box named `musics.1` the two differ and the promised name
+        // answers to nothing — invisible unless the report says so, the two facts
+        // living two sections apart.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'musics.local' } },
+            web_ui: {
+                certificate: { subject: '10.0.4.254', not_before: 'a', not_after: 'b',
+                    days_left: 800, san_dns: ['localhost', 'musics.1.local'], san_ips: [] },
+            },
+        });
+        expect(out).toContain('Announced name');
+        expect(out).toContain('NOT in the certificate');
+    });
+
+    it('explains no_license instead of letting it read as a refusal', () => {
+        // It means "no .lic on this box, nothing was sent" — the ordinary state of a
+        // trial. Read as a server verdict it starts a hunt for a problem that is not there.
+        const out = formatSupportReport({
+            licence: { online_check: { status: 'no_license', checked_at: '2026-08-31T17:44:32Z' } },
+        });
+        expect(out).toContain('nothing was sent');
+    });
+
+    it('dates the self-update, so "done" says when', () => {
+        const out = formatSupportReport({
+            self_update: { state: { phase: 'done', from: '0.9.49', to: '0.9.50',
+                updated_at: '2026-08-31T17:44:00Z' } },
+        });
+        expect(out).toContain('at 2026-08-31T17:44:00Z');
+    });
+
+    it('marks MPD\'s last error as undated, since MPD keeps it until cleared', () => {
+        const out = formatSupportReport({
+            library: { mpd_stats: { mpd_error: 'Failed to decode http://127.0.0.1:8000/...' } },
+        });
+        expect(out).toContain('undated');
+    });
+});

@@ -149,7 +149,13 @@ export function formatSupportReport(report) {
             out.push(line('Days left', licence.days_remaining));
         }
         const check = licence.online_check || {};
-        out.push(line('Server check', check.error ? `error — ${check.error}` : `${check.status ?? '—'} at ${check.checked_at || 'never'}`));
+        // `no_license` is not a verdict from the server: it is what the box reports when
+        // it holds no .lic file at all and therefore sent nothing — the ordinary state of
+        // a trial. Read as a refusal it starts a hunt for a problem that does not exist.
+        const checkStatus = check.status === 'no_license'
+            ? 'no_license (no .lic on this box — nothing was sent; normal on a trial)'
+            : (check.status ?? '—');
+        out.push(line('Server check', check.error ? `error — ${check.error}` : `${checkStatus} at ${check.checked_at || 'never'}`));
     }
 
     // ── System ─────────────────────────────────────────────────────────────────
@@ -217,7 +223,33 @@ export function formatSupportReport(report) {
                     ? `wifi · ${link.bitrate}${link.signal_dbm !== undefined ? ` · ${link.signal_dbm} dBm` : ''}${link.ssid ? ` · ssid ${link.ssid}` : ''}`
                     : `wifi${link.note ? ` · ${link.note}` : ''}`;
             }
-            out.push(line(`link ${link.name}`, `${detail} · mtu ${link.mtu}${link.up === false ? ' (down)' : ''}`));
+            // Whether the address is leased is whether it can still move, and every
+            // bookmark and home-screen icon depends on that. `dynamic` means LEASED, not
+            // "will change": a reservation on the router leaves it dynamic and is
+            // invisible from here.
+            const src = link.addr_source ? ` · ${link.addr_source}` : '';
+            out.push(line(`link ${link.name}`, `${detail} · mtu ${link.mtu}${src}${link.up === false ? ' (down)' : ''}`));
+        }
+        // Whether the name every certificate promises is actually answered. It is the
+        // only address that survives the lease changing, and until now it worked only
+        // where the owner happened to install something that pulls avahi in.
+        const mdns = network.mdns;
+        if (mdns) {
+            // Printed whenever the section exists — a box where nothing answers is the
+            // one this line is FOR, and dropping it there left the report silent on the
+            // only screen that could have said so.
+            //
+            // Null is "not asked", never "announces nothing": the collector says so in
+            // as many words. It becomes "no" only when the daemon that would announce
+            // the name is known not to be running, which is an answer, not a guess.
+            // "would announce", not "is answering": avahi returns its configured name
+            // even with publishing switched off. The line says what the box is set up
+            // to answer to, which is the question the certificate raises.
+            const svc = mdns.service || 'unknown';
+            const name = mdns.announced
+                ? mdns.announced
+                : (mdns.service && mdns.service !== 'active') ? 'not announced' : 'unknown';
+            out.push(line('mDNS', `${name} · avahi-daemon ${svc}`));
         }
         for (const [name, probe] of Object.entries(network.reachability || {})) {
             out.push(line(name, probe.reachable
@@ -245,12 +277,34 @@ export function formatSupportReport(report) {
             if (cert.error) {
                 out.push(line('Certificate', `unreadable — ${cert.error}`));
             } else {
-                out.push(line('Certificate', `${cert.subject || '—'} · expires ${cert.not_after} (${cert.days_left} days left)`));
+                // Issued, not only expires. The date a certificate was reissued is the
+                // first thing a support case needs — devices trust a certificate, so the
+                // day it changed is the day they stopped. It was computable from the
+                // expiry and the issuing policy, by hand, which is not a thing to ask.
+                const issued = cert.not_before ? ` · issued ${cert.not_before}` : '';
+                out.push(line('Certificate', `${cert.subject || '—'}${issued} · expires ${cert.not_after} (${cert.days_left} days left)`));
                 out.push(line('SAN', [...(cert.san_ips || []), ...(cert.san_dns || [])].join(', ')));
                 // The certificate is issued for the address the box had at install
                 // time; a box that changed address serves one browsers refuse.
                 if (cert.covers_lan_ip !== null && cert.covers_lan_ip !== undefined) {
                     out.push(line('Covers LAN IP', cert.covers_lan_ip ? 'yes' : `NO — certificate does not name ${web.lan_ip}`));
+                }
+                // The name the box announces, against the names its certificate carries.
+                // Certificates issued before ensure-cert.sh took the first label of the
+                // hostname carry `<whole hostname>.local`, which avahi never announces —
+                // a box named `musics.1` announces `musics.local`. Those certificates are
+                // still out there and renew only when something forces a reissue, so the
+                // check outlives the fix. Said here because it is invisible otherwise:
+                // both facts sit two sections apart and nobody diffs them by eye.
+                //
+                // Compared without case: DNS names are case-insensitive (RFC 4343) and
+                // these two come from different producers — avahi on one side, openssl
+                // and the hostname on the other.
+                const announced = report.network?.mdns?.announced;
+                const sanDns = cert.san_dns || [];
+                if (announced && sanDns.length
+                        && !sanDns.some(n => n.toLowerCase() === announced.toLowerCase())) {
+                    out.push(line('Announced name', `${announced} — NOT in the certificate (it names ${sanDns.join(', ')})`));
                 }
             }
         }
@@ -264,6 +318,12 @@ export function formatSupportReport(report) {
                     : ca.signature_verified === true ? 'yes'
                         : ca.issuer_matches === true ? 'yes (by name)' : 'unverified';
                 out.push(line('CA', `${ca.subject || '—'} · on port ${ca.bootstrap_port} · signs the served certificate: ${signs}`));
+                // The authority is created once and never reissued by an upgrade, so its
+                // creation date and fingerprint answer the only question that matters when
+                // a house full of devices stops trusting a box at the same moment: did
+                // THIS change, or was it never trusted?
+                if (ca.not_before) out.push(line('CA created', ca.not_before));
+                if (ca.fingerprint_sha256) out.push(line('CA fingerprint', ca.fingerprint_sha256));
             }
         }
     }
@@ -280,6 +340,9 @@ export function formatSupportReport(report) {
         if (state.phase && state.phase !== 'idle') {
             stateLine = `${state.phase}${state.from ? ` — ${state.from} → ${state.to || '?'}` : ''}${state.error ? ` · error: ${state.error}` : ''}`;
         }
+        // With its date. "done — 0.9.49 → 0.9.50" says nothing about whether that was an
+        // hour ago or last month, and the answer decides whether it explains anything.
+        if (state.updated_at) stateLine += ` · at ${state.updated_at}`;
         out.push(line('State', stateLine));
         out.push(line('Bootstrap URL', update.bootstrap_url));
         // The measured access check — the repo's own answer to the same request
@@ -643,7 +706,10 @@ export function formatSupportReport(report) {
             out.push(line('MPD stats', `unavailable — ${stats.error}`));
         } else {
             out.push(line('MPD stats', `${stats.songs ?? '?'} songs · ${stats.albums ?? '?'} albums · ${stats.artists ?? '?'} artists${stats.db_updated ? ` · db updated ${stats.db_updated}` : ''}`));
-            if (stats.mpd_error) out.push(line('MPD error', stats.mpd_error));
+            // MPD keeps its last error until something clears it, and never dates it.
+            // Printed bare it reads as "this just happened", which is how a stale line
+            // gets blamed for tonight's symptom.
+            if (stats.mpd_error) out.push(line('MPD error', `${stats.mpd_error} (MPD's last error — undated, kept until cleared)`));
         }
     }
 
