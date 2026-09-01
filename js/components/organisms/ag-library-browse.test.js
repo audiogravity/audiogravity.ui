@@ -28,6 +28,8 @@ const getHraGenresMock = vi.fn();
 const getHraConnectionMock = vi.fn();
 const getHraLabelsMock = vi.fn();
 const getHraPlaylistGroupsMock = vi.fn();
+const getQobuzShelvesMock = vi.fn();
+const getQobuzGenresMock = vi.fn();
 vi.mock('../../library-store.js', () => ({
     getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
     setAlbumFavorited: vi.fn(),
@@ -37,6 +39,8 @@ vi.mock('../../library-store.js', () => ({
     getHraConnection: (...args) => getHraConnectionMock(...args),
     getHraLabels: (...args) => getHraLabelsMock(...args),
     getHraPlaylistGroups: (...args) => getHraPlaylistGroupsMock(...args),
+    getQobuzShelves: (...args) => getQobuzShelvesMock(...args),
+    getQobuzGenres: (...args) => getQobuzGenresMock(...args),
     // The real predicate, restated: it is the contract under test here (absent
     // means subscribed), and the store's own tests pin the original.
     hraHasSubscription: (conn) => conn?.has_subscription !== false,
@@ -253,7 +257,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         getHraCategoriesMock.mockResolvedValue([]);
         apiGetMock.mockResolvedValue([]);
         const el = makeEl({
-            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            sourceId: 'src_highresaudio', _hraCategories: [], _genres: [],
             _filter: 'genres', _genre: null, _detachObserver() {}, _fav: { load() {} },
         });
         await el._load();
@@ -266,7 +270,7 @@ describe('ag-library-browse — HIGHRESAUDIO category pills', () => {
         getHraCategoriesMock.mockResolvedValue([]);
         apiGetMock.mockResolvedValue([]);
         const el = makeEl({
-            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            sourceId: 'src_highresaudio', _hraCategories: [], _genres: [],
             _filter: 'favorites', _detachObserver() {}, _fav: { load() {} },
         });
         await el._load();
@@ -295,7 +299,7 @@ describe('ag-library-browse — HIGHRESAUDIO Vault', () => {
     /** An HRA instance ready for _load(): the collaborators _load touches, stubbed. */
     function loadable(overrides = {}) {
         return makeEl({
-            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            sourceId: 'src_highresaudio', _hraCategories: [], _genres: [],
             _filter: 'favorites', _detachObserver() {}, _fav: { load() {} }, ...overrides,
         });
     }
@@ -438,7 +442,7 @@ describe('ag-library-browse — HIGHRESAUDIO genres', () => {
 
     function genreEl(over = {}) {
         return makeEl({
-            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: GENRES,
+            sourceId: 'src_highresaudio', _hraCategories: [], _genres: GENRES,
             _filter: 'genres', _genre: null, _detachObserver() {}, _fav: { load() {} },
             ...over,
         });
@@ -489,7 +493,7 @@ describe('ag-library-browse — HIGHRESAUDIO genres', () => {
 
     it('fetches the tree on the first visit only', async () => {
         getHraGenresMock.mockResolvedValue(GENRES);
-        const el = genreEl({ _filter: 'favorites', _hraGenres: [] });
+        const el = genreEl({ _filter: 'favorites', _genres: [] });
         el._load = vi.fn();
         el._setFilter('genres');
         await Promise.resolve();
@@ -515,7 +519,7 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
     // its own family and the interface never builds one.
     function plEl(over = {}) {
         return makeEl({
-            sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: [],
+            sourceId: 'src_highresaudio', _hraCategories: [], _genres: [],
             _filter: 'playlists', _playlistKind: 'editorial',
             _detachObserver() {}, _fav: { load() {} }, ...over,
         });
@@ -557,13 +561,23 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
         expect(opts.itemType).toBe('album');
     });
 
-    it('leaves the Qobuz and Tidal playlists pill alone', () => {
-        // 'playlists' is their filter value too — an unguarded branch titled their
-        // grid "Editorial playlists", and "Mine playlists" after a visit to HRA.
-        for (const sourceId of ['src_qobuz', 'src_tidal']) {
-            const el = makeEl({ sourceId, _filter: 'playlists', _playlistKind: 'mine' });
-            expect(el._sectionLabel).toBe('Playlists');
-        }
+    it('leaves the Tidal playlists pill alone', () => {
+        // 'playlists' is its filter value too — an unguarded branch titled its grid
+        // "Editorial playlists", and "Mine playlists" after a visit to HRA. Tidal has
+        // one tree, so its grid is named by the pill and nothing else.
+        const el = makeEl({ sourceId: 'src_tidal', _filter: 'playlists', _playlistKind: 'mine' });
+        expect(el._sectionLabel).toBe('Playlists');
+    });
+
+    it('names the Qobuz tree on screen, as HRA does', () => {
+        // Qobuz has the same two trees, so the heading says which one is up rather
+        // than repeating the word the pill above already shows.
+        const mine = makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _playlistKind: 'mine' });
+        expect(mine._sectionLabel).toBe('My playlists');
+        const editorial = makeEl({
+            sourceId: 'src_qobuz', _filter: 'playlists', _playlistKind: 'editorial',
+        });
+        expect(editorial._sectionLabel).toBe('Editorial playlists');
     });
 
     it('forgets which tree was open, and which shelf, when the source changes', () => {
@@ -647,7 +661,10 @@ describe('ag-library-browse — the ★ is offered only where the grid holds alb
 
     it('stays on the album grids it was written for', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' })._showsFavorites).toBe(true);
-        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'new-releases' })._showsFavorites).toBe(true);
+        // 'shelves' and 'genres', not the retired 'new-releases' pill: a filter the
+        // Qobuz bar can no longer hold asserts nothing about the grids that exist.
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'shelves' })._showsFavorites).toBe(true);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'genres' })._showsFavorites).toBe(true);
         expect(makeEl({ sourceId: 'src_mpd', _filter: 'all' })._showsFavorites).toBe(false);
     });
 
@@ -1038,5 +1055,232 @@ describe('ag-library-browse — the two design calls settled with the user', () 
         // itself instead of throwing, so the empty state still renders.
         expect(makeEl({ _playlistKind: 'by_mood' })._playlistKindLabel).toBe('by_mood');
         expect(makeEl({ _playlistKind: 'genre' })._playlistKindLabel).toBe('genre');
+    });
+});
+
+describe('ag-library-browse — Qobuz shelves', () => {
+    // What the core answers on /library/qobuz-shelves: its own reading order.
+    const SHELVES = [
+        { title: 'new-releases', label: 'New Releases' },
+        { title: 'editor-picks', label: 'Selection' },
+        { title: 'harmonia-mundi', label: 'Harmonia Mundi' },
+    ];
+
+    function qEl(over = {}) {
+        return makeEl({ sourceId: 'src_qobuz', _qobuzShelves: SHELVES, _genres: [], ...over });
+    }
+
+    beforeEach(() => {
+        apiGetMock.mockReset();
+        getQobuzShelvesMock.mockReset();
+        getQobuzGenresMock.mockReset();
+    });
+
+    it('offers five shelves, each opening a strip of its own', () => {
+        // Four pills used to sit here, two of which were single hard-coded shelves out
+        // of the nine the catalogue holds — the other seven were unreachable.
+        expect(qEl()._pills.map(([, label]) => label)).toEqual(
+            ['Favorites', 'Purchases', 'Shelves', 'Playlists', 'Genres'],
+        );
+    });
+
+    it('is the same bar before the shelves have arrived', () => {
+        expect(qEl({ _qobuzShelves: [] })._pills).toEqual(qEl()._pills);
+    });
+
+    it('keys the strip on the shelf title and shows its label', () => {
+        expect(qEl()._shelfPills).toEqual([
+            ['new-releases', 'New Releases'],
+            ['editor-picks', 'Selection'],
+            ['harmonia-mundi', 'Harmonia Mundi'],
+        ]);
+    });
+
+    it('does not reorder what the core listed', () => {
+        // The core holds the closed list; a second opinion on its order would drift.
+        expect(qEl()._shelfPills.map(([t]) => t)).toEqual(SHELVES.map((s) => s.title));
+    });
+
+    it('asks the shelf endpoint with the chosen shelf as the type', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await qEl({ _filter: 'shelves', _category: 'harmonia-mundi' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/qobuz-featured?');
+        expect(url).toContain('type=harmonia-mundi');
+    });
+
+    it('asks for nothing until a shelf is chosen', async () => {
+        expect(await qEl({ _filter: 'shelves', _category: '' })._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('names the grid after the chosen shelf, not after the pill above it', () => {
+        expect(qEl({ _filter: 'shelves', _category: 'editor-picks' })._sectionLabel)
+            .toBe('Selection');
+    });
+
+    it('opens on the first shelf when its list lands', async () => {
+        getQobuzShelvesMock.mockResolvedValue(SHELVES);
+        const el = qEl({ _filter: 'shelves', _category: '', _qobuzShelves: [] });
+        el._load = vi.fn();
+        await el._loadQobuzShelves();
+        expect(el._category).toBe('new-releases');
+        expect(el._load).toHaveBeenCalled();
+    });
+
+    it('does not fill the strip when the source changed while the list was in flight', async () => {
+        getQobuzShelvesMock.mockResolvedValue(SHELVES);
+        const el = qEl({ _qobuzShelves: [] });
+        el.sourceId = 'src_highresaudio';
+        await el._loadQobuzShelves();
+        expect(el._qobuzShelves).toEqual([]);
+    });
+});
+
+describe('ag-library-browse — Qobuz purchases', () => {
+    beforeEach(() => apiGetMock.mockReset());
+
+    it('asks the purchases endpoint', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await makeEl({ sourceId: 'src_qobuz', _filter: 'purchases' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('/library/qobuz-purchases?');
+    });
+
+    it('still offers the ★, unlike the HRA vault', () => {
+        // A bought Qobuz album is an ordinary catalogue album — its id is one the
+        // favourites route knows, which is what HRA's Vault ids are not.
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'purchases' })._showsFavorites).toBe(true);
+    });
+
+    it('holds albums, not playlists', () => {
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'purchases' })._showsPlaylists).toBe(false);
+    });
+});
+
+describe('ag-library-browse — Qobuz playlists', () => {
+    beforeEach(() => apiGetMock.mockReset());
+
+    function plEl(over = {}) {
+        return makeEl({
+            sourceId: 'src_qobuz', _filter: 'playlists',
+            _playlistEdges: { overflows: false, attach() {}, measure() {} },
+            ...over,
+        });
+    }
+
+    it('carries the chosen tree to the core', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await plEl({ _playlistKind: 'mine' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('type=mine');
+    });
+
+    it('offers exactly two trees — Qobuz has no third', () => {
+        // `editor-picks` and `last-created` answer the same playlists, so a third pill
+        // would be one shelf under two names.
+        const strip = plEl()._renderPlaylistKinds();
+        expect(text(strip)).toContain('Editorial');
+        expect(text(strip)).toContain('Mine');
+        expect(text(strip)).not.toContain('Theme');
+    });
+
+    it('queues a playlist as a playlist', () => {
+        expect(plEl()._albumOpts({ id: 'pl1' }, 'play').itemType).toBe('playlist');
+    });
+
+    it('has no shelf strip under its trees, unlike HRA', () => {
+        expect(plEl({ _playlistKind: 'editorial' })._showsEditorialShelves).toBe(false);
+        expect(plEl({ _playlistKind: 'editorial' })._renderPlaylistCategories()).toBe(null);
+    });
+});
+
+describe('ag-library-browse — Qobuz genres', () => {
+    // What the core answers: paths are opaque ids, and four genre names carry a '/'.
+    const QOBUZ_GENRES = [
+        { title: 'Pop/Rock', path: '112', subgenres: [
+            { title: 'Pop', path: '117' },
+            { title: 'Rock', path: '118' },
+        ] },
+        { title: 'Hip-Hop/Rap', path: '133', subgenres: [] },
+    ];
+
+    function gEl(over = {}) {
+        return makeEl({
+            sourceId: 'src_qobuz', _filter: 'genres', _genres: QOBUZ_GENRES,
+            _genre: null, ...over,
+        });
+    }
+
+    beforeEach(() => {
+        apiGetMock.mockReset();
+        getQobuzGenresMock.mockReset();
+        getHraGenresMock.mockReset();
+    });
+
+    it('offers the genres while none is chosen', () => {
+        expect(gEl()._genrePills).toEqual([['112', 'Pop/Rock'], ['133', 'Hip-Hop/Rap']]);
+    });
+
+    it('offers the genre as "All", then its sub-genres', () => {
+        expect(gEl({ _genre: '112' })._genrePills).toEqual([
+            ['112', 'All'], ['117', 'Pop'], ['118', 'Rock'],
+        ]);
+    });
+
+    it('stays on the genre of the chosen sub-genre', () => {
+        expect(gEl({ _genre: '118' })._topGenre.title).toBe('Pop/Rock');
+    });
+
+    it('finds the genre of a name that carries a slash', () => {
+        // The regression this guards: the strip used to find the parent by splitting
+        // the path on '/', which looks up "Pop" for a genre actually called "Pop/Rock"
+        // and finds nothing — an empty strip. Four of the thirteen are like this.
+        expect(gEl({ _genre: '112' })._topGenre.title).toBe('Pop/Rock');
+        expect(gEl({ _genre: '112' })._genrePills.length).toBe(3);
+    });
+
+    it('titles the grid with the genre and its sub-genre, never with the raw path', () => {
+        expect(gEl({ _genre: '118' })._sectionLabel).toBe('Pop/Rock · Rock');
+        expect(gEl({ _genre: '112' })._sectionLabel).toBe('Pop/Rock');
+        // The path is a numeric id here — printing it would read as "112 · 118".
+        expect(gEl({ _genre: '118' })._sectionLabel).not.toContain('118');
+    });
+
+    it('shows a strip holding only its way back out for a genre with no sub-genre', () => {
+        expect(gEl({ _genre: '133' })._genrePills).toEqual([['133', 'All']]);
+    });
+
+    it('asks the Qobuz genre endpoint with the opaque path', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await gEl({ _genre: '117' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/qobuz-genre?');
+        expect(url).toContain('genre=117');
+    });
+
+    it('asks for nothing until a genre is picked', async () => {
+        expect(await gEl()._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('fetches the Qobuz tree, not the HRA one', async () => {
+        getQobuzGenresMock.mockResolvedValue(QOBUZ_GENRES);
+        const el = gEl({ _genres: [] });
+        await el._loadGenres();
+        expect(getQobuzGenresMock).toHaveBeenCalled();
+        expect(getHraGenresMock).not.toHaveBeenCalled();
+        expect(el._genres).toEqual(QOBUZ_GENRES);
+    });
+
+    it('does not fill the strip when the source changed while the tree was in flight', async () => {
+        // One property holds whichever source's genres are up, so a slow answer must
+        // not drop Qobuz's thirteen into an HRA strip.
+        let resolve;
+        getQobuzGenresMock.mockReturnValue(new Promise((r) => { resolve = r; }));
+        const el = gEl({ _genres: [] });
+        const pending = el._loadGenres();
+        el.sourceId = 'src_highresaudio';
+        resolve(QOBUZ_GENRES);
+        await pending;
+        expect(el._genres).toEqual([]);
     });
 });

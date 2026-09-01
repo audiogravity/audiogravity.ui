@@ -87,9 +87,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/roon-browse` | Browse the Roon hierarchy |
 | POST | `/library/roon-action` | Execute a Roon browse action (play, queue…) |
 | DELETE | `/library/upnp-known-servers/{server_id}` | Forget a persisted UPnP server |
-| GET | `/library/qobuz-featured` | Qobuz featured albums |
-| GET | `/library/qobuz-playlists` | Qobuz editorial playlists |
-| GET | `/library/qobuz-playlist-tracks` | Tracks of a Qobuz playlist |
+| GET | `/library/qobuz-shelves` | Qobuz catalogue shelves — `[{title, label}]`. Same shape as `highresaudio-categories`, so one strip renders both. `title` is what `qobuz-featured` takes as `type` |
+| GET | `/library/qobuz-featured?type=<title>` | Album grid of one Qobuz shelf. `type` comes from `qobuz-shelves`; anything else is **400**, refused against the core's own closed list before any call reaches Qobuz — not 503, which would invite a retry of a request that can never succeed. To browse a genre use `qobuz-genre` — a genre narrows a shelf rather than being one |
+| GET | `/library/qobuz-genres` | Qobuz genres with their sub-genres, alphabetical at both levels — `[{title, path, subgenres}]`. **`path` is opaque**: Qobuz's is a numeric id, HRA's a title path. Round-trip it, display `title`, never parse it — four genre names carry a `/` of their own (*Pop/Rock*, *Soul/Funk/R&B*, *Hip-Hop/Rap*, *Blues/Country/Folk*). Two genres publish one sub-genre or none |
+| GET | `/library/qobuz-genre?genre=<path>` | Album grid of a Qobuz genre or sub-genre. Browses the Selection shelf: Qobuz has no albums-of-a-genre endpoint, and Selection is the only shelf where a sub-genre answers at all. An unknown path yields `[]` |
+| GET | `/library/qobuz-purchases` | Albums the account bought. Unlike HRA's Vault the ids carry **no marker** — a purchased album reads and plays through the ordinary Qobuz path |
+| GET | `/library/qobuz-playlists?type=editorial\|mine` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `qobuz-playlist-tracks` on its own. `type` defaults to `editorial`; any other value is **422** |
+| GET | `/library/qobuz-playlist-tracks` | Tracks of a Qobuz playlist, of either tree |
 | GET | `/library/tidal-featured` | Tidal editorial discovery |
 | GET | `/library/tidal-charts` | Tidal charts |
 | GET | `/library/tidal-editorial` | Tidal editorial playlists |
@@ -172,12 +176,13 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > appear under no shelf. A client offering only the four hides them. Ignored for `type=mine`:
 > the account's own playlists have no such field.
 
-> **HRA ordering — what the core sorts, and what it leaves alone.** HIGHRESAUDIO publishes its
+> **Ordering — what the core sorts, and what it leaves alone.** HIGHRESAUDIO publishes its
 > genres in no usable order and its search hits in none at all, and asked (2026-08-28) for the
-> alphabet. The core therefore sorts, case-folded, two things and only two: the **genres and
-> their sub-genres** on `/library/highresaudio-genres`, and the **artists** of
-> `/library/search?source_id=src_highresaudio`. Everything else keeps the order HIGHRESAUDIO
-> gives it — the shop categories (their own shelf order), the album grids, and the **albums** of
+> alphabet. The core therefore sorts, case-folded, three things and only three: the **genres and
+> their sub-genres** on `/library/highresaudio-genres` and on `/library/qobuz-genres` (Qobuz
+> publishes its own in a running order that reads as none on a strip), and the **artists** of
+> `/library/search?source_id=src_highresaudio`. Everything else keeps the order the source
+> gives it — Qobuz's shelves included — the shop categories (their own shelf order), the album grids, and the **albums** of
 > a search, which stay in relevance order. Artists are capped first and sorted second, so the
 > cap keeps the best matches and the alphabet only decides how they are shown. This is
 > unrelated to `sort=` on `/library/albums`, which streaming sources still ignore.

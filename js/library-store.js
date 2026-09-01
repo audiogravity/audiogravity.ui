@@ -38,11 +38,12 @@ const TTL_ROON_ZONES = 60_000;
 // about only on its next attempt — a stale answer would leave the card claiming
 // they still have a click to make after they made it.
 const TTL_ROON_STATUS = 10_000;
-// HIGHRESAUDIO's shop categories: fixed for an account, and the core memoises them
-// too, so this only has to survive the page. Long, but not forever — an empty answer
-// (HRA refusing a session comes back as one) must not leave the pill bar bare for a
-// screen that stays open for days.
-const TTL_HRA_CATEGORIES = 3_600_000;
+// The fixed lists a streaming source publishes — HIGHRESAUDIO's shop categories,
+// labels and genres, Qobuz's shelves and genres: fixed for an account, and the core
+// memoises them too, so this only has to survive the page. Long, but not forever — an
+// empty answer (HRA refusing a session comes back as one) must not leave the pill bar
+// bare for a screen that stays open for days.
+const TTL_SOURCE_LISTS = 3_600_000;
 // The HIGHRESAUDIO connection — read for one bit, whether the account holds a
 // subscription, which decides what the browse may offer. Long for the same reason
 // as the categories: the state changes only when someone signs in or out on the
@@ -69,6 +70,11 @@ const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
 const hraLabels = { value: null, fetchedAt: 0, inFlight: null };
 const hraSearchFilters = { value: null, fetchedAt: 0, inFlight: null };
+// Qobuz's two fixed lists. Catalogue-wide, not account-wide — the nine shelves and the
+// thirteen genres are the same for every subscriber — so, unlike HRA's, they are not
+// cleared when an account signs out: there is nothing of the account's in them.
+const qobuzShelves = { value: null, fetchedAt: 0, inFlight: null };
+const qobuzGenres = { value: null, fetchedAt: 0, inFlight: null };
 // One entry per grouping — genre and theme are two lists, and sharing a cache between
 // them would serve one under the other's heading.
 const hraPlaylistGroups = {
@@ -255,7 +261,7 @@ export async function getSnapshot({ force = false } = {}) {
 }
 
 /**
- * One of HIGHRESAUDIO's fixed lists: fetch it, or serve the cached one.
+ * One of a streaming source's fixed lists: fetch it, or serve the cached one.
  *
  * Every caller goes through the same sanitising and the same catch, the one already
  * in flight included. Handing a concurrent caller the raw request instead — which is
@@ -270,8 +276,8 @@ export async function getSnapshot({ force = false } = {}) {
  * @param {{force?: boolean}} [opts]
  * @returns {Promise<Array<object>>} the list, or [] on any failure
  */
-async function hraList(entry, path, { force = false } = {}) {
-    if (!force && isFresh(entry, TTL_HRA_CATEGORIES)) return entry.value;
+async function cachedList(entry, path, { force = false } = {}) {
+    if (!force && isFresh(entry, TTL_SOURCE_LISTS)) return entry.value;
     const inFlight = entry.inFlight ?? fetchInto(entry, path);
     return inFlight
         .then((value) => {
@@ -296,7 +302,7 @@ async function hraList(entry, path, { force = false } = {}) {
  * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
  */
 export async function getHraCategories({ force = false } = {}) {
-    return hraList(hraCategories, '/library/highresaudio-categories', { force });
+    return cachedList(hraCategories, '/library/highresaudio-categories', { force });
 }
 
 /**
@@ -312,7 +318,37 @@ export async function getHraCategories({ force = false } = {}) {
  * @returns {Promise<Array<{title: string, path: string, subgenres: Array<object>}>>} empty on failure
  */
 export async function getHraGenres({ force = false } = {}) {
-    return hraList(hraGenres, '/library/highresaudio-genres', { force });
+    return cachedList(hraGenres, '/library/highresaudio-genres', { force });
+}
+
+/**
+ * Resolve the shelves of the Qobuz catalogue — one pill each under the Shelves pill.
+ *
+ * Same `{title, label}` shape and same rules as {@link getHraCategories}, so one strip
+ * renders both. The list is a closed one the core holds rather than one Qobuz serves,
+ * which is why it cannot simply be written here too: two copies would drift.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getQobuzShelves({ force = false } = {}) {
+    return cachedList(qobuzShelves, '/library/qobuz-shelves', { force });
+}
+
+/**
+ * Resolve the Qobuz genres, each with its sub-genres one level deep.
+ *
+ * Same shape and same rules as {@link getHraGenres}. Its `path` is opaque — Qobuz's is
+ * a numeric id, HRA's a title path — so round-trip it and display `title`; nothing may
+ * parse it, and two genres publish one sub-genre or none at all.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, path: string, subgenres: Array<object>}>>} empty on failure
+ */
+export async function getQobuzGenres({ force = false } = {}) {
+    return cachedList(qobuzGenres, '/library/qobuz-genres', { force });
 }
 
 /**
@@ -324,7 +360,7 @@ export async function getHraGenres({ force = false } = {}) {
  * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
  */
 export async function getHraLabels({ force = false } = {}) {
-    return hraList(hraLabels, '/library/highresaudio-labels', { force });
+    return cachedList(hraLabels, '/library/highresaudio-labels', { force });
 }
 
 /**
@@ -343,7 +379,7 @@ export async function getHraLabels({ force = false } = {}) {
 export async function getHraPlaylistGroups(kind, { force = false } = {}) {
     const entry = hraPlaylistGroups[kind];
     if (!entry) return [];
-    return hraList(entry, `/library/highresaudio-playlist-groups?type=${kind}`, { force });
+    return cachedList(entry, `/library/highresaudio-playlist-groups?type=${kind}`, { force });
 }
 
 /**
@@ -362,7 +398,7 @@ export async function getHraPlaylistGroups(kind, { force = false } = {}) {
  */
 export async function getHraSearchFilters({ force = false } = {}) {
     const empty = { formats: [], moods: [], sorts: [] };
-    if (!force && isFresh(hraSearchFilters, TTL_HRA_CATEGORIES)) return hraSearchFilters.value;
+    if (!force && isFresh(hraSearchFilters, TTL_SOURCE_LISTS)) return hraSearchFilters.value;
     const inFlight = hraSearchFilters.inFlight
         ?? fetchInto(hraSearchFilters, '/library/highresaudio-search-filters');
     return inFlight
