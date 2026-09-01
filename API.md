@@ -69,7 +69,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 ### Library — `/library/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`. **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box**. Both used to come back as zero albums, which says the collection is gone |
+| GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`. **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box** |
 | GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
 | POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action, duration? }` (`duration` in seconds, 0–86400: for UPnP tracks, whose length MPD cannot know before decoding the stream — it feeds the queue display) |
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
@@ -119,20 +119,18 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > label back where a title is expected is not an error: the category is simply unknown and
 > the answer is `200 []`.
 
-> **HRA advanced search — every parameter optional, and two traps of theirs.** A criterion
-> is a search of its own: `label=ECM` alone fills a page, so `q` is not
-> required and a three-character minimum does not apply here (it belongs to their quick
-> search). `release` is HRA's own name for the year an album went ONLINE, not the year it
-> was recorded — *Innuendo* is production year 1991 and `release=2026`. `sort` takes one of
-> the nine values `/library/highresaudio-search-filters` publishes (`+` ascending, `-`
-> descending — HRA's own web client labels these the other way round, the values here are
-> the measured ones); anything else answers `400`, because HRA does not ignore an order it
-> does not know, it returns nothing at all. **Percent-encode the `+`** (`sort=%2Btitle`):
-> a query string decodes a literal `+` as a space. A leading space is read back as the `+`
-> it was, so `sort=+title` works too — no order legitimately begins with one. Two behaviours of theirs are passed through
-> untouched, deliberately: a `format` DISCARDS `q` (measured — `q=queen` and `q=london`
-> with `format=fl192` return the same fifty albums), and the direction of `+/-importDate`
-> is ignored.
+> **HRA advanced search.** Every parameter is optional — a criterion alone is a search,
+> and `q` may be omitted. `release` is the year an album went **online**, not the year it
+> was recorded. `sort` takes one of the nine values
+> `/library/highresaudio-search-filters` publishes, where `+` is ascending and `-`
+> descending; any other value answers **400**. **Percent-encode the `+`**
+> (`sort=%2Btitle`) — a query string decodes a literal `+` as a space, though a leading
+> space is read back as `+`.
+>
+> Three behaviours to expect from the catalogue, unchanged by the core: a `format`
+> makes it ignore `q`; the direction of `+/-importDate` has no effect; and `mood` does
+> not narrow the result. The endpoint waits **30s** rather than the usual 15 and answers
+> **504** when it runs out. Only album hits are returned.
 
 > **HRA playlists — the id names its own family.** The two trees have independent id
 > sequences, so a listing returns `editorial:1845` / `mine:5549` rather than a bare number:
@@ -188,21 +186,12 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 > and sixteen of them carry the name of a top-level genre (`Soundtrack/Soundtrack`), so only
 > the path identifies one. `/` separates the two levels and no title contains one.
 
-> **HRA search — `q` is required (3 characters minimum); the filters narrow a search, they do
-> not replace one.** A shorter `q` answers `200 []` without calling HRA. Two caveats measured
-> on their side, which is why the interface offers neither: **`format` makes HRA ignore `q`
-> altogether** (three different terms, one of them nonsense, return the same fifty albums),
-> and **`mood` takes about a minute** on a cold query (then answers instantly, their cache
-> being warm). This endpoint therefore waits **30s** instead of the usual 15, and answers
-> **504** — "trying again usually returns at once" — rather than 500 when it runs out. Only
-> album hits are returned; HRA can also answer with playlists, which AG cannot play yet.
-
 **Where a play goes** — `/library/queue`, `/library/upnp-play` and `/radio/play` all
 resolve their destination the same way, and answer with the same statuses:
 
 | Status | Meaning |
 |---|---|
-| **501** | The selected output cannot play this content — a source the backend could not classify, or a format HQPlayer cannot decode (the detail names the track and the format). Streaming sources are **no longer** refused here: Qobuz, Tidal and HIGHRESAUDIO reach HQPlayer like every other source |
+| **501** | The selected output cannot play this content — a source the backend could not classify, or a format HQPlayer cannot decode (the detail names the track and the format). Qobuz, Tidal and HIGHRESAUDIO are not refused here — they reach HQPlayer like every other source |
 | **409** | A network renderer **and** HQPlayer are both selected — turn one off |
 | **503** | The selected output cannot deliver sound right now (HQPlayer's NAA down, an undecodable format, an exchange failure) — **or MPD is not running at all**, see below |
 
@@ -210,26 +199,18 @@ resolve their destination the same way, and answer with the same statuses:
 first, and all three answer **503** when that resolution fails because the Radio Browser
 catalogue is unreachable or is rate-limiting the box — the detail carries the reason.
 `/radio/play` also answers **503 with MPD's reason** when MPD refuses the station itself
-(malformed URL, MPD saturated) — it used to report the station as playing while nothing
-had started. They
-used to answer **404 "station not found"**, which blamed the station for an outage
-elsewhere; a 404 now means the catalogue answered and does not know that UUID. A station
-already saved on the box, or added by hand, resolves without the network and is unaffected.
+(malformed URL, MPD saturated). A **404** means the catalogue answered and does not know
+that UUID. A station already saved on the box, or added by hand, resolves without the
+network and is unaffected.
 
-> **When MPD is stopped.** Everything AG plays goes through MPD, and the box stops it
-> itself for the Roon and HQPlayer profiles, so a stopped daemon is a state an owner
-> reaches on purpose. Every route that talks to it now answers **503** with
-> `MPD is not running. Start it from the Services tab.` — the interface shows that
-> detail verbatim, where it used to show `Queue operation failed`. It applies to
-> `GET /library/albums`, `GET /library/search`, `GET`/`DELETE`/`POST /library/queue`,
-> `POST /library/upnp-play` and `POST /radio/play`.
+> **When MPD is stopped.** Every route that talks to it answers **503** with
+> `MPD is not running. Start it from the Services tab.` — show that detail verbatim.
+> It applies to `GET /library/albums`, `GET /library/search`,
+> `GET`/`DELETE`/`POST /library/queue`, `POST /library/upnp-play` and `POST /radio/play`.
 >
-> Two of those changed shape: `GET /library/albums` and `GET /library/queue` used to
-> answer **200 with an empty payload**, which stated that the collection was gone. Only
-> a REFUSED connection is reported this way, and only after being confirmed a second
-> later — AG restarts MPD itself on an output change, and the port refuses during that
-> window exactly like a stopped daemon. A timeout still degrades to an empty list: a
-> daemon that is listening and not answering is a different failure.
+> Only a REFUSED connection answers this way, and only after a second confirmation a
+> second later. A timeout degrades to an empty list instead: a daemon that is listening
+> and not answering is a different failure.
 
 Roon is never diverted: a Roon zone is its own output chain. `action: "add"` appends —
 to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
@@ -313,19 +294,15 @@ an error. **`?limit=<n>`** returns the current track plus up to `n` following it
 
 **Removing from the queue** — `DELETE /library/queue/{queue_id}?source_id=…`, keyed on
 the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not
-on its position. A removal MPD refuses (the id is no longer in the queue) — or cannot
-take because MPD is unreachable — answers **503 carrying the reason** — it used to answer
-`ok:true` and the ghost row reappeared on the next refresh with no explanation.
+on its position. A removal MPD refuses (the id is not in the queue) — or cannot
+take because MPD is unreachable — answers **503 carrying the reason**.
 
-**Queue writes tell the truth** — every MPD write behind `POST /library/queue`,
-`/library/upnp-play` and `POST /radio/play` now reads MPD's verdict: a refused add or
-play answers **503 with MPD's reason** instead of the old unconditional `ok:true` over a
-queue that never changed. Two deliberate exceptions: a **partial** stream enqueue (the
-list aborted midway) still answers `ok:true` with `tracks` set to the count actually
-queued — the queue did change, and hiding that behind an error would lie the other way —
-and the metadata tags written after a stream enqueue are cosmetic, so their refusal never
-fails an enqueue that succeeded (queue rows may show URLs instead of titles; the reason is
-logged).
+**Queue writes report MPD's verdict** — a refused add or play behind
+`POST /library/queue`, `/library/upnp-play` or `POST /radio/play` answers **503 with
+MPD's reason**. Two exceptions: a **partial** stream enqueue (the list aborted midway)
+answers `ok:true` with `tracks` set to the count actually queued; and the metadata tags
+written after a stream enqueue are cosmetic, so their refusal never fails an enqueue that
+succeeded — queue rows may then show URLs instead of titles.
 
 ### UPnP Renderer — `/upnp-renderer/*`
 
@@ -361,7 +338,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | DELETE | `/player/sleep-timer` | Cancel the sleep timer |
 | GET | `/player/origins` | Canonical `origin → label` map, merged into the client's static fallback at startup |
 | GET | `/player/outputs` | Selector catalogue — every selectable output |
-| PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer. The switch is atomic and enable-**first**: if MPD refuses the target (device busy), the previous output keeps playing and the response is **503 carrying MPD's reason** — it used to answer `success:true` even when the switch had disabled every output |
+| PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer. The switch is atomic and enable-**first**: if MPD refuses the target (device busy), the previous output keeps playing and the response is **503 carrying MPD's reason** |
 
 **Transport actions**: `toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`,
 `set_shuffle`. Route with `control_id` (`source_id` accepted as fallback). Anything
@@ -410,14 +387,13 @@ only what is running. Same entry shape, different contents.
 | PUT | `/hqplayer/mode` | Select an output mode by index |
 | PUT | `/hqplayer/volume` | Set volume (dB) |
 | DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection |
-| GET | `/hqplayer/status` | Current DSP status — now also carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
+| GET | `/hqplayer/status` | Current DSP status — carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
 
-**Seeking through HQPlayer now works.** The player state reports `can_seek: true` whenever a
-length is known, and `POST /player/control` with `action: "seek"` reaches HQPlayer's own seek
-(position in seconds, same payload convention as every other source). It was previously
-declared unseekable because nothing sent the command — not because HQPlayer refuses it.
-`duration` prefers HQPlayer's own measurement over whatever the source supplied: it is right
-more often, and it is the only value available for a playback started outside Audiogravi<sup>ty</sup>.
+**Seeking through HQPlayer.** The player state reports `can_seek: true` whenever a length
+is known, and `POST /player/control` with `action: "seek"` reaches HQPlayer's own seek
+(position in seconds, same payload convention as every other source). `duration` is
+HQPlayer's own measurement in preference to the source's — it is the only value available
+for a playback started outside Audiogravi<sup>ty</sup>.
 
 **Every source reaches HQPlayer**, streaming services included — there is no source-based
 refusal left, only the format deny-list. HQPlayer pulls each track over HTTP from an address
@@ -541,22 +517,22 @@ these today**; see `/docs` for their request/response shape (on a core that serv
 
 - `box` — `ag_version`, `architecture`, `hostname`, `os`, `python`, `enabled_modules`.
 - `licence` — `status` (the verdict: `trial | lifetime | starter | expired | version_expired | tampered | no_license`), `plan`, `device_id`, `days_remaining`, `activated_at`, `expires_at`, `version_scope`, `order_id`, plus `online_check` `{ status, valid, checked, checked_at }`. No `.lic` content.
-- `system` — `uptime`, `boot_time`, `load_average`, `memory`, `cpu`, `temperature`, `os_release`, `kernel`, and `network_interfaces` as `{ name, ipv4, ipv6, is_up }`. No MAC: `licence.device_id` already answers the identity question.
+- `system` — `uptime`, `boot_time`, `load_average`, `memory`, `cpu`, `temperature`, `os_release`, `kernel`, and `network_interfaces` as `{ name, ipv4, ipv6, is_up }`. No MAC.
 - `network` — `gateway`, `default_interface`, `lan_ip`, `dns_servers`, `clock` `{ timezone, ntp_service, ntp_synchronized, local_time }`, `links` (per interface `{ name, up, mtu, type: wired|wifi, speed_mbps?, duplex?, bitrate?, signal_dbm?, ssid?, note?, addr_source? }`), `mdns` `{ service, announced }` and `reachability` `{ internet, license_server? }` — each a measured TCP probe `{ host, port, reachable, latency_ms | error }`. A read that failed carries `gateway_error` / `dns_error` instead of an absent key: a failed measurement is never rendered as "no default route". `addr_source` is `dynamic | static`, absent when the interface has no global IPv4 address; `dynamic` for the interface as soon as one of its addresses is leased. It means leased — not "will change": a router-side reservation also reads `dynamic`. `mdns.announced` is the name the box is configured to answer to, `null` when it could not be read — never render `null` as "announces nothing". `mdns.service` is the systemd state of `avahi-daemon`.
-- `web_ui` — how the interface is actually served, **probed against the running server**, never read from config: `scheme`, `port`, `reachable`, `ui_build` (the served `build.json` — a core/ui version skew is invisible otherwise), `certificate` `{ subject, issuer, not_before, not_after, days_left, san_dns, san_ips, covers_lan_ip }` and `ca` `{ bootstrap_port, available, subject, not_before, not_after, fingerprint_sha256, issuer_matches, signature_verified }`. `covers_lan_ip` / `signature_verified` are `null` when undecidable, never `false`.
+- `web_ui` — how the interface is actually served, **probed against the running server**, never read from config: `scheme`, `port`, `reachable`, `ui_build` (the served `build.json`), `certificate` `{ subject, issuer, not_before, not_after, days_left, san_dns, san_ips, covers_lan_ip }` and `ca` `{ bootstrap_port, available, subject, not_before, not_after, fingerprint_sha256, issuer_matches, signature_verified }`. `covers_lan_ip` / `signature_verified` are `null` when undecidable, never `false`.
 - `self_update` — `state` (the updater's own phase), `bootstrap_url`, `download_token_present` (presence only) and `releases` `{ url, http_status, latency_ms, accessible, latest?, note? }`. `accessible` is the **measured** answer to "can this box see a release": `true` (with `latest`), `false`, or `null` when GitHub's anonymous rate limit makes it undecidable.
 - `env_sanity` — whether the deployed `.env` carries what the code expects: `path` (the file pydantic actually loaded), `mode`, `world_readable`, `keys_present`, `expected_keys`, `missing`, `unknown`. **Names only, never values.** `missing` is an inventory — those keys run on `config.py` defaults — not an alarm.
-- `storage` — `mounts` `{ mountpoint, for_paths, total_bytes, free_bytes, used_percent, read_only }` for `/`, `/var`, the backup dir, MPD's cache and every library root. `read_only` catches the classic silent failure: a filesystem the kernel remounted `ro` after an error.
+- `storage` — `mounts` `{ mountpoint, for_paths, total_bytes, free_bytes, used_percent, read_only }` for `/`, `/var`, the backup dir, MPD's cache and every library root. `read_only` is set when the kernel remounted the filesystem read-only.
 - `packages` — `{ id, label, status, installed_version, supported_here }`. No update check, so no apt refresh and no vendor calls.
 - `services` — `managed` (the AG allowlist, each `{ name, state, sub_state, enabled }`), `failed_elsewhere` (any failed unit outside it) and `total_units`.
 - `audio_stack` — the `/audio-stack/status` payload: `outputs`, `selected_output`, per-service `{ service_id, config_path, configured, output, configured_device, pinned_device, device_matches_pin? }`, `library_sources`.
 - `audio_live` — the audio path **as it is now**, not as configured: `cards` (ALSA cards with `usbid`, `usbbus`, `usb_speed_mbps`, `usb_version` — a DAC that came up Full-Speed instead of High-Speed is a silent degradation), `active_streams` `{ stream, direction, format, rate, channels }` (the bit-perfect proof), `cpu_governor`, `cpu_mhz`. An unreadable `/proc/asound` sets `cards_error` rather than reading as "no DAC".
 - `audio_tuning` — per audio unit, `load_state` first: `systemctl show` answers for a unit that does not exist on the box, with the defaults it *would* apply, so anything other than `loaded` means **no tuning fields are returned** for that unit (`ActiveState` cannot tell a stopped unit from an absent one). Only `not-found` means the software is absent — `masked`, `bad-setting`, `error` and `stub` all describe a unit file that **exists**, and a client must not render them as "not installed". For a loaded unit: what systemd is **configured** to apply against what the process **actually** carries: `configured` `{ nice, cpu_affinity, cpu_sched, cpu_sched_priority, io_class, io_priority, io_accounting, ip_accounting, drop_ins }` vs `live` `{ nice, cpu_sched, cpu_sched_priority, cpu_affinity, io }`, plus `restarts` (Restart=always masks crash loops), `started_at`, `memory_bytes`, `cpu_used_seconds`. The difference between the two halves is a drop-in that did not apply.
-- `av_peers` — the audio ecosystem around the box: `upnp_renderers` / `upnp_servers` `{ name, host, is_local? }` (SSDP, so same-segment only), `hqplayer` `{ configured_host, port, probe, available?, state?, found_on_network }` and `roon` `{ configured_host, in_use, probe?, found_on_network }`. Both peers report what the **network** holds regardless of configuration. `roon.in_use` reads the pairing token: `roon_core_host` defaults to `127.0.0.1`, so a host alone never means "configured".
+- `av_peers` — the audio ecosystem around the box: `upnp_renderers` / `upnp_servers` `{ name, host, is_local? }` (SSDP: same network segment only), `hqplayer` `{ configured_host, port, probe, available?, state?, found_on_network }` and `roon` `{ configured_host, in_use, probe?, found_on_network }`. Both peers report what the **network** holds regardless of configuration. `roon.in_use` reads the pairing token: `roon_core_host` defaults to `127.0.0.1`, so a host alone never means "configured".
 - `configs` — one entry per audio config: `{ service_id, path, exists, size_bytes, modified, mode, lines, dropped_comments, redacted, truncated, backups_total, last_backup }`. See the redaction contract below.
-- `library` — `declared_roots`, `has_local_library`, `roots_detail` `{ path, exists, readable }`, and `mpd_database` `{ path, declared, exists?, size_bytes?, modified? }` where `declared` ∈ `declared | not_declared | config_unreadable` — an unreadable `mpd.conf` is not the same diagnostic as a database that was never built — plus `mpd_stats` `{ songs, albums, artists, db_updated, mpd_error }` asked of MPD itself (a track count answers what a database file size cannot).
-- `streaming` — per service (`qobuz`, `tidal`, `highresaudio`, `roon`): `true`, `false`, or **`null` when the probe could not run** (module not enabled, or it raised) — with the reason under `probe_errors: { service: reason }`, present only when there is one. `null` must render as *unknown*, never as "not signed in": collapsing the third case onto `false` is what made this section report every account as disconnected on every box. Never a token. **Every key is a service** except the metadata ones (`probe_errors`, `error`) — a client must exclude those rather than match a hardcoded service list, or a service the core adds later disappears from a section that still looks complete.
-- `journal` — recent failures, redacted like the configs: `lines` (unit errors, `-p err`, 7 days), `kernel` (hardware-shaped warnings — USB resets, storage errors, undervoltage, throttling — filtered **server-side** so a chatty unrelated warner cannot push them out of the window) and `boots` `{ total, recent }` (five boots in two days points at power or storage, not software). `lines` and `kernel` are capped on journalctl's own order, then ordered by parsed instant (not by string — a DST week carries two offsets) and identical blocks are folded into the first occurrence, annotated `[×N, last <timestamp>]`; a block is a timestamped line plus its continuations, so a count never lands on a continuation. A sub-read that failed carries `error` / `kernel_error` / `boots_error`; the others are still returned.
+- `library` — `declared_roots`, `has_local_library`, `roots_detail` `{ path, exists, readable }`, and `mpd_database` `{ path, declared, exists?, size_bytes?, modified? }` where `declared` ∈ `declared | not_declared | config_unreadable` — an unreadable `mpd.conf` is not the same diagnostic as a database that was never built — plus `mpd_stats` `{ songs, albums, artists, db_updated, mpd_error }` asked of MPD itself .
+- `streaming` — per service (`qobuz`, `tidal`, `highresaudio`, `roon`): `true`, `false`, or **`null` when the probe could not run** (module not enabled, or it raised) — with the reason under `probe_errors: { service: reason }`, present only when there is one. `null` must render as *unknown*, never as "not signed in". Never a token. **Every key is a service** except the metadata ones (`probe_errors`, `error`) — a client must exclude those rather than match a hardcoded service list, or a service the core adds later disappears from a section that still looks complete.
+- `journal` — recent failures, redacted like the configs: `lines` (unit errors, `-p err`, 7 days), `kernel` (hardware-shaped warnings — USB resets, storage errors, undervoltage, throttling — filtered **server-side** so a chatty unrelated warner cannot push them out of the window) and `boots` `{ total, recent }`. `lines` and `kernel` are capped on journalctl's own order, then ordered by parsed instant (not by string — a DST week carries two offsets) and identical blocks are folded into the first occurrence, annotated `[×N, last <timestamp>]`; a block is a timestamped line plus its continuations, so a count never lands on a continuation. A sub-read that failed carries `error` / `kernel_error` / `boots_error`; the others are still returned.
 
 **Secrets are redacted before the report is built.** Config files are reduced to their
 effective directives — comments dropped except the Audiogravity marker, `#`/`//`/XML
@@ -700,25 +676,19 @@ badged `origin: "radio"`.
 Two of them are easy to confuse and mean different things:
 
 - **`expired`** — a licence that carried an end date and reached it. The customer paid; his
-  term is over. The box keeps Starter, exactly like an expired trial. Previously this fell
-  through to `tampered`, which told the customer his own file was *"invalid or bound to a
-  different device"* — read as corrupted or stolen, and worth a support ticket every time.
+  term is over. The box keeps Starter, exactly like an expired trial.
 - **`version_expired`** — a licence still valid in time, bought for an earlier major version.
 
 **`expires_at`** (ISO date, inclusive) is present whenever a licence carries an end date —
 both while it is still running and after it has ended. It is `null` on a perpetual licence,
-which is the only kind that has no end. Without it the interface reported a time-limited
-licence as *"Lifetime license active"*, so a customer believed he had bought one outright.
+which is the only kind that has no end.
 
 The comparison is made in **UTC on both ends**, so a box and the licence server lapse a
 licence at the same instant whatever timezone the box sits in. An `expires_at` present on a
-licence is enforced **whatever its `plan` says** — a document marked perpetual that also
-carried a date would otherwise stay unlocked for ever while the interface, which reads the
-date, announced it as active until a day long past.
+licence is enforced **whatever its `plan` says**.
 
 A licence still within its term keeps `status: "lifetime"` — the tier and the unlocked
-features are unchanged, and that is what gating reads. Only the wording differs, which is why
-`expires_at` has to travel with it. `version_expired` carries the same details as any other
+features are unchanged, and `expires_at` travels with it. `version_expired` carries the same details as any other
 licensed state (`expires_at`, `order_id`, `plan`), since a licence can be both version-locked
 and time-limited.
 
@@ -799,8 +769,8 @@ across both layouts instead. A service the core does not know has no editable co
 | GET | `/audio_app_config/{service_id}/backups` | List the timestamped copies kept before each save |
 | POST | `/audio_app_config/{service_id}/backups/{filename}/restore` | Restore one of them; optionally restart the service |
 
-Every save takes a timestamped backup first, which is what the two `backups` routes read
-and replay — so an edit that stops a service can always be undone from the editor.
+Every save takes a timestamped backup first; the two `backups` routes list and replay
+them.
 
 Three contract details of the structured form (`?type=structured` / POST with `data`):
 values of schema-declared **boolean** fields arrive as JSON booleans (not the file's
