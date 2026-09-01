@@ -64,6 +64,7 @@
 @import 'components/now-playing.css';
 @import 'components/splash-screen.css';
 @import 'components/wordmark.css';
+@import 'components/app-icon.css';
 @import 'components/theme-toggle.css';
 
 /* 4. LAYOUT (App Shell, Topbar, Tabs, Footer) */

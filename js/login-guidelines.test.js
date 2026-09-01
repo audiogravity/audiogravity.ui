@@ -37,7 +37,25 @@ function stripComments(css) {
     return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-const LOGIN_CSS = stripComments(fs.readFileSync(path.join(CSS_ROOT, 'login.css'), 'utf8'));
+/* The sign-in screen's own styling, in the files that actually hold it.
+ *
+ * This used to read css/login.css alone, and that was the whole scope of every check
+ * below. When the app icon's rules were lifted out into components/app-icon.css — shared
+ * with the footer — they left this suite's sight without a word: a colour literal or a
+ * `var(--x, fallback)` added there would have failed yesterday and passed today, on the
+ * very screen these tests were written to protect. A file that styles the sign-in card
+ * belongs here whatever directory it lives in. */
+const LOGIN_CSS = ['login.css', 'components/app-icon.css', 'components/wordmark.css']
+    .map(f => stripComments(fs.readFileSync(path.join(CSS_ROOT, f), 'utf8')))
+    .join('\n');
+
+/* components/theme-toggle.css is deliberately NOT in that list, and the omission was
+   measured rather than assumed: adding it fails the --text-tertiary case below. That
+   token is refused here because 3.54:1 is under the 4.5:1 text owes a reader — but the
+   toggle paints a GLYPH with it, and a non-text graphic owes 3:1, which it clears. The
+   guard reads declarations, not what they colour, so including that file would report a
+   contrast fault where there is none. Named here so the next reader does not "fix" the
+   gap by adding the file, nor the button by moving it off a token that suits it. */
 
 /**
  * List every .css file under a directory, recursively.

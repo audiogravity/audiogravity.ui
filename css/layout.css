@@ -689,11 +689,11 @@ body:has(.tabs--vertical.tabs--sidebar-hidden) .tab-sidebar-toggle {
     transition: opacity var(--transition-fast);
 }
 
-.footer-logo img {
-    height: 100%;
-    width: var(--footer-height);
-    object-fit: contain;
-}
+/* Sized by .ag-app-icon (css/components/app-icon.css), shared with the sign-in card — it
+   used to fill the footer's whole height, touching both edges, with a corner radius of
+   4 % of its side against the card's 22 %. Nothing else here: the icon is the only child
+   of .footer-logo, so a margin would have separated it from nothing while widening the
+   div that carries the click — 8px of empty footer that opens the preview. */
 
 /* Theme-based logo visibility */
 .logo-dark {

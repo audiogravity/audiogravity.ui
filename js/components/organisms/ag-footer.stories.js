@@ -39,6 +39,16 @@ WithApiReference.args = {
     docsUrl: 'http://audiogravity.local/api/docs',
 };
 
+/** The one state the icon's dark rule exists for: a near-black square on a dark footer,
+ *  where it needs its hairline to keep its edges. The class goes on <html>, which is what
+ *  theme-boot.js stamps before the first paint — a story that only set it on the wrapper
+ *  would render the light icon and show nothing of what was added. */
+export const DarkTheme = () => {
+    document.documentElement.classList.add('dark-mode');
+    document.body.classList.add('dark-mode');
+    return Template({ apiUrl: 'http://audiogravity.local/api', isLoggedIn: true, docsUrl: null });
+};
+
 export const Guest = Template.bind({});
 Guest.args = {
     apiUrl: 'http://demo.audiogravity.io/api',

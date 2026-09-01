@@ -1,0 +1,51 @@
+/**
+ * @module AppIcon
+ * @description The application's own icon, wherever the interface shows it beside its
+ * name: the sign-in card and the footer.
+ *
+ * One file for both, because they had drifted before this existed — the footer drew the
+ * same artwork at 50px with a 2px radius (4 % of the side) while the sign-in card used
+ * 36px at 8px (22 %), so the same square read as two different marks depending on the
+ * screen. The size is set against the wordmark it stands next to: 42px of type has 30px
+ * capitals, and an icon standing a little taller than the letters is what makes the two
+ * read as one block rather than a stamp beside a word.
+ *
+ * The file behind it is pics/apple-touch-180.png, never pwa-512.png: same artwork, 61 kB
+ * against 465, and already in the service worker's precache, so on an installed box it
+ * costs no download at all. 180px of source stays sharp past 3x at this size.
+ */
+
+/* The size is a geometry, not a step of the type scale, and nothing guards it — say so
+   rather than carry a `rule 12 exception` marker, which js/sizes.test.js only ever reads
+   beside a font-size and would excuse nothing here.
+
+   The radius is a PROPORTION, not the 8px it happens to work out to. Written as a length
+   it would have been a duplicate of --radius-lg, and it would not travel: the same
+   artwork is drawn at 192px in the footer's preview modal, where 8px reads as a square
+   and 22 % reads as the same mark. That is what the licence server's sign-in uses. */
+.ag-app-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 22%;
+    flex: none;
+    display: block;
+    object-fit: contain;
+}
+
+/* The artwork is a near-black square, so on a dark surface it loses its edges and leaves
+   the glyph floating with no bounds — measured against a card at #0a0a0a under Minimal
+   and #12141c under Gravity, and a footer at #000. A hairline in the theme's own border
+   colour gives the square back its shape without inventing a second, lighter icon: what
+   the owner sees here stays what they see on their home screen. `box-sizing: border-box`
+   is global, so the box holds its size and the row does not move.
+
+   `.dark-mode`, NOT `body.dark-mode`, and that is load-bearing: public/theme-boot.js
+   stamps the class on <html> before the first paint — it must, <body> does not exist yet
+   at that point — while `body.dark-mode` is only added later, when the bundle evaluates.
+   Scoped to the body, the hairline was therefore absent from a cold dark load's first
+   paint and appeared when the JS ran, which is a visible pop on the very screen this
+   rule exists to fix. Measured with the bundle blocked: html.dark-mode true,
+   body.dark-mode false, border 0px. */
+.dark-mode .ag-app-icon {
+    border: 1px solid var(--border-color);
+}

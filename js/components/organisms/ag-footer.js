@@ -78,7 +78,7 @@ export class AgFooter extends LitElement {
 
         modal.bodyTemplate = html`
             <div class="logo-preview-body" style="display: flex; justify-content: center; padding: var(--spacing-lg);">
-                <img src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:192px; height:192px; border-radius:var(--radius-md); display:block">
+                <img class="ag-app-icon" src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:192px; height:192px">
             </div>
         `;
 
@@ -92,6 +92,16 @@ export class AgFooter extends LitElement {
         modal.addEventListener('modal-close', closeHandler);
     }
 
+    /**
+     * Open the preview from the keyboard, the way a button would.
+     * @param {KeyboardEvent} e
+     */
+    _onLogoKey(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();          // Space would scroll the page
+        this._openLogoModal();
+    }
+
     _openApiDocs() {
         openApiDocs(this._docsUrl);
     }
@@ -99,8 +109,15 @@ export class AgFooter extends LitElement {
     render() {
         return html`
             <footer class="footer" role="contentinfo">
-                <div class="footer-logo" @click="${this._openLogoModal}">
-                    <img src="/pics/apple-touch-180.png" alt="Audiogravity" style="width:var(--footer-height); height:var(--footer-height); border-radius:var(--radius-sm); display:block">
+                <!-- A control, not an ornament: it opens the icon preview, so it has to be
+                     reachable by keyboard and announced as a button. It was a bare div with a
+                     click handler, which no Tab ever landed on. -->
+                <div class="footer-logo" role="button" tabindex="0"
+                     title="Preview the application icon"
+                     @click="${this._openLogoModal}"
+                     @keydown="${this._onLogoKey}">
+                    <img class="ag-app-icon" src="/pics/apple-touch-180.png" alt="Audiogravity"
+                         width="36" height="36">
                 </div>
                 
                 <span><a href="https://audiogravity.app" target="_blank" rel="noopener"><span

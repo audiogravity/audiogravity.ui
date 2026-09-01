@@ -114,6 +114,36 @@ describe('the marks the library shows exist too', () => {
     });
 });
 
+describe('the app icon is declared once and reserved everywhere', () => {
+    // The size lives in css/components/app-icon.css. The width/height attributes on each
+    // <img> are what reserves the box before the stylesheet applies — without them the
+    // footer would fall back to the PNG's natural 180px and blow apart a 50px bar, and
+    // with a stale value the row reflows on load. Nothing but this case ties the three
+    // numbers together.
+    const CSS = fs.readFileSync(path.join(ROOT, 'css', 'components', 'app-icon.css'), 'utf8');
+    const SIDE = Number(CSS.match(/\.ag-app-icon\s*\{[^}]*?width:\s*(\d+)px/s)?.[1]);
+    const SITES = ['login.html', path.join('js', 'components', 'organisms', 'ag-footer.js')];
+
+    it('declares one size', () => {
+        expect(SIDE, 'no width found on .ag-app-icon').toBeGreaterThan(0);
+    });
+
+    it('reserves that size at every call-site that renders it inline', () => {
+        for (const file of SITES) {
+            const src = fs.readFileSync(path.join(ROOT, ...file.split(path.sep)), 'utf8');
+            const tags = [...src.matchAll(/<img[^>]*class="ag-app-icon"[^>]*>/g)].map(m => m[0]);
+            expect(tags.length, `${file} renders no app icon`).toBeGreaterThan(0);
+            for (const tag of tags) {
+                // The preview modal sizes itself larger on purpose; it carries its own
+                // width in a style attribute and needs no reservation.
+                if (/style="[^"]*width/.test(tag)) continue;
+                expect(tag, `${file}: no width/height reserved`).toMatch(new RegExp(`width="${SIDE}"`));
+                expect(tag, `${file}: no width/height reserved`).toMatch(new RegExp(`height="${SIDE}"`));
+            }
+        }
+    });
+});
+
 describe('the manifest points at icons that exist', () => {
     it('declares some', () => {
         expect(manifestIcons().length).toBeGreaterThan(2);

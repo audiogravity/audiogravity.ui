@@ -56,6 +56,7 @@ css/
 │
 ├── components/                 # REUSABLE COMPONENTS (one stylesheet per component)
 │   ├── animations.css         # Keyframes: blinkSlow, blinkInfo, pulse, fade…
+│   ├── app-icon.css           # The application icon, sign-in card + footer (.ag-app-icon)
 │   ├── badge.css              # Status badges (success-pulse, error-pulse…)
 │   ├── button.css             # btn-action (compact) + action-btn (full height)
 │   ├── config-sidebar.css     # Configuration side panel
@@ -90,11 +91,14 @@ css/
 │   ├── sparkline.css          # SVG sparkline charts
 │   ├── splash-screen.css      # App splash screen
 │   ├── status-indicator.css   # Status indicators (LED dots, blinkSlow)
+│   ├── swipe.css              # Swipe affordances
 │   ├── tab-zone.css           # Inner tab zones
+│   ├── theme-toggle.css       # Light/dark button (.ag-theme-toggle)
 │   ├── tile.css               # Cards / Tiles
 │   ├── toast.css              # Toast notifications
 │   ├── tooltip.css            # Tooltips
-│   └── track-meta.css         # Track metadata display
+│   ├── track-meta.css         # Track metadata display
+│   └── wordmark.css           # The Audiogravity wordmark, set as text (.ag-wordmark)
 │
 └── (page stylesheets)          # PAGE-SPECIFIC STYLES
     ├── admin.css              # Admin page
@@ -133,6 +137,7 @@ css/
 @import 'components/tooltip.css';
 @import 'components/status-indicator.css';
 @import 'components/badge.css';
+@import 'components/swipe.css';
 @import 'components/source-badge.css';
 @import 'components/skeleton.css';
 @import 'components/tab-zone.css';
@@ -166,6 +171,11 @@ css/
 @import 'components/perf-monitor.css';
 @import 'components/now-playing.css';
 @import 'components/splash-screen.css';
+@import 'components/wordmark.css';
+@import 'components/app-icon.css';
+@import 'components/theme-toggle.css';
+@import 'components/pwa-install.css';
+@import 'components/orientation-gate.css';
 
 /* 4. LAYOUT (App Shell, Topbar, Tabs, Footer) */
 @import 'layout.css';
