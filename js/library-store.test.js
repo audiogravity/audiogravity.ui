@@ -590,3 +590,74 @@ describe('getHraSearchFilters', () => {
         expect(_apiGet).toHaveBeenCalledTimes(2);
     });
 });
+
+// ---------------------------------------------------------------------------
+// getQobuzShelves / getQobuzGenres — the two fixed lists of the Qobuz browse
+//
+// Same rules as HIGHRESAUDIO's lists, through the same cache helper: worth keeping
+// for the page, never kept empty, and never allowed to throw at a caller that did
+// not await it. What differs is what they hold — the shelves are a closed list the
+// CORE owns (Qobuz publishes no endpoint for it), and the genre paths are opaque
+// numeric ids rather than readable title paths.
+// ---------------------------------------------------------------------------
+
+import { getQobuzShelves, getQobuzGenres } from './library-store.js';
+
+describe('getQobuzShelves', () => {
+    const SHELVES = [
+        { title: 'new-releases', label: 'New Releases' },
+        { title: 'harmonia-mundi', label: 'Harmonia Mundi' },
+    ];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('reads the list from the core rather than holding a copy', async () => {
+        _apiGet.mockResolvedValueOnce(SHELVES);
+        expect(await getQobuzShelves()).toEqual(SHELVES);
+        expect(_apiGet).toHaveBeenCalledWith('/library/qobuz-shelves');
+    });
+
+    it('serves the cached list once it has one', async () => {
+        expect(await getQobuzShelves()).toEqual(SHELVES);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('asks the core again after an empty answer', async () => {
+        _apiGet.mockResolvedValueOnce([]);
+        expect(await getQobuzShelves({ force: true })).toEqual([]);
+        _apiGet.mockResolvedValueOnce(SHELVES);
+        expect(await getQobuzShelves()).toEqual(SHELVES);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers with an empty list rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getQobuzShelves({ force: true })).toEqual([]);
+    });
+});
+
+describe('getQobuzGenres', () => {
+    const GENRES = [{ title: 'Pop/Rock', path: '112', subgenres: [{ title: 'Pop', path: '117' }] }];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('fetches the tree from its own endpoint', async () => {
+        _apiGet.mockResolvedValueOnce(GENRES);
+        expect(await getQobuzGenres()).toEqual(GENRES);
+        expect(_apiGet).toHaveBeenCalledWith('/library/qobuz-genres');
+    });
+
+    it('keeps its own cache, separate from the HIGHRESAUDIO tree', async () => {
+        // One property holds whichever tree is on screen in the browse, so the two
+        // must not share a cache slot here — that would serve one under the other.
+        _apiGet.mockResolvedValueOnce([{ title: 'Jazz', path: 'Jazz', subgenres: [] }]);
+        const hra = await getHraGenres({ force: true });
+        expect(hra[0].path).toBe('Jazz');
+        expect((await getQobuzGenres())[0].path).toBe('112');
+    });
+
+    it('answers with an empty list rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getQobuzGenres({ force: true })).toEqual([]);
+    });
+});

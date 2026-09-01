@@ -24,6 +24,7 @@ import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
 import {
     getHraCategories, getHraGenres, getHraLabels, getHraPlaylistGroups,
     getHraConnection, hraHasSubscription,
+    getQobuzShelves, getQobuzGenres,
 } from '../../library-store.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
@@ -50,11 +51,35 @@ const PAGE_SIZE = 50;
 const MPD_PILLS    = [['all', 'All'], ['recent', 'Recent'], ['az', 'A–Z']];
 /** Local-library pill → the `sort` the core applies over the whole library before paging. */
 const MPD_SORT     = { all: 'title', az: 'title', recent: 'added' };
-const QOBUZ_PILLS  = [
-    ['favorites',    'Favorites'],
-    ['new-releases', 'New Releases'],
-    ['editor-picks', 'Selection'],
-    ['playlists',    'Playlists'],
+// Two filter values shared by both streaming catalogues. HIGHRESAUDIO and Qobuz each
+// put a Genres and a Playlists pill on their own bar, and the two arrange themselves
+// through the same strip and the same state — so the pills carry the same value, and
+// the places that do not care which source is up read these rather than either
+// source's own constant. Writing `HRA_GENRES_PILL[0]` in a branch Qobuz also takes
+// would be true and misleading at once.
+const GENRES_FILTER = 'genres';
+const PLAYLISTS_FILTER = 'playlists';
+// Qobuz, laid out the way HIGHRESAUDIO is: five shelves, each opening a strip of its
+// own. Four pills used to sit here, two of which were single hard-coded shelves out of
+// the nine the catalogue holds — the same defect the HRA menu had before it was
+// restructured, and the same remedy.
+const QOBUZ_FAVORITES_PILL = ['favorites', 'Favorites'];
+// The albums the account bought. Beside Favorites, ahead of the ways of arranging the
+// catalogue, because both are the listener's own — the position HRA's Vault holds.
+// Unlike the Vault it needs no id marker: a bought Qobuz album plays like any other.
+const QOBUZ_PURCHASES_PILL = ['purchases', 'Purchases'];
+// The nine shelves of the catalogue, fetched rather than written here: the core holds
+// the closed list (six of the fifteen types Qobuz accepts are empty, duplicated or
+// unnameable), and a second copy in the interface would drift from it.
+const QOBUZ_SHELVES_PILL = ['shelves', 'Shelves'];
+const QOBUZ_PLAYLISTS_PILL = [PLAYLISTS_FILTER, 'Playlists'];
+const QOBUZ_GENRES_PILL = [GENRES_FILTER, 'Genres'];
+// Qobuz keeps two playlist trees, as HRA does — the selections it publishes and the
+// account's own. It has no third: `editor-picks` and `last-created` answer the same
+// playlists, so offering both would be one shelf under two names.
+const QOBUZ_PLAYLIST_KINDS = [
+    ['editorial', 'Editorial', 'Editorial playlists'],
+    ['mine', 'Mine', 'My playlists'],
 ];
 const TIDAL_PILLS  = [
     ['favorites',    'Favorites'],
@@ -73,11 +98,11 @@ const HRA_FAVORITES_PILL = ['favorites', 'Favorites'];
 // sub-genres. They do not belong on the shelf bar: that bar is HRA's shop in HRA's
 // order, and 212 more buttons on the end of it would bury the fourteen shelves. The
 // pill opens a second strip instead, which drills one level down in place.
-const HRA_GENRES_PILL = ['genres', 'Genres'];
+const HRA_GENRES_PILL = [GENRES_FILTER, 'Genres'];
 // HRA keeps two separate playlist trees — the selections it publishes, and the
 // account's own — with independent id sequences. They share the second strip, the
 // way the genres do, rather than doubling the shelf bar.
-const HRA_PLAYLISTS_PILL = ['playlists', 'Playlists'];
+const HRA_PLAYLISTS_PILL = [PLAYLISTS_FILTER, 'Playlists'];
 // Third entry: the shelf heading. It is NOT the pill label plus the word "playlists" —
 // that reading gave "Mine playlists". A button and a heading are not the same sentence.
 /** The tree HRA publishes itself — the only one with shelves under it. */
@@ -170,7 +195,8 @@ export class AgLibraryBrowse extends LitElement {
         artistName:   { type: String, attribute: 'artist-name' },
         _albums:      { state: true },
         _hraCategories: { state: true },
-        _hraGenres:   { state: true },
+        _qobuzShelves: { state: true },
+        _genres:      { state: true },
         _hraLabels:   { state: true },
         _hraPlaylistGroups: { state: true },
         _genre:       { state: true },
@@ -198,11 +224,21 @@ export class AgLibraryBrowse extends LitElement {
         this._albums      = [];
         /** @type {Array<{title: string, label: string}>} HRA shop categories, one pill each. */
         this._hraCategories = [];
-        /** @type {Array<{title: string, path: string, subgenres: Array<object>}>} HRA genres. */
-        this._hraGenres   = [];
-        /** @type {string|null} Selected genre path ('Jazz' or 'Jazz/Bebop'), null on the list. */
+        /** @type {Array<{title: string, label: string}>} Qobuz shelves, one pill each. */
+        this._qobuzShelves = [];
+        /**
+         * @type {Array<{title: string, path: string, subgenres: Array<object>}>} The genre
+         * tree of whichever source is on screen. Both publish the same shape, so one strip
+         * renders both; only where it is fetched from differs.
+         */
+        this._genres      = [];
+        /**
+         * @type {string|null} Selected genre path, null while the list itself is up. The
+         * path is the source's own addressing key and is NEVER parsed here — HRA's reads
+         * as `Jazz/Bebop`, Qobuz's is a bare numeric id.
+         */
         this._genre       = null;
-        /** @type {string} Which HRA playlist tree is shown: 'editorial' or 'mine'. */
+        /** @type {string} Which playlist tree is shown: 'editorial' or 'mine' on both sources. */
         this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
         /** @type {string} Which HRA shelf the editorial tree is narrowed to; '' = all. */
         this._playlistCategory = HRA_PLAYLIST_ALL;
@@ -280,6 +316,11 @@ export class AgLibraryBrowse extends LitElement {
             this._filter = !this._isStreaming ? 'all'
                 : this._isHighresaudio ? this._hraLandingFilter : 'favorites';
             this._genre = null;
+            // The tree itself, not only the choice in it: one property holds whichever
+            // source's genres are on screen, so leaving it filled would show HRA's
+            // twenty-six under Qobuz — and its length is what tells the strip it has
+            // nothing to fetch.
+            this._genres = [];
             this._category = '';
             this._label = '';
             this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
@@ -310,13 +351,14 @@ export class AgLibraryBrowse extends LitElement {
         if (changed.has('sourceId') || changed.has('artistId') || changed.has('_hraSubscribed')) {
             this._edges.measure();
         }
-        if (changed.has('_hraGenres') || changed.has('_genre') || changed.has('_filter')) {
+        if (changed.has('_genres') || changed.has('_genre') || changed.has('_filter')) {
             this._genreEdges.measure();
         }
         // The entries strip is filled asynchronously, and it holds the fourteen pills
         // that used to overflow the filter bar — so it is the one that most needs its
         // markers remeasured once its list lands.
-        if (changed.has('_hraCategories') || changed.has('_hraLabels') || changed.has('_filter')) {
+        if (changed.has('_hraCategories') || changed.has('_hraLabels')
+            || changed.has('_qobuzShelves') || changed.has('_filter')) {
             this._entryEdges.measure();
         }
         if (changed.has('_hraPlaylistGroups') || changed.has('_playlistKind')) {
@@ -324,10 +366,25 @@ export class AgLibraryBrowse extends LitElement {
         }
     }
 
-    /** @private Fill the HRA genre tree; a failure leaves the strip empty and retryable. */
-    async _loadHraGenres() {
-        const genres = await getHraGenres();
-        if (this._isHighresaudio) this._hraGenres = genres;
+    /**
+     * @private Fill the genre tree of the source on screen; a failure leaves the strip
+     * empty and retryable. Which source it came from is checked again on arrival, not
+     * only when it was asked for: the two trees are different lists and a slow answer
+     * must not fill the strip of the source the reader moved to.
+     */
+    async _loadGenres() {
+        const qobuz = this._isQobuz;
+        const genres = await (qobuz ? getQobuzGenres() : getHraGenres());
+        if (qobuz ? this._isQobuz : this._isHighresaudio) this._genres = genres;
+    }
+
+    /** @private Fill the Qobuz shelf strip; a failure leaves it empty and retryable. */
+    async _loadQobuzShelves() {
+        const shelves = await getQobuzShelves();
+        // The source can have changed while the answer was in flight.
+        if (!this._isQobuz) return;
+        this._qobuzShelves = shelves;
+        this._openFirstEntry(QOBUZ_SHELVES_PILL[0], '_category', this._shelfPills);
     }
 
     /** @private Fill the HRA label strip; a failure leaves it empty and retryable. */
@@ -458,13 +515,24 @@ export class AgLibraryBrowse extends LitElement {
                 if (this._filter === HRA_LABELS_PILL[0] && !this._hraLabels.length) {
                     this._loadHraLabels();
                 }
-                if (this._filter === HRA_GENRES_PILL[0] && !this._hraGenres.length) {
-                    this._loadHraGenres();
+                if (this._filter === HRA_GENRES_PILL[0] && !this._genres.length) {
+                    this._loadGenres();
                 }
                 if (this._showsPlaylistGroups
                     && !(this._hraPlaylistGroups[this._playlistKind] ?? []).length) {
                     this._loadHraPlaylistGroups(this._playlistKind);
                 }
+            }
+        }
+        if (this._isQobuz) {
+            // Same rule as HRA's shelves: a list is fetched only while its own shelf is
+            // open, and this is also what repairs one that failed to arrive — the strip
+            // cannot ask again once its shelf is already chosen, so Refresh retries.
+            if (this._filter === QOBUZ_SHELVES_PILL[0] && !this._qobuzShelves.length) {
+                this._loadQobuzShelves();
+            }
+            if (this._filter === QOBUZ_GENRES_PILL[0] && !this._genres.length) {
+                this._loadGenres();
             }
         }
         this._detachObserver();
@@ -536,17 +604,27 @@ export class AgLibraryBrowse extends LitElement {
             offset: String(offset),
             limit:  String(PAGE_SIZE),
         });
-        switch (this._filter) {
-            case 'new-releases':
-            case 'editor-picks':
-                params.set('type', this._filter);
-                return apiGet(`/library/qobuz-featured?${params}`);
-            case 'playlists':
-                return apiGet(`/library/qobuz-playlists?${params}`);
-            default:
-                params.set('source_id', this.sourceId);
-                return apiGet(`/library/albums?${params}`);
+        if (this._filter === QOBUZ_PURCHASES_PILL[0]) {
+            return apiGet(`/library/qobuz-purchases?${params}`);
         }
+        if (this._filter === QOBUZ_SHELVES_PILL[0]) {
+            // Nothing until the list has landed and its first entry has been chosen.
+            if (!this._category) return [];
+            params.set('type', this._category);
+            return apiGet(`/library/qobuz-featured?${params}`);
+        }
+        if (this._filter === QOBUZ_PLAYLISTS_PILL[0]) {
+            params.set('type', this._playlistKind);
+            return apiGet(`/library/qobuz-playlists?${params}`);
+        }
+        if (this._filter === QOBUZ_GENRES_PILL[0]) {
+            // Nothing to show until a genre is picked: the strip below is the choice.
+            if (!this._genre) return [];
+            params.set('genre', this._genre);
+            return apiGet(`/library/qobuz-genre?${params}`);
+        }
+        params.set('source_id', this.sourceId);
+        return apiGet(`/library/albums?${params}`);
     }
 
     /** @private HRA-specific fetch: favorites (My Album), or one of the shop categories. */
@@ -723,11 +801,11 @@ export class AgLibraryBrowse extends LitElement {
         if (f === this._filter) return;
         const previous = this._filter;
         this._filter = f;
-        if (f === HRA_GENRES_PILL[0]) {
+        if (f === GENRES_FILTER) {
             // Fetched on the first visit to the genres rather than with the source: 26
             // genres and 186 sub-genres are a page nobody asked for until they do.
             this._genre = null;
-            if (!this._hraGenres.length) this._loadHraGenres();
+            if (!this._genres.length) this._loadGenres();
         }
         // Categories and Labels open on their first entry rather than on an empty grid:
         // HRA serves no "everything" view of either, so asking the reader to choose
@@ -746,6 +824,13 @@ export class AgLibraryBrowse extends LitElement {
         if (f === HRA_LABELS_PILL[0]) {
             if (!this._label) this._label = this._labelPills[0]?.[0] ?? '';
             if (!this._hraLabels.length) this._loadHraLabels();
+        }
+        // Qobuz's shelves behave as HRA's categories do — no "every shelf" view, so the
+        // pill opens on the first of them — and they share `_category`, the state that
+        // already meant "the entry chosen on the strip below".
+        if (f === QOBUZ_SHELVES_PILL[0]) {
+            if (!this._category) this._category = this._shelfPills[0]?.[0] ?? '';
+            if (!this._qobuzShelves.length) this._loadQobuzShelves();
         }
         // Streaming pills hit different endpoints, so they always reloaded. MPD pills used
         // to reorder whatever was already in memory, which is why 'All' and 'A–Z' looked
@@ -825,7 +910,18 @@ export class AgLibraryBrowse extends LitElement {
      * @returns {Array<[string, string]>}
      */
     get _pills() {
-        if (this._isQobuz) return QOBUZ_PILLS;
+        // Five, fixed: what each shelf holds is listed on the strip below it, the way
+        // HIGHRESAUDIO's seven work. The nine catalogue shelves used to be two pills on
+        // this bar and the other seven unreachable.
+        if (this._isQobuz) {
+            return [
+                QOBUZ_FAVORITES_PILL,
+                QOBUZ_PURCHASES_PILL,
+                QOBUZ_SHELVES_PILL,
+                QOBUZ_PLAYLISTS_PILL,
+                QOBUZ_GENRES_PILL,
+            ];
+        }
         if (this._isTidal) return TIDAL_PILLS;
         if (this._isHighresaudio) {
             // The flag is a plain boolean: hraHasSubscription() already folded
@@ -855,8 +951,8 @@ export class AgLibraryBrowse extends LitElement {
      * @returns {Array<[string, string]>}
      */
     get _genrePills() {
-        if (!this._genre) return this._hraGenres.map((g) => [g.path, g.title]);
-        const top = this._hraGenres.find((g) => g.path === this._genre.split('/')[0]);
+        if (!this._genre) return this._genres.map((g) => [g.path, g.title]);
+        const top = this._topGenre;
         if (!top) return [];
         // The whole genre reads as "All", not as its own name repeated: HRA gives two
         // of its genres a sub-genre of the same name (Soundtrack/Soundtrack,
@@ -866,6 +962,27 @@ export class AgLibraryBrowse extends LitElement {
             [top.path, HRA_WHOLE_GENRE_LABEL],
             ...(top.subgenres ?? []).map((s) => [s.path, s.title]),
         ];
+    }
+
+    /**
+     * @private The genre the chosen path belongs to — itself when a whole genre is
+     * chosen, its parent when a sub-genre is.
+     *
+     * Found by MATCHING the path against the tree, never by splitting it on a
+     * separator. A path is the source's own addressing key: HRA's happens to read as
+     * `Genre/Sub-genre`, but four of Qobuz's thirteen genres carry a `/` in their own
+     * name (*Pop/Rock*, *Soul/Funk/R&B*, *Hip-Hop/Rap*, *Blues/Country/Folk*), so
+     * splitting one would look up a genre called "Pop" and find nothing — an empty
+     * strip. Qobuz's key is a bare numeric id for that very reason.
+     *
+     * @returns {{title: string, path: string, subgenres: Array<object>}|undefined}
+     */
+    get _topGenre() {
+        if (!this._genre) return undefined;
+        return this._genres.find(
+            (g) => g.path === this._genre
+                || (g.subgenres ?? []).some((s) => s.path === this._genre),
+        );
     }
 
     /**
@@ -886,6 +1003,16 @@ export class AgLibraryBrowse extends LitElement {
         // that the pill already shows just above. HIGHRESAUDIO only: Qobuz and Tidal
         // use that very filter value for their own playlists, and without this guard
         // their grid was titled "Editorial playlists" too.
+        // Qobuz's two trees name their grid the same way, from the same third column;
+        // it has no shelves or groupings under them, so that is all it needs.
+        if (this._isQobuz && this._filter === QOBUZ_PLAYLISTS_PILL[0]) {
+            const kind = QOBUZ_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
+            return kind ? kind[2] : QOBUZ_PLAYLISTS_PILL[1];
+        }
+        if (this._isQobuz && this._filter === QOBUZ_SHELVES_PILL[0] && this._category) {
+            const entry = this._shelfPills.find(([t]) => t === this._category);
+            return entry ? entry[1] : QOBUZ_SHELVES_PILL[1];
+        }
         if (this._isHighresaudio && this._filter === HRA_PLAYLISTS_PILL[0]) {
             // A chosen shelf names the grid — "Popular", not "Editorial playlists",
             // which the strip above already says. Same reasoning as a genre naming
@@ -910,10 +1037,16 @@ export class AgLibraryBrowse extends LitElement {
         }
         // In the genres, the shelf is the genre itself — its own name says far more
         // than the word "Genres" repeated above every grid.
-        if (this._filter === HRA_GENRES_PILL[0]) {
-            // The whole path, so a sub-genre is read in the genre it belongs to — the
-            // strip no longer names the genre once "All" took the first button.
-            return this._genre ? this._genre.split('/').join(' · ') : HRA_GENRES_PILL[1];
+        if (this._filter === GENRES_FILTER) {
+            const top = this._topGenre;
+            if (!top) return HRA_GENRES_PILL[1];
+            // The genre AND the sub-genre, so a sub-genre is read in the genre it
+            // belongs to — the strip no longer names the genre once "All" took the
+            // first button. Built from the titles found in the tree rather than by
+            // splitting the path: a path is an addressing key, and Qobuz's is a
+            // numeric id that would have been printed here as "80 · 81".
+            const sub = (top.subgenres ?? []).find((s) => s.path === this._genre);
+            return sub ? `${top.title} · ${sub.title}` : top.title;
         }
         const entry = this._pills.find(([f]) => f === this._filter);
         return entry ? entry[1] : 'Albums';
@@ -1055,6 +1188,38 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     /**
+     * @private The shelf strip, under Qobuz's Shelves pill. The same slot and the same
+     * controller as HRA's categories: only one of the two can be on screen, and to a
+     * reader they are the same thing — the shelves of a catalogue.
+     */
+    _renderQobuzShelves() {
+        if (!this._isQobuz || this._filter !== QOBUZ_SHELVES_PILL[0]) return nothing;
+        return this._renderStrip({
+            strip: 'entries',
+            edges: this._entryEdges,
+            pills: this._shelfPills,
+            active: this._category,
+            pick: (title) => this._setEntry('_category', title),
+        });
+    }
+
+    /**
+     * @private Qobuz's shelves as a strip, in the order the core lists them — its own
+     * reading order, from the newest releases to a label's catalogue. Not reordered
+     * here: the core holds the list, and a second opinion on its order would drift.
+     * @returns {Array<[string, string]>}
+     */
+    get _shelfPills() {
+        return this._qobuzShelves.map((s) => [s.title, s.label]);
+    }
+
+    /**
+     * @returns {boolean} Whether the source on screen arranges its catalogue by genre.
+     * Both do, through the same strip and the same state — only the tree differs.
+     */
+    get _hasGenreShelf() { return this._isHighresaudio || this._isQobuz; }
+
+    /**
      * @private The shop categories as a strip, in the order HIGHRESAUDIO asked for:
      * their six named first, then everything else they publish. Nothing is dropped —
      * three of the fourteen are absent from their own plan and all three serve real
@@ -1091,11 +1256,16 @@ export class AgLibraryBrowse extends LitElement {
      * grid straight away; the last two open a strip of their own below.
      */
     _renderPlaylistKinds() {
-        if (!this._isHighresaudio || this._filter !== HRA_PLAYLISTS_PILL[0]) return nothing;
+        if (this._filter !== PLAYLISTS_FILTER) return nothing;
+        // Qobuz has the same two first trees and no grouping under them, so it shares
+        // this strip rather than getting one of its own.
+        const kinds = this._isQobuz ? QOBUZ_PLAYLIST_KINDS
+            : this._isHighresaudio ? HRA_PLAYLIST_KINDS : null;
+        if (!kinds) return nothing;
         return this._renderStrip({
             strip: 'playlists',
             edges: this._playlistEdges,
-            pills: HRA_PLAYLIST_KINDS,
+            pills: kinds,
             active: this._playlistKind,
             pick: (kind) => this._setPlaylistKind(kind),
         });
@@ -1210,7 +1380,7 @@ export class AgLibraryBrowse extends LitElement {
      * sub-genres, with a way back to the list at the front.
      */
     _renderGenres() {
-        if (!this._isHighresaudio || this._filter !== HRA_GENRES_PILL[0]) return nothing;
+        if (!this._hasGenreShelf || this._filter !== GENRES_FILTER) return nothing;
         return this._renderStrip({
             strip: 'genres',
             edges: this._genreEdges,
@@ -1241,7 +1411,7 @@ export class AgLibraryBrowse extends LitElement {
         // keeping it up.
         // Nothing is chosen yet in the genres: the strip below IS the choice, so the
         // grid says so rather than reporting an absence of albums.
-        const awaitingGenre = this._filter === HRA_GENRES_PILL[0] && !this._genre;
+        const awaitingGenre = this._filter === GENRES_FILTER && !this._genre;
         // Same state, one strip lower: a grouping has no unfiltered view either, and
         // its list can still be in flight.
         const awaitingGroup = this._showsPlaylistGroups && !this._playlistGroup;
@@ -1252,12 +1422,14 @@ export class AgLibraryBrowse extends LitElement {
         // if the list never lands, the header's Refresh below is the way to retry.
         const awaitingEntry =
             (this._filter === HRA_CATEGORIES_PILL[0] && !this._category)
-            || (this._filter === HRA_LABELS_PILL[0] && !this._label);
+            || (this._filter === HRA_LABELS_PILL[0] && !this._label)
+            || (this._filter === QOBUZ_SHELVES_PILL[0] && !this._category);
 
         return html`
             ${this._renderFilters()}
             ${this._renderCategories()}
             ${this._renderLabels()}
+            ${this._renderQobuzShelves()}
             ${this._renderGenres()}
             ${this._renderPlaylistKinds()}
             ${this._renderPlaylistCategories()}

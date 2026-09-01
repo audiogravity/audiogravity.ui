@@ -72,7 +72,7 @@ const el = (overrides = {}) => Object.assign(Object.create(AgLibraryBrowse.proto
     _playlistEdges: { overflows: false, attach() {}, measure() {} },
     _playlistKind: 'editorial',
     _hraCategories: [],
-    _hraGenres: [],
+    _genres: [],
     _genre: null,
     ...overrides,
 });
@@ -307,7 +307,7 @@ describe('a pill bar that scrolls says so', () => {
 describe('the genre strip drills in place', () => {
     const GENRES = [{ title: 'Jazz', path: 'Jazz', subgenres: [{ title: 'Bebop', path: 'Jazz/Bebop' }] }];
     const hra = (over = {}) => el({
-        sourceId: 'src_highresaudio', _hraCategories: [], _hraGenres: GENRES, ...over,
+        sourceId: 'src_highresaudio', _hraCategories: [], _genres: GENRES, ...over,
     });
 
     it('shows no genre strip on any other pill', () => {
