@@ -661,3 +661,104 @@ describe('getQobuzGenres', () => {
         expect(await getQobuzGenres({ force: true })).toEqual([]);
     });
 });
+
+// ---------------------------------------------------------------------------
+// getTidalShelves / getTidalGenres / getTidalMoods — Tidal's three fixed lists
+//
+// Same helper, same rules as the other two sources. What differs is what the core
+// already did to them: the shelves that hold nothing are gone, and the labels arrive
+// in the language of the account's country, ordered on what is displayed.
+// ---------------------------------------------------------------------------
+
+import { getTidalShelves, getTidalGenres, getTidalMoods } from './library-store.js';
+
+describe('the three Tidal lists', () => {
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('each reads its own endpoint', async () => {
+        _apiGet.mockResolvedValue([{ title: 'new', label: 'Nouveautés' }]);
+        await getTidalShelves({ force: true });
+        expect(_apiGet).toHaveBeenCalledWith('/library/tidal-shelves');
+        _apiGet.mockResolvedValue([{ title: 'Jazz', path: 'Jazz', subgenres: [] }]);
+        await getTidalGenres({ force: true });
+        expect(_apiGet).toHaveBeenCalledWith('/library/tidal-genres');
+        _apiGet.mockResolvedValue([{ title: 'relax', label: 'Détente' }]);
+        await getTidalMoods({ force: true });
+        expect(_apiGet).toHaveBeenCalledWith('/library/tidal-moods');
+    });
+
+    it('keeps three separate caches, so one never serves under another', async () => {
+        // They share the cache helper; a shared slot would show the moods under Shelves.
+        _apiGet.mockResolvedValueOnce([{ title: 'new', label: 'Nouveautés' }]);
+        const shelves = await getTidalShelves({ force: true });
+        _apiGet.mockResolvedValueOnce([{ title: 'relax', label: 'Détente' }]);
+        const moods = await getTidalMoods({ force: true });
+        expect(shelves[0].label).toBe('Nouveautés');
+        expect(moods[0].label).toBe('Détente');
+        expect(await getTidalShelves()).toEqual(shelves);
+    });
+
+    it('answer with an empty list rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getTidalShelves({ force: true })).toEqual([]);
+        expect(await getTidalGenres({ force: true })).toEqual([]);
+        expect(await getTidalMoods({ force: true })).toEqual([]);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getTidalExplore / getTidalPage — the Explore tree
+//
+// getTidalPage is the only new store function with logic of its own, and what it
+// promises — a normalised page, never a throw — is what `_openPage` and the strips
+// depend on. Untested, a malformed answer would surface as a render-time crash.
+// ---------------------------------------------------------------------------
+
+import { getTidalExplore, getTidalPage } from './library-store.js';
+
+describe('the Tidal Explore tree', () => {
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('reads the entries from their own endpoint, and caches them', async () => {
+        _apiGet.mockResolvedValueOnce([{ title: 'pages/hires', label: 'HiRes' }]);
+        expect(await getTidalExplore({ force: true }))
+            .toEqual([{ title: 'pages/hires', label: 'HiRes' }]);
+        expect(_apiGet).toHaveBeenCalledWith('/library/tidal-explore');
+        _apiGet.mockClear();
+        await getTidalExplore();
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('encodes the page path rather than pasting it into the query', async () => {
+        _apiGet.mockResolvedValue({ title: 'x', links: [], sections: [] });
+        await getTidalPage('pages/m_def_jam_40');
+        expect(_apiGet).toHaveBeenCalledWith(
+            '/library/tidal-page?path=pages%2Fm_def_jam_40',
+        );
+    });
+
+    it('normalises a page so the strips can read it without checking', async () => {
+        _apiGet.mockResolvedValue({ title: 'HiRes' });     // no links, no sections
+        expect(await getTidalPage('pages/hires'))
+            .toEqual({ title: 'HiRes', links: [], sections: [] });
+    });
+
+    it('normalises the shapes a malformed answer could take', async () => {
+        _apiGet.mockResolvedValue({ title: null, links: 'nope', sections: 42 });
+        expect(await getTidalPage('pages/hires'))
+            .toEqual({ title: '', links: [], sections: [] });
+    });
+
+    it('answers an empty page rather than throwing at a caller that did not await', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getTidalPage('pages/hires'))
+            .toEqual({ title: '', links: [], sections: [] });
+    });
+
+    it('is not cached — there are dozens of pages and each is one small request', async () => {
+        _apiGet.mockResolvedValue({ title: 'HiRes', links: [], sections: [] });
+        await getTidalPage('pages/hires');
+        await getTidalPage('pages/hires');
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+});

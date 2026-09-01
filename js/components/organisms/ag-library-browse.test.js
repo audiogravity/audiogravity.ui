@@ -30,6 +30,11 @@ const getHraLabelsMock = vi.fn();
 const getHraPlaylistGroupsMock = vi.fn();
 const getQobuzShelvesMock = vi.fn();
 const getQobuzGenresMock = vi.fn();
+const getTidalShelvesMock = vi.fn();
+const getTidalGenresMock = vi.fn();
+const getTidalMoodsMock = vi.fn();
+const getTidalExploreMock = vi.fn();
+const getTidalPageMock = vi.fn();
 vi.mock('../../library-store.js', () => ({
     getFavoriteAlbumIds: vi.fn().mockResolvedValue(new Set()),
     setAlbumFavorited: vi.fn(),
@@ -41,6 +46,11 @@ vi.mock('../../library-store.js', () => ({
     getHraPlaylistGroups: (...args) => getHraPlaylistGroupsMock(...args),
     getQobuzShelves: (...args) => getQobuzShelvesMock(...args),
     getQobuzGenres: (...args) => getQobuzGenresMock(...args),
+    getTidalShelves: (...args) => getTidalShelvesMock(...args),
+    getTidalGenres: (...args) => getTidalGenresMock(...args),
+    getTidalMoods: (...args) => getTidalMoodsMock(...args),
+    getTidalExplore: (...args) => getTidalExploreMock(...args),
+    getTidalPage: (...args) => getTidalPageMock(...args),
     // The real predicate, restated: it is the contract under test here (absent
     // means subscribed), and the store's own tests pin the original.
     hraHasSubscription: (conn) => conn?.has_subscription !== false,
@@ -561,12 +571,15 @@ describe('ag-library-browse — HIGHRESAUDIO playlists', () => {
         expect(opts.itemType).toBe('album');
     });
 
-    it('leaves the Tidal playlists pill alone', () => {
-        // 'playlists' is its filter value too — an unguarded branch titled its grid
-        // "Editorial playlists", and "Mine playlists" after a visit to HRA. Tidal has
-        // one tree, so its grid is named by the pill and nothing else.
-        const el = makeEl({ sourceId: 'src_tidal', _filter: 'playlists', _playlistKind: 'mine' });
-        expect(el._sectionLabel).toBe('Playlists');
+    it('names the Tidal surface on screen, as the other two do', () => {
+        // Tidal has three playlist surfaces on one strip — its editors' selections, the
+        // account's own, and its charts — so the heading says which is up rather than
+        // repeating the word the pill above already shows.
+        const el = (kind) => makeEl({ sourceId: 'src_tidal', _filter: 'playlists',
+                                      _playlistKind: kind })._sectionLabel;
+        expect(el('mine')).toBe('My playlists');
+        expect(el('editorial')).toBe('Editorial playlists');
+        expect(el('charts')).toBe('Charts');
     });
 
     it('names the Qobuz tree on screen, as HRA does', () => {
@@ -613,7 +626,9 @@ describe('ag-library-browse — a playlist is told from an album', () => {
     it('knows the playlist grids of all three services, and no other pill', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' })._showsPlaylists).toBe(true);
         expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists' })._showsPlaylists).toBe(true);
-        expect(makeEl({ sourceId: 'src_tidal', _filter: 'charts' })._showsPlaylists).toBe(true);
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'playlists' })._showsPlaylists).toBe(true);
+        // Moods hold playlists and never albums — Tidal says so itself.
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'moods' })._showsPlaylists).toBe(true);
         expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' })._showsPlaylists).toBe(false);
         expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'vault' })._showsPlaylists).toBe(false);
         expect(makeEl({ sourceId: 'src_mpd', _filter: 'all' })._showsPlaylists).toBe(false);
@@ -640,7 +655,7 @@ describe('ag-library-browse — a playlist is told from an album', () => {
     });
 
     it('queues from the same answer it renders from', () => {
-        const el = makeEl({ sourceId: 'src_tidal', _filter: 'editorial' });
+        const el = makeEl({ sourceId: 'src_tidal', _filter: 'playlists' });
         expect(el._albumOpts({ id: 'p1', title: 'x' }, 'play').itemType).toBe('playlist');
     });
 });
@@ -652,7 +667,8 @@ describe('ag-library-browse — the ★ is offered only where the grid holds alb
     it('is withheld on every playlist grid', () => {
         expect(makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' })._showsFavorites).toBe(false);
         expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists' })._showsFavorites).toBe(false);
-        expect(makeEl({ sourceId: 'src_tidal', _filter: 'editorial' })._showsFavorites).toBe(false);
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'playlists' })._showsFavorites).toBe(false);
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'moods' })._showsFavorites).toBe(false);
     });
 
     it('is withheld on the Vault — a purchase id is not a catalogue id', () => {
@@ -1245,8 +1261,12 @@ describe('ag-library-browse — Qobuz genres', () => {
         expect(gEl({ _genre: '118' })._sectionLabel).not.toContain('118');
     });
 
-    it('shows a strip holding only its way back out for a genre with no sub-genre', () => {
-        expect(gEl({ _genre: '133' })._genrePills).toEqual([['133', 'All']]);
+    it('keeps the list of genres when the chosen one has nothing under it', () => {
+        // It used to collapse to a single inert "All" — a strip of one button that goes
+        // back to where it already is. The list keeps the next genre one tap away.
+        expect(gEl({ _genre: '133' })._genrePills).toEqual([
+            ['112', 'Pop/Rock'], ['133', 'Hip-Hop/Rap'],
+        ]);
     });
 
     it('asks the Qobuz genre endpoint with the opaque path', async () => {
@@ -1282,5 +1302,378 @@ describe('ag-library-browse — Qobuz genres', () => {
         resolve(QOBUZ_GENRES);
         await pending;
         expect(el._genres).toEqual([]);
+    });
+});
+
+describe('ag-library-browse — Tidal', () => {
+    const SHELVES = [
+        { title: 'exclusive', label: 'Exclusif' },
+        { title: 'new', label: 'Nouveautés' },
+        { title: 'top', label: 'Top 20' },
+    ];
+    const MOODS = [
+        { title: 'concentrate', label: 'Concentration' },
+        { title: 'relax', label: 'Détente' },
+    ];
+    const GENRES = [
+        { title: 'Bandes originales', path: 'Film', subgenres: [] },
+        { title: 'Hip Hop / Rap', path: 'Hiphop', subgenres: [] },
+    ];
+
+    function tEl(over = {}) {
+        return makeEl({
+            sourceId: 'src_tidal', _tidalShelves: SHELVES, _tidalMoods: MOODS,
+            _genres: GENRES, _genre: null, _category: '', _mood: '',
+            _playlistEdges: { overflows: false, attach() {}, measure() {} },
+            ...over,
+        });
+    }
+
+    beforeEach(() => {
+        apiGetMock.mockReset();
+        getTidalShelvesMock.mockReset();
+        getTidalGenresMock.mockReset();
+        getTidalMoodsMock.mockReset();
+        // The other two sources' loaders share `_loadGenres`, so their call counts are
+        // what proves this source asked its own.
+        getQobuzGenresMock.mockReset();
+        getHraGenresMock.mockReset();
+    });
+
+    it('offers six shelves, not five flat pills', () => {
+        // Two of the five it had were dead: the core found their content by matching
+        // words in Tidal's own headings, and Tidal had renamed them.
+        expect(tEl()._pills.map(([, label]) => label)).toEqual(
+            ['Favorites', 'Shelves', 'Playlists', 'Genres', 'Moods', 'Explore'],
+        );
+    });
+
+    it('has no Purchases pill — Tidal sells nothing', () => {
+        expect(tEl()._pills.map(([f]) => f)).not.toContain('purchases');
+    });
+
+    it('reads a shelf through the one list route, naming which list', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await tEl({ _filter: 'shelves', _category: 'exclusive' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/tidal-list?');
+        expect(url).toContain('kind=shelves');
+        expect(url).toContain('path=exclusive');
+    });
+
+    it('reads a genre and a mood through that same route', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await tEl({ _filter: 'genres', _genre: 'Hiphop' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('kind=genres&path=Hiphop');
+        apiGetMock.mockClear();
+        await tEl({ _filter: 'moods', _mood: 'relax' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).toContain('kind=moods&path=relax');
+    });
+
+    it('asks for nothing until an entry is chosen', async () => {
+        for (const f of ['shelves', 'genres', 'moods']) {
+            expect(await tEl({ _filter: f })._fetchPage(0)).toEqual([]);
+        }
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('routes the three playlist surfaces to their own endpoints', async () => {
+        apiGetMock.mockResolvedValue([]);
+        const ask = async (kind) => {
+            apiGetMock.mockClear();
+            await tEl({ _filter: 'playlists', _playlistKind: kind })._fetchPage(0);
+            return apiGetMock.mock.calls[0][0];
+        };
+        expect(await ask('mine')).toContain('/library/tidal-playlists?');
+        expect(await ask('charts')).toContain('/library/tidal-charts?');
+        expect(await ask('editorial')).toContain('/library/tidal-editorial?');
+    });
+
+    it('puts the charts in the playlist strip, not on the bar', () => {
+        // They are a third shelf of playlists beside the editors' and the account's,
+        // which is what they are; the bar stays five pills long.
+        const strip = text(tEl({ _filter: 'playlists' })._renderPlaylistKinds());
+        expect(strip).toContain('Editorial');
+        expect(strip).toContain('Mine');
+        expect(strip).toContain('Charts');
+        expect(tEl()._pills.map(([f]) => f)).not.toContain('charts');
+    });
+
+    it('shares the shelf strip with Qobuz rather than growing one of its own', () => {
+        expect(tEl({ _filter: 'shelves' })._shelfPills).toEqual([
+            ['exclusive', 'Exclusif'], ['new', 'Nouveautés'], ['top', 'Top 20'],
+        ]);
+    });
+
+    it('keeps the moods on their own state, not on the shelves', () => {
+        // Two pills of the SAME source: a shared choice would carry a shelf key into
+        // the moods on a tap.
+        const el = tEl({ _filter: 'shelves', _category: 'new' });
+        el._load = vi.fn();          // _setEntry reloads; the real one wants a live host
+        el._setEntry('_mood', 'relax');
+        expect(el._category).toBe('new');
+        expect(el._mood).toBe('relax');
+    });
+
+    it('names the grid after the chosen entry on every strip', () => {
+        expect(tEl({ _filter: 'shelves', _category: 'top' })._sectionLabel).toBe('Top 20');
+        expect(tEl({ _filter: 'moods', _mood: 'relax' })._sectionLabel).toBe('Détente');
+        expect(tEl({ _filter: 'genres', _genre: 'Film' })._sectionLabel)
+            .toBe('Bandes originales');
+    });
+
+    it('actually renders its genre strip', () => {
+        // It did not: `_hasGenreShelf` listed HRA and Qobuz only, so the tree loaded,
+        // the grid said "Choose a genre", and the strip that IS the choice never
+        // appeared. Found on screen; the pill and fetch assertions all passed.
+        const strip = text(tEl({
+            _filter: 'genres',
+            _genreEdges: { overflows: false, attach() {}, measure() {} },
+        })._renderGenres());
+        expect(strip).toContain('Bandes originales');
+        expect(strip).toContain('Hip Hop / Rap');
+    });
+
+    it('drills nowhere in the genres — Tidal publishes no sub-genre', () => {
+        // Every Tidal genre is childless, so the strip stays the list with the chosen
+        // one marked, and offers no way back out of a level it never entered.
+        const el = tEl({
+            _filter: 'genres', _genre: 'Film',
+            _genreEdges: { overflows: false, attach() {}, measure() {} },
+        });
+        expect(el._genrePills).toEqual([
+            ['Film', 'Bandes originales'], ['Hiphop', 'Hip Hop / Rap'],
+        ]);
+        expect(text(el._renderGenres())).not.toContain('← Genres');
+    });
+
+    it('fetches the Tidal tree, not another service’s', async () => {
+        getTidalGenresMock.mockResolvedValue(GENRES);
+        const el = tEl({ _genres: [] });
+        await el._loadGenres();
+        expect(getTidalGenresMock).toHaveBeenCalled();
+        expect(getQobuzGenresMock).not.toHaveBeenCalled();
+        expect(getHraGenresMock).not.toHaveBeenCalled();
+    });
+
+    it('does not fill a strip when the source changed while it was in flight', async () => {
+        let resolve;
+        getTidalShelvesMock.mockReturnValue(new Promise((r) => { resolve = r; }));
+        const el = tEl({ _tidalShelves: [] });
+        const pending = el._loadTidalShelves();
+        el.sourceId = 'src_qobuz';
+        resolve(SHELVES);
+        await pending;
+        expect(el._tidalShelves).toEqual([]);
+    });
+
+    it('opens on the first entry when a strip lands', async () => {
+        getTidalMoodsMock.mockResolvedValue(MOODS);
+        const el = tEl({ _filter: 'moods', _tidalMoods: [] });
+        el._load = vi.fn();
+        await el._loadTidalMoods();
+        expect(el._mood).toBe('concentrate');
+        expect(el._load).toHaveBeenCalled();
+    });
+});
+
+describe('ag-library-browse — Tidal Explore', () => {
+    const ENTRIES = [
+        { title: 'pages/genre_jazz', label: 'Jazz' },
+        { title: 'pages/record_labels', label: 'Record Labels' },
+        { title: 'pages/hires', label: 'HiRes' },
+    ];
+    const HIRES = {
+        title: 'HiRes', links: [],
+        sections: [
+            { title: 'pages/data/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', label: 'Headphone Classics' },
+            { title: 'pages/data/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', label: 'Classic Albums' },
+        ],
+    };
+    const LABELS = {
+        title: 'Record Labels', sections: [],
+        links: [{ title: 'pages/m_def_jam_40', label: 'Def Jam' }],
+    };
+
+    function xEl(over = {}) {
+        return makeEl({
+            sourceId: 'src_tidal', _filter: 'explore', _explore: ENTRIES,
+            _page: null, _pageEntry: '', _pageLinks: [], _section: '',
+            _entryEdges: { overflows: false, attach() {}, measure() {} },
+            _shelfEdges: { overflows: false, attach() {}, measure() {} },
+            ...over,
+        });
+    }
+
+    beforeEach(() => { apiGetMock.mockReset(); getTidalExploreMock.mockReset();
+                       getTidalPageMock.mockReset(); });
+
+    it('shows the entries while none is open', () => {
+        expect(xEl()._explorePills.map(([, l]) => l)).toEqual(
+            ['Jazz', 'Record Labels', 'HiRes'],
+        );
+    });
+
+    it('drills a page of links in place, with a way back', () => {
+        // Record Labels leads to 52 more pages; that is navigation, not a grid.
+        const el = xEl({ _pageLinks: LABELS.links, _pageEntry: '', _page: LABELS });
+        expect(el._explorePills).toEqual([['pages/m_def_jam_40', 'Def Jam']]);
+        expect(text(el._renderExplore())).toContain('← Explore');
+    });
+
+    it('offers no way back from a strip that was never replaced', () => {
+        // Seen on screen: a page of sections still shows the tree's entries with one
+        // active, so a back button emptied the grid and changed nothing visible.
+        const el = xEl({ _pageEntry: 'pages/hires', _page: HIRES });
+        expect(el._showsPageLinks).toBe(false);
+        expect(text(el._renderExplore())).not.toContain('← Explore');
+    });
+
+    it('shows a page of sections on the strip below, not in place', () => {
+        const el = xEl({ _pageEntry: 'pages/hires', _page: HIRES });
+        // The entries stay on the first strip: a page of sections leads nowhere.
+        expect(el._explorePills.map(([, l]) => l)).toEqual(['Jazz', 'Record Labels', 'HiRes']);
+        expect(text(el._renderSections())).toContain('Classic Albums');
+    });
+
+    it('has no section strip on a page that only leads on', () => {
+        expect(xEl({ _pageLinks: LABELS.links, _page: LABELS })
+            ._renderSections()).toBe(null);
+    });
+
+    it('pages the grid through the section key', async () => {
+        apiGetMock.mockResolvedValue([]);
+        await xEl({ _page: HIRES, _section: HIRES.sections[1].title })._fetchPage(50);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/tidal-section?');
+        expect(url).toContain(encodeURIComponent(HIRES.sections[1].title));
+        expect(url).toContain('offset=50');
+    });
+
+    it('asks for nothing until a section is chosen', async () => {
+        expect(await xEl({ _pageLinks: LABELS.links, _page: LABELS })
+            ._fetchPage(0)).toEqual([]);
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('names the grid with the page and the section', () => {
+        const el = xEl({ _page: HIRES, _section: HIRES.sections[1].title });
+        expect(el._sectionLabel).toBe('HiRes · Classic Albums');
+    });
+
+    it('opens a page on its first section', async () => {
+        getTidalPageMock.mockResolvedValue(HIRES);
+        const el = xEl();
+        el._load = vi.fn();
+        await el._openPage('pages/hires');
+        expect(el._page.title).toBe('HiRes');
+        expect(el._section).toBe(HIRES.sections[0].title);
+        expect(el._load).toHaveBeenCalled();
+    });
+
+    it('goes back to the entries without asking the core again', async () => {
+        const el = xEl({ _pageEntry: 'pages/hires', _page: HIRES, _section: 'x' });
+        el._load = vi.fn();
+        await el._openPage('');
+        expect(el._page).toBe(null);
+        expect(el._section).toBe('');
+        expect(getTidalPageMock).not.toHaveBeenCalled();
+    });
+
+    it('drops a page that lands after the reader left the shelf', async () => {
+        // The shelf matters as much as the source: without this, leaving Explore
+        // mid-flight still wrote the page and reloaded, blanking the grid the reader
+        // had just moved to.
+        let resolve;
+        getTidalPageMock.mockReturnValue(new Promise((r) => { resolve = r; }));
+        const el = xEl();
+        el._load = vi.fn();
+        const pending = el._openPage('pages/hires');
+        el._filter = 'genres';
+        resolve(HIRES);
+        await pending;
+        expect(el._page).toBe(null);
+        expect(el._load).not.toHaveBeenCalled();
+    });
+
+    it('keeps the level when a linked page is opened', () => {
+        // Record Labels → Def Jam: Def Jam has sections and no links, and deriving the
+        // strip from the open page snapped the reader back to the 42 root entries with
+        // nothing active and no way back.
+        const el = xEl({ _pageLinks: LABELS.links, _pageEntry: 'pages/m_def_jam_40',
+                         _page: HIRES });
+        expect(el._explorePills).toEqual([['pages/m_def_jam_40', 'Def Jam']]);
+        expect(text(el._renderExplore())).toContain('← Explore');
+    });
+
+    it('queues a shelf of playlists as playlists, because the core says so', () => {
+        // Tidal's *Exclusif* shelf is 281 playlists and no album. Taken for albums, a
+        // card there queued a playlist id through the album route — 404 — and offered a
+        // ★ that files it in the album favourites.
+        const el = makeEl({
+            sourceId: 'src_tidal', _filter: 'shelves', _category: 'exclusive',
+            _tidalShelves: [{ title: 'exclusive', label: 'Exclusif', holds: 'playlists' }],
+        });
+        expect(el._showsPlaylists).toBe(true);
+        expect(el._showsFavorites).toBe(false);
+        expect(el._albumOpts({ id: 'uuid-1' }, 'play').itemType).toBe('playlist');
+    });
+
+    it('leaves a shelf of albums alone', () => {
+        const el = makeEl({
+            sourceId: 'src_tidal', _filter: 'shelves', _category: 'new',
+            _tidalShelves: [{ title: 'new', label: 'Nouveautés', holds: 'albums' }],
+        });
+        expect(el._showsPlaylists).toBe(false);
+        expect(el._showsFavorites).toBe(true);
+    });
+
+    it('reads the same statement on an Explore section', () => {
+        const el = xEl({
+            _page: { title: 'HiRes', links: [], sections: [
+                { title: 'pages/data/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                  label: 'Headphone Classics', holds: 'playlists' }] },
+            _section: 'pages/data/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        });
+        expect(el._showsPlaylists).toBe(true);
+        expect(el._albumOpts({ id: 'uuid-2' }, 'play').itemType).toBe('playlist');
+    });
+
+    it('drops a page that lands after the reader moved on', async () => {
+        let resolve;
+        getTidalPageMock.mockReturnValue(new Promise((r) => { resolve = r; }));
+        const el = xEl();
+        el._load = vi.fn();
+        const pending = el._openPage('pages/hires');
+        el._pageEntry = 'pages/record_labels';      // tapped another entry meanwhile
+        resolve(HIRES);
+        await pending;
+        expect(el._page).toBe(null);
+    });
+});
+
+describe('ag-library-browse — every source with a Genres pill renders its strip', () => {
+    // The gap this closes: three sources offer Genres, and whether the strip appears was
+    // decided by one getter listing them by hand. One was missing and no test noticed,
+    // because they all asserted the strip's CONTENTS and never its presence.
+    const GENRES = [{ title: 'Jazz', path: 'Jazz', subgenres: [] }];
+    const edges = () => ({ overflows: false, attach() {}, measure() {} });
+
+    for (const sourceId of ['src_highresaudio', 'src_qobuz', 'src_tidal']) {
+        it(sourceId, () => {
+            const el = makeEl({
+                sourceId, _filter: 'genres', _genres: GENRES, _genre: null,
+                _genreEdges: edges(),
+            });
+            expect(el._hasGenreShelf).toBe(true);
+            expect(text(el._renderGenres())).toContain('Jazz');
+        });
+    }
+
+    it('and a source without one renders nothing', () => {
+        const el = makeEl({ sourceId: 'src_mpd', _filter: 'genres', _genres: GENRES,
+                            _genreEdges: edges() });
+        expect(el._hasGenreShelf).toBe(false);
+        expect(el._renderGenres()).toBe(null);
     });
 });

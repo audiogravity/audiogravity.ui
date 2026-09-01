@@ -75,6 +75,13 @@ const hraSearchFilters = { value: null, fetchedAt: 0, inFlight: null };
 // cleared when an account signs out: there is nothing of the account's in them.
 const qobuzShelves = { value: null, fetchedAt: 0, inFlight: null };
 const qobuzGenres = { value: null, fetchedAt: 0, inFlight: null };
+// Tidal's three browsable lists. Catalogue-wide like Qobuz's, so no account
+// invalidation — but their labels DO come in the language of the account's country,
+// which is why the core sorts them on what it displays rather than on their key.
+const tidalShelves = { value: null, fetchedAt: 0, inFlight: null };
+const tidalGenres = { value: null, fetchedAt: 0, inFlight: null };
+const tidalMoods = { value: null, fetchedAt: 0, inFlight: null };
+const tidalExplore = { value: null, fetchedAt: 0, inFlight: null };
 // One entry per grouping — genre and theme are two lists, and sharing a cache between
 // them would serve one under the other's heading.
 const hraPlaylistGroups = {
@@ -349,6 +356,90 @@ export async function getQobuzShelves({ force = false } = {}) {
  */
 export async function getQobuzGenres({ force = false } = {}) {
     return cachedList(qobuzGenres, '/library/qobuz-genres', { force });
+}
+
+/**
+ * Resolve the browsable shelves of the Tidal catalogue.
+ *
+ * Same `{title, label}` shape and same rules as {@link getQobuzShelves}, so one strip
+ * renders both. The core drops the shelves that hold nothing, which it settles by
+ * asking rather than by reading Tidal's own `hasAlbums` flag — one shelf sets that flag
+ * and answers 404, another clears it and holds 281 playlists.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getTidalShelves({ force = false } = {}) {
+    return cachedList(tidalShelves, '/library/tidal-shelves', { force });
+}
+
+/**
+ * Resolve Tidal's genres.
+ *
+ * Same shape and rules as {@link getQobuzGenres}, with one difference to know: Tidal
+ * publishes no sub-genres, so `subgenres` is always empty. A strip built from this
+ * therefore never drills — it marks the chosen genre and keeps the others one tap away,
+ * which is what a flat list should do.
+ * `path` is opaque here too — Tidal's slug differs from the name it shows (`Hiphop` is
+ * displayed *Hip Hop / Rap*).
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, path: string, subgenres: Array<object>}>>} empty on failure
+ */
+export async function getTidalGenres({ force = false } = {}) {
+    return cachedList(tidalGenres, '/library/tidal-genres', { force });
+}
+
+/**
+ * Resolve Tidal's moods — the one shelf HIGHRESAUDIO has and Qobuz could not offer.
+ * They hold playlists, never albums; the grid renders both the same way.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getTidalMoods({ force = false } = {}) {
+    return cachedList(tidalMoods, '/library/tidal-moods', { force });
+}
+
+/**
+ * Resolve the entries of Tidal's own Explore tree — its genres, moods and activities,
+ * decades, and New / Top / Videos / HiRes / Clean Content, flattened into one strip in
+ * Tidal's order. Each `title` is a page path for {@link getTidalPage}.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getTidalExplore({ force = false } = {}) {
+    return cachedList(tidalExplore, '/library/tidal-explore', { force });
+}
+
+/**
+ * Read one page of Tidal's Explore tree.
+ *
+ * A page holds either `links` to further pages — *Record Labels* is 52 of them — or
+ * `sections` of content. Not cached: there are dozens of pages and each is one small
+ * request, so a per-page cache would hold a directory nobody asked for; the strip is
+ * rebuilt on the tap that opens it.
+ *
+ * @param {string} path - A page path from {@link getTidalExplore} or another page's links.
+ * @returns {Promise<{title: string, links: Array<object>, sections: Array<object>}>}
+ *   an empty page on any failure, so a caller that did not await it cannot throw.
+ */
+export async function getTidalPage(path) {
+    try {
+        const page = await apiGet(`/library/tidal-page?path=${encodeURIComponent(path)}`);
+        return {
+            title: page?.title ?? '',
+            links: Array.isArray(page?.links) ? page.links : [],
+            sections: Array.isArray(page?.sections) ? page.sections : [],
+        };
+    } catch {
+        return { title: '', links: [], sections: [] };
+    }
 }
 
 /**

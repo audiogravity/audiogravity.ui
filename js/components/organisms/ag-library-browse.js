@@ -25,6 +25,7 @@ import {
     getHraCategories, getHraGenres, getHraLabels, getHraPlaylistGroups,
     getHraConnection, hraHasSubscription,
     getQobuzShelves, getQobuzGenres,
+    getTidalShelves, getTidalGenres, getTidalMoods, getTidalExplore, getTidalPage,
 } from '../../library-store.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
@@ -81,12 +82,31 @@ const QOBUZ_PLAYLIST_KINDS = [
     ['editorial', 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
 ];
-const TIDAL_PILLS  = [
-    ['favorites',    'Favorites'],
-    ['new-releases', 'New Releases'],
-    ['charts',       'Charts'],
-    ['editorial',    'Editorial'],
-    ['playlists',    'Playlists'],
+// Tidal, laid out like the other two: five shelves, each opening a strip of its own.
+// Five flat pills used to sit here — and two of them were dead, because the core found
+// their content by matching words in Tidal's own headings and Tidal had renamed them.
+const TIDAL_FAVORITES_PILL = ['favorites', 'Favorites'];
+// The catalogue's shelves, fetched: the core drops the ones that hold nothing, which it
+// settles by asking rather than by trusting Tidal's flags.
+const TIDAL_SHELVES_PILL = ['shelves', 'Shelves'];
+const TIDAL_PLAYLISTS_PILL = [PLAYLISTS_FILTER, 'Playlists'];
+const TIDAL_GENRES_PILL = [GENRES_FILTER, 'Genres'];
+// Moods hold playlists and never albums — the shelf HIGHRESAUDIO has and Qobuz could
+// not offer, since Qobuz publishes nothing of the kind.
+const TIDAL_MOODS_PILL = ['moods', 'Moods'];
+// Tidal's own navigation, the tree its app calls Explore: 42 entries — its genres,
+// its moods and activities, its decades, HiRes, the Top and New pages. It is the one
+// shelf with a THIRD strip under it, because its pages carry sections rather than a
+// grid: a page leads on (Record Labels leads to 52 more) or it holds lists of its own.
+const TIDAL_EXPLORE_PILL = ['explore', 'Explore'];
+// Tidal's three playlist surfaces, in one strip rather than three pills: its editors'
+// selections, the account's own, and its charts. Charts are here and not on the bar
+// because that is what they are — a third shelf of playlists, beside the other two.
+// Third entry: the grid's heading, for the reason HRA's has one.
+const TIDAL_PLAYLIST_KINDS = [
+    ['editorial', 'Editorial', 'Editorial playlists'],
+    ['mine', 'Mine', 'My playlists'],
+    ['charts', 'Charts', 'Charts'],
 ];
 // HIGHRESAUDIO publishes fourteen shop categories and the core lists them, so the
 // pills are built from the answer rather than hard-coded. Three were hard-coded
@@ -196,6 +216,14 @@ export class AgLibraryBrowse extends LitElement {
         _albums:      { state: true },
         _hraCategories: { state: true },
         _qobuzShelves: { state: true },
+        _tidalShelves: { state: true },
+        _tidalMoods:  { state: true },
+        _mood:        { state: true },
+        _explore:     { state: true },
+        _page:        { state: true },
+        _pageEntry:   { state: true },
+        _pageLinks:   { state: true },
+        _section:     { state: true },
         _genres:      { state: true },
         _hraLabels:   { state: true },
         _hraPlaylistGroups: { state: true },
@@ -226,6 +254,35 @@ export class AgLibraryBrowse extends LitElement {
         this._hraCategories = [];
         /** @type {Array<{title: string, label: string}>} Qobuz shelves, one pill each. */
         this._qobuzShelves = [];
+        /** @type {Array<{title: string, label: string}>} Tidal shelves, one pill each. */
+        this._tidalShelves = [];
+        /** @type {Array<{title: string, label: string}>} Tidal moods, one pill each. */
+        this._tidalMoods = [];
+        /**
+         * @type {string} Chosen Tidal mood (its addressing key); '' = none yet. Its own
+         * state rather than `_category`: Shelves and Moods are two pills of the SAME
+         * source, so a shared one would carry a shelf key into the moods on a tap.
+         */
+        this._mood = '';
+        /** @type {Array<{title: string, label: string}>} Tidal's Explore entries. */
+        this._explore = [];
+        /**
+         * @type {{title: string, links: Array<object>, sections: Array<object>}|null}
+         * The Explore page on screen. Null while its strip is the list of entries.
+         */
+        this._page = null;
+        /** @type {string} The page path the strip is standing on; '' = the root list. */
+        this._pageEntry = '';
+        /**
+         * @type {Array<{title: string, label: string}>} The pages the Explore strip is
+         * showing when it has been replaced — *Record Labels* puts its 52 here. Its own
+         * state, and not read from `_page`: opening one of those 52 replaces `_page`
+         * with a page that has no links, and deriving the strip from it snapped the
+         * reader back to the root with nothing active and no way back.
+         */
+        this._pageLinks = [];
+        /** @type {string} The chosen section's key, which the grid pages through. */
+        this._section = '';
         /**
          * @type {Array<{title: string, path: string, subgenres: Array<object>}>} The genre
          * tree of whichever source is on screen. Both publish the same shape, so one strip
@@ -323,6 +380,14 @@ export class AgLibraryBrowse extends LitElement {
             this._genres = [];
             this._category = '';
             this._label = '';
+            this._mood = '';
+            this._tidalShelves = [];
+            this._tidalMoods = [];
+            this._explore = [];
+            this._page = null;
+            this._pageEntry = '';
+            this._pageLinks = [];
+            this._section = '';
             this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
             this._playlistCategory = HRA_PLAYLIST_ALL;
             this._playlistGroup = '';
@@ -358,11 +423,17 @@ export class AgLibraryBrowse extends LitElement {
         // that used to overflow the filter bar — so it is the one that most needs its
         // markers remeasured once its list lands.
         if (changed.has('_hraCategories') || changed.has('_hraLabels')
-            || changed.has('_qobuzShelves') || changed.has('_filter')) {
+            || changed.has('_qobuzShelves') || changed.has('_tidalShelves')
+            || changed.has('_tidalMoods') || changed.has('_filter')) {
             this._entryEdges.measure();
         }
-        if (changed.has('_hraPlaylistGroups') || changed.has('_playlistKind')) {
+        if (changed.has('_hraPlaylistGroups') || changed.has('_playlistKind')
+            || changed.has('_page') || changed.has('_section')) {
             this._shelfEdges.measure();
+        }
+        if (changed.has('_explore') || changed.has('_pageEntry')
+            || changed.has('_pageLinks')) {
+            this._entryEdges.measure();
         }
     }
 
@@ -373,9 +444,65 @@ export class AgLibraryBrowse extends LitElement {
      * must not fill the strip of the source the reader moved to.
      */
     async _loadGenres() {
-        const qobuz = this._isQobuz;
-        const genres = await (qobuz ? getQobuzGenres() : getHraGenres());
-        if (qobuz ? this._isQobuz : this._isHighresaudio) this._genres = genres;
+        const source = this.sourceId;
+        const genres = await (this._isQobuz ? getQobuzGenres()
+            : this._isTidal ? getTidalGenres()
+                : getHraGenres());
+        if (this.sourceId === source) this._genres = genres;
+    }
+
+    /** @private Fill the Tidal shelf strip; a failure leaves it empty and retryable. */
+    async _loadTidalShelves() {
+        const shelves = await getTidalShelves();
+        if (!this._isTidal) return;
+        this._tidalShelves = shelves;
+        this._openFirstEntry(TIDAL_SHELVES_PILL[0], '_category', this._shelfPills);
+    }
+
+    /** @private Fill the Tidal Explore strip; a failure leaves it empty and retryable. */
+    async _loadExplore() {
+        const entries = await getTidalExplore();
+        if (this._isTidal) this._explore = entries;
+    }
+
+    /**
+     * @private Open one Explore page: its links replace the strip, its sections become
+     * the strip below, and the first section fills the grid.
+     *
+     * The page is read on the tap rather than cached: there are dozens of them, each is
+     * one small request, and a cache of the whole tree is a directory nobody asked for.
+     *
+     * @param {string} path - A page path, or '' to go back to the list of entries.
+     */
+    async _openPage(path) {
+        this._pageEntry = path;
+        this._section = '';
+        if (!path) { this._page = null; this._pageLinks = []; this._load(); return; }
+        const page = await getTidalPage(path);
+        // The source, the shelf, or the choice can all have changed while the page was
+        // in flight. The shelf matters as much as the other two: without it, leaving
+        // Explore mid-flight still wrote the page and reloaded, blanking the grid the
+        // reader had moved to — the failure `_loadHraPlaylistGroups` documents.
+        if (!this._isTidal || this._filter !== TIDAL_EXPLORE_PILL[0]
+            || this._pageEntry !== path) return;
+        this._page = page;
+        if (page.links.length) {
+            // A page that leads on REPLACES the strip, and nothing under it is chosen
+            // yet. Kept here rather than read back from `_page`, so that opening one of
+            // those pages does not lose the level it was reached from.
+            this._pageLinks = page.links;
+            this._pageEntry = '';
+        }
+        this._section = page.sections[0]?.title ?? '';
+        this._load();
+    }
+
+    /** @private Fill the Tidal mood strip; a failure leaves it empty and retryable. */
+    async _loadTidalMoods() {
+        const moods = await getTidalMoods();
+        if (!this._isTidal) return;
+        this._tidalMoods = moods;
+        this._openFirstEntry(TIDAL_MOODS_PILL[0], '_mood', this._moodPills);
     }
 
     /** @private Fill the Qobuz shelf strip; a failure leaves it empty and retryable. */
@@ -522,6 +649,23 @@ export class AgLibraryBrowse extends LitElement {
                     && !(this._hraPlaylistGroups[this._playlistKind] ?? []).length) {
                     this._loadHraPlaylistGroups(this._playlistKind);
                 }
+            }
+        }
+        if (this._isTidal) {
+            // Same rule as the other two: a list is fetched only while its own shelf is
+            // open, and this is what repairs one that failed to arrive — the strip
+            // cannot ask again once its shelf is chosen, so Refresh retries.
+            if (this._filter === TIDAL_SHELVES_PILL[0] && !this._tidalShelves.length) {
+                this._loadTidalShelves();
+            }
+            if (this._filter === TIDAL_MOODS_PILL[0] && !this._tidalMoods.length) {
+                this._loadTidalMoods();
+            }
+            if (this._filter === GENRES_FILTER && !this._genres.length) {
+                this._loadGenres();
+            }
+            if (this._filter === TIDAL_EXPLORE_PILL[0] && !this._explore.length) {
+                this._loadExplore();
             }
         }
         if (this._isQobuz) {
@@ -681,23 +825,39 @@ export class AgLibraryBrowse extends LitElement {
         return apiGet(`/library/albums?${params}`);
     }
 
-    /** @private Tidal-specific fetch: favorites albums or the user's playlists. */
+    /** @private Tidal-specific fetch: route to different endpoints per pill. */
     async _fetchTidalPage(offset) {
         const params = new URLSearchParams({
             offset: String(offset),
             limit:  String(PAGE_SIZE),
         });
-        if (this._filter === 'new-releases') {
-            return apiGet(`/library/tidal-featured?${params}`);
+        // Shelves, genres and moods are three lists of one shape on the core, so they
+        // reach it through one route that names which list is being read.
+        const list = this._filter === TIDAL_SHELVES_PILL[0] ? ['shelves', this._category]
+            : this._filter === GENRES_FILTER ? ['genres', this._genre]
+                : this._filter === TIDAL_MOODS_PILL[0] ? ['moods', this._mood] : null;
+        if (list) {
+            // Nothing until an entry is chosen: the strip below IS the choice.
+            if (!list[1]) return [];
+            params.set('kind', list[0]);
+            params.set('path', list[1]);
+            return apiGet(`/library/tidal-list?${params}`);
         }
-        if (this._filter === 'charts') {
-            return apiGet(`/library/tidal-charts?${params}`);
+        if (this._filter === TIDAL_EXPLORE_PILL[0]) {
+            // Nothing until a page is open AND one of its sections is chosen: a page of
+            // links has no grid of its own, only somewhere further to go.
+            if (!this._section) return [];
+            params.set('key', this._section);
+            return apiGet(`/library/tidal-section?${params}`);
         }
-        if (this._filter === 'editorial') {
+        if (this._filter === PLAYLISTS_FILTER) {
+            if (this._playlistKind === 'mine') {
+                return apiGet(`/library/tidal-playlists?${params}`);
+            }
+            if (this._playlistKind === 'charts') {
+                return apiGet(`/library/tidal-charts?${params}`);
+            }
             return apiGet(`/library/tidal-editorial?${params}`);
-        }
-        if (this._filter === 'playlists') {
-            return apiGet(`/library/tidal-playlists?${params}`);
         }
         params.set('source_id', this.sourceId);
         return apiGet(`/library/albums?${params}`);
@@ -760,7 +920,15 @@ export class AgLibraryBrowse extends LitElement {
      * card told a playlist from an album. HIGHRESAUDIO's audit named that first.
      */
     get _showsPlaylists() {
-        const TIDAL_PLAYLIST_FILTERS = ['playlists', 'editorial', 'charts'];
+        // Moods hold playlists and never albums; the playlist shelf holds all three of
+        // Tidal's playlist surfaces. A catalogue shelf or an Explore section holds
+        // EITHER, and the core says which — `holds` on the entry. It has to be asked
+        // rather than assumed: Tidal's *Exclusif* shelf is 281 playlists and no album,
+        // and a card taken for an album there queues a playlist id through the album
+        // route, which answers 404, and offers a ★ that files it in the album
+        // favourites, which does not. An earlier comment here weighed only the ★.
+        if (this._isTidal && this._tidalHolds === 'playlists') return true;
+        const TIDAL_PLAYLIST_FILTERS = [PLAYLISTS_FILTER, TIDAL_MOODS_PILL[0]];
         return (this._isQobuz && this._filter === 'playlists')
             || (this._isTidal && TIDAL_PLAYLIST_FILTERS.includes(this._filter))
             // The id the core listed already names its family ('mine:5549'), so it
@@ -828,7 +996,20 @@ export class AgLibraryBrowse extends LitElement {
         // Qobuz's shelves behave as HRA's categories do — no "every shelf" view, so the
         // pill opens on the first of them — and they share `_category`, the state that
         // already meant "the entry chosen on the strip below".
-        if (f === QOBUZ_SHELVES_PILL[0]) {
+        if (f === TIDAL_SHELVES_PILL[0] && this._isTidal) {
+            if (!this._category) this._category = this._shelfPills[0]?.[0] ?? '';
+            if (!this._tidalShelves.length) this._loadTidalShelves();
+        }
+        if (f === TIDAL_EXPLORE_PILL[0]) {
+            // Reopened, Explore comes back where its reader was — the way Playlists
+            // always has. Only a source change forgets it.
+            if (!this._explore.length) this._loadExplore();
+        }
+        if (f === TIDAL_MOODS_PILL[0]) {
+            if (!this._mood) this._mood = this._moodPills[0]?.[0] ?? '';
+            if (!this._tidalMoods.length) this._loadTidalMoods();
+        }
+        if (f === QOBUZ_SHELVES_PILL[0] && this._isQobuz) {
             if (!this._category) this._category = this._shelfPills[0]?.[0] ?? '';
             if (!this._qobuzShelves.length) this._loadQobuzShelves();
         }
@@ -922,7 +1103,16 @@ export class AgLibraryBrowse extends LitElement {
                 QOBUZ_GENRES_PILL,
             ];
         }
-        if (this._isTidal) return TIDAL_PILLS;
+        if (this._isTidal) {
+            return [
+                TIDAL_FAVORITES_PILL,
+                TIDAL_SHELVES_PILL,
+                TIDAL_PLAYLISTS_PILL,
+                TIDAL_GENRES_PILL,
+                TIDAL_MOODS_PILL,
+                TIDAL_EXPLORE_PILL,
+            ];
+        }
         if (this._isHighresaudio) {
             // The flag is a plain boolean: hraHasSubscription() already folded
             // "unknown" to true at the write, so only a connection that SAID
@@ -954,6 +1144,14 @@ export class AgLibraryBrowse extends LitElement {
         if (!this._genre) return this._genres.map((g) => [g.path, g.title]);
         const top = this._topGenre;
         if (!top) return [];
+        // A genre with nothing under it does not drill: the strip keeps the list of
+        // genres, with the chosen one marked, so the next one is one tap away. Drilled
+        // anyway it collapsed to a single inert "All" — a strip of one button that goes
+        // back to where it already is. Every Tidal genre is in this case; HRA and Qobuz
+        // each have a few.
+        if (!(top.subgenres ?? []).length) {
+            return this._genres.map((g) => [g.path, g.title]);
+        }
         // The whole genre reads as "All", not as its own name repeated: HRA gives two
         // of its genres a sub-genre of the same name (Soundtrack/Soundtrack,
         // Hip-Hop/Hip-Hop), which put two identical buttons side by side — and "All"
@@ -1009,7 +1207,28 @@ export class AgLibraryBrowse extends LitElement {
             const kind = QOBUZ_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
             return kind ? kind[2] : QOBUZ_PLAYLISTS_PILL[1];
         }
-        if (this._isQobuz && this._filter === QOBUZ_SHELVES_PILL[0] && this._category) {
+        if (this._isTidal && this._filter === PLAYLISTS_FILTER) {
+            const kind = TIDAL_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
+            return kind ? kind[2] : TIDAL_PLAYLISTS_PILL[1];
+        }
+        if (this._isTidal && this._filter === TIDAL_EXPLORE_PILL[0]) {
+            // The section names the grid, under the page that holds it — "Classic
+            // Albums" under HiRes says more than either alone, and the strips above
+            // show neither once you have scrolled past them.
+            const chosen = (this._page?.sections ?? []).find((x) => x.title === this._section);
+            const page = this._page?.title ?? '';
+            if (chosen) return page ? `${page} · ${chosen.label}` : chosen.label;
+            return page || TIDAL_EXPLORE_PILL[1];
+        }
+        if (this._isTidal && this._filter === TIDAL_MOODS_PILL[0] && this._mood) {
+            const entry = this._moodPills.find(([t]) => t === this._mood);
+            return entry ? entry[1] : TIDAL_MOODS_PILL[1];
+        }
+        // The chosen shelf names the grid on both catalogues that have shelves — the
+        // pill above already says the word "Shelves".
+        if ((this._isQobuz || this._isTidal) && this._category
+            && (this._filter === QOBUZ_SHELVES_PILL[0]
+                || this._filter === TIDAL_SHELVES_PILL[0])) {
             const entry = this._shelfPills.find(([t]) => t === this._category);
             return entry ? entry[1] : QOBUZ_SHELVES_PILL[1];
         }
@@ -1192,8 +1411,98 @@ export class AgLibraryBrowse extends LitElement {
      * controller as HRA's categories: only one of the two can be on screen, and to a
      * reader they are the same thing — the shelves of a catalogue.
      */
+    _renderExplore() {
+        if (!this._isTidal || this._filter !== TIDAL_EXPLORE_PILL[0]) return nothing;
+        return this._renderStrip({
+            strip: 'entries',
+            edges: this._entryEdges,
+            pills: this._explorePills,
+            active: this._pageEntry,
+            pick: (path) => this._openPage(path),
+            // The way back belongs to a strip that has been REPLACED, not to one that
+            // is merely showing which entry is open. On a page of sections the entries
+            // are still there with one of them active, so a back button would empty the
+            // grid and change nothing a reader can see.
+            lead: this._showsPageLinks ? html`
+                <button
+                    class="lib-pill"
+                    @click=${() => this._openPage('')}
+                >← ${TIDAL_EXPLORE_PILL[1]}</button>` : nothing,
+        });
+    }
+
+    /**
+     * @private The sections of the open Explore page, on the strip below its entries.
+     * A page of links has none — it leads somewhere, it does not hold a grid.
+     */
+    _renderSections() {
+        if (!this._isTidal || this._filter !== TIDAL_EXPLORE_PILL[0]) return nothing;
+        const sections = this._page?.sections ?? [];
+        if (!sections.length) return nothing;
+        return this._renderStrip({
+            strip: 'shelves',
+            edges: this._shelfEdges,
+            pills: sections.map((x) => [x.title, x.label]),
+            active: this._section,
+            pick: (key) => this._setEntry('_section', key),
+        });
+    }
+
+    /**
+     * @private The Explore strip: the 42 entries while none is open, and once one is,
+     * the pages it leads to — Record Labels leads to 52 — with a way back at the front.
+     * It drills in place, exactly as the genres do.
+     * @returns {Array<[string, string]>}
+     */
+    get _explorePills() {
+        if (this._showsPageLinks) return this._pageLinks.map((x) => [x.title, x.label]);
+        return this._explore.map((x) => [x.title, x.label]);
+    }
+
+    /**
+     * @returns {boolean} Whether the Explore strip has been replaced by the pages the
+     * open one leads to, rather than still showing the tree's own entries. True only
+     * under a page that leads somewhere — *Record Labels* and its 52.
+     */
+    get _tidalHolds() {
+        if (this._filter === TIDAL_SHELVES_PILL[0]) {
+            return this._tidalShelves.find((x) => x.title === this._category)?.holds ?? '';
+        }
+        if (this._filter === TIDAL_EXPLORE_PILL[0]) {
+            return (this._page?.sections ?? [])
+                .find((x) => x.title === this._section)?.holds ?? '';
+        }
+        return '';
+    }
+
+    /**
+     * @returns {boolean} Whether the Explore strip has been replaced by the pages a
+     * page led to, rather than showing the tree's own entries.
+     */
+    get _showsPageLinks() {
+        return this._pageLinks.length > 0;
+    }
+
+    _renderTidalMoods() {
+        if (!this._isTidal || this._filter !== TIDAL_MOODS_PILL[0]) return nothing;
+        return this._renderStrip({
+            strip: 'entries',
+            edges: this._entryEdges,
+            pills: this._moodPills,
+            active: this._mood,
+            pick: (title) => this._setEntry('_mood', title),
+        });
+    }
+
+    /**
+     * @private The shelf strip, shared by Qobuz's Shelves pill and Tidal's. Both hold a
+     * catalogue's shelves under the same `{title, label}` contract and the same chosen
+     * entry, so one renderer serves them.
+     */
     _renderQobuzShelves() {
-        if (!this._isQobuz || this._filter !== QOBUZ_SHELVES_PILL[0]) return nothing;
+        const shelfSource = (this._isQobuz && this._filter === QOBUZ_SHELVES_PILL[0])
+            || (this._isTidal && this._filter === TIDAL_SHELVES_PILL[0]);
+        if (!shelfSource) return nothing;
         return this._renderStrip({
             strip: 'entries',
             edges: this._entryEdges,
@@ -1210,14 +1519,34 @@ export class AgLibraryBrowse extends LitElement {
      * @returns {Array<[string, string]>}
      */
     get _shelfPills() {
-        return this._qobuzShelves.map((s) => [s.title, s.label]);
+        const shelves = this._isTidal ? this._tidalShelves : this._qobuzShelves;
+        return shelves.map((s) => [s.title, s.label]);
+    }
+
+    /**
+     * @private Tidal's moods as a strip. Their own getter rather than `_shelfPills`:
+     * both are Tidal's, and only one is on screen at a time, but they are two different
+     * lists and sharing the getter would show one under the other's pill.
+     * @returns {Array<[string, string]>}
+     */
+    get _moodPills() {
+        return this._tidalMoods.map((m) => [m.title, m.label]);
     }
 
     /**
      * @returns {boolean} Whether the source on screen arranges its catalogue by genre.
-     * Both do, through the same strip and the same state — only the tree differs.
+     * All three do, through the same strip and the same state — only the tree differs.
+     *
+     * Every source with a Genres pill MUST be listed here. Tidal was not, and the shelf
+     * was a dead end: the tree loaded, the grid said "Choose a genre", and the strip
+     * that IS the choice never rendered. Nothing caught it because the tests asserted
+     * the pills the strip would hold and the request the choice would make, never that
+     * the strip appears — which is why {@link _renderGenres} is now exercised per
+     * source rather than per getter.
      */
-    get _hasGenreShelf() { return this._isHighresaudio || this._isQobuz; }
+    get _hasGenreShelf() {
+        return this._isHighresaudio || this._isQobuz || this._isTidal;
+    }
 
     /**
      * @private The shop categories as a strip, in the order HIGHRESAUDIO asked for:
@@ -1260,7 +1589,8 @@ export class AgLibraryBrowse extends LitElement {
         // Qobuz has the same two first trees and no grouping under them, so it shares
         // this strip rather than getting one of its own.
         const kinds = this._isQobuz ? QOBUZ_PLAYLIST_KINDS
-            : this._isHighresaudio ? HRA_PLAYLIST_KINDS : null;
+            : this._isTidal ? TIDAL_PLAYLIST_KINDS
+                : this._isHighresaudio ? HRA_PLAYLIST_KINDS : null;
         if (!kinds) return nothing;
         return this._renderStrip({
             strip: 'playlists',
@@ -1387,7 +1717,9 @@ export class AgLibraryBrowse extends LitElement {
             pills: this._genrePills,
             active: this._genre,
             pick: (path) => this._setGenre(path),
-            lead: this._genre ? html`
+            // The way out belongs to a strip that was replaced by sub-genres. A genre
+            // that has none leaves the list on screen, so there is nowhere to go back to.
+            lead: this._genre && (this._topGenre?.subgenres ?? []).length ? html`
                 <button
                     class="lib-pill"
                     @click=${() => this._setGenre(null)}
@@ -1423,13 +1755,20 @@ export class AgLibraryBrowse extends LitElement {
         const awaitingEntry =
             (this._filter === HRA_CATEGORIES_PILL[0] && !this._category)
             || (this._filter === HRA_LABELS_PILL[0] && !this._label)
-            || (this._filter === QOBUZ_SHELVES_PILL[0] && !this._category);
+            || (this._filter === QOBUZ_SHELVES_PILL[0] && !this._category)
+            || (this._filter === TIDAL_SHELVES_PILL[0] && !this._category)
+            || (this._filter === TIDAL_MOODS_PILL[0] && !this._mood);
+        // An Explore page of links has no grid of its own: it leads somewhere.
+        const awaitingPage = this._filter === TIDAL_EXPLORE_PILL[0] && !this._section;
 
         return html`
             ${this._renderFilters()}
             ${this._renderCategories()}
             ${this._renderLabels()}
             ${this._renderQobuzShelves()}
+            ${this._renderTidalMoods()}
+            ${this._renderExplore()}
+            ${this._renderSections()}
             ${this._renderGenres()}
             ${this._renderPlaylistKinds()}
             ${this._renderPlaylistCategories()}
@@ -1439,6 +1778,9 @@ export class AgLibraryBrowse extends LitElement {
               : _loading ? html`<div class="lib-loading">Loading…</div>`
               : awaitingGenre ? html`<div class="lib-empty">Choose a genre</div>`
               : awaitingGroup ? html`<div class="lib-empty">Choose a ${this._playlistKindLabel}</div>`
+              : awaitingPage ? html`<div class="lib-empty">${this._explorePills.length
+                    ? (this._pageEntry ? 'Choose a section' : 'Choose a page')
+                    : 'Loading…'}</div>`
               : html`
                 <div class="lib-section-hd">
                     <span class="lib-sh-t">${this._sectionLabel}</span>
