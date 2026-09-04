@@ -32,6 +32,20 @@
     object-fit: contain;
 }
 
+/* Icon and wordmark on one line, the way the licence server's sign-in sets them. Three
+   surfaces use it: the sign-in header, the passkey panel that replaces it, and the splash.
+   It lived in css/login.css while only that page had one.
+
+   A flex row, and the mark stays an inline-block inside it — a flex container turns every
+   inline child into an item of its own, and the <sup> of the brand would then take the gap
+   as blank space on both sides, splitting the name in two. */
+.ag-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
 /* The artwork is a near-black square, so on a dark surface it loses its edges and leaves
    the glyph floating with no bounds — measured against a card at #0a0a0a under Minimal
    and #12141c under Gravity, and a footer at #000. A hairline in the theme's own border

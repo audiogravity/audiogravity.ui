@@ -70,8 +70,32 @@
     fill: none;
 }
 
+/* The application's own icon, beside the wordmark — the lockup the sign-in card uses,
+   under the glyph this screen has always drawn.
+ *
+ * One thing belongs to this screen and not to .ag-app-icon: the hairline, in the fixed
+ * palette rather than in the theme's border colour. This overlay paints its own ground
+ * (#12141c, matching the manifest's background_color) whatever the theme, because it is
+ * drawn before any theme exists, and the icon is a near-black square that loses its edges
+ * on it. So the edge is owed in BOTH appearances, and its value has to be the one that
+ * suits this ground rather than the interface's.
+ *
+ * Selected through the screen's id, and that is the whole point. Written flat,
+ * .splash-app-icon weighs (0,1,0) and lost to `.dark-mode .ag-app-icon` at (0,2,0): in a
+ * dark appearance the splash took the theme's border instead of its own — measured against
+ * this screen's #12141c, 1.21:1 under Gravity, 1.28:1 under Minimal, 1.78:1 under Slate,
+ * where the hairline below gives 15.28:1. Chaining the two classes would NOT have fixed
+ * it: (0,2,0) ties with the dark rule, and a tie is settled by main.css's import order,
+ * which puts app-icon.css after this file. The id takes the rule out of that argument.
+ *
+ * The size is still NOT set here. It was, briefly, and lost that same tie the other way —
+ * measured, 36x36 rendered where 96 was asked. */
+#ag-splash-screen .splash-app-icon {
+    border: 1px solid rgb(232 234 240 / 0.25);
+}
+
 /* The brand itself comes from css/components/wordmark.css, like everywhere else. What
-   stays here is what belongs to this screen: its size under the 120px mark, and the
+   stays here is what belongs to this screen: its size under the 120px glyph, and the
    fixed colour — this is painted before any theme exists, so it can read no token
    (guidelines, rule 6 exception). The mark declares no colour of its own, which is
    what lets it take this one. */

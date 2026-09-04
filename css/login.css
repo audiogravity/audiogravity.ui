@@ -59,17 +59,6 @@
     margin-bottom: var(--spacing-xl);
 }
 
-/* Icon and wordmark on one line, the way the licence server's sign-in sets them.
-   A flex row, and the mark stays an inline-block inside it — a flex container turns every
-   inline child into an item of its own, and the <sup> of the brand would then take the
-   gap as blank space on both sides. */
-.login-brand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-}
-
 /* rule 12 exception — the wordmark on the sign-in card is the largest thing on the page
    and answers to the card, not to the type scale, whose top step (28px) would shrink the
    mark by a third against the 48px image it replaces. The mark takes --text-primary from

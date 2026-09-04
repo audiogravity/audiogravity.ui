@@ -120,9 +120,29 @@ describe('the app icon is declared once and reserved everywhere', () => {
     // footer would fall back to the PNG's natural 180px and blow apart a 50px bar, and
     // with a stale value the row reflows on load. Nothing but this case ties the three
     // numbers together.
+    const ALL_CSS = ['components/app-icon.css', 'components/splash-screen.css']
+        .map(f => fs.readFileSync(path.join(ROOT, 'css', ...f.split('/')), 'utf8')).join('\n');
     const CSS = fs.readFileSync(path.join(ROOT, 'css', 'components', 'app-icon.css'), 'utf8');
-    const SIDE = Number(CSS.match(/\.ag-app-icon\s*\{[^}]*?width:\s*(\d+)px/s)?.[1]);
-    const SITES = ['login.html', path.join('js', 'components', 'organisms', 'ag-footer.js')];
+
+    // `(?<![\w-])` because `max-width` and `min-width` both end in the word being looked
+    // for. Unanchored, a `min-width` written above the real declaration is what the case
+    // would read, and it would then demand that number in every width="" attribute —
+    // checked by mutation: `min-width: 96px` made it ask login.html for width="96".
+    const WIDTH = String.raw`(?<![\w-])width:\s*(\d+)px`;
+    const SIDE = Number(CSS.match(new RegExp(String.raw`\.ag-app-icon\s*\{[^}]*?${WIDTH}`, 's'))?.[1]);
+    const SITES = ['login.html', 'index.html',
+        path.join('js', 'components', 'organisms', 'ag-footer.js')];
+
+    /** The size a tag actually renders at: its own modifier class if it has one. */
+    const sizeOf = tag => {
+        const mod = tag.match(/class="ag-app-icon ([\w-]+)"/)?.[1];
+        if (!mod) return SIDE;
+        // The rule may chain classes or scope itself to an ancestor to outrank the shared
+        // one, so match the block that mentions the modifier rather than a selector made
+        // of it alone.
+        const own = ALL_CSS.match(new RegExp(String.raw`\.${mod}[^{}]*\{[^}]*?${WIDTH}`, 's'))?.[1];
+        return own ? Number(own) : SIDE;
+    };
 
     it('declares one size', () => {
         expect(SIDE, 'no width found on .ag-app-icon').toBeGreaterThan(0);
@@ -131,14 +151,17 @@ describe('the app icon is declared once and reserved everywhere', () => {
     it('reserves that size at every call-site that renders it inline', () => {
         for (const file of SITES) {
             const src = fs.readFileSync(path.join(ROOT, ...file.split(path.sep)), 'utf8');
-            const tags = [...src.matchAll(/<img[^>]*class="ag-app-icon"[^>]*>/g)].map(m => m[0]);
+            const tags = [...src.matchAll(/<img[^>]*class="ag-app-icon[^"]*"[^>]*>/g)].map(m => m[0]);
             expect(tags.length, `${file} renders no app icon`).toBeGreaterThan(0);
             for (const tag of tags) {
                 // The preview modal sizes itself larger on purpose; it carries its own
                 // width in a style attribute and needs no reservation.
                 if (/style="[^"]*width/.test(tag)) continue;
-                expect(tag, `${file}: no width/height reserved`).toMatch(new RegExp(`width="${SIDE}"`));
-                expect(tag, `${file}: no width/height reserved`).toMatch(new RegExp(`height="${SIDE}"`));
+                const side = sizeOf(tag);
+                expect(tag, `${file}: reserves a box the stylesheet does not draw`)
+                    .toMatch(new RegExp(`width="${side}"`));
+                expect(tag, `${file}: reserves a box the stylesheet does not draw`)
+                    .toMatch(new RegExp(`height="${side}"`));
             }
         }
     });
