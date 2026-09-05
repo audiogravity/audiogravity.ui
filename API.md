@@ -433,19 +433,46 @@ NAA is not running; disabling is always allowed and stops HQPlayer, releasing th
 sound card. Clients must not write this setting to correct an observed NAA outage — the
 core refuses the play instead, naming the daemon.
 
+### Streaming subscription state — Qobuz, Tidal, HIGHRESAUDIO
+
+The three services publish the **same two fields** on their `/<service>/connection`
+endpoint, with the same meaning, so a client reads them the same way whichever
+answered:
+
+| Field | Meaning |
+|---|---|
+| `has_subscription` | Whether the account may play the catalogue in full. `false` means it is **still connected and still signed in** — the account is not rejected, it is limited. `null` means unknown: disconnected, or the service could not be asked |
+| `subscription` | The plan the service names (`Studio`, `HIFI`…), or `NO SUBSCRIPTION` when it names none, or `null` when unknown |
+
+⚠️ **What `false` leaves playable is NOT the same on the three services** — it is the
+one thing a client must not generalise:
+
+| Service on `has_subscription: false` | What still works |
+|---|---|
+| Qobuz, Tidal | The whole catalogue stays **browsable**; every track resolves, as a **30-second excerpt**. Shelves stay up |
+| HIGHRESAUDIO | The catalogue, favourites and playlists **refuse the session** (`NO SUBSCRIPTION`, no URL). Only the **Vault** — the account's purchases — plays. A client that leaves the shelves up gets empty grids |
+
+⚠️ **`null` must be read as subscribed.** A client that predates these fields, and a
+core that cannot reach the service, must never accuse a paying account or hide its
+shelves. Only an explicit `false` narrows anything.
+
+The quality AG is configured to request (`quality` for Tidal, `format_id` for Qobuz)
+is a **request, not an entitlement**: both services keep accepting it after a plan
+ends. Never present it as what will be heard.
+
 ### Tidal — `/tidal/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/tidal/connection` | Connection state |
+| GET | `/tidal/connection` | Connection state (`connected`, `user_id`, `country_code`, `quality`, `subscription` + `has_subscription` — the shared subscription contract (see **Streaming subscription state** above)). `quality` is what AG **asks** Tidal for, not what it grants |
 | POST | `/tidal/connection` | Start PKCE login flow |
-| POST | `/tidal/connection/submit` | Complete login (paste redirect URL) |
+| POST | `/tidal/connection/submit` | Complete login (paste redirect URL) — same body as `GET /tidal/connection` |
 | DELETE | `/tidal/connection` | Disconnect |
 | GET | `/tidal/stream/{track_id}` | DASH→FLAC proxy stream — **public (no auth)**, used by UPnP renderers on the LAN |
 
 ### Qobuz — `/qobuz/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/qobuz/connection` | Connection state |
+| GET | `/qobuz/connection` | Connection state (`connected`, `user_id`, `format_id`, `subscription` + `has_subscription` — the shared subscription contract (see **Streaming subscription state** above)). `format_id` is what AG **asks** Qobuz for, not what it grants |
 | POST | `/qobuz/connection` | Start OAuth2 flow — **502** when the Qobuz app-bundle credentials cannot be fetched (`play.qobuz.com` unreachable / format changed) |
 | GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a core failure returns the styled **error** page with status **502**, not a raw 500 |
 | DELETE | `/qobuz/connection` | Disconnect |
@@ -454,7 +481,7 @@ core refuses the play instead, naming the daemon.
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription`, `has_subscription`). `subscription` is HRA's own word for the session — `SUBSCRIPTION` or `NO SUBSCRIPTION`; `has_subscription` is `false` when the account can play only its purchases (the Vault): the catalogue, favourites and playlists refuse that session. `null` while disconnected. A client reading a core that predates the field must treat its absence as subscribed |
+| GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription` + `has_subscription` — the shared subscription contract, see **Streaming subscription state** above). `subscription` is HRA's own word for the session — `SUBSCRIPTION` or `NO SUBSCRIPTION`; `has_subscription` is `false` when the account can play only its purchases (the Vault): the catalogue, favourites and playlists refuse that session. `null` while disconnected. A client reading a core that predates the field must treat its absence as subscribed |
 | POST | `/highresaudio/connection` | Log in — body `{username, password}`. 401 when HRA issues no session (bad credentials). An account without a subscription IS connected, with `has_subscription: false` |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
 | GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |

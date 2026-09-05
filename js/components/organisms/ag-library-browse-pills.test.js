@@ -28,7 +28,7 @@ vi.mock('../../api.js', () => ({ apiGet: (...a) => apiGetMock(...a) }));
 vi.mock('../../library-store.js', () => ({
     subscribePlayerState: () => () => {},
     getHraConnection: async () => null,
-    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+    hasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../utils-lit.js', () => ({
     coverUrl: () => '',

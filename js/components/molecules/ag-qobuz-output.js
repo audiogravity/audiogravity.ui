@@ -17,6 +17,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
+import { hasSubscription } from '../../library-store.js';
 import '../atoms/ag-status-indicator.js';
 
 const FORMAT_LABELS = {
@@ -26,7 +27,7 @@ const FORMAT_LABELS = {
     27: 'Hi-Res 24/192',
 };
 
-class AgQobuzOutput extends LitElement {
+export class AgQobuzOutput extends LitElement {
 
     static properties = {
         _connection: { state: true },
@@ -154,10 +155,26 @@ class AgQobuzOutput extends LitElement {
         return connected ? this._renderConnected() : this._renderDisconnected();
     }
 
+    /**
+     * @private The line under the name, connected: what Qobuz will actually play.
+     *
+     * `format_id` is what AG **asks** for, and Qobuz keeps accepting the request
+     * after a plan ends — it serves 30-second MP3 excerpts instead of tracks.
+     * Printing "Studio · Hi-Res 24/192" then states the opposite of what is
+     * heard. The subscribed/unknown rule lives in {@link hasSubscription}; only
+     * the wording is Qobuz's.
+     * @returns {string}
+     */
+    get _connectedDesc() {
+        const c = this._connection;
+        if (!hasSubscription(c)) return 'No subscription · 30-second previews';
+        const fmt = FORMAT_LABELS[c.format_id] || `Format ${c.format_id}`;
+        return `${c.subscription || 'Active'} · ${fmt}`;
+    }
+
     /** @private */
     _renderConnected() {
-        const sub = this._connection.subscription || 'Active';
-        const fmt = FORMAT_LABELS[this._connection.format_id] || `Format ${this._connection.format_id}`;
+        const desc = this._connectedDesc;
 
         return html`
             <div class="lib-qb-card connected">
@@ -165,7 +182,7 @@ class AgQobuzOutput extends LitElement {
                     <div class="lib-qb-ic"><img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" /></div>
                     <div class="lib-qb-col">
                         <div class="lib-qb-name">Qobuz</div>
-                        <div class="lib-qb-desc">${sub} · ${fmt}</div>
+                        <div class="lib-qb-desc">${desc}</div>
                     </div>
                     <ag-status-indicator state="up" label="Connected"></ag-status-indicator>
                 </div>

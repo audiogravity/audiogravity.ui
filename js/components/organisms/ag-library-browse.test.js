@@ -53,7 +53,7 @@ vi.mock('../../library-store.js', () => ({
     getTidalPage: (...args) => getTidalPageMock(...args),
     // The real predicate, restated: it is the contract under test here (absent
     // means subscribed), and the store's own tests pin the original.
-    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+    hasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));

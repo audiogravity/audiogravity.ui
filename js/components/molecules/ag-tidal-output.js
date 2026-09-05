@@ -19,9 +19,10 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
+import { hasSubscription } from '../../library-store.js';
 import '../atoms/ag-status-indicator.js';
 
-class AgTidalOutput extends LitElement {
+export class AgTidalOutput extends LitElement {
 
     static properties = {
         _connection: { state: true },
@@ -120,11 +121,28 @@ class AgTidalOutput extends LitElement {
         return this._connection?.connected ? this._renderConnected() : this._renderDisconnected();
     }
 
+    /**
+     * @private The line under the name, connected: what Tidal will actually play.
+     *
+     * `quality` is what AG **asks** for, and Tidal keeps accepting the request
+     * after a plan ends — it just serves 30-second excerpts instead of tracks.
+     * Printing the asked-for tier then states the opposite of what is heard, so
+     * a lapsed account replaces the line rather than decorating it. The
+     * subscribed/unknown rule itself lives in {@link hasSubscription}; only the
+     * wording is Tidal's, because Tidal has no vault to fall back on.
+     * @returns {string}
+     */
+    get _connectedDesc() {
+        const c = this._connection;
+        const country = c.country_code ? ` · ${c.country_code}` : '';
+        if (!hasSubscription(c)) return `No subscription · 30-second previews${country}`;
+        const tier = c.quality === 'HI_RES_LOSSLESS' ? 'Hi-Res' : 'Lossless';
+        return `${tier}${country}`;
+    }
+
     /** @private */
     _renderConnected() {
-        const c = this._connection;
-        const tier = c.quality === 'HI_RES_LOSSLESS' ? 'Hi-Res' : 'Lossless';
-        const desc = c.country_code ? `${tier} · ${c.country_code}` : tier;
+        const desc = this._connectedDesc;
         return html`
             <div class="lib-qb-card connected">
                 <div class="lib-qb-card-hd">

@@ -19,7 +19,7 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
-import { rememberHraConnection, forgetHraAccount, hraHasSubscription } from '../../library-store.js';
+import { rememberHraConnection, forgetHraAccount, hasSubscription } from '../../library-store.js';
 import { SOURCE_ICONS, SOURCE_LABELS } from '../library-constants.js';
 import '../atoms/ag-status-indicator.js';
 
@@ -125,7 +125,7 @@ export class AgHighresaudioOutput extends LitElement {
     get _connectedDesc() {
         const c = this._connection;
         const who = c?.username || 'Connected';
-        return hraHasSubscription(c) ? who : `${who} · purchases only, no subscription`;
+        return hasSubscription(c) ? who : `${who} · purchases only, no subscription`;
     }
 
     /** @private */
