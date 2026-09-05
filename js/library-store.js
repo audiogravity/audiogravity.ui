@@ -513,22 +513,21 @@ export async function getHraSearchFilters({ force = false } = {}) {
 }
 
 /**
- * Whether an HRA connection may stream the catalogue — the ONE home of the
- * "absent means subscribed" contract, wherever the connection object is read.
+ * Whether a streaming connection may play the catalogue in full — the ONE home
+ * of the "absent means subscribed" contract, for all three services.
  *
- * `has_subscription: false` is the only value that narrows anything: it is what
- * the core answers for an account HRA signed in without a subscription (it can
- * play its purchases and nothing else — catalogue, favourites and playlists all
- * answer NO SUBSCRIPTION to that session). An absent field is a core that
- * predates it, an unknown state, or no answer at all — every account had the
- * full bar before the field existed, and an unanswered question must not hide
- * the shelves.
+ * Qobuz, Tidal and HIGHRESAUDIO publish the same `has_subscription` on their
+ * `/…/connection` endpoint, and it is read the same way whichever answered.
+ * `false` is the only value that narrows anything: the account is connected and
+ * browsable, and the service serves excerpts or purchases only. An absent field
+ * is a core that predates it, an unknown state, or no answer at all — and an
+ * unanswered question must never accuse a paying account or hide the shelves.
  *
  * @param {{has_subscription?: boolean|null}|null|undefined} conn - As the
  *        connection endpoint answers it, or null/undefined for "unknown".
  * @returns {boolean} True when the catalogue may be offered.
  */
-export function hraHasSubscription(conn) {
+export function hasSubscription(conn) {
     return conn?.has_subscription !== false;
 }
 
@@ -540,11 +539,11 @@ function _sanitizeHraConnection(body) {
 /**
  * Resolve the HIGHRESAUDIO connection state, as `/highresaudio/connection` reports it.
  *
- * The browse and the search read one field of it, through {@link hraHasSubscription}:
+ * The browse and the search read one field of it, through {@link hasSubscription}:
  * whether the account may be offered the catalogue, or its purchases alone.
  *
  * `null` on any failure, and never cached — a caller reads `null` as "unknown",
- * which {@link hraHasSubscription} maps to the full bar, so a core that cannot
+ * which {@link hasSubscription} maps to the full bar, so a core that cannot
  * answer costs nothing but a retry. Only sanitized objects are ever stamped into
  * the cache, so a cache hit cannot serve what the fetch path would have refused.
  *

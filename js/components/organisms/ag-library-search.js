@@ -15,7 +15,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
-import { getHraConnection, hraHasSubscription } from '../../library-store.js';
+import { getHraConnection, hasSubscription } from '../../library-store.js';
 import { coverUrl, loadWithState } from '../utils-lit.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
@@ -72,7 +72,7 @@ export class AgLibrarySearch extends LitElement {
         this._hraFilters = { ...EMPTY_HRA_FILTERS };
         /**
          * @type {boolean} Whether the HRA account may search the catalogue —
-         * hraHasSubscription() of the last connection read, so a plain boolean.
+         * hasSubscription() of the last connection read, so a plain boolean.
          * A purchases-only account has nothing searchable: the catalogue search
          * answers NO SUBSCRIPTION, and its purchases live in the browse's Vault.
          */
@@ -109,7 +109,7 @@ export class AgLibrarySearch extends LitElement {
     /** @private Read whether the account may search the catalogue. */
     async _loadHraConnection() {
         const conn = await getHraConnection();
-        if (this._isHighresaudio) this._hraSubscribed = hraHasSubscription(conn);
+        if (this._isHighresaudio) this._hraSubscribed = hasSubscription(conn);
     }
 
     /** @returns {boolean} True when no HRA criterion is set. */

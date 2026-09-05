@@ -25,7 +25,7 @@ const { rememberHraConnection, forgetHraAccount } = vi.hoisted(() => ({
 vi.mock('../../library-store.js', () => ({
     rememberHraConnection,
     forgetHraAccount,
-    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+    hasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 

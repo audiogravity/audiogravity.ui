@@ -31,7 +31,7 @@ vi.mock('../../library-store.js', () => ({
     setAlbumFavorited: vi.fn(),
     subscribeFavorites: vi.fn(() => () => {}),
     getHraConnection: (...args) => getHraConnectionMock(...args),
-    hraHasSubscription: (conn) => conn?.has_subscription !== false,
+    hasSubscription: (conn) => conn?.has_subscription !== false,
 }));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
 vi.mock('../molecules/ag-hra-search-filters.js', () => ({}));

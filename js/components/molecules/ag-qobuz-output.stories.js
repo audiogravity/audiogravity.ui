@@ -22,3 +22,19 @@ const Template = () => {
 };
 
 export const Default = Template.bind({});
+
+/**
+ * A connected account whose plan has ended. Qobuz signs it in, keeps the whole catalogue browsable, and still hands out playable
+ * URLs — 30-second MP3 excerpts, whatever format AG asks for — so the line under the name says
+ * what will be heard instead of what was requested. Rendered from a fixed state, so it
+ * shows without such an account at hand.
+ */
+export const NoSubscription = () => {
+    const el = document.createElement('ag-qobuz-output');
+    el.style.cssText = 'display:block;max-width:420px;padding:8px;';
+    el._loadConnection = async () => {
+        el._connection = { connected: true, user_id: '000000', subscription: 'NO SUBSCRIPTION', has_subscription: false, format_id: 27 };
+        el._loading = false;
+    };
+    return el;
+};

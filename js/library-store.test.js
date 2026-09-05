@@ -330,16 +330,16 @@ describe('getHraCategories', () => {
 // ---------------------------------------------------------------------------
 
 import {
-    getHraConnection, rememberHraConnection, forgetHraAccount, hraHasSubscription,
+    getHraConnection, rememberHraConnection, forgetHraAccount, hasSubscription,
     getHraGenres, getFavoriteAlbumIds,
 } from './library-store.js';
 
-describe('hraHasSubscription', () => {
+describe('hasSubscription', () => {
     it('narrows only on an explicit false — absent, null and unknown all read as subscribed', () => {
-        expect(hraHasSubscription({ has_subscription: false })).toBe(false);
-        expect(hraHasSubscription({ has_subscription: true })).toBe(true);
-        expect(hraHasSubscription({ connected: true })).toBe(true);   // core predates the field
-        expect(hraHasSubscription(null)).toBe(true);                  // no answer at all
+        expect(hasSubscription({ has_subscription: false })).toBe(false);
+        expect(hasSubscription({ has_subscription: true })).toBe(true);
+        expect(hasSubscription({ connected: true })).toBe(true);   // core predates the field
+        expect(hasSubscription(null)).toBe(true);                  // no answer at all
     });
 });
 

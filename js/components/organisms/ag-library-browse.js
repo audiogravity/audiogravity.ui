@@ -23,7 +23,7 @@ import { apiGet } from '../../api.js';
 import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
 import {
     getHraCategories, getHraGenres, getHraLabels, getHraPlaylistGroups,
-    getHraConnection, hraHasSubscription,
+    getHraConnection, hasSubscription,
     getQobuzShelves, getQobuzGenres,
     getTidalShelves, getTidalGenres, getTidalMoods, getTidalExplore, getTidalPage,
 } from '../../library-store.js';
@@ -311,7 +311,7 @@ export class AgLibraryBrowse extends LitElement {
         this._playlistGroup = '';
         /**
          * @type {boolean} Whether the HRA account may stream the catalogue — always
-         * `hraHasSubscription(...)` of the last connection read, so "unknown" is
+         * `hasSubscription(...)` of the last connection read, so "unknown" is
          * already folded to true (the state every account had before the core
          * reported it) and every reader may treat this as a plain boolean.
          */
@@ -579,11 +579,11 @@ export class AgLibraryBrowse extends LitElement {
 
     /**
      * @private Read whether the account holds a subscription. The absent-means-
-     * subscribed contract lives in {@link hraHasSubscription}, not here.
+     * subscribed contract lives in {@link hasSubscription}, not here.
      */
     async _loadHraConnection() {
         const conn = await getHraConnection();
-        if (this._isHighresaudio) this._hraSubscribed = hraHasSubscription(conn);
+        if (this._isHighresaudio) this._hraSubscribed = hasSubscription(conn);
     }
 
     /**
@@ -1114,7 +1114,7 @@ export class AgLibraryBrowse extends LitElement {
             ];
         }
         if (this._isHighresaudio) {
-            // The flag is a plain boolean: hraHasSubscription() already folded
+            // The flag is a plain boolean: hasSubscription() already folded
             // "unknown" to true at the write, so only a connection that SAID
             // no subscription narrows the bar.
             if (!this._hraSubscribed) return [HRA_VAULT_PILL];
