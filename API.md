@@ -67,6 +67,26 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |
 
 ### Library — `/library/*`
+
+> **What a streaming route answers when it cannot serve.** From one shared rule on
+> **most** Qobuz, Tidal and HIGHRESAUDIO shelves:
+> **503** the service is not connected or not reachable · **500** `"<Service> unavailable"`,
+> the last resort. The 503 message is the core's own and is meant to be shown as-is.
+>
+> **504 — HIGHRESAUDIO only.** It means the service is answering, slowly. Only HRA reports
+> that condition (`HighresaudioTimeout`), so a Qobuz or Tidal shelf never answers 504 however
+> slow the provider is — do not code for it there. Until 0.9.52 it existed on the HRA advanced
+> search alone; every other HRA shelf answered a generic 500 when the catalogue took its time.
+> Its message is the core's own too; a 503 or 504 carrying **no** message came from a proxy in
+> front of the box, not from the box.
+>
+> ⚠️ **Three routes map their errors differently and must be handled on their own**, so
+> do not code one handler for "every shelf": `/library/qobuz-featured` answers **400**
+> on an unknown shelf name; `/library/tidal-page` and `/library/tidal-section` answer
+> **400** on a malformed path or key — where the shared rule turns the same class of
+> failure into a 500. The local-library, queue, Roon-status, UPnP and favourites routes
+> keep their own codes too (favourites answer **502**).
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`. **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box** |

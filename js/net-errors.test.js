@@ -92,18 +92,31 @@ describe('isGatewayError', () => {
     // *is* answered — with a 502 whose HTML body makes json() throw, leaving a generic message and
     // a status. Not a transport failure by any technical reading, and the same thing for the
     // reader: the box is there, the software is not.
-    it.each([502, 504])('recognises a %i, which only a proxy ever says', (status) => {
+    it('recognises a 502, which only a proxy ever says', () => {
         const err = new Error('HTTP error');
-        err.status = status;
+        err.status = 502;
         err.detail = 'whatever a proxy might put here';
         expect(isGatewayError(err)).toBe(true);
     });
 
-    it('recognises a 503 that carries no message of its own', () => {
-        // A proxy answers 503 with HTML, which leaves no parsed detail behind.
-        const err = new Error('HTTP 503');
-        err.status = 503;
+    it.each([503, 504])('recognises a %i that carries no message of its own', (status) => {
+        // A proxy answers with HTML, which leaves no parsed detail behind.
+        const err = new Error(`HTTP ${status}`);
+        err.status = status;
         expect(isGatewayError(err)).toBe(true);
+    });
+
+    it('never claims a 504 the core worded itself', () => {
+        // 504 was listed as a status the core never returns. It was already
+        // untrue — the HIGHRESAUDIO advanced search has always answered 504 —
+        // and from 0.9.52 every streaming shelf does. A core-worded 504 reaching
+        // a screen that classifies through here would be answered "check your
+        // network" while the box is fine and the provider is slow.
+        const slow = new Error('HTTP 504');
+        slow.status = 504;
+        slow.detail = 'HIGHRESAUDIO took too long to answer. It is not the box: '
+            + 'the service is slow to reply.';
+        expect(isGatewayError(slow)).toBe(false);
     });
 
     it('never claims a 500, whatever its body', () => {
