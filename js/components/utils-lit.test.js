@@ -215,7 +215,10 @@ describe('catalogueErrorMessage', () => {
     });
 
     it('keeps the caller fallback for anything that is not a 503', () => {
-        for (const status of [400, 401, 500, undefined]) {
+        // 504 included, and deliberately: the two call sites are the radio, whose
+        // routes answer no 504 of their own — the only one reaching here is a
+        // proxy timeout, which is not the catalogue's fault.
+        for (const status of [400, 401, 500, 502, 504, undefined]) {
             const err = Object.assign(new Error('nope'), { status });
             expect(catalogueErrorMessage(err, 'Search failed')).toBe('Search failed');
         }

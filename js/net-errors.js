@@ -54,15 +54,28 @@ export function isRetryableFailure(error) {
     return isNetworkError(error) && error.retryable !== false;
 }
 
-/** Statuses the core never returns; only something in front of it does. */
-const GATEWAY_ONLY_STATUSES = new Set([502, 504]);
+/** Statuses only something in front of the core returns — with one exception, below. */
+const GATEWAY_ONLY_STATUSES = new Set([502]);
 
 /**
  * Did something answer *for* the core because the core did not?
  *
- * 502 and 504 always. 503 only when it carries no message: the core uses 503 to say things a
- * reader can act on ("WebAuthn not available"), and `catalogueErrorMessage` in
- * components/utils-lit.js shows that detail verbatim — the two must read a 503 the same way.
+ * 502 always. 503 and 504 only when they carry no message — the same discriminator for both,
+ * because the core uses both to say things a reader can act on and `catalogueErrorMessage` in
+ * components/utils-lit.js shows their detail verbatim.
+ *
+ * 504 used to be listed as a status the core never returns. That was already untrue — the
+ * HIGHRESAUDIO advanced search has always answered 504 when the catalogue took too long — and
+ * from 0.9.52 every streaming shelf does.
+ *
+ * ⚠️ **No screen was showing the wrong sentence because of it**, and it is worth writing down
+ * so nobody "fixes" this twice: the shelves reach the reader through `loadWithState`, which
+ * shows `error.message`, and `throwForStatus` builds that message from the core's own detail.
+ * The correction here is about not classifying a status by a rule that has stopped being true —
+ * this function feeds licence, passkey and activation screens, and one of those gaining a
+ * core-worded 504 would have been told to check its network. A gateway's own 504 carries no
+ * body, so the absence of a detail still tells the two apart.
+ *
  * 500 never: a running core that crashed answers 500 with no message, and that is a box to
  * report, not a box to switch on. The front a real install deploys answers 502 when the core
  * is stopped, so nothing is lost by leaving 500 alone.
@@ -73,7 +86,7 @@ const GATEWAY_ONLY_STATUSES = new Set([502, 504]);
 export function isGatewayError(error) {
     if (!error || typeof error !== 'object') return false;
     if (GATEWAY_ONLY_STATUSES.has(error.status)) return true;
-    return error.status === 503 && !error.detail;
+    return (error.status === 503 || error.status === 504) && !error.detail;
 }
 
 /**
