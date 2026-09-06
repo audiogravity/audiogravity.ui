@@ -107,8 +107,14 @@ export class AgLicenseActivation extends LitElement {
             }
             this._checkResult = data;
             this._step        = 2;
-        } catch {
-            this._checkError = 'Could not reach the license server. Please try again.';
+        } catch (e) {
+            // Classified, not swallowed: this route answers 502 with a sentence of
+            // its own ("License server error.", "…returned unexpected response.").
+            // A bare catch told the reader the licence server could not be reached
+            // while it had answered and said what was wrong.
+            this._checkError = isNetworkError(e) || isGatewayError(e)
+                ? 'Could not reach the license server. Please try again.'
+                : (e?.detail || e?.message || 'Could not reach the license server. Please try again.');
         } finally {
             this._checking = false;
         }
@@ -144,7 +150,15 @@ export class AgLicenseActivation extends LitElement {
             const status = e?.status;
             if (status === 409) {
                 this._activateError = 'This license is already activated on another machine.';
-            } else if (status === 503 || isNetworkError(e) || isGatewayError(e)) {
+            } else if (status === 502 || status === 503 || isNetworkError(e) || isGatewayError(e)) {
+                // By STATUS, not by isGatewayError: the licence server answers this
+                // route 502 when it is unreachable or replies nonsense, and the core
+                // words those itself — so the predicate rightly says "not a gateway"
+                // and rightly must not decide this. The promise here is the module's
+                // own (see the JSDoc at the top): a transient failure keeps the key,
+                // so nineteen characters are not retyped after a reload. 502 and 503
+                // are the same failure family on this route, and splitting them was
+                // an asymmetry with no reason behind it.
                 this._activateError = 'License server temporarily unavailable. Please retry.';
                 localStorage.setItem(STORAGE_KEY, key);
             } else {
