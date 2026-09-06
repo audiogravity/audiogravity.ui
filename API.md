@@ -507,7 +507,7 @@ ends. Never present it as what will be heard.
 | POST | `/qobuz/connection` | Start OAuth2 flow — **502** when the Qobuz app-bundle credentials cannot be fetched (`play.qobuz.com` unreachable / format changed) |
 | GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a core failure returns the styled **error** page with status **502**, not a raw 500 |
 | DELETE | `/qobuz/connection` | Disconnect |
-| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
+| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes). **503** `{"detail": "Qobuz unavailable"}` when the track cannot be resolved or the CDN cannot be reached — the reason is written to the journal and never to the caller, the endpoint taking no key. A CDN that answers and **refuses** keeps its own status instead (a **403** says the signed URL was rejected, which is not the same failure as an unreachable CDN) |
 
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
@@ -515,7 +515,7 @@ ends. Never present it as what will be heard.
 | GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription` + `has_subscription` — the shared subscription contract, see **Streaming subscription state** above). `subscription` is HRA's own word for the session — `SUBSCRIPTION` or `NO SUBSCRIPTION`; `has_subscription` is `false` when the account can play only its purchases (the Vault): the catalogue, favourites and playlists refuse that session. `null` while disconnected. A client reading a core that predates the field must treat its absence as subscribed |
 | POST | `/highresaudio/connection` | Log in — body `{username, password}`. 401 when HRA issues no session (bad credentials). An account without a subscription IS connected, with `has_subscription: false` |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
-| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
+| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes). Same error contract as the Qobuz proxy: **503** `{"detail": "HRA unavailable"}` when the track cannot be resolved or the CDN cannot be reached (reason to the journal, not to the caller), the CDN's **own status** when it answers and refuses. `{track_id}` is matched as a path here, so unlike the Qobuz route it also matches an empty id — which answers **404** rather than asking HRA for it |
 
 ### Services — `/services/*`
 | Method | Path | Description |
