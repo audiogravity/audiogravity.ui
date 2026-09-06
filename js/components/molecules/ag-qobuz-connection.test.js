@@ -1,5 +1,5 @@
 /**
- * Unit tests for ag-qobuz-output.
+ * Unit tests for ag-qobuz-connection.
  *
  * Covers the line under the account name: what Qobuz will actually play, which
  * is not what AG asks for once the plan has ended. The subscribed/unknown rule
@@ -19,16 +19,16 @@ vi.mock('../../library-store.js', () => ({
 }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
-import { AgQobuzOutput } from './ag-qobuz-output.js';
+import { AgQobuzConnection } from './ag-qobuz-connection.js';
 
 /** Read the description line for a connection state, without mounting. */
 function desc(connection) {
-    const el = Object.create(AgQobuzOutput.prototype);
+    const el = Object.create(AgQobuzConnection.prototype);
     el._connection = connection;
     return el._connectedDesc;
 }
 
-describe('AgQobuzOutput connected description', () => {
+describe('AgQobuzConnection connected description', () => {
     it('shows the plan and the format on a subscribed account', () => {
         expect(desc({ connected: true, subscription: 'Studio', format_id: 27,
                       has_subscription: true })).toBe('Studio · Hi-Res 24/192');

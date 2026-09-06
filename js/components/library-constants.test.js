@@ -117,6 +117,38 @@ describe('queueSourceLabel — header labels by playing origin', () => {
     });
 });
 
+describe('the radio is a source, and the picker knows it', () => {
+    it('resolves a playing station to the radio, not to the engine', () => {
+        // Left out of the map, a station resolved to src_mpd: the banner named
+        // the station correctly and its Switch button opened the local albums.
+        const r = resolvePlayingSource({
+            source_id: 'src_mpd', origin: 'radio', origin_name: 'Le Son Parisien',
+        });
+        expect(r.id).toBe('src_radio');
+        expect(r.group).toBe(SOURCE_META.src_radio.group);
+        expect(r.label).toBe('Le Son Parisien');
+    });
+
+    it('keeps the radio out of the shared search picker, deliberately', () => {
+        // Its catalogue is not under /library/*: stations are searched by
+        // country, genre and codec on their own screen. Listed here it would
+        // answer 400 to every query.
+        const ids = normalizeSearchSources([
+            { source_id: 'src_mpd', name: 'Local Library', kind: 'library' },
+            { source_id: 'src_radio', name: 'Radio', protocol: 'radio', kind: 'radio' },
+        ]).map(s => s.id);
+        expect(ids).toEqual(['src_mpd']);
+    });
+
+    it('keeps inputs out of it too — there is no catalogue behind a door', () => {
+        const ids = normalizeSearchSources([
+            { source_id: 'src_mpd', name: 'Local Library', kind: 'library' },
+            { source_id: 'src_shairport-sync', name: 'AirPlay', kind: 'input' },
+        ]).map(s => s.id);
+        expect(ids).toEqual(['src_mpd']);
+    });
+});
+
 describe('resolvePlayingSource — SOURCE vs engine', () => {
     it('resolves a Qobuz stream (MPD engine) to the Qobuz browse source, not "Local Library"', () => {
         // The bug: Qobuz plays over MPD (source_id 'src_mpd') with origin 'qobuz'.

@@ -1,16 +1,16 @@
 /**
- * @module AgTidalOutput
+ * @module AgTidalConnection
  * @description Tidal connection card molecule for the sources view.
  *
- * Mirrors `ag-qobuz-output` but Tidal uses the PKCE flow: there is no server
+ * Mirrors `ag-qobuz-connection` but Tidal uses the PKCE flow: there is no server
  * callback to poll — the user logs in, lands on Tidal's fixed redirect page
  * (`tidal.com/android/login/auth?code=…`) and pastes that URL back here (a PWA
  * cannot intercept the cross-origin redirect). Reuses the `lib-qb-*` card CSS.
  *
  * Self-contained: talks to the `/tidal/*` endpoints. The parent only renders
- * `<ag-tidal-output>`.
+ * `<ag-tidal-connection>`.
  *
- * @element ag-tidal-output
+ * @element ag-tidal-connection
  *
  * @fires sources-changed - Bubbles when the Tidal connection is created or removed.
  * @dependency css/components/library-sources.css (lib-qb-*, lib-tidal-* classes)
@@ -22,7 +22,7 @@ import { loadConnection } from '../utils-lit.js';
 import { hasSubscription } from '../../library-store.js';
 import '../atoms/ag-status-indicator.js';
 
-export class AgTidalOutput extends LitElement {
+export class AgTidalConnection extends LitElement {
 
     static properties = {
         _connection: { state: true },
@@ -207,4 +207,4 @@ export class AgTidalOutput extends LitElement {
     }
 }
 
-customElements.define('ag-tidal-output', AgTidalOutput);
+customElements.define('ag-tidal-connection', AgTidalConnection);

@@ -35,14 +35,46 @@ const PAGE = path.join(
  * @param {string} tab - The tab to start on.
  * @returns {Promise<HTMLElement>} the mounted element
  */
-async function mount(tab = 'browse') {
+async function mount(tab = 'browse', tabs = null) {
     const el = document.createElement('ag-lib-tabbar');
     el.tab = tab;
+    el.tabs = tabs;
     document.body.appendChild(el);
     await el.updateComplete;
     keepInView.mockClear();
     return el;
 }
+
+/**
+ * @param {HTMLElement} el - A mounted bar.
+ * @returns {Array<string>} The labels it renders, in order.
+ */
+function labels(el) {
+    return [...el.querySelectorAll('.lib-tab span')].map(n => n.textContent);
+}
+
+describe('ag-lib-tabbar — a source is only offered what it can serve', () => {
+    it('shows the five tabs when no restriction is given', async () => {
+        const el = await mount('browse');
+        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Library', 'Radio']);
+        el.remove();
+    });
+
+    it('drops the tabs a radio cannot answer', async () => {
+        // Stations are neither albums nor artists: Browse returned an empty grid
+        // and /library/search?source_id=src_radio answers 400. The radio's own
+        // catalogue is on its own screen, with its own filters.
+        const el = await mount('radio', ['queue', 'library', 'radio']);
+        expect(labels(el)).toEqual(['Queue', 'Library', 'Radio']);
+        el.remove();
+    });
+
+    it('keeps the declared order, not the order it was asked in', async () => {
+        const el = await mount('radio', ['radio', 'queue']);
+        expect(labels(el)).toEqual(['Queue', 'Radio']);
+        el.remove();
+    });
+});
 
 describe('ag-lib-tabbar', () => {
     let el;

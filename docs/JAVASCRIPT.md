@@ -87,7 +87,7 @@ Encapsulated, stateless. No data fetching.
 
 ### Molecules — Contextual UI
 Combinations of atoms that handle a specific data chunk. May emit CustomEvents upward.
-`ag-service-card`, `ag-profile-card`, `ag-package-card`, `ag-system-tile`, `ag-tabs`, `ag-user-card`, `ag-tidal-output`, `ag-qobuz-output`, `ag-hqplayer-output`…
+`ag-service-card`, `ag-profile-card`, `ag-package-card`, `ag-system-tile`, `ag-tabs`, `ag-user-card`, `ag-tidal-connection`, `ag-qobuz-connection`, `ag-hqplayer-output`…
 
 ### Organisms — View Logic
 Fetch data, manage state, orchestrate molecules.

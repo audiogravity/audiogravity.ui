@@ -1,5 +1,5 @@
 /**
- * Unit tests for ag-highresaudio-output.js.
+ * Unit tests for ag-highresaudio-connection.js.
  *
  * Covers the render-state logic (connected vs. login form) and the _connect
  * credential validation / API dispatch.
@@ -29,17 +29,17 @@ vi.mock('../../library-store.js', () => ({
 }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
-import { AgHighresaudioOutput } from './ag-highresaudio-output.js';
+import { AgHighresaudioConnection } from './ag-highresaudio-connection.js';
 
 /** Build a bare instance without mounting. */
 function makeEl(connection = null) {
-    const el = Object.create(AgHighresaudioOutput.prototype);
+    const el = Object.create(AgHighresaudioConnection.prototype);
     el._connection = connection;
     el._loading = false;
     el._connecting = false;
     el._error = '';
     el._disconnect = vi.fn();
-    el._connect = AgHighresaudioOutput.prototype._connect.bind(el);
+    el._connect = AgHighresaudioConnection.prototype._connect.bind(el);
     return el;
 }
 
@@ -56,7 +56,7 @@ function renderToString(tpl) {
     return out;
 }
 
-describe('AgHighresaudioOutput render', () => {
+describe('AgHighresaudioConnection render', () => {
     beforeEach(() => { apiPost.mockReset(); apiDelete.mockReset(); });
 
     it('shows the login form when disconnected', () => {
@@ -92,7 +92,7 @@ describe('AgHighresaudioOutput render', () => {
     });
 });
 
-describe('AgHighresaudioOutput keeps the store honest about the account', () => {
+describe('AgHighresaudioConnection keeps the store honest about the account', () => {
     beforeEach(() => {
         apiPost.mockReset(); apiDelete.mockReset();
         rememberHraConnection.mockReset(); forgetHraAccount.mockReset();
@@ -121,7 +121,7 @@ describe('AgHighresaudioOutput keeps the store honest about the account', () => 
 
     it('a sign-out forgets the whole account, not just the connection', async () => {
         const el = makeEl({ connected: true, username: 'a@b.co' });
-        el._disconnect = AgHighresaudioOutput.prototype._disconnect.bind(el);
+        el._disconnect = AgHighresaudioConnection.prototype._disconnect.bind(el);
         el._loadConnection = async () => {};
         el.dispatchEvent = vi.fn();
         apiDelete.mockResolvedValue({ ok: true });
@@ -130,7 +130,7 @@ describe('AgHighresaudioOutput keeps the store honest about the account', () => 
     });
 });
 
-describe('AgHighresaudioOutput._connect', () => {
+describe('AgHighresaudioConnection._connect', () => {
     beforeEach(() => { apiPost.mockReset(); });
 
     it('sets an error when fields are empty (no API call)', async () => {

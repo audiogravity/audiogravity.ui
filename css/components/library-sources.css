@@ -39,6 +39,16 @@
     cursor: pointer;
 }
 
+/**
+ * @component .lib-src-card-hd.inert
+ * @description An input at rest. It is a source — it does put out sound — but it
+ * hides the source behind it, so there is no catalogue to open on this side and
+ * a tap has nothing to answer. Showing a pointer over it would promise one.
+ */
+.lib-src-card-hd.inert {
+    cursor: default;
+}
+
 .lib-src-chevron {
     color: var(--text-tertiary);
     transition: transform var(--transition-fast);

@@ -4,7 +4,7 @@
  */
 
 import { html } from 'lit';
-import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconLibrary, iconExternalLink } from '../ag-icons.js';
+import { iconRadio, iconHardDrive, iconMusicNote, iconWifi, iconLibrary, iconExternalLink, iconCast } from '../ag-icons.js';
 import { apiGet } from '../api.js';
 
 export const ROON_IDS = new Set(['src_mono-sgen', 'src_roon']);
@@ -16,6 +16,12 @@ export const SOURCE_LABELS = {
     src_qobuz: 'Qobuz',
     src_tidal: 'Tidal',
     src_highresaudio: 'HIGHRESAUDIO',
+    src_radio: 'Radio',
+    // Inputs. The backend already names them in plain words — 'AirPlay',
+    // 'UPnP Bridge' — and these repeat that naming rather than invent one, so a
+    // card reads the same wherever it is built.
+    'src_shairport-sync': 'AirPlay',
+    src_upmpdcli: 'UPnP Bridge',
 };
 
 export const SOURCE_ICONS = {
@@ -25,6 +31,9 @@ export const SOURCE_ICONS = {
     src_qobuz: html`<img src="./pics/qobuz.webp" alt="Qobuz" width="24" height="24" style="object-fit:contain">`,
     src_tidal: html`<span class="lib-src-logo-tidal" role="img" aria-label="Tidal"></span>`,
     src_highresaudio: html`<span class="lib-src-logo-hra" role="img" aria-label="HIGHRESAUDIO"></span>`,
+    src_radio: html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Radio">${iconRadio}</svg>`,
+    'src_shairport-sync': html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="AirPlay">${iconWifi}</svg>`,
+    src_upmpdcli: html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="UPnP Bridge">${iconCast}</svg>`,
     default: '♪',
 };
 
@@ -183,6 +192,16 @@ export function queueSourceLabel(origin, sourceId) {
     return SOURCE_LABELS[sourceId] || sourceId;
 }
 
+/** Source kinds the picker offers as something to open. A UPnP server belongs
+ *  here too, but it reaches the screen through its own endpoint, not `sources[]`. */
+export const BROWSE_KINDS = new Set(['library', 'streaming', 'roon', 'radio']);
+
+/** Kinds that are listed but never opened: an input puts out sound — so it is a
+ *  source — but it HIDES the source behind it. What a phone pushes over AirPlay
+ *  has an identity the box cannot see, so there is no catalogue on this side of
+ *  the door. Touching one opens the player, which is all there is to do with it. */
+export const INPUT_KINDS = new Set(['input']);
+
 /* ─── Searchable library sources ─── */
 
 /** Maps known source IDs to a display label and a deduplication group
@@ -202,6 +221,7 @@ export const SOURCE_META = {
     // unset here — left in place it would have quietly reactivated on the next source
     // given one, in a header that no longer reads it.
     src_highresaudio:{ label: 'HIGHRESAUDIO', group: 'highresaudio' },
+    src_radio:       { label: 'Radio', group: 'radio' },
 };
 
 /** Reverse of SOURCE_META: dedup group → its canonical meta ({label, group}). */
@@ -216,6 +236,11 @@ const ORIGIN_TO_SOURCE_ID = {
     qobuz: 'src_qobuz',
     tidal: 'src_tidal',
     highresaudio: 'src_highresaudio',
+    // The radio is a source of its own, like the three above: it holds a
+    // catalogue and streams through the same engine. Missing here, a playing
+    // station resolved to the engine — so the "… is now playing" banner named
+    // the station correctly and its Switch button opened the local album grid.
+    radio: 'src_radio',
 };
 
 /**
@@ -254,6 +279,12 @@ export function normalizeSearchSources(rawSources, upnpServers = []) {
     const seen = new Set();
     const sources = (rawSources ?? []).reduce((acc, s) => {
         if (s.protocol === 'mpris' || s.selectable === false) return acc;
+        // The radio is left out ON PURPOSE, not by omission. Its catalogue is not
+        // under /library/*: stations are searched on the Radio screen, by country,
+        // genre and codec — a different shape of query. Listing it here would put
+        // a "Radio" option in this picker that answers 400 to every search.
+        // Wiring /radio/search into this bar is tracked in BACKLOG.md.
+        if (s.kind === 'radio' || s.kind === 'input') return acc;
         const meta = SOURCE_META[s.source_id] ?? { label: s.name ?? s.source_id, group: s.source_id };
         if (seen.has(meta.group)) return acc;
         seen.add(meta.group);

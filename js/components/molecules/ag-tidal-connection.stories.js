@@ -1,12 +1,12 @@
-import './ag-tidal-output.js';
+import './ag-tidal-connection.js';
 
 export default {
-    title: 'Molecules/AgTidalOutput',
+    title: 'Molecules/AgTidalConnection',
     tags: ['autodocs'],
 };
 
 const Template = () => {
-    const el = document.createElement('ag-tidal-output');
+    const el = document.createElement('ag-tidal-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el.addEventListener('sources-changed',    () => console.log('sources-changed'));
     el.addEventListener('sources-changed', () => console.log('sources-changed'));
@@ -22,7 +22,7 @@ export const Default = Template.bind({});
  * shows without such an account at hand.
  */
 export const NoSubscription = () => {
-    const el = document.createElement('ag-tidal-output');
+    const el = document.createElement('ag-tidal-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el._loadConnection = async () => {
         el._connection = { connected: true, quality: 'HI_RES_LOSSLESS', country_code: 'FR', subscription: 'NO SUBSCRIPTION', has_subscription: false };
