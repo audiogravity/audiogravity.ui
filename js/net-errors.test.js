@@ -89,34 +89,48 @@ describe('asNetworkError', () => {
 describe('isGatewayError', () => {
     // The commonest outage in production, and the one the first version fell straight through:
     // the web server keeps serving the interface while the core behind it is stopped. The request
-    // *is* answered — with a 502 whose HTML body makes json() throw, leaving a generic message and
-    // a status. Not a transport failure by any technical reading, and the same thing for the
-    // reader: the box is there, the software is not.
-    it('recognises a 502, which only a proxy ever says', () => {
-        const err = new Error('HTTP error');
+    // *is* answered — with a **502** whose HTML body makes json() throw, leaving a generic message
+    // and a status. Measured on that case, and on that one only. Not a transport failure by any
+    // technical reading, and the same thing for the reader: the box is there, the software is not.
+    it('recognises the measured case — a proxy 502 with an HTML body', () => {
+        const err = new Error('HTTP 502');
         err.status = 502;
-        err.detail = 'whatever a proxy might put here';
         expect(isGatewayError(err)).toBe(true);
     });
 
-    it.each([503, 504])('recognises a %i that carries no message of its own', (status) => {
-        // A proxy answers with HTML, which leaves no parsed detail behind.
+    it.each([503, 504])('recognises a %i that carries no message either', (status) => {
+        // Same shape, not the same observation: a proxy leaves no parsed detail
+        // whatever the status. Nobody has watched these two happen in production.
         const err = new Error(`HTTP ${status}`);
         err.status = status;
         expect(isGatewayError(err)).toBe(true);
     });
 
-    it('never claims a 504 the core worded itself', () => {
-        // 504 was listed as a status the core never returns. It was already
-        // untrue — the HIGHRESAUDIO advanced search has always answered 504 —
-        // and from 0.9.52 every streaming shelf does. A core-worded 504 reaching
-        // a screen that classifies through here would be answered "check your
-        // network" while the box is fine and the provider is slow.
-        const slow = new Error('HTTP 504');
-        slow.status = 504;
-        slow.detail = 'HIGHRESAUDIO took too long to answer. It is not the box: '
-            + 'the service is slow to reply.';
-        expect(isGatewayError(slow)).toBe(false);
+    it.each([502, 503, 504])('claims a %i whose detail is an EMPTY string', (status) => {
+        // `str(RuntimeError())` is '' in Python and the core has 110 `detail=str(exc)`
+        // sites, so `{"detail": ""}` is reachable. A falsy test read that as "no
+        // message" and called a box that answered unreachable.
+        const err = new Error(`HTTP ${status}`);
+        err.status = status;
+        err.detail = '';
+        expect(isGatewayError(err)).toBe(false);
+    });
+
+    it.each([
+        [502, 'License server error.'],
+        [502, 'Could not start Qobuz sign-in: play.qobuz.com unreachable'],
+        [502, 'Favorite add failed'],
+        [504, 'HIGHRESAUDIO took too long to answer. It is not the box: the service is slow to reply.'],
+        [503, 'Qobuz not connected. Please authenticate via Sources.'],
+    ])('never claims a %i the core worded itself (%s)', (status, detail) => {
+        // The core returns all three, and always has. Claiming them told the
+        // reader to check their network while the box was answering — and
+        // saying exactly what had gone wrong — with the badge beside the
+        // message reading CONNECTED.
+        const err = new Error(detail);
+        err.status = status;
+        err.detail = detail;
+        expect(isGatewayError(err)).toBe(false);
     });
 
     it('never claims a 500, whatever its body', () => {
@@ -279,6 +293,21 @@ describe('signInFailureMessage — checked against what the servers really send'
         const r = signInFailureMessage(err, opts);
         expect(r.unreachable).toBe(true);
         expect(r.message).toContain('10.0.4.254');
+    });
+
+    it.each([
+        ['a licence server that answered badly', http(502, { detail: 'License server error.' })],
+        ['a HIGHRESAUDIO catalogue answering slowly',
+            http(504, { detail: 'HIGHRESAUDIO took too long to answer.' })],
+        ['a Qobuz sign-in that could not start',
+            http(502, { detail: 'Could not start Qobuz sign-in: play.qobuz.com unreachable' })],
+    ])('%s → shows what it said, and does NOT re-probe the box', (_n, err) => {
+        // The box answered and named the cause. Reporting it unreachable would send
+        // the reader to check their network — and `unreachable: true` is also what
+        // makes login.js re-probe connectivity, which has nothing to answer here.
+        const r = signInFailureMessage(err, opts);
+        expect(r.unreachable).toBe(false);
+        expect(r.message).not.toContain('10.0.4.254');
     });
 
     it('a running core that crashed → an internal error, not a switched-off box', () => {

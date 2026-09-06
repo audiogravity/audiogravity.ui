@@ -13,14 +13,20 @@ const TOAST_REMOVE_DELAY = 300;
 // Keyed on message text, so only for errors that carry no status. A transport failure is not
 // recognised here by its wording — every fetch in this codebase goes through the boundary in
 // net-errors.js, which tags it, and getUserFriendlyError reads the tag. Gateway statuses are
-// read from the status for the same reason: this table and isGatewayError must not classify the
-// same 502 in opposite directions.
+// left to isGatewayError for the same reason: the two must not classify the same 502 in
+// opposite directions. Note that isGatewayError claims a 502, 503 or 504 only when it carries
+// no message — the core words its own, and those must reach the reader rather than be replaced
+// by "check your connection".
 const ErrorMessages = {
     'HTTP 401': 'Invalid API key. Please check your configuration.',
     'HTTP 403': 'Access denied. Insufficient permissions.',
     'HTTP 404': 'Resource not found.',
     'HTTP 500': 'Server error. Please try again later.'
 };
+
+/** The same four, keyed by status — read first, so a message is never searched for a number. */
+const StatusMessages = { 401: ErrorMessages['HTTP 401'], 403: ErrorMessages['HTTP 403'],
+                         404: ErrorMessages['HTTP 404'], 500: ErrorMessages['HTTP 500'] };
 
 /** The four toast types the component styles; anything else is a wrong argument order. */
 const TOAST_TYPES = new Set(['success', 'error', 'warning', 'info']);
@@ -36,14 +42,24 @@ export function getUserFriendlyError(error) {
         return 'Unable to connect to server. Please check your connection.';
     }
 
+    // Status first, and only then the wording. The table matches a SUBSTRING, and a
+    // provider's own message can contain one: the core relays "HRA API HTTP 404 for
+    // /albums" as the detail of a 503, and searching that for "HTTP 404" answered
+    // "Resource not found." — the provider's fault reported as the box's. A status,
+    // when there is one, says what happened without reading anything.
+    if (error?.status && StatusMessages[error.status]) return StatusMessages[error.status];
+
     // `error?.` and not `error.`: the shape guard above returns false for null, and this line then
     // threw — so the error reporter crashed instead of the error, taking the screen with it.
     const message = error?.message || '';
 
-    // Check for specific error patterns
-    for (const [key, friendlyMsg] of Object.entries(ErrorMessages)) {
-        if (message.includes(key)) {
-            return friendlyMsg;
+    // No status: the wording is all there is. Kept for errors thrown outside the fetch
+    // boundary, which is the only way one reaches here without one.
+    if (!error?.status) {
+        for (const [key, friendlyMsg] of Object.entries(ErrorMessages)) {
+            if (message.includes(key)) {
+                return friendlyMsg;
+            }
         }
     }
 

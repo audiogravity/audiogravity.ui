@@ -383,13 +383,18 @@ export async function loadConnection(host, fetchFn, tag = 'connection') {
  * internal message and that message lands on screen.
  *
  * ⚠️ **503 only, deliberately.** Its two call sites are the radio, and the radio
- * routes answer no 504 of their own — the only 504 reaching here would be a
- * proxy timeout, which carries no detail and is not the catalogue's fault.
- * Widening this to 504 blamed the catalogue for it, and disagreed with
- * `isGatewayError` on the very same error object. The streaming shelves that DO
+ * routes answer no 504 of their own — the only 504 reaching here is a proxy
+ * timeout, which is not the catalogue's fault. The streaming shelves that DO
  * answer 504 never reach this helper: they go through `loadWithState`, which
- * shows `error.message` — and `throwForStatus` already builds that message from
+ * shows `error.message`, and `throwForStatus` already builds that message from
  * the core's own detail. Nothing to widen.
+ *
+ * ⚠️ **This picks a sentence; it does not decide whether the box is reachable.**
+ * On a 503 carrying no detail — a proxy — it answers "the catalogue is
+ * unavailable" while `isGatewayError` calls the same object an unreachable box.
+ * Deliberate, and left alone: narrowing it to match would trade a useful
+ * sentence for a generic fallback on a screen that asks neither question. Do not
+ * read the two as one classification.
  *
  * @param {Error & {status?: number, detail?: string}} err - Error thrown by the API client.
  * @param {string} fallback - Message for anything that is not a 503.

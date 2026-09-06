@@ -54,39 +54,45 @@ export function isRetryableFailure(error) {
     return isNetworkError(error) && error.retryable !== false;
 }
 
-/** Statuses only something in front of the core returns — with one exception, below. */
-const GATEWAY_ONLY_STATUSES = new Set([502]);
+/** The statuses whose author is ambiguous — a proxy says them, and so does the core. */
+const AMBIGUOUS_STATUSES = new Set([502, 503, 504]);
 
 /**
  * Did something answer *for* the core because the core did not?
  *
- * 502 always. 503 and 504 only when they carry no message — the same discriminator for both,
- * because the core uses both to say things a reader can act on and `catalogueErrorMessage` in
- * components/utils-lit.js shows their detail verbatim.
+ * **One rule for all three: 502, 503 and 504 count only when no message came back with them.**
+ * A proxy answers with HTML, which leaves no parsed detail behind; the core answers with a
+ * sentence written for a reader. The presence of a parsed `detail` is the whole discriminator.
  *
- * 504 used to be listed as a status the core never returns. That was already untrue — the
- * HIGHRESAUDIO advanced search has always answered 504 when the catalogue took too long — and
- * from 0.9.52 every streaming shelf does.
+ * `typeof detail !== 'string'`, not `!detail`: `str(RuntimeError())` is `''` in Python, and the
+ * core has 110 `detail=str(exc)` sites. One bare raise would answer `{"detail": ""}`, and a
+ * falsy test would have called a box that replied unreachable — the very defect this predicate
+ * exists to remove.
  *
- * ⚠️ **No screen was showing the wrong sentence because of it**, and it is worth writing down
- * so nobody "fixes" this twice: the shelves reach the reader through `loadWithState`, which
- * shows `error.message`, and `throwForStatus` builds that message from the core's own detail.
- * The correction here is about not classifying a status by a rule that has stopped being true —
- * this function feeds licence, passkey and activation screens, and one of those gaining a
- * core-worded 504 would have been told to check its network. A gateway's own 504 carries no
- * body, so the absence of a detail still tells the two apart.
+ * ⚠️ **The rule assumes a front that does not answer JSON.** Ours does not — `scripts/serve_https.py`
+ * uses `BaseHTTPRequestHandler.send_error`, which emits HTML — but a proxy configured with a JSON
+ * `error_page` would give a stopped core a 502 carrying a detail, and this would call it the core
+ * speaking. That trade is deliberate: the wrong answer costs a puzzling sentence, where the old
+ * rule cost a working box being reported as switched off.
  *
- * 500 never: a running core that crashed answers 500 with no message, and that is a box to
- * report, not a box to switch on. The front a real install deploys answers 502 when the core
- * is stopped, so nothing is lost by leaving 500 alone.
+ * It used to be "502 and 504 always, 503 only without a detail", on the belief that the core
+ * never returned the first two. It returns both, and has all along: **502** for a licence server
+ * that is unreachable or answering nonsense, for a Qobuz sign-in that cannot start, for a
+ * streaming favourite that could not be written — and **504** for a HIGHRESAUDIO catalogue that
+ * is answering, slowly. On those screens the reader was told to check their network while the
+ * box was fine, answering, and saying exactly what had gone wrong. The badge beside the message
+ * said CONNECTED.
+ *
+ * 500 stays out entirely: a running core that crashed answers 500 with no message, and that is a
+ * box to report, not a box to switch on. The front a real install deploys answers 502 when the
+ * core is stopped — with no body — so production is covered by the rule above.
  *
  * @param {unknown} error
  * @returns {boolean}
  */
 export function isGatewayError(error) {
     if (!error || typeof error !== 'object') return false;
-    if (GATEWAY_ONLY_STATUSES.has(error.status)) return true;
-    return (error.status === 503 || error.status === 504) && !error.detail;
+    return AMBIGUOUS_STATUSES.has(error.status) && typeof error.detail !== 'string';
 }
 
 /**
