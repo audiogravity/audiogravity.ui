@@ -1,5 +1,5 @@
 /**
- * Unit tests for ag-tidal-output.
+ * Unit tests for ag-tidal-connection.
  *
  * Covers the line under the account name: what Tidal will actually play, which
  * is not what AG asks for once the plan has ended. The subscribed/unknown rule
@@ -19,16 +19,16 @@ vi.mock('../../library-store.js', () => ({
 }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
-import { AgTidalOutput } from './ag-tidal-output.js';
+import { AgTidalConnection } from './ag-tidal-connection.js';
 
 /** Read the description line for a connection state, without mounting. */
 function desc(connection) {
-    const el = Object.create(AgTidalOutput.prototype);
+    const el = Object.create(AgTidalConnection.prototype);
     el._connection = connection;
     return el._connectedDesc;
 }
 
-describe('AgTidalOutput connected description', () => {
+describe('AgTidalConnection connected description', () => {
     it('shows the asked-for tier and country on a subscribed account', () => {
         expect(desc({ connected: true, quality: 'HI_RES_LOSSLESS', country_code: 'FR',
                       has_subscription: true })).toBe('Hi-Res · FR');

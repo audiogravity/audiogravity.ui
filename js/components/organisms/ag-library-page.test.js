@@ -4,8 +4,9 @@
  * Logic-only (no DOM mount): lit and the page's imports are mocked, then the
  * handlers are exercised on a bare instance. What these pin:
  *
- *   - the 'browse'→'upnp-browser' mapping has ONE home (_setView). It used to be
- *     written twice, and the tab-bar copy diverged from _navigate's;
+ *   - the 'browse'→'upnp-browser' and 'browse'→'radio' mappings have ONE home
+ *     (_setView). The UPnP one used to be written twice and the tab-bar copy
+ *     diverged from _navigate's; the radio one arrived written three times;
  *   - a tab switch stays free — the browse keeps its grid and scroll;
  *   - sources-changed reloads the browse. The browse stays mounted across tabs
  *     (the views only toggle a class), so nothing else re-asks it what the
@@ -20,7 +21,11 @@ vi.mock('lit', () => ({
     svg: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
-vi.mock('../../api.js', () => ({ apiGet: vi.fn(async () => []), apiPost: vi.fn() }));
+// apiPost answers a promise: the handlers attach a .catch to it, so a mock
+// returning undefined fails on the call rather than on what is asserted.
+vi.mock('../../api.js', () => ({
+    apiGet: vi.fn(async () => []), apiPost: vi.fn(async () => ({})),
+}));
 vi.mock('../../library-store.js', () => ({
     getSnapshot: vi.fn(async () => null),
     getRoonZones: vi.fn(async () => []),
@@ -61,6 +66,25 @@ describe('ag-library-page — one home for the view mapping', () => {
         viaNavigate._navigate('browse');
         expect(viaTab._view).toBe('upnp-browser');
         expect(viaTab._view).toBe(viaNavigate._view);
+    });
+
+    it('every path that opens the radio goes through that same home', () => {
+        // The radio arrived with its mapping written three times — in _setView,
+        // in the source picker, and in the banner's Switch button — in a file
+        // whose test header records that this exact duplication already diverged
+        // once for UPnP. All three must now answer identically.
+        const viaTab = makeEl({ _sourceId: 'src_radio' });
+        viaTab._onTabChange({ detail: { tab: 'browse' } });
+
+        const viaPicker = makeEl({ _sourceId: 'src_mpd' });
+        viaPicker._onSourceChange({ detail: { sourceId: 'src_radio' } });
+
+        const viaNavigate = makeEl({ _sourceId: 'src_radio' });
+        viaNavigate._navigate('browse');
+
+        expect(viaTab._view).toBe('radio');
+        expect(viaPicker._view).toBe('radio');
+        expect(viaNavigate._view).toBe('radio');
     });
 
     it('an unknown tab lands on the browse rather than nowhere', () => {

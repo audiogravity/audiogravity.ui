@@ -83,7 +83,7 @@ export default defineConfig({
           if (id.includes('ag-icons.js')) return 'icons';
           if (id.includes('/atoms/')) return 'atoms';
           if (id.includes('ag-now-playing')) return 'nowplaying';
-          if (id.includes('ag-hqplayer') || id.includes('ag-qobuz-output') || id.includes('ag-tidal-output') || id.includes('ag-highresaudio-output') || id.includes('ag-upnp-renderer-card')) return 'streaming';
+          if (id.includes('ag-hqplayer') || id.includes('ag-qobuz-connection') || id.includes('ag-tidal-connection') || id.includes('ag-highresaudio-connection') || id.includes('ag-upnp-renderer-card')) return 'streaming';
           if (id.includes('library-store') || id.includes('library-api') || id.includes('library-constants')) return 'library-core';
         },
         chunkFileNames: 'assets/[name]-[hash].js',

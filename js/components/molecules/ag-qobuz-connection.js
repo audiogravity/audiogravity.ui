@@ -1,12 +1,12 @@
 /**
- * @module AgQobuzOutput
+ * @module AgQobuzConnection
  * @description Qobuz connection card molecule for the sources view.
  * Shows connection state and handles the OAuth2 authentication flow.
  *
  * Self-contained: fetches its own state from the /qobuz/* endpoints.
- * The parent organism only needs to render `<ag-qobuz-output>`.
+ * The parent organism only needs to render `<ag-qobuz-connection>`.
  *
- * @element ag-qobuz-output
+ * @element ag-qobuz-connection
  *
  * @fires sources-changed - Bubbles when the Qobuz connection is created or removed.
  *
@@ -27,7 +27,7 @@ const FORMAT_LABELS = {
     27: 'Hi-Res 24/192',
 };
 
-export class AgQobuzOutput extends LitElement {
+export class AgQobuzConnection extends LitElement {
 
     static properties = {
         _connection: { state: true },
@@ -220,4 +220,4 @@ export class AgQobuzOutput extends LitElement {
     }
 }
 
-customElements.define('ag-qobuz-output', AgQobuzOutput);
+customElements.define('ag-qobuz-connection', AgQobuzConnection);

@@ -27,3 +27,28 @@ Roon.args = { node: { id: 'src_roon', name: 'Roon', status: 'active' }, active: 
 
 export const Qobuz = Template.bind({});
 Qobuz.args = { node: { id: 'src_qobuz', name: 'Qobuz', status: '' }, active: false, zoneId: '' };
+
+export const Radio = Template.bind({});
+Radio.args = {
+    node: { id: 'src_radio', name: 'Radio', status: 'active', kind: 'radio' },
+    active: false, zoneId: '',
+};
+
+/*
+ * An input diffusing. It IS a source — sound comes out of it — but it hides the
+ * source behind it: what a phone pushes over AirPlay has an identity the box
+ * cannot see. So there is no catalogue to open on this side, and a tap raises
+ * the player instead of a grid.
+ */
+export const InputPlaying = Template.bind({});
+InputPlaying.args = {
+    node: { id: 'src_shairport-sync', name: 'AirPlay', status: 'active', kind: 'input' },
+    active: false, zoneId: '',
+};
+
+/* The same card at rest: it answers no tap at all, and shows no pointer. */
+export const InputIdle = Template.bind({});
+InputIdle.args = {
+    node: { id: 'src_upmpdcli', name: 'UPnP Bridge', status: '', kind: 'input' },
+    active: false, zoneId: '',
+};

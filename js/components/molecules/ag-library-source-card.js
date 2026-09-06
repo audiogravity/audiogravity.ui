@@ -8,7 +8,10 @@
  *
  * @element ag-library-source-card
  *
- * @attr {object}  .node    - Source descriptor: { id: string, name: string, status: string }
+ * @attr {object}  .node    - Source descriptor: { id, name, status, kind }. `kind`
+ *                            decides what a tap does: a catalogue opens, an input
+ *                            does not (it hides its source behind it, so there is
+ *                            nothing to browse on this side).
  * @attr {boolean} active   - Whether this source is currently active
  * @attr {string}  zone-id  - Currently active zone ID (used to display zone name when active)
  *
@@ -49,7 +52,24 @@ export class AgLibrarySourceCard extends LitElement {
         return this.node && ROON_IDS.has(this.node.id);
     }
 
+    /** @returns {boolean} Whether this card is an input rather than a catalogue. */
+    _isInput() {
+        return this.node?.kind === 'input';
+    }
+
     async _toggleExpand() {
+        if (this._isInput()) {
+            // An input has nothing to browse: what a phone pushes over AirPlay is
+            // played by a source AG cannot see, on the far side of the door. So
+            // there is no catalogue to open — while it plays, showing the player
+            // is the only thing left to do with it, and at rest, nothing.
+            if (this.node.status === 'active') {
+                window.dispatchEvent(new CustomEvent('np-expand', {
+                    detail: { source_id: this.node.id, item: null },
+                }));
+            }
+            return;
+        }
         if (!this._isRoon()) {
             this._emit('');
             return;
@@ -124,9 +144,13 @@ export class AgLibrarySourceCard extends LitElement {
                 || name)
             : desc;
 
+        // An idle input answers no tap, so it must not offer one.
+        const inert = this._isInput() && node.status !== 'active';
+
         return html`
             <div class="lib-src-card ${active ? 'active' : ''} ${expanded ? 'expanded' : ''}">
-                <div class="lib-src-card-hd" @click=${() => this._toggleExpand()}>
+                <div class="lib-src-card-hd ${inert ? 'inert' : ''}"
+                    @click=${() => this._toggleExpand()}>
                     <div class="lib-src-ic">${icon}</div>
                     <div class="lib-src-col">
                         <span class="lib-src-name">${name}</span>

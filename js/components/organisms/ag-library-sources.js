@@ -17,16 +17,17 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiDelete } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
-import { getSnapshot } from '../../library-store.js';
+import { getSnapshot, subscribePlayerState } from '../../library-store.js';
+import { resolvePlayingSource, BROWSE_KINDS, INPUT_KINDS } from '../library-constants.js';
 import { iconWifi } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
 import '../molecules/ag-upnp-renderer-card.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
-import '../molecules/ag-highresaudio-output.js';
+import '../molecules/ag-highresaudio-connection.js';
 import '../molecules/ag-hqplayer-output.js';
-import '../molecules/ag-qobuz-output.js';
-import '../molecules/ag-tidal-output.js';
+import '../molecules/ag-qobuz-connection.js';
+import '../molecules/ag-tidal-connection.js';
 
 export class AgLibrarySources extends LitElement {
     static properties = {
@@ -39,6 +40,7 @@ export class AgLibrarySources extends LitElement {
         _upnpLoading:    { state: true },
         _upnpDiscovered: { state: true },
         _upnpExtraHost:  { state: true },
+        _playingKey:     { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -54,6 +56,8 @@ export class AgLibrarySources extends LitElement {
         this._upnpLoading    = false;
         this._upnpDiscovered = false;
         this._upnpExtraHost  = '';
+        this._playingKey     = '';
+        this._unsubscribeState = null;
         this._swipe = new SwipeToDismissController(this, {
             onCommit: (id) => {
                 const srv = this._upnpServers.find(s => s.id === id);
@@ -73,11 +77,78 @@ export class AgLibrarySources extends LitElement {
         // back to it.
         this._boundSourcesChanged = () => this._load({ force: true });
         this.addEventListener('sources-changed', this._boundSourcesChanged);
+        // Which source is diffusing changes on its own — a station starts, a
+        // phone pushes AirPlay — so the badge cannot be read once on mount. The
+        // subscription is multiplexed with the page's, not a second stream.
+        this._unsubscribeState = subscribePlayerState(
+            (state) => { this._playingKey = this._playingKeyFrom(state); });
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('sources-changed', this._boundSourcesChanged);
+        this._unsubscribeState?.();
+        this._unsubscribeState = null;
+    }
+
+    /**
+     * Resolve which SOURCE one playing entry is coming from, not which engine.
+     *
+     * A station, a Qobuz album and a local file all travel over MPD, so the
+     * entry's own `source_id` says "Local Library" for all three — only its
+     * `origin` separates them.
+     *
+     * @param {object} src - One `sources[]` entry.
+     * @returns {string} The source id to badge, or '' when it names none.
+     */
+    _contentSourceOf(src) {
+        if (src.origin === 'upnp') {
+            // A media server is a source like the others, but it reaches this
+            // screen through its own endpoint and is keyed by `upnp:<udn>` — an
+            // id the player state does not carry. Only the server's NAME is
+            // there, so that is what this matches on; two servers sharing one
+            // would both light up, and carrying the id through the state is
+            // tracked in BACKLOG.md.
+            //
+            // Returning nothing when the name matches no known server is the
+            // point of the branch: falling through would resolve to the engine
+            // and light "Local Library" while a MinimServer track plays, which
+            // is the very defect this screen exists to fix.
+            return this._upnpServers.find(
+                srv => srv.friendly_name === src.origin_name)?.id ?? '';
+        }
+        return resolvePlayingSource(src).id || '';
+    }
+
+    /**
+     * Build the key naming every source that is diffusing right now.
+     *
+     * EVERY playing entry, not the one the player happens to be showing: the box
+     * casts several streams at once — AirPlay to the toslink while Qobuz goes to
+     * the USB DAC — and reading the single active source lit whichever had
+     * started first, leaving the other grey though it was audible. Each entry
+     * carries its own `playing` and its own `origin`, which is what this reads.
+     *
+     * Returned as a sorted string rather than a Set so Lit can tell two ticks
+     * apart: it compares reactive state with `!==`, and a fresh Set is never
+     * equal to the last one, so the whole list would re-render every second.
+     *
+     * @param {object} state - PlayerState, from the snapshot or the SSE stream.
+     * @returns {string} Newline-joined source ids, sorted; '' when none plays.
+     */
+    _playingKeyFrom(state) {
+        const ids = new Set();
+        for (const src of state?.sources ?? []) {
+            if (!src.playing) continue;
+            const id = this._contentSourceOf(src);
+            if (id) ids.add(id);
+        }
+        return [...ids].sort().join('\n');
+    }
+
+    /** @returns {Set<string>} The sources diffusing right now. */
+    get _playingIds() {
+        return new Set(this._playingKey ? this._playingKey.split('\n') : []);
     }
 
     /**
@@ -127,11 +198,8 @@ export class AgLibrarySources extends LitElement {
     async _load({ force = false } = {}) {
         await loadWithState(this, async () => {
             const state = await getSnapshot({ force });
-            this._nodes = (state?.sources ?? []).map(s => ({
-                id:     s.source_id,
-                name:   s.name,
-                status: s.active ? 'active' : '',
-            }));
+            this._playingKey = this._playingKeyFrom(state);
+            this._nodes = (state?.sources ?? []).map(AgLibrarySources.toNode);
         });
     }
 
@@ -148,6 +216,64 @@ export class AgLibrarySources extends LitElement {
         } finally {
             this._upnpLoading = false;
         }
+    }
+
+    /**
+     * Return the node with the live playback status the card renders.
+     *
+     * Kept out of `_nodes` on purpose: the list is refetched only when the set of
+     * sources changes, while what is playing moves on its own.
+     *
+     * @param {{id: string}} node - A source descriptor from `_nodes`.
+     * @param {Set<string>} playing - The sources diffusing right now.
+     * @returns {object} The same descriptor plus its `status`.
+     */
+    _withStatus(node, playing) {
+        return { ...node, status: playing.has(node.id) ? 'active' : '' };
+    }
+
+    /**
+     * Reduce one published source to what this screen needs of it.
+     *
+     * Its own method so the fallback's inputs cannot go missing unnoticed: the
+     * two fields it reads are carried for it alone, never displayed, and when a
+     * first attempt dropped them the fallback failed OPEN — every entry passed
+     * as a source, the Inputs section came out empty, and an AirPlay card
+     * offered itself as something to browse. The tests build their nodes through
+     * this, so dropping one breaks them.
+     *
+     * @param {object} s - One `sources[]` entry from the player state.
+     * @returns {object} The node the screen renders and filters on.
+     */
+    static toNode(s) {
+        return {
+            id:         s.source_id,
+            name:       s.name,
+            kind:       s.kind,
+            protocol:   s.protocol,
+            selectable: s.selectable,
+        };
+    }
+
+    /**
+     * Split the published sources into what is browsed and what merely arrives.
+     *
+     * The fallback is for a core that predates `kind`. The two packages are
+     * released together but install separately, and the version banner only
+     * warns across a major.minor gap — so a frontend one patch ahead would show
+     * this screen with NO cards at all and nothing to explain it. It states what
+     * the old six-id filter meant, without its list of names: a source is
+     * whatever is neither an incoming stream nor a routing handle.
+     *
+     * @param {Array<object>} nodes - Entries from the player's source list.
+     * @returns {{libSources: Array<object>, inputs: Array<object>}} The two halves.
+     */
+    _splitByType(nodes) {
+        const typed = nodes.some(n => n.kind);
+        const source = n => (typed ? BROWSE_KINDS.has(n.kind)
+                                   : n.protocol !== 'mpris' && n.selectable !== false);
+        const input = n => (typed ? INPUT_KINDS.has(n.kind) : n.protocol === 'mpris');
+        return { libSources: nodes.filter(source), inputs: nodes.filter(input) };
     }
 
     _onSourceSelect(e) {
@@ -173,10 +299,11 @@ export class AgLibrarySources extends LitElement {
     render() {
         if (this._loading) return html`<div class="lib-loading">Loading…</div>`;
 
-        const libSources = this._nodes.filter(n =>
-            n.id === 'src_mpd' || n.id === 'src_roon' || n.id === 'src_mono-sgen'
-            || n.id === 'src_qobuz' || n.id === 'src_tidal' || n.id === 'src_highresaudio'
-        );
+        // Filtered by TYPE, not by a list of names. The list of six ids this
+        // replaces is why the radio had no card at all: every source added to the
+        // backend had to be remembered here too, and one was not.
+        const playing = this._playingIds;
+        const { libSources, inputs } = this._splitByType(this._nodes);
         const active = libSources.filter(n => n.id === this.sourceId);
         const others = libSources.filter(n => n.id !== this.sourceId);
 
@@ -186,7 +313,7 @@ export class AgLibrarySources extends LitElement {
                     <span class="lib-src-lbl">Active source</span>
                     ${active.map(n => html`
                         <ag-library-source-card
-                            .node=${n}
+                            .node=${this._withStatus(n, playing)}
                             ?active=${true}
                             zone-id=${this.zoneId}
                             zone-display-name=${this.zoneDisplayName}
@@ -201,13 +328,23 @@ export class AgLibrarySources extends LitElement {
                 ${others.length > 0
                     ? others.map(n => html`
                         <ag-library-source-card
-                            .node=${n}
+                            .node=${this._withStatus(n, playing)}
                             @source-select=${this._onSourceSelect}
                         ></ag-library-source-card>
                     `)
                     : html`<div class="lib-empty" style="padding:20px 0">No other sources</div>`
                 }
                 <div style="height:6px"></div>
+
+                ${inputs.length > 0 ? html`
+                    <span class="lib-src-lbl">Inputs</span>
+                    ${inputs.map(n => html`
+                        <ag-library-source-card
+                            .node=${this._withStatus(n, playing)}
+                        ></ag-library-source-card>
+                    `)}
+                    <div style="height:6px"></div>
+                ` : nothing}
 
                 <div class="lib-upnp-header">
                     <span class="lib-src-lbl">UPnP servers</span>
@@ -236,7 +373,9 @@ export class AgLibrarySources extends LitElement {
                                                 <span class="lib-src-name">${srv.friendly_name}</span>
                                                 <span class="lib-src-desc">${srv.location ? new URL(srv.location).host : ''}</span>
                                             </div>
-                                            <ag-status-indicator state="up" label="Online"></ag-status-indicator>
+                                            <ag-status-indicator state="up"
+                                                label=${playing.has(srv.id) ? 'Active' : 'Online'}
+                                            ></ag-status-indicator>
                                         </div>
                                     </div>
                                 </div>
@@ -282,9 +421,9 @@ export class AgLibrarySources extends LitElement {
                     <div class="lib-hqp-header">
                         <span class="lib-src-lbl">Streaming Services</span>
                     </div>
-                    <ag-qobuz-output></ag-qobuz-output>
-                    <ag-tidal-output></ag-tidal-output>
-                    <ag-highresaudio-output></ag-highresaudio-output>
+                    <ag-qobuz-connection></ag-qobuz-connection>
+                    <ag-tidal-connection></ag-tidal-connection>
+                    <ag-highresaudio-connection></ag-highresaudio-connection>
                 </div>
 
                 <div class="lib-hqp-section">

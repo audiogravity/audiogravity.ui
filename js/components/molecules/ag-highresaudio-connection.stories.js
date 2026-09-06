@@ -1,7 +1,7 @@
-import './ag-highresaudio-output.js';
+import './ag-highresaudio-connection.js';
 
 export default {
-    title: 'Molecules/AgHighresaudioOutput',
+    title: 'Molecules/AgHighresaudioConnection',
     tags: ['autodocs'],
 };
 
@@ -14,7 +14,7 @@ export default {
  * account email and a "Disconnect" button.
  */
 const Template = () => {
-    const el = document.createElement('ag-highresaudio-output');
+    const el = document.createElement('ag-highresaudio-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el.addEventListener('sources-changed',    () => console.log('sources-changed'));
     el.addEventListener('sources-changed', () => console.log('sources-changed'));
@@ -30,7 +30,7 @@ export const Default = Template.bind({});
  * from the core, so it shows without such an account at hand.
  */
 export const PurchasesOnly = () => {
-    const el = document.createElement('ag-highresaudio-output');
+    const el = document.createElement('ag-highresaudio-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el._loadConnection = async () => {
         el._connection = {

@@ -1,14 +1,14 @@
 /**
- * @module AgHighresaudioOutput
+ * @module AgHighresaudioConnection
  * @description HIGHRESAUDIO (HRA) connection card molecule for the sources view.
  * Unlike Qobuz (OAuth popup) or Tidal (device paste), HRA authenticates with a
  * plain email + password form (official API). Shows connection state and handles
  * login / logout.
  *
  * Self-contained: fetches its own state from the /highresaudio/* endpoints.
- * The parent organism only needs to render `<ag-highresaudio-output>`.
+ * The parent organism only needs to render `<ag-highresaudio-connection>`.
  *
- * @element ag-highresaudio-output
+ * @element ag-highresaudio-connection
  *
  * @fires sources-changed - Bubbles when the HRA connection is created or removed.
  *
@@ -23,7 +23,7 @@ import { rememberHraConnection, forgetHraAccount, hasSubscription } from '../../
 import { SOURCE_ICONS, SOURCE_LABELS } from '../library-constants.js';
 import '../atoms/ag-status-indicator.js';
 
-export class AgHighresaudioOutput extends LitElement {
+export class AgHighresaudioConnection extends LitElement {
 
     static properties = {
         _connection: { state: true },
@@ -192,4 +192,4 @@ export class AgHighresaudioOutput extends LitElement {
     }
 }
 
-customElements.define('ag-highresaudio-output', AgHighresaudioOutput);
+customElements.define('ag-highresaudio-connection', AgHighresaudioConnection);

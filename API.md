@@ -141,6 +141,15 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist |
 | GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
+> **`source_id` — an unknown id is an error, a source with no local catalogue is not.**
+> `/library/albums` and `/library/search` answer the same way, because the status depends on
+> the source and not on which of the two was asked. An id no source on this box carries
+> answers **400**; a real source that simply holds no local catalogue — the radio, an input —
+> answers **200** with an empty result. They used to disagree: `albums` answered 200 with an
+> empty list even for a mistyped id, which reads as "this source is empty" and hides the
+> typo, while `search` answered 400 even for a legitimate source.
+
+
 > **HRA categories — `title` is the key, `label` is what you show.** `title` is HRA's own
 > string and the ONLY value `/library/highresaudio-category` accepts; four categories come
 > back in German whatever the language asked for, so the core carries a `label` to display
@@ -330,8 +339,8 @@ MPD only learns a stream's length by decoding it, so the value captured at enque
 served — and persisted, so it survives a core restart. A live radio stream stays `null`,
 which is the correct display (`--:--`). Now Playing falls back to the same value, so the
 player total and the queue row never disagree.
-Qobuz/Tidal/HIGHRESAUDIO share the MPD engine, so asking with their `source_id` returns
-that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
+Qobuz/Tidal/HIGHRESAUDIO **and the radio** share the MPD engine, so asking with their
+`source_id` returns that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
 an error. **`?limit=<n>`** returns the current track plus up to `n` following items —
 `position` stays the absolute queue position; omit it for the whole queue.
 
@@ -397,6 +406,8 @@ else → **400**. `seek` and `set_volume` require `value`.
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
 | `queue_next` | `{title, artist, album, cover_token}` — upcoming track of a renderer cast |
 | `sources[].selectable` | `false` on an entry that is a routing handle, not a source: listed so the player can render it, never offered as something to browse |
+| `sources[].kind` | What the source **is**: `library` \| `radio` \| `streaming` \| `roon` \| `input`. `protocol` cannot answer it — it mixes transport (`mpd`, `mpris`) with provider (`qobuz`) and grows by one value per provider, while this stays a closed vocabulary a client can branch on. `null` on a routing handle (see `selectable`). An `input` (AirPlay, the UPnP bridge) is a source — it does put out sound — but it **hides** the source behind it, so it holds no catalogue to browse |
+| `sources[].active` | `true` on the entry that is playing and that top-level `source_id` names — the **transport** identity, so the two can be joined. Which **content** it carries is a different question, answered by `sources[].origin`: a station, a Qobuz album and a local file all travel over `src_mpd` |
 
 Each `outputs[]` entry: `{id, type: "local"|"upnp_renderer", name, reachable, active,
 transport_state, error}`.

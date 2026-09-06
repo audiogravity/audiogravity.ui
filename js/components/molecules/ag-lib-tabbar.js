@@ -6,6 +6,10 @@
  * @element ag-lib-tabbar
  *
  * @attr {string} tab - Active tab key: 'browse' | 'search' | 'queue' | 'library' | 'radio'
+ * @attr {Array<string>} tabs - Which tabs to show, in order. Omitted shows all
+ *   five. A source that holds no /library catalogue passes a shorter list rather
+ *   than leaving tabs that lead nowhere: the radio's stations are neither albums
+ *   nor artists, so Browse answered an empty grid and Search an error.
  *
  * @fires lib-tab-change - Bubbles. detail: { tab: string }
  */
@@ -23,7 +27,8 @@ const TABS = [
 
 export class AgLibTabbar extends LitElement {
     static properties = {
-        tab: { type: String },
+        tab:  { type: String },
+        tabs: { type: Array },
     };
 
     createRenderRoot() { return this; }
@@ -31,6 +36,8 @@ export class AgLibTabbar extends LitElement {
     constructor() {
         super();
         this.tab = 'browse';
+        /** @type {Array<string>|null} Keys to show; null shows every tab. */
+        this.tabs = null;
         /** Whether the bar has already positioned itself once — the first scroll is
          *  instant, so the bar does not glide into place as the page appears.
          *  @type {boolean} */
@@ -94,7 +101,7 @@ export class AgLibTabbar extends LitElement {
     render() {
         return html`
             <div class="lib-nav">
-                ${TABS.map(t => html`
+                ${TABS.filter(t => !this.tabs || this.tabs.includes(t.key)).map(t => html`
                     <button
                         class="lib-tab ${this.tab === t.key ? 'on' : ''}"
                         @click=${() => this._select(t.key)}

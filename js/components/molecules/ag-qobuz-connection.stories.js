@@ -1,7 +1,7 @@
-import './ag-qobuz-output.js';
+import './ag-qobuz-connection.js';
 
 export default {
-    title: 'Molecules/AgQobuzOutput',
+    title: 'Molecules/AgQobuzConnection',
     tags: ['autodocs'],
 };
 
@@ -14,7 +14,7 @@ export default {
  * subscription level and a "Disconnect" button.
  */
 const Template = () => {
-    const el = document.createElement('ag-qobuz-output');
+    const el = document.createElement('ag-qobuz-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el.addEventListener('sources-changed',    () => console.log('sources-changed'));
     el.addEventListener('sources-changed', () => console.log('sources-changed'));
@@ -30,7 +30,7 @@ export const Default = Template.bind({});
  * shows without such an account at hand.
  */
 export const NoSubscription = () => {
-    const el = document.createElement('ag-qobuz-output');
+    const el = document.createElement('ag-qobuz-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el._loadConnection = async () => {
         el._connection = { connected: true, user_id: '000000', subscription: 'NO SUBSCRIPTION', has_subscription: false, format_id: 27 };

@@ -422,6 +422,12 @@ export class AgLibraryPage extends LitElement {
                     if (state.zone_id) this._zoneId = state.zone_id;
                     this._zoneDisplayName = state.zone_display_name || '';
                     this._sourceId = state.source_id;
+                    // Re-apply the view mapping for the source we just adopted:
+                    // it is keyed on the source, and this assignment changed it.
+                    // Without this, coming back with the radio selected left the
+                    // view on 'browse' while the Browse tab had just been taken
+                    // out of the bar — no tab highlighted, and an empty grid.
+                    this._setView(this._view);
                     // UPnP control URL is not persisted — redirect to source picker
                     // so the user can re-select the server rather than seeing a blank browse.
                     if (this._isUpnp(state.source_id)) this._view = 'library';
@@ -484,6 +490,8 @@ export class AgLibraryPage extends LitElement {
      */
     _setView(view) {
         if (view === 'browse' && this._isUpnp(this._sourceId)) view = 'upnp-browser';
+        // Same mapping, one source further: the radio browses on its own screen.
+        if (view === 'browse' && this._isRadio(this._sourceId)) view = 'radio';
         this._view = view;
     }
 
@@ -572,6 +580,27 @@ export class AgLibraryPage extends LitElement {
         return sourceId.startsWith('upnp:');
     }
 
+    _isRadio(sourceId) {
+        return sourceId === 'src_radio';
+    }
+
+    /**
+     * The tabs the browsed source can actually serve, or null for all of them.
+     *
+     * Stations are neither albums nor artists: the radio's catalogue lives on its
+     * own screen, with its own country/genre/codec filters. Leaving Browse and
+     * Search in the bar for it offered an empty grid and an error — measured,
+     * `/library/search?source_id=src_radio` answers 400. Reading it off `kind`
+     * rather than off the id is the point of the field: the next source that
+     * serves a subset says so, and nothing here has to be edited.
+     *
+     * @returns {Array<string>|null} Tab keys to show, or null for the full bar.
+     */
+    get _sourceTabs() {
+        const kind = this._rawSources?.find(s => s.source_id === this._sourceId)?.kind;
+        return kind === 'radio' ? ['queue', 'library', 'radio'] : null;
+    }
+
     _onSourceChange(e) {
         this._pendingSource = null;
         this._artistId = '';
@@ -596,7 +625,7 @@ export class AgLibraryPage extends LitElement {
             this._sourceId       = sourceId;
             this._zoneId         = zoneId;
             this._zoneDisplayName = zoneDisplayName;
-            this._view           = 'browse';
+            this._setView('browse');
             apiPost('/player/source', { source_id: sourceId }).catch(err =>
                 console.error('[library-page] set source failed:', err)
             );
@@ -618,7 +647,7 @@ export class AgLibraryPage extends LitElement {
             this._zoneDisplayName = '';
         }
         this._sourceId = sourceId;
-        this._view     = 'browse';
+        this._setView('browse');
         apiPost('/player/source', { source_id: sourceId }).catch(err =>
             console.error('[library-page] set source failed:', err)
         );
@@ -703,7 +732,7 @@ export class AgLibraryPage extends LitElement {
                                         this._fetchRoonZoneAndSwitch(id);
                                     } else {
                                         this._sourceId = id;
-                                        this._view     = 'browse';
+                                        this._setView('browse');
                                         apiPost('/player/source', { source_id: id }).catch(err =>
                                             console.error('[library-page] banner switch failed:', err)
                                         );
@@ -721,7 +750,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isBrowse ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             ${this._isRoon(_sourceId) ? html`
                                 <button class="lib-action" @click=${() => this._navigate('roon-browser')}
@@ -748,7 +777,7 @@ export class AgLibraryPage extends LitElement {
                         <div class="lib-scroll">
                             ${this._contextLine(srcLabel)}
                             <ag-library-browse
-                                source-id=${this._isUpnp(_sourceId) ? '' : _sourceId}
+                                source-id=${this._isUpnp(_sourceId) || this._isRadio(_sourceId) ? '' : _sourceId}
                                 zone-id=${_zoneId}
                                 @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
                             ></ag-library-browse>
@@ -758,7 +787,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isArtist ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
@@ -779,7 +808,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isSearch ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
@@ -797,7 +826,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isQueue ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
@@ -814,7 +843,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isLibrary ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             <button class="lib-action" @click=${() => this._navigate('outputs')}
                                     title="Outputs" aria-label="Outputs">
@@ -840,7 +869,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isOutputs ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             <button class="lib-action" @click=${() => this._navigate('library')}
                                     title="Back to library" aria-label="Back to library">
@@ -864,7 +893,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isRoonBrow ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
@@ -881,7 +910,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isUpnpBrow ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
@@ -899,7 +928,7 @@ export class AgLibraryPage extends LitElement {
 
                 <div class="lib-view ${isRadio ? 'active' : ''}">
                     <div class="lib-topbar">
-                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
                     <div class="lib-body">
                         <div class="lib-scroll">
