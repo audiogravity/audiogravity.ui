@@ -58,6 +58,11 @@ const el = (overrides = {}) => Object.assign(Object.create(AgLibraryBrowse.proto
     sourceId: 'src_mpd',
     artistId: null,
     zoneId: '',
+    // The constructor sets this to 0 and Object.create bypasses it. Left undefined,
+    // `++this._loadToken` is NaN and every `token !== this._loadToken` guard in _load
+    // is true, so _load returns before it writes anything it fetched — a test asserting
+    // on _albums would then be asserting on the value it set itself.
+    _loadToken: 0,
     _filter: 'all',
     _albums: [],
     _offset: 0,
@@ -139,6 +144,67 @@ describe('changing pill reloads only when the order really changes', () => {
         const load = vi.fn(); host._load = load;
         host._setFilter('recent');
         expect(load).not.toHaveBeenCalled();
+    });
+});
+
+describe('only a Refresh control asks the core to walk the source again', () => {
+    // Changing pill lands on the first page, and the core used to read that as "go and
+    // look again": it dropped its cached album list and re-enumerated MPD — `list album`
+    // plus one `find window 0:1` per album. Measured on the x86 box, 475 albums: 0.19 s
+    // against 0.002 s served from the cache. The order never needs fresh data, so the
+    // intent is carried explicitly now, and this is where the two are told apart.
+    /**
+     * The `refresh` parameter of the one request that was made.
+     *
+     * It asserts a request happened first, and that is the point: reading the last call
+     * of an empty list gives `undefined`, whose query string has no `refresh` either —
+     * so a bare `toBeNull()` was equally satisfied by "asked without refresh" and by
+     * "asked nothing at all", and a browse that stopped fetching would have passed.
+     */
+    const refreshOfTheOneCall = () => {
+        expect(apiGetMock).toHaveBeenCalledTimes(1);
+        const url = apiGetMock.mock.calls[0][0];
+        return new URLSearchParams(url.split('?')[1] ?? '').get('refresh');
+    };
+
+    it('sends no refresh when a pill change reloads the list', async () => {
+        const host = el({ _filter: 'recent' });
+        host._detachObserver = () => {};
+        await host._load();
+        expect(refreshOfTheOneCall()).toBeNull();
+    });
+
+    it('sends refresh=true when the reader presses Refresh', async () => {
+        const host = el({ _filter: 'all' });
+        host._detachObserver = () => {};
+        await host._load({ refresh: true });
+        expect(refreshOfTheOneCall()).toBe('true');
+    });
+
+    it('sends it on an artist drill-down too, which reads the same cache', async () => {
+        // The artist list is cached under its own key on the same route, so a refresh
+        // there must reach the core.
+        await el({ artistId: 'Air' })._fetchPage(0, true);
+        expect(refreshOfTheOneCall()).toBe('true');
+    });
+
+    it('and leaves it out of an artist drill-down that is only a reload', async () => {
+        await el({ artistId: 'Air' })._fetchPage(0);
+        expect(refreshOfTheOneCall()).toBeNull();
+    });
+
+    it('never sends it on a page that continues a list', async () => {
+        // Re-scanning under an open list would renumber albums already on screen: the
+        // next page would skip some and repeat others.
+        await el()._fetchPage(50, true);
+        expect(refreshOfTheOneCall()).toBeNull();
+    });
+
+    it('still asks for the right order when it refreshes', async () => {
+        // The two parameters are independent; a refresh must not fall back to 'title'.
+        await el({ _filter: 'recent' })._fetchPage(0, true);
+        expect(refreshOfTheOneCall()).toBe('true');
+        expect(lastSort()).toBe('added');
     });
 });
 

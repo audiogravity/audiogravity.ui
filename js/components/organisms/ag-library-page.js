@@ -500,9 +500,24 @@ export class AgLibraryPage extends LitElement {
         if (this._view === 'browse') this._refreshBrowse();
     }
 
-    _refreshBrowse() {
+    /**
+     * Reload the browse view.
+     *
+     * Takes an object, not a positional boolean, and for a reason this file makes easy
+     * to meet: three handlers in the same render are bound as `@click=${this._x}`, and
+     * that shorthand would hand this one a PointerEvent — truthy — turning an ordinary
+     * binding into a full MPD re-enumeration with nothing on screen to say so.
+     *
+     * @param {Object}  [opts]
+     * @param {boolean} [opts.refresh=false] - Pass true only for the Refresh control. A
+     *   refresh makes the core walk the source again — one MPD round trip per album —
+     *   which is what a reader pressing ↻ asks for, and what coming back to the tab or
+     *   repairing after an account change does not.
+     * @private
+     */
+    _refreshBrowse({ refresh = false } = {}) {
         this.updateComplete.then(() => {
-            this.querySelector('ag-library-browse')?._load();
+            this.querySelector('ag-library-browse')?._load({ refresh });
         });
     }
 
@@ -806,7 +821,7 @@ export class AgLibraryPage extends LitElement {
                                     <span>Roon</span>
                                 </button>
                             ` : html`
-                                <button class="lib-action" @click=${() => this._refreshBrowse()}
+                                <button class="lib-action" @click=${() => this._refreshBrowse({ refresh: true })}
                                         title="Refresh library" aria-label="Refresh library">
                                     <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">

@@ -89,7 +89,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`. **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box** |
+| GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`, optional `?refresh=true` (re-scan the library instead of serving the core's cached list — send it for a Refresh control, never for paging or for changing `sort`. Not needed to see a re-indexed library: the cached list is dropped as soon as MPD's own database changes. Only local (MPD) sources hold such a list; streaming sources and Roon page from the provider and ignore the parameter, so it is accepted on any source and acted on by those). **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box** |
 | GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
 | POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action, duration? }` (`duration` in seconds, 0–86400: for UPnP tracks, whose length MPD cannot know before decoding the stream — it feeds the queue display) |
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
