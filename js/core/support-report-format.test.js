@@ -870,6 +870,102 @@ describe('formatSupportReport — the facts a certificate incident turns on', ()
         expect(out).toContain('unknown · avahi-daemon active');
     });
 
+    // ── The address to type ────────────────────────────────────────────────────
+    // Every half was in the report already and no line held them together: the port
+    // under WEB INTERFACE, the announced name under NETWORK, the LAN address only ever
+    // quoted inside a certificate warning. Joining them by hand is what sends a reader
+    // to port 80, where nothing listens, off a box answering perfectly on 8080.
+
+    /** The `Address` line, or undefined when the report printed none. */
+    const addressLine = out => out.split('\n').find(l => l.includes('Address'));
+
+    it('gives the address to type, the LAN one first', () => {
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'musics.local' } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).toContain('http://10.0.4.254:8080 · also http://musics.local:8080');
+    });
+
+    it('drops the port when it is the scheme default', () => {
+        // `https://box.local:443` reads as a second, different address.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'box.local' } },
+            web_ui: { scheme: 'https', port: 443, reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).toContain('https://box.local');
+        expect(addressLine(out)).not.toContain(':443');
+    });
+
+    it('drops a port that arrives as text just the same', () => {
+        // The core sends an integer; this file exists to survive a report that does not.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'box.local' } },
+            web_ui: { scheme: 'https', port: '443', reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).not.toContain(':443');
+    });
+
+    it('gives no address where the interface did not answer', () => {
+        // A TLS handshake alone sets the scheme — the core clears it only when the
+        // handshake failed too. Guarding on the scheme printed an address two lines
+        // above the report's own "NOT REACHABLE on port 8443".
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'musics.local' } },
+            web_ui: { scheme: 'https', port: 8443, reachable: false, lan_ip: '10.0.4.254' },
+        });
+        expect(out).toContain('NOT REACHABLE on port 8443');
+        expect(addressLine(out)).toBeUndefined();
+    });
+
+    it('does not offer a name whose daemon is known to be down', () => {
+        // The two probes behind the mDNS line are independent and can disagree. A name
+        // announced by a stopped daemon resolves for nobody.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'inactive', announced: 'musics.local' } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).toContain('http://10.0.4.254:8080');
+        expect(addressLine(out)).not.toContain('musics.local');
+    });
+
+    it('keeps the name avahi itself returned when systemd could not be asked', () => {
+        // A null service is "could not ask", never "the daemon is down" — and the name
+        // came back from the daemon, which is the stronger measurement of the two.
+        const out = formatSupportReport({
+            network: { mdns: { service: null, announced: 'musics.local' } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).toContain('musics.local');
+    });
+
+    it('still gives an address on a box that announces nothing', () => {
+        // The population this section is FOR. The name is missing, the LAN address is
+        // not, and a report that prints neither leaves the reader with nothing to type.
+        const out = formatSupportReport({
+            network: { mdns: { service: 'inactive', announced: null } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true, lan_ip: '10.0.4.254' },
+        });
+        expect(addressLine(out)).toContain('http://10.0.4.254:8080');
+        expect(addressLine(out)).not.toContain('also');
+    });
+
+    it('falls back to the name when the LAN address could not be read', () => {
+        const out = formatSupportReport({
+            network: { mdns: { service: 'active', announced: 'musics.local' } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true },
+        });
+        expect(addressLine(out)).toContain('http://musics.local:8080');
+    });
+
+    it('prints no address line when it has neither half', () => {
+        const out = formatSupportReport({
+            network: { mdns: { service: 'inactive', announced: null } },
+            web_ui: { scheme: 'http', port: 8080, reachable: true },
+        });
+        expect(addressLine(out)).toBeUndefined();
+    });
+
     it('omits the issue date rather than printing undefined', () => {
         // The interface and the core install as separate packages: a newer interface
         // reading an older core's report must not paste `issued undefined` into a mail.

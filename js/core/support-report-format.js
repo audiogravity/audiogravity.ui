@@ -249,6 +249,9 @@ export function formatSupportReport(report) {
             const name = mdns.announced
                 ? mdns.announced
                 : (mdns.service && mdns.service !== 'active') ? 'not announced' : 'unknown';
+            // The address this name makes is printed under WEB INTERFACE, next to the
+            // port it needs — and beside the LAN address, which is the one still worth
+            // typing when the announcement is what is broken.
             out.push(line('mDNS', `${name} · avahi-daemon ${svc}`));
         }
         for (const [name, probe] of Object.entries(network.reachability || {})) {
@@ -268,6 +271,48 @@ export function formatSupportReport(report) {
         out.push(line('Serving', web.reachable
             ? `${web.scheme} on port ${web.port}`
             : `NOT REACHABLE on port ${web.port}`));
+        // The address to type, spelled out. Every half was already in the report and
+        // no line held them together: the port here, the announced name two sections
+        // up, the LAN address only ever quoted inside a certificate warning. A reader
+        // who joins them by hand types the name on its own, lands on port 80 where
+        // nothing listens, and reads a box answering perfectly on 8080 as unreachable.
+        // Reported from the field, off a report that was exact on every count.
+        //
+        // The LAN address leads because it is the one that does not depend on mDNS
+        // reaching the reader — and a box whose announcement is broken is precisely the
+        // box a support report is opened for. The `.local` name follows: it is the only
+        // address that survives the lease changing, so it is the one worth bookmarking.
+        //
+        // Printed only when the interface ANSWERED — `reachable` is `build.json` fetched
+        // over the loopback. Not on the scheme: a TLS handshake alone sets that, and the
+        // core only clears it when the handshake failed too, so an address would have
+        // been printed two lines above "NOT REACHABLE on port 8443".
+        if (web.reachable) {
+            // Number(), not the raw value: everything else in this file goes through
+            // String(), and a port arriving as text would defeat the very elision this
+            // computes. The core sends an integer today; the module exists to survive a
+            // report that is malformed or partial.
+            const explicitPort = Number(web.port) === (web.scheme === 'https' ? 443 : 80)
+                ? ''
+                : `:${web.port}`;
+            // The two probes behind the mDNS line are independent — systemd's view of
+            // the unit, and avahi's own answer over D-Bus — so they can disagree. When
+            // the daemon is KNOWN to be down the name is not offered: it resolves for
+            // nobody, and the report would contradict itself within twelve lines. A null
+            // service is "could not ask", which is not the same answer, and there the
+            // name avahi itself returned still stands.
+            const mdnsState = report.network?.mdns || {};
+            const byName = mdnsState.announced
+                && !(mdnsState.service && mdnsState.service !== 'active')
+                ? `${web.scheme}://${mdnsState.announced}${explicitPort}`
+                : '';
+            const byIp = web.lan_ip ? `${web.scheme}://${web.lan_ip}${explicitPort}` : '';
+            const addresses = [byIp, byName].filter(Boolean).join(' · also ');
+            // ⚠️ Never a promise that either address answers from the reader's device:
+            // both are built on a port measured over the loopback, and the name on top
+            // of that needs mDNS to cross their network. It is what to type, not proof.
+            if (addresses) out.push(line('Address', addresses));
+        }
         const build = web.ui_build || {};
         if (build.version) {
             out.push(line('UI version', `${build.version} · built ${build.build_date || '—'} · commit ${build.git_commit || '—'}`));
