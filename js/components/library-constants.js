@@ -105,7 +105,12 @@ export const ORIGIN_LABELS = {
     roon: 'Roon',
     radio: 'Radio',
     upnp: 'UPnP',
-    library: 'Library',
+    // The music on the box, named the way it has always been shown. These are
+    // fallbacks for the window before `GET /player/origins` answers, so each one
+    // must AGREE with the core rather than differ from it: this entry used to say
+    // 'Library', and correcting it cost a second table mapping origins back to
+    // source ids just to recover the word.
+    library: 'Local Library',
     airplay: 'AirPlay',
     mpris: 'Stream',
     // Content AG did not start: a third-party controller is driving the
@@ -165,30 +170,24 @@ export function originLabel(origin) {
     return ORIGIN_LABELS[origin] || origin || '';
 }
 
-/** Origin → the browse source id whose full label the queue header should reuse,
- *  so a local-library queue stays "Local Library" (not "Library"). Radio/UPnP have
- *  no source card and use ORIGIN_LABELS. */
-const ORIGIN_SOURCE_LABEL_ID = {
-    library: 'src_mpd', qobuz: 'src_qobuz', tidal: 'src_tidal',
-    highresaudio: 'src_highresaudio', roon: 'src_roon',
-};
-
 /**
  * Queue header label: prefer the currently-playing item's real source (its
  * `origin`) over the browsed source, so a radio stream queued from the Local
- * Library reads "Radio". Origins backed by a browse source reuse that source's
- * full label; radio/upnp fall back to the origin label; otherwise the browsed
- * source label.
+ * Library reads "Radio", and only fall back to the browsed source when nothing
+ * is playing.
+ *
+ * This used to carry a second table, origin → source id, for one reason: the
+ * backend named the local library "Library" while the interface showed "Local
+ * Library", so the origin label could not be used as it stood. The two
+ * vocabularies are one now — ORIGIN_LABELS is filled from `GET /player/origins`
+ * — and the detour with it.
+ *
  * @param {string|null|undefined} origin - now-playing origin of the current queue item
  * @param {string} sourceId - the browsed source id
  * @returns {string}
  */
 export function queueSourceLabel(origin, sourceId) {
-    if (origin) {
-        const srcId = ORIGIN_SOURCE_LABEL_ID[origin];
-        if (srcId && SOURCE_LABELS[srcId]) return SOURCE_LABELS[srcId];
-        if (ORIGIN_LABELS[origin]) return ORIGIN_LABELS[origin];
-    }
+    if (origin && ORIGIN_LABELS[origin]) return ORIGIN_LABELS[origin];
     return SOURCE_LABELS[sourceId] || sourceId;
 }
 
@@ -230,31 +229,37 @@ export const GROUP_META = Object.values(SOURCE_META).reduce((acc, m) => {
     return acc;
 }, {});
 
-/** Streaming providers browse under their own source but play over the MPD
- *  engine (source_id 'src_mpd'); map their `origin` back to that browse source. */
-const ORIGIN_TO_SOURCE_ID = {
+/** Origin → browse source, kept ONLY for a core that predates
+ *  `content_source_id`. The frontend and backend are separate packages and can be
+ *  a version apart; without this the degradation is not "as before" but worse than
+ *  before — a station would resolve to the engine, so the sources screen would
+ *  light Local Library and the banner's Switch would open the local album grid.
+ *  Delete it when the oldest supported core sends the field. */
+const ORIGIN_TO_SOURCE_ID_LEGACY = {
     qobuz: 'src_qobuz',
     tidal: 'src_tidal',
     highresaudio: 'src_highresaudio',
-    // The radio is a source of its own, like the three above: it holds a
-    // catalogue and streams through the same engine. Missing here, a playing
-    // station resolved to the engine — so the "… is now playing" banner named
-    // the station correctly and its Switch button opened the local album grid.
     radio: 'src_radio',
 };
 
 /**
  * Identify the SOURCE currently playing, as distinct from the transport engine.
  * Qobuz/Tidal/HIGHRESAUDIO and local files all play over the MPD engine
- * (``source_id === 'src_mpd'``) but carry a distinct ``origin``. The library view
- * is organised by source, so resolve the browse source from ``origin`` first and
- * fall back to the transport ``source_id`` — otherwise "playing Qobuz" reads as
- * the MPD engine ("Local Library").
- * @param {{source_id?:string, origin?:string, origin_name?:string}} state
+ * (``source_id === 'src_mpd'``) but come from different sources, so the library
+ * view — which is organised by source — cannot use the transport id.
+ *
+ * The backend answers that now, in `content_source_id`. This used to be worked
+ * out here from `origin`, against a local table of four rows: a copy of one the
+ * core already had, and one that could not answer for a UPnP media server at
+ * all. `source_id` remains the fallback for a core that predates the field.
+ *
+ * @param {{source_id?:string, content_source_id?:string, origin?:string, origin_name?:string}} state
  * @returns {{id:string, group:string, label:string}}
  */
 export function resolvePlayingSource(state) {
-    const id = ORIGIN_TO_SOURCE_ID[state?.origin] || state?.source_id || '';
+    const id = state?.content_source_id
+        || ORIGIN_TO_SOURCE_ID_LEGACY[state?.origin]
+        || state?.source_id || '';
     const group = SOURCE_META[id]?.group ?? id;
     const label = state?.origin_name
         || GROUP_META[group]?.label

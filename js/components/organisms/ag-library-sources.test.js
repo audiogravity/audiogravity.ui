@@ -57,24 +57,44 @@ function lit(el, state) {
     return key ? key.split('\n') : [];
 }
 
+/** Origin → content source, mirroring the backend's CONTENT_SOURCE_BY_ORIGIN.
+ *  `library` is in it for the same reason it is there: a local track played by
+ *  something else (a push to HQPlayer) still comes from the local library, and
+ *  naming the thing playing it would name a routing handle no card can match.
+ *  A UPnP server is absent on purpose — nothing derives its udn from an origin,
+ *  which is why those tests pass `contentSourceId` explicitly. */
+const CONTENT_SOURCE = {
+    library: 'src_mpd', qobuz: 'src_qobuz', tidal: 'src_tidal',
+    highresaudio: 'src_highresaudio', radio: 'src_radio',
+};
+
 /**
  * Build a PlayerState as the backend sends it.
  *
  * @param {object} o - Overrides.
  * @param {string} o.sourceId - Transport node that is playing.
  * @param {string} [o.origin] - Content provider of that audio.
+ * @param {string} [o.originName] - Specific provider name (a media server's).
  * @param {boolean} [o.playing] - Whether any entry carries the active flag.
+ * @param {string|null} [o.contentSourceId] - The published content source. Left
+ *   out, it is derived as the backend derives it; passed as `null`, it stands for
+ *   a source the backend could not name, which is a case of its own.
  * @returns {object} The state.
  */
-function state({ sourceId, origin = null, originName = null, playing = true }) {
+function state({ sourceId, origin = null, originName = null, playing = true,
+                 contentSourceId: csid = undefined }) {
+    const content = csid !== undefined
+        ? csid : (CONTENT_SOURCE[origin] || sourceId || null);
     return {
         source_id: sourceId,
         origin,
         origin_name: originName,
+        content_source_id: content,
         sources: [
             {
                 source_id: sourceId, kind: 'library', playing,
                 origin, origin_name: originName,
+                content_source_id: content,
                 active: playing,
             },
             { source_id: 'src_radio', kind: 'radio', playing: false, origin: null },
@@ -126,31 +146,52 @@ describe('_playingFrom — the source, not the engine', () => {
 });
 
 describe('a UPnP server is a source too, and must not be mistaken for the engine', () => {
-    /**
-     * @param {Array} servers - Known UPnP servers, as the screen holds them.
-     * @returns {object} A bare instance carrying that list.
+    /*
+     * The screen no longer consults its own list of servers here: it reads the id
+     * the backend publishes. Telling two servers that share a friendly name apart
+     * is therefore a backend property, pinned by
+     * tests/test_now_playing.py::test_two_servers_sharing_a_name_are_told_apart.
+     * What is left to check here is what this screen decides: that it uses that
+     * id verbatim, and what it does when there is none.
      */
-    function withServers(servers) {
-        const el = bare();
-        Object.defineProperty(el, '_upnpServers', { value: servers, writable: true });
-        return el;
-    }
-
     const MINIM = { id: 'upnp:uuid:a3f9b925', friendly_name: 'Music Library' };
 
     it('lights the server the track came from', () => {
-        expect(lit(withServers([MINIM]), state({
+        expect(lit(bare(), state({
             sourceId: 'src_mpd', origin: 'upnp', originName: 'Music Library',
-        }))).toEqual(['upnp:uuid:a3f9b925']);
+            contentSourceId: MINIM.id,
+        }))).toEqual([MINIM.id]);
     });
 
-    it('lights nothing rather than Local Library when the server is unknown', () => {
-        // The regression this branch exists for: without it the generic path
-        // resolves to `state.source_id` — the MPD engine — and the local library
-        // claims a track served by a machine down the hall.
-        expect(lit(withServers([]), state({
+    it('never lights Local Library for a server this screen does not know', () => {
+        // The regression this branch exists for: read off `source_id` the answer
+        // would be the MPD engine, and the local library would claim a track
+        // served by a machine down the hall. The backend names the server, so it
+        // is named here too — no card carries that id, so none lights.
+        expect(lit(bare(), state({
             sourceId: 'src_mpd', origin: 'upnp', originName: 'Gone Server',
+            contentSourceId: 'upnp:uuid:gone',
+        }))).toEqual(['upnp:uuid:gone']);
+    });
+
+    it('names nothing when the backend could not identify the server', () => {
+        // A stream queued before the server could be named, or by a core that
+        // predates the field: falling through to the engine is the one answer
+        // that must never happen.
+        expect(lit(bare(), state({
+            sourceId: 'src_mpd', origin: 'upnp', originName: 'Music Library',
+            contentSourceId: null,
         }))).toEqual([]);
+    });
+
+    it('uses the id, not the name, for two servers that share one', () => {
+        // The name is identical on both; only the id says which is playing. Read
+        // off `origin_name`, as this screen used to, both cards lit.
+        const twin = 'upnp:uuid:twin';
+        expect(lit(bare(), state({
+            sourceId: 'src_mpd', origin: 'upnp', originName: MINIM.friendly_name,
+            contentSourceId: twin,
+        }))).toEqual([twin]);
     });
 });
 
@@ -166,9 +207,11 @@ describe('several sources can diffuse at once', () => {
         origin: 'airplay',
         sources: [
             { source_id: 'src_mpd', kind: 'library', playing: true,
-              playback_status: 'Playing', origin: 'qobuz', active: false },
+              playback_status: 'Playing', origin: 'qobuz',
+              content_source_id: 'src_qobuz', active: false },
             { source_id: 'src_shairport-sync', kind: 'input', playing: true,
-              playback_status: 'Playing', origin: 'airplay', active: true },
+              playback_status: 'Playing', origin: 'airplay',
+              content_source_id: 'src_shairport-sync', active: true },
             { source_id: 'src_qobuz', kind: 'streaming', playing: false, origin: null },
         ],
     };

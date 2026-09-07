@@ -53,11 +53,20 @@ describe('originBadge', () => {
 });
 
 describe('initOriginLabels', () => {
-    beforeEach(() => vi.clearAllMocks());
+    // Snapshot the shared map: these tests mutate it through the very function
+    // they exercise, and queueSourceLabel below reads it. Restoring here rather
+    // than after each assertion is what makes that safe — an inline restore is
+    // skipped by a failing expect, and the leak then changes what later tests
+    // assert instead of failing on its own.
+    let snapshot;
+    beforeEach(() => {
+        vi.clearAllMocks();
+        snapshot = { ...ORIGIN_LABELS };
+    });
 
     afterEach(() => {
-        // Clean up any keys added by tests so they don't leak into other tests.
-        delete ORIGIN_LABELS.__test_bluetooth;
+        for (const k of Object.keys(ORIGIN_LABELS)) delete ORIGIN_LABELS[k];
+        Object.assign(ORIGIN_LABELS, snapshot);
     });
 
     it('merges new origin keys from the backend into ORIGIN_LABELS', async () => {
@@ -67,11 +76,13 @@ describe('initOriginLabels', () => {
     });
 
     it('overwrites existing labels with backend values', async () => {
-        const original = ORIGIN_LABELS.mpris;
+        // Restored in afterEach, never inline after the assertion: a failing
+        // expect would skip the restore, and queueSourceLabel now reads this very
+        // object — a leaked key would silently change what every later test in
+        // this file asserts about the queue header.
         apiGet.mockResolvedValue({ mpris: 'Streaming' });
         await initOriginLabels();
         expect(ORIGIN_LABELS.mpris).toBe('Streaming');
-        ORIGIN_LABELS.mpris = original; // restore
     });
 
     it('keeps static fallbacks intact when the backend is unreachable', async () => {
@@ -97,7 +108,9 @@ describe('queueSourceLabel — header labels by playing origin', () => {
     });
 
     it('keeps the full source label for local library and HIGHRESAUDIO (not "Library"/"HRA")', () => {
-        // Regression guard: origin 'library' must NOT collapse to ORIGIN_LABELS.library ('Library').
+        // The two vocabularies are one now: ORIGIN_LABELS.library IS 'Local Library',
+        // so this reads it straight. What it guards is the WORDING — the core and
+        // this fallback saying the same thing — not a mapping detour any more..
         expect(queueSourceLabel('library', 'src_mpd')).toBe('Local Library');
         expect(queueSourceLabel('highresaudio', 'src_highresaudio')).toBe('HIGHRESAUDIO');
     });
@@ -123,6 +136,8 @@ describe('the radio is a source, and the picker knows it', () => {
         // the station correctly and its Switch button opened the local albums.
         const r = resolvePlayingSource({
             source_id: 'src_mpd', origin: 'radio', origin_name: 'Le Son Parisien',
+            // What the backend publishes: the station is the source, MPD carries it.
+            content_source_id: 'src_radio',
         });
         expect(r.id).toBe('src_radio');
         expect(r.group).toBe(SOURCE_META.src_radio.group);
@@ -152,29 +167,53 @@ describe('the radio is a source, and the picker knows it', () => {
 describe('resolvePlayingSource — SOURCE vs engine', () => {
     it('resolves a Qobuz stream (MPD engine) to the Qobuz browse source, not "Local Library"', () => {
         // The bug: Qobuz plays over MPD (source_id 'src_mpd') with origin 'qobuz'.
-        const r = resolvePlayingSource({ source_id: 'src_mpd', origin: 'qobuz' });
+        const r = resolvePlayingSource({
+            source_id: 'src_mpd', origin: 'qobuz', content_source_id: 'src_qobuz',
+        });
         expect(r).toEqual({ id: 'src_qobuz', group: 'qobuz', label: 'Qobuz' });
         // …and it matches the group of the Qobuz browse source (so no banner fires).
         expect(r.group).toBe(SOURCE_META.src_qobuz.group);
     });
 
     it('resolves Tidal and HIGHRESAUDIO streams to their own browse source', () => {
-        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'tidal' }))
-            .toEqual({ id: 'src_tidal', group: 'tidal', label: 'Tidal' });
+        expect(resolvePlayingSource({
+            source_id: 'src_mpd', origin: 'tidal', content_source_id: 'src_tidal',
+        })).toEqual({ id: 'src_tidal', group: 'tidal', label: 'Tidal' });
         // The name is written in full, in capitals: it is the brand as its owner
         // defines it, and there is no abbreviated label for it any more.
-        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'highresaudio' }))
-            .toEqual({ id: 'src_highresaudio', group: 'highresaudio', label: 'HIGHRESAUDIO' });
+        expect(resolvePlayingSource({
+            source_id: 'src_mpd', origin: 'highresaudio',
+            content_source_id: 'src_highresaudio',
+        })).toEqual({ id: 'src_highresaudio', group: 'highresaudio', label: 'HIGHRESAUDIO' });
     });
 
     it('keeps a local-file stream on the MPD engine ("Local Library")', () => {
-        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'library' }))
-            .toEqual({ id: 'src_mpd', group: 'mpd', label: 'Local Library' });
+        // A local file IS its own source, so the backend answers the engine id.
+        expect(resolvePlayingSource({
+            source_id: 'src_mpd', origin: 'library', content_source_id: 'src_mpd',
+        })).toEqual({ id: 'src_mpd', group: 'mpd', label: 'Local Library' });
     });
 
     it('leaves non-MPD engines (Roon) on their own source_id', () => {
-        expect(resolvePlayingSource({ source_id: 'src_mono-sgen', origin: 'roon' }))
-            .toEqual({ id: 'src_mono-sgen', group: 'roon', label: 'Roon' });
+        expect(resolvePlayingSource({
+            source_id: 'src_mono-sgen', origin: 'roon',
+            content_source_id: 'src_mono-sgen',
+        })).toEqual({ id: 'src_mono-sgen', group: 'roon', label: 'Roon' });
+
+    });
+
+    it('still resolves by origin against a core that predates the field', () => {
+        // The frontend and backend install as separate packages and can be a
+        // version apart. Degrading to the transport would be WORSE than before
+        // the field existed: a station would light Local Library and the banner's
+        // Switch would open the local album grid. The legacy table answers first.
+        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'qobuz' }).id)
+            .toBe('src_qobuz');
+        expect(resolvePlayingSource({ source_id: 'src_mpd', origin: 'radio' }).id)
+            .toBe('src_radio');
+        // And what no table can answer still falls through to the transport.
+        expect(resolvePlayingSource({ source_id: 'src_mono-sgen', origin: 'roon' }).id)
+            .toBe('src_mono-sgen');
     });
 
     it('prefers an explicit origin_name (e.g. UPnP server) for the label', () => {

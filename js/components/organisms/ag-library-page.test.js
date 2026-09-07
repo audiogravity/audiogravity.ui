@@ -48,6 +48,8 @@ vi.mock('./ag-library-sources.js', () => ({}));
 vi.mock('./ag-library-upnp-browser.js', () => ({}));
 
 const { AgLibraryPage } = await import('./ag-library-page.js');
+// The mocked module, to assert what the page asked of it.
+const { apiGet, apiPost } = await import('../../api.js');
 
 function makeEl(overrides = {}) {
     return Object.assign(Object.create(AgLibraryPage.prototype), {
@@ -135,5 +137,48 @@ describe('ag-library-page — the sources-changed funnel', () => {
         });
         await el._onSourcesChanged();
         expect(order).toEqual(['sync', 'refresh']);
+    });
+});
+
+describe('ag-library-page — switching to a media server from the banner', () => {
+    /*
+     * The banner names the source that is playing, and since the backend answers
+     * `content_source_id`, that source can be a UPnP server (`upnp:<udn>`). A
+     * server is not a pipeline source: it is browsed by ADDRESS and nothing is
+     * posted to /player/source for it. The normal path gets that address from the
+     * picker's event; the banner has not got it, so it fetches it — and taking the
+     * ordinary branch instead would set a udn as the source id, render an
+     * address-less browser (a blank page) and post a udn the core would store as
+     * its active node.
+     */
+    beforeEach(() => vi.clearAllMocks());
+
+    it('fetches the address and opens the browser, without posting a source', async () => {
+        const el = makeEl({ _sources: [], _upnpLocation: '', _upnpName: '' });
+        apiGet.mockResolvedValue([
+            { id: 'upnp:uuid:x', friendly_name: 'Music Library',
+              last_location: 'http://10.0.0.42:9791/desc.xml' },
+        ]);
+
+        await el._fetchUpnpServerAndSwitch('upnp:uuid:x');
+
+        expect(apiGet).toHaveBeenCalledWith('/library/upnp-known-servers');
+        expect(el._sourceId).toBe('upnp:uuid:x');
+        expect(el._upnpLocation).toBe('http://10.0.0.42:9791/desc.xml');
+        expect(el._upnpName).toBe('Music Library');
+        expect(el._view).toBe('upnp-browser');
+        expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('leaves the view alone when the server is no longer known', async () => {
+        // An address-less browser renders a blank page; not switching says more.
+        const el = makeEl({ _sources: [], _view: 'browse', _upnpLocation: '' });
+        apiGet.mockResolvedValue([]);
+
+        await el._fetchUpnpServerAndSwitch('upnp:uuid:gone');
+
+        expect(el._view).toBe('browse');
+        expect(el._sourceId).toBe('src_mpd');
+        expect(apiPost).not.toHaveBeenCalled();
     });
 });

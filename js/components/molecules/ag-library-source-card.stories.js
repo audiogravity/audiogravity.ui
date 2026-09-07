@@ -20,7 +20,9 @@ const Template = ({ node, active, zoneId }) => {
 };
 
 export const MPD = Template.bind({});
-MPD.args = { node: { id: 'src_mpd', name: 'MPD', status: 'active' }, active: true, zoneId: '' };
+// 'Local Library' is what the backend sends: a source is named by what it is, not
+// by the daemon carrying it. 'MPD' here would show the state this card changed.
+MPD.args = { node: { id: 'src_mpd', name: 'Local Library', status: 'active' }, active: true, zoneId: '' };
 
 export const Roon = Template.bind({});
 Roon.args = { node: { id: 'src_roon', name: 'Roon', status: 'active' }, active: false, zoneId: '' };
