@@ -304,14 +304,25 @@ decided after the response and surfaces on `PlayerState.outputs[].error`.
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
-**Item identity — display vs routing.** Every now-playing item carries three separate
+**Item identity — display vs routing.** Every now-playing item carries four separate
 fields:
 
 | Field | Use it for | Never use it for |
 |---|---|---|
 | `origin` (+ `origin_name`) | the badge: `qobuz`, `library`, `radio`, `upnp` + server name, `external` | routing |
+| `content_source_id` | naming the SOURCE the content comes from | routing |
 | `played_on` | naming the output: `"local"` or a renderer UDN | routing |
 | `control_id` | routing a transport command | display |
+
+`content_source_id` is the id of the source the content came from, as opposed to
+`source_id`, which names the transport carrying it: `src_qobuz` for a Qobuz album playing
+over MPD, `upnp:<udn>` for a media-server stream, and the transport id itself when the
+source IS the transport (a local file, a Roon stream). `null` in two cases, which read differently: an entry that is **not playing** has no content
+to name (every idle `sources[]` row carries `null`, which is its resting state), and a
+playing UPnP stream whose server could not be identified when it was queued. Match a source
+card on this, never on `origin_name`: two media servers may share a friendly name, and
+matching on it lights both of their cards. It appears on the player state and on the
+`sources[]` entries that are playing, beside `origin`.
 
 A cast is badged with what it **is** — a Qobuz album cast to a speaker reads `origin:
 "qobuz"`, `played_on: "<udn>"` — while `control_id` stays `"upnp_renderer"`, the handle
