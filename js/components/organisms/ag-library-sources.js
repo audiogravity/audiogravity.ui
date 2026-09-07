@@ -102,21 +102,17 @@ export class AgLibrarySources extends LitElement {
      * @returns {string} The source id to badge, or '' when it names none.
      */
     _contentSourceOf(src) {
-        if (src.origin === 'upnp') {
-            // A media server is a source like the others, but it reaches this
-            // screen through its own endpoint and is keyed by `upnp:<udn>` — an
-            // id the player state does not carry. Only the server's NAME is
-            // there, so that is what this matches on; two servers sharing one
-            // would both light up, and carrying the id through the state is
-            // tracked in BACKLOG.md.
-            //
-            // Returning nothing when the name matches no known server is the
-            // point of the branch: falling through would resolve to the engine
-            // and light "Local Library" while a MinimServer track plays, which
-            // is the very defect this screen exists to fix.
-            return this._upnpServers.find(
-                srv => srv.friendly_name === src.origin_name)?.id ?? '';
-        }
+        // The backend names it, media servers included: an entry keyed
+        // `upnp:<udn>` here matches the card built from the same id. This used to
+        // match a UPnP server by its friendly NAME, the only thing the player
+        // state carried — so two servers sharing one both lit up.
+        if (src.content_source_id) return src.content_source_id;
+        // No id: a core that predates the field, or a stream whose server could
+        // not be identified when it was queued. For a UPnP stream that means
+        // naming nothing rather than falling through to the engine, which would
+        // light "Local Library" while a MinimServer track plays — the very defect
+        // this screen exists to fix.
+        if (src.origin === 'upnp') return '';
         return resolvePlayingSource(src).id || '';
     }
 

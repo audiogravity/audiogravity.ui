@@ -655,6 +655,48 @@ export class AgLibraryPage extends LitElement {
 
 
     /**
+     * Open a UPnP media server named by the banner, fetching what opening it needs.
+     *
+     * A server is not a pipeline source: it is browsed by ADDRESS, and nothing is
+     * posted to `/player/source` for it — the normal path gets that address from
+     * the picker's event, which the banner has not got. So it is fetched here, the
+     * way the Roon branch fetches its zone.
+     *
+     * Naming a server the screen no longer knows leaves the view alone rather than
+     * opening an empty browser: an address-less `ag-library-upnp-browser` renders
+     * a blank page, which is worse than not switching.
+     *
+     * @param {string} sourceId - `upnp:<udn>`.
+     * @returns {Promise<void>}
+     */
+    async _fetchUpnpServerAndSwitch(sourceId) {
+        let server = this._sources.find(s => s.id === sourceId);
+        if (!server?.location) {
+            try {
+                const known = await apiGet('/library/upnp-known-servers');
+                const hit = Array.isArray(known)
+                    ? known.find(s => s.id === sourceId) : null;
+                if (hit) {
+                    server = { id: hit.id, label: hit.friendly_name || 'UPnP',
+                               group: hit.id, location: hit.last_location || '' };
+                }
+            } catch (err) {
+                console.error('[library-page] known UPnP servers failed:', err);
+            }
+        }
+        if (!server?.location) return;
+        this._upnpLocation    = server.location;
+        this._upnpName        = server.label;
+        this._sourceId        = sourceId;
+        this._zoneId          = '';
+        this._zoneDisplayName = '';
+        this._view            = 'upnp-browser';
+        if (!this._sources.some(s => s.id === sourceId)) {
+            this._sources = [...this._sources, server];
+        }
+    }
+
+    /**
      * The line naming (or marking) the source, above the content it describes.
      *
      * @param {string|import('lit').TemplateResult} label - The source's name, or the
@@ -730,6 +772,8 @@ export class AgLibraryPage extends LitElement {
                                     this._pendingSource = null;
                                     if (this._isRoon(id)) {
                                         this._fetchRoonZoneAndSwitch(id);
+                                    } else if (this._isUpnp(id)) {
+                                        this._fetchUpnpServerAndSwitch(id);
                                     } else {
                                         this._sourceId = id;
                                         this._setView('browse');

@@ -97,7 +97,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
-| POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }` |
+| POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }`. ⚠️ `source_id` names the **media server being browsed** (`upnp:<udn>`), not an MPD source: it is registered with the stream so the player state can say which server the audio came from. Anything else still plays — the MPD output is chosen on its own — but the stream then lights no source card, and two servers sharing a friendly name become indistinguishable |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL. Items now carry **`duration`** (seconds, from DIDL `res@duration`, `null` when the server publishes none); it was parsed and then silently dropped, so clients received nothing to size a progress bar with |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL. On a local (MPD) source, same **503** as `/library/albums` for a stopped daemon or a box with no library — rather than "no results", which reads as "your music does not contain that" |
 | GET | `/library/upnp-known-servers` | List discovered UPnP servers — returns `location` field |
@@ -304,14 +304,25 @@ decided after the response and surfaces on `PlayerState.outputs[].error`.
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
-**Item identity — display vs routing.** Every now-playing item carries three separate
+**Item identity — display vs routing.** Every now-playing item carries four separate
 fields:
 
 | Field | Use it for | Never use it for |
 |---|---|---|
 | `origin` (+ `origin_name`) | the badge: `qobuz`, `library`, `radio`, `upnp` + server name, `external` | routing |
+| `content_source_id` | naming the SOURCE the content comes from | routing |
 | `played_on` | naming the output: `"local"` or a renderer UDN | routing |
 | `control_id` | routing a transport command | display |
+
+`content_source_id` is the id of the source the content came from, as opposed to
+`source_id`, which names the transport carrying it: `src_qobuz` for a Qobuz album playing
+over MPD, `upnp:<udn>` for a media-server stream, and the transport id itself when the
+source IS the transport (a local file, a Roon stream). `null` in two cases, which read differently: an entry that is **not playing** has no content
+to name (every idle `sources[]` row carries `null`, which is its resting state), and a
+playing UPnP stream whose server could not be identified when it was queued. Match a source
+card on this, never on `origin_name`: two media servers may share a friendly name, and
+matching on it lights both of their cards. It appears on the player state and on the
+`sources[]` entries that are playing, beside `origin`.
 
 A cast is badged with what it **is** — a Qobuz album cast to a speaker reads `origin:
 "qobuz"`, `played_on: "<udn>"` — while `control_id` stays `"upnp_renderer"`, the handle
@@ -507,7 +518,7 @@ ends. Never present it as what will be heard.
 | POST | `/qobuz/connection` | Start OAuth2 flow — **502** when the Qobuz app-bundle credentials cannot be fetched (`play.qobuz.com` unreachable / format changed) |
 | GET | `/qobuz/oauth/callback` | OAuth2 callback (browser redirect target) — renders a styled result page; a core failure returns the styled **error** page with status **502**, not a raw 500 |
 | DELETE | `/qobuz/connection` | Disconnect |
-| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
+| GET | `/qobuz/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes). **503** `{"detail": "Qobuz unavailable"}` when the track cannot be resolved or the CDN cannot be reached — the reason is written to the journal and never to the caller, the endpoint taking no key. A CDN that answers and **refuses** keeps its own status instead (a **403** says the signed URL was rejected, which is not the same failure as an unreachable CDN) |
 
 ### HIGHRESAUDIO (HRA) — `/highresaudio/*`
 | Method | Path | Description |
@@ -515,7 +526,7 @@ ends. Never present it as what will be heard.
 | GET | `/highresaudio/connection` | Connection state (`connected`, `username`, `subscription` + `has_subscription` — the shared subscription contract, see **Streaming subscription state** above). `subscription` is HRA's own word for the session — `SUBSCRIPTION` or `NO SUBSCRIPTION`; `has_subscription` is `false` when the account can play only its purchases (the Vault): the catalogue, favourites and playlists refuse that session. `null` while disconnected. A client reading a core that predates the field must treat its absence as subscribed |
 | POST | `/highresaudio/connection` | Log in — body `{username, password}`. 401 when HRA issues no session (bad credentials). An account without a subscription IS connected, with `has_subscription: false` |
 | DELETE | `/highresaudio/connection` | Disconnect (logout + clear credentials) |
-| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes) |
+| GET | `/highresaudio/stream/{track_id}` | FLAC pass-through proxy — **public (no auth)**, used by UPnP renderers on the LAN. `?mode=redirect` → **302** to a fresh CDN URL (local MPD path: MPD follows it, so the enqueued proxy URL never expires and AG relays no bytes). Same error contract as the Qobuz proxy: **503** `{"detail": "HRA unavailable"}` when the track cannot be resolved or the CDN cannot be reached (reason to the journal, not to the caller), the CDN's **own status** when it answers and refuses. Same path shape as the Qobuz route: an empty or multi-segment id is **404**, never a request to HIGHRESAUDIO |
 
 ### Services — `/services/*`
 | Method | Path | Description |

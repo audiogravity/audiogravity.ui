@@ -19,7 +19,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { getRoonZones } from '../../library-store.js';
-import { ROON_IDS, SOURCE_LABELS, SOURCE_ICONS } from '../library-constants.js';
+import { ROON_IDS, SOURCE_ICONS } from '../library-constants.js';
 import { iconChevronDown, iconOutput, iconCheck } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import './ag-roon-status.js';
@@ -126,7 +126,11 @@ export class AgLibrarySourceCard extends LitElement {
         if (!node) return nothing;
 
         const icon     = SOURCE_ICONS[node.id] ?? SOURCE_ICONS.default;
-        const name     = SOURCE_LABELS[node.id] ?? node.name;
+        // The core's name, not ours. It used to be the other way round — a local
+        // table won over the backend and only mattered for one entry, where the
+        // core answered "MPD" for the music on the box. The core names the source
+        // now, so overriding it here could only reintroduce a disagreement.
+        const name     = node.name;
         // Source cards carry no subtitle — the label ('Local Library', 'Qobuz'…)
         // is self-explanatory and every source stays visually consistent.
         const desc     = null;

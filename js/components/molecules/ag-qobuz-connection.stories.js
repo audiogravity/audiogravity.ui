@@ -16,7 +16,6 @@ export default {
 const Template = () => {
     const el = document.createElement('ag-qobuz-connection');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
-    el.addEventListener('sources-changed',    () => console.log('sources-changed'));
     el.addEventListener('sources-changed', () => console.log('sources-changed'));
     return el;
 };
