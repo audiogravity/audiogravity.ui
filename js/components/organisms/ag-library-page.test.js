@@ -108,6 +108,71 @@ describe('ag-library-page — one home for the view mapping', () => {
         expect(el._refreshBrowse).toHaveBeenCalledTimes(1);
     });
 
+    it('_navigate reloads without asking the core to walk the source again', () => {
+        // Two different costs behind one verb. A reload reads the album list the core
+        // already holds; a refresh makes it re-enumerate MPD, one round trip per album
+        // (0.19 s for 475 albums, measured). Arriving on the browse is not a request
+        // for fresh data — the cached list expires on its own.
+        const el = makeEl();
+        el._navigate('browse');
+        expect(el._refreshBrowse).toHaveBeenCalledWith();
+    });
+
+    it('the ↻ button is the one caller that does ask for it', () => {
+        // Driven through the rendered button, so a template that stopped passing the
+        // flag is caught here — but through THAT button's own handler, found by the
+        // label beside it. Calling every function in the tree would fire _navigate,
+        // _onTabChange and a global np-expand event, and then any caller passing true
+        // would satisfy the assertion, which is not what this claims to pin.
+        const el = makeEl({ _sources: [], _upnpServers: [], _view: 'browse' });
+        const calls = [];
+        el._refreshBrowse = (...args) => calls.push(args);
+
+        /** Depth-first walk of the mocked `html` tree: {strings, values}. */
+        const handlerNextTo = (node, label) => {
+            if (Array.isArray(node)) {
+                for (const n of node) { const f = handlerNextTo(n, label); if (f) return f; }
+                return null;
+            }
+            if (!node || typeof node !== 'object' || !node.strings) return null;
+            const owns = node.strings.some(s => typeof s === 'string' && s.includes(label));
+            if (owns) {
+                // The click handler is the value that sits in the interpolation just
+                // before the label's own string, and it is the only function there.
+                const fn = node.values.find(v => typeof v === 'function');
+                if (fn) return fn;
+            }
+            for (const v of node.values ?? []) {
+                const f = handlerNextTo(v, label);
+                if (f) return f;
+            }
+            return null;
+        };
+
+        const onClick = handlerNextTo(el.render(), 'aria-label="Refresh library"');
+        expect(onClick, 'the Refresh button is not in this render').toBeTypeOf('function');
+        onClick();
+        expect(calls).toEqual([[{ refresh: true }]]);
+    });
+
+    it('the ↻ handler ignores an event handed to it as its argument', () => {
+        // `@click=${this._refreshBrowse}` is the shorthand used three lines away for
+        // _onTabChange and _onSourceChange. With a positional boolean, that binding
+        // would pass a PointerEvent — truthy — and quietly re-enumerate the library.
+        const browse = { _load: vi.fn() };
+        // The factory stubs _refreshBrowse for every other case here; this one is about
+        // the real method, so it is put back.
+        const el = makeEl({
+            _refreshBrowse: AgLibraryPage.prototype._refreshBrowse,
+            updateComplete: Promise.resolve(),
+            querySelector: () => browse,
+        });
+        el._refreshBrowse(new Event('click'));
+        return el.updateComplete.then(() => {
+            expect(browse._load).toHaveBeenCalledWith({ refresh: false });
+        });
+    });
+
     it('a tab switch leaves artist mode', () => {
         const el = makeEl({ _artistId: 'x', _artistName: 'X' });
         el._onTabChange({ detail: { tab: 'search' } });

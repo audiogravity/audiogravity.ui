@@ -606,7 +606,19 @@ export class AgLibraryBrowse extends LitElement {
     // Data loading
     // ------------------------------------------------------------------
 
-    async _load() {
+    /**
+     * Reload the browse from its first page.
+     *
+     * @param {Object}  [opts]
+     * @param {boolean} [opts.refresh=false] - Ask the core to re-scan the source
+     *   instead of serving its cached album list. Only a Refresh control passes it:
+     *   enumerating an MPD library costs one round trip per album, and a reload that
+     *   merely changes the order has no use for fresh data. Everything else — landing
+     *   on the browse, switching pill, repairing after an account change — reloads
+     *   from the cache the core already holds.
+     * @private
+     */
+    async _load({ refresh = false } = {}) {
         if (!this.sourceId) return;
         // Every load opens a new generation. A page requested under the previous sort can
         // still be in flight — switching pill now reloads on MPD too, which it did not
@@ -691,7 +703,7 @@ export class AgLibraryBrowse extends LitElement {
             this._fav.load(this.sourceId);   // non-blocking — star state fills in
         }
         await loadWithState(this, async () => {
-            const page = await this._fetchPage(0);
+            const page = await this._fetchPage(0, refresh);
             if (token !== this._loadToken) return;   // superseded while we waited
             this._albums  = page;
             this._offset  = page.length;
@@ -716,30 +728,43 @@ export class AgLibraryBrowse extends LitElement {
         }
     }
 
-    async _fetchPage(offset) {
+    /**
+     * Fetch one page of albums.
+     *
+     * @param {number}  offset            - First album to ask for.
+     * @param {boolean} [refresh=false]   - Forwarded to the core as `refresh=true`, and
+     *   only ever on the first page: a page that continues a list must read the same
+     *   list, so re-scanning underneath it would renumber what has already been shown.
+     * @private
+     */
+    async _fetchPage(offset, refresh = false) {
+        // The two /library/albums calls below differ only in the parameters they build;
+        // everything after that was the same three lines twice, which is the duplication
+        // rule 9 refuses at the second occurrence rather than at the fifth.
+        const albumsPage = (params) => {
+            if (refresh && offset === 0) params.set('refresh', 'true');
+            if (this.zoneId) params.set('zone_id', this.zoneId);
+            return apiGet(`/library/albums?${params}`);
+        };
         // Artist drill-down bypasses the per-source pill routing: every source
         // resolves an artist's albums through /library/albums?artist_id=… .
         if (this.artistId) {
-            const params = new URLSearchParams({
+            return albumsPage(new URLSearchParams({
                 source_id: this.sourceId,
                 artist_id: this.artistId,
                 offset:    String(offset),
                 limit:     String(PAGE_SIZE),
-            });
-            if (this.zoneId) params.set('zone_id', this.zoneId);
-            return apiGet(`/library/albums?${params}`);
+            }));
         }
         if (this._isQobuz) return this._fetchQobuzPage(offset);
         if (this._isTidal) return this._fetchTidalPage(offset);
         if (this._isHighresaudio) return this._fetchHighresaudioPage(offset);
-        const params = new URLSearchParams({
+        return albumsPage(new URLSearchParams({
             source_id: this.sourceId,
             offset:    String(offset),
             limit:     String(PAGE_SIZE),
             ...(this._isRoon ? {} : { sort: MPD_SORT[this._filter] ?? 'title' }),
-        });
-        if (this.zoneId) params.set('zone_id', this.zoneId);
-        return apiGet(`/library/albums?${params}`);
+        }));
     }
 
     /** @private Qobuz-specific fetch: route to different endpoints per pill. */
@@ -1784,7 +1809,7 @@ export class AgLibraryBrowse extends LitElement {
               : html`
                 <div class="lib-section-hd">
                     <span class="lib-sh-t">${this._sectionLabel}</span>
-                    <span class="lib-sh-more" @click=${() => this._load()}>Refresh</span>
+                    <span class="lib-sh-more" @click=${() => this._load({ refresh: true })}>Refresh</span>
                 </div>
                 ${recent.length > 0 ? html`
                     <div class="lib-album-row">
