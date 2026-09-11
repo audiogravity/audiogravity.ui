@@ -230,11 +230,6 @@ export class AgTabs extends LitElement {
                 this._tabStats = { ...this._tabStats, 'audio-software': stat };
             };
             window.EventEmitter.on('audio-software-stats', this._handleSoftwareStats);
-
-            this._handleUsersStats = (stat) => {
-                this._tabStats = { ...this._tabStats, admin: stat };
-            };
-            window.EventEmitter.on('users-stats', this._handleUsersStats);
         }
 
         // Announcement badge — updated by ag-announcement-banner after each load/dismiss
@@ -340,7 +335,6 @@ export class AgTabs extends LitElement {
             if (this._handleProfilesStats) window.EventEmitter.off('profiles-list-update', this._handleProfilesStats);
             if (this._handleServicesStats) window.EventEmitter.off('services-list-update', this._handleServicesStats);
             if (this._handleSoftwareStats) window.EventEmitter.off('audio-software-stats', this._handleSoftwareStats);
-            if (this._handleUsersStats) window.EventEmitter.off('users-stats', this._handleUsersStats);
         }
         window.removeEventListener('touchstart', this._boundTouchStart);
         window.removeEventListener('touchmove', this._boundTouchMove);
@@ -694,7 +688,14 @@ export class AgTabs extends LitElement {
         try {
             const stats = await apiGet('/stats/tabs');
             if (stats && typeof stats === 'object') {
-                this._tabStats = { ...this._tabStats, ...stats };
+                // The Admin tab no longer carries a connected-users counter. The
+                // frontend and the core ship as separate packages, so a core that
+                // predates its removal still answers with an `admin` entry —
+                // dropping it here keeps the counter gone whatever the core says.
+                // Naming the key is the point: `admin` IS a tab id (index.html),
+                // so keeping "only the keys that name a real tab" would keep it.
+                const { admin: _dropped, ...rest } = stats;
+                this._tabStats = { ...this._tabStats, ...rest };
             }
         } catch (_) {
             // Non-blocking: sidebar stats are best-effort

@@ -45,7 +45,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/auth/users` | Create user (admin) |
 | PATCH | `/auth/users/{username}` | Update a user (password, role, enabled) |
 | DELETE | `/auth/users/{username}` | Delete a user |
-| GET | `/auth/users/active` | Current user info |
+| GET | `/auth/users/active` | Usernames holding a live SSE connection (admin) — feeds the online mark on each user card |
 | POST | `/auth/webauthn/register/begin` | Start passkey registration |
 | POST | `/auth/webauthn/register/complete` | Complete passkey registration |
 | POST | `/auth/webauthn/login/begin` | Start passkey login — always **200** with authentication options (empty `allowCredentials` when the user is unknown or has no passkeys); never 404, whatever the username |
@@ -893,7 +893,7 @@ service can have no file yet — writing one creates it.
 | GET | `/` | Root — service identity, and the `endpoints` map of what this core serves. `endpoints.docs` is present only when the interactive reference is switched on, which is how the interface decides whether to offer it |
 | GET | `/health` | Backend health check |
 | GET | `/status` | Backend status |
-| GET | `/stats/tabs` | Per-tab usage counters |
+| GET | `/stats/tabs` | Per-tab counters, keyed by tab id: `profiles`, `services` and `audio-software`, each `{num, den}`. A tab whose source is unavailable carries no key at all — read every key as optional. No `admin` key: the connected-users counter it fed is gone from the sidebar |
 | GET | `/monitoring/dashboard` | Same stream as `/sse/dashboard` (alias) |
 | GET | `/sse/dashboard` | SSE stream the UI opens — every real-time update |
 | GET | `/sse/{channel}` | One bus channel — `dashboard`, `player`, `system`, `services`, `profiles`, `performance`, `audio_config`, `steering`. **404** on any other name: `{channel}` is a channel, not an event type (`/sse/sysinfo` is not "the `sysinfo` events" — that event rides on `dashboard`) |
