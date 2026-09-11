@@ -20,6 +20,7 @@ vi.mock('../../auth.js', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));
 
 import { AgTabs } from './ag-tabs.js';
+import { apiGet } from '../../api.js';
 
 /** Bare instance with mocked style targets. */
 function makeEl(overrides = {}) {
@@ -115,4 +116,30 @@ describe('ag-tabs — licence gating', () => {
             expect(gate(tab, 'trial')).toBe(false);
         }
     });
+});
+
+// ---------------------------------------------------------------------------
+// The Admin tab carries no connected-users counter
+// ---------------------------------------------------------------------------
+
+describe('ag-tabs — no connected-users counter', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('ignores an "admin" entry served by an older core, and keeps the others', async () => {
+        // The frontend and the core ship as separate packages: a core that
+        // predates the removal still answers with the counter.
+        apiGet.mockResolvedValueOnce({
+            profiles: { num: 1, den: 10 },
+            services: { num: 2, den: 5 },
+            admin: { num: 1, den: 3 },
+        });
+
+        const el = makeEl({ _tabStats: {} });
+        await AgTabs.prototype._fetchInitialStats.call(el);
+
+        expect(el._tabStats.admin).toBeUndefined();
+        expect(el._tabStats.profiles).toEqual({ num: 1, den: 10 });
+        expect(el._tabStats.services).toEqual({ num: 2, den: 5 });
+    });
+
 });

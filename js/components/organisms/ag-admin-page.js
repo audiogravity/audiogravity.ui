@@ -57,7 +57,10 @@ export class AgAdminPage extends LitElement {
         this.usersFetch = new FetchController(this, {
             autoFetch: false,
             fetchFn: async () => {
-                if (!isAdmin()) return { users: [], activeUsers: [] };
+                // Key it `activeUsersList`, as onSuccess reads it: the mismatched
+                // `activeUsers` left `this.activeUsers` undefined, and render()
+                // calls .includes() on it.
+                if (!isAdmin()) return { users: [], activeUsersList: [] };
                 const [users, activeUsersList] = await Promise.all([
                     apiGet('/auth/users'),
                     apiGet('/auth/users/active').catch(() => [])
@@ -67,9 +70,6 @@ export class AgAdminPage extends LitElement {
             onSuccess: (data) => {
                 this.users = data.users;
                 this.activeUsers = data.activeUsersList;
-                if (window.EventEmitter) {
-                    window.EventEmitter.emit('users-stats', { num: data.activeUsersList.length, den: data.users.length });
-                }
             }
         });
 
@@ -167,9 +167,6 @@ export class AgAdminPage extends LitElement {
         if (Array.isArray(e.detail)) {
             this.activeUsers = e.detail;
             this.requestUpdate();
-            if (window.EventEmitter) {
-                window.EventEmitter.emit('users-stats', { num: e.detail.length, den: this.users.length });
-            }
         }
     }
 
