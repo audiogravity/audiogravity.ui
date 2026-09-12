@@ -22,9 +22,23 @@ vi.mock('../../ag-icons.js', () => ({
     iconSmartphone: '', iconServer: '', iconCpu: '', iconAudioWaveform: '',
     iconAudioLines: '', iconVolume: '', iconMusicNote: '', iconDatabase: '',
     iconConnection: '',
+    // Pulled in by library-constants, which the origin badge resolves through.
+    iconRadio: '', iconHardDrive: '', iconWifi: '', iconLibrary: '',
+    iconExternalLink: '', iconCast: '',
+}));
+vi.mock('../atoms/ag-source-badge.js', () => ({}));
+// The player-state stream is the component's second input. Subscribing is
+// recorded rather than opened: the real store would build an EventSource.
+const playerSubs = [];
+vi.mock('../../library-store.js', () => ({
+    subscribePlayerState: vi.fn((cb) => {
+        playerSubs.push(cb);
+        return () => { playerSubs.splice(playerSubs.indexOf(cb), 1); };
+    }),
 }));
 
 import { apiGet } from '../../api.js';
+import { subscribePlayerState } from '../../library-store.js';
 import { AgMobilePipeline } from './ag-mobile-pipeline.js';
 
 const PIPELINE = '/audio_pipeline/current';
@@ -44,6 +58,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     apiGet.mockResolvedValue({});
+    playerSubs.length = 0;
 });
 
 afterEach(() => {
@@ -262,5 +277,153 @@ describe('what the panel says is declared', () => {
         }])._renderNoChain());
 
         expect(out).toContain('USB Audio Output, Optical Output');
+    });
+});
+
+describe('a card names where the audio comes from, not just what carries it', () => {
+    /**
+     * A pipeline with one active service and its now-playing block, which is all
+     * `_getActiveStreams` reads.
+     */
+    function pipelineWith(serviceId, serviceName, npKey = 'mpd') {
+        return {
+            nodes: [
+                {
+                    type: 'device', device_type: 'streamer', status: 'active',
+                    internal_services: [{ id: npKey, label: serviceName }],
+                    metadata: { service_now_playing: { [npKey]: { title: 'Hot Slob', state: 'playing' } } },
+                },
+                { type: 'service', id: serviceId, name: serviceName, status: 'active' },
+            ],
+        };
+    }
+
+    /** Component with a pipeline and a player state already delivered. */
+    function view(pipeline, sources) {
+        const el = makeEl();
+        el.connectedCallback();
+        el._pipeline = pipeline;
+        el._onPlayerState({ sources });
+        return el;
+    }
+
+    it('reads the provider from the player state, which the pipeline does not carry', () => {
+        // Measured on the box: /audio_pipeline/current has title/format and no
+        // origin, so the card could only ever say "MPD" for a Qobuz album.
+        const el = view(pipelineWith('src_mpd', 'MPD'), [
+            { source_id: 'src_mpd', playing: true, origin: 'qobuz', protocol: 'mpd' },
+        ]);
+        const [stream] = el._getActiveStreams();
+
+        expect(stream.origin).toBe('qobuz');
+        expect(el._showOrigin(stream)).toBe(true);
+    });
+
+    it('prefers the server or station name over the generic word', () => {
+        const el = view(pipelineWith('src_mpd', 'MPD'), [
+            { source_id: 'src_mpd', playing: true, origin: 'upnp', origin_name: 'MinimServer', protocol: 'mpd' },
+        ]);
+
+        expect(el._getActiveStreams()[0].originName).toBe('MinimServer');
+    });
+
+    it('joins HQPlayer across the two ids the sides use for it', () => {
+        // The pipeline node is the local daemon holding the PCM
+        // (src_networkaudiod); the player's item is the engine (src_hqplayer).
+        // Without the alias the card would find no origin at all.
+        const el = view(pipelineWith('src_networkaudiod', 'HQPlayer NAA', 'networkaudiod'), [
+            { source_id: 'src_hqplayer', playing: true, origin: 'qobuz', protocol: 'hqplayer' },
+        ]);
+        const [stream] = el._getActiveStreams();
+
+        expect(stream.origin).toBe('qobuz');
+        expect(el._showOrigin(stream)).toBe(true);
+    });
+
+    it('stays quiet when the provider would only repeat the transport', () => {
+        const el = view(pipelineWith('src_shairport-sync', 'AirPlay', 'shairport-sync'), [
+            { source_id: 'src_shairport-sync', playing: true, origin: 'airplay', protocol: 'mpris' },
+        ]);
+
+        expect(el._showOrigin(el._getActiveStreams()[0])).toBe(false);
+    });
+
+    it('stays quiet when the two pills merely word the same thing differently', () => {
+        // "HQPlayer NAA" beside "HQPlayer" says one thing twice. The name is
+        // still what the players need, where no transport pill stands next to
+        // it — this is the pipeline declining a repeat, not the name being wrong.
+        const el = view(pipelineWith('src_networkaudiod', 'HQPlayer NAA', 'networkaudiod'), [
+            { source_id: 'src_hqplayer', playing: true, origin: 'external', protocol: 'hqplayer' },
+        ]);
+        const [stream] = el._getActiveStreams();
+
+        expect(stream.originName).toBe('HQPlayer');
+        expect(el._showOrigin(stream)).toBe(false);
+    });
+
+    it('stays quiet for an origin that names no provider at all', () => {
+        // upmpdcli streams report origin 'mpris' — the core's "a player is
+        // streaming and AG cannot say from where", shown as "Stream". Beside a
+        // pill already reading "UPnP Bridge" it is furniture.
+        const el = view(pipelineWith('src_upmpdcli', 'UPnP Bridge', 'upmpdcli'), [
+            { source_id: 'src_upmpdcli', playing: true, origin: 'mpris', protocol: 'mpris' },
+        ]);
+
+        expect(el._showOrigin(el._getActiveStreams()[0])).toBe(false);
+    });
+
+    it('says nothing rather than guessing when the player knows no origin', () => {
+        const el = view(pipelineWith('src_mpd', 'MPD'), [
+            { source_id: 'src_mpd', playing: true, origin: null, protocol: 'mpd' },
+        ]);
+
+        expect(el._showOrigin(el._getActiveStreams()[0])).toBe(false);
+    });
+});
+
+describe('reading the player stream costs the box nothing', () => {
+    it('joins the stream the mini player already holds open, without a request', () => {
+        const el = makeEl();
+        el.connectedCallback();
+
+        expect(subscribePlayerState).toHaveBeenCalledTimes(1);
+        expect(callsTo('/player/state')).toBe(0);
+        expect(callsTo('/player/state/snapshot')).toBe(0);
+    });
+
+    it('ignores a tick that changes nothing, instead of re-rendering the tab', () => {
+        // The stream carries the playback position: it fires about once a second
+        // whether the origin moved or not (CLAUDE.md rule 12).
+        const el = makeEl();
+        el.connectedCallback();
+        const sources = [{ source_id: 'src_mpd', playing: true, origin: 'qobuz', protocol: 'mpd' }];
+
+        el._onPlayerState({ sources });
+        const first = el._origins;
+        el._onPlayerState({ sources: [{ ...sources[0], elapsed: 42 }] });
+
+        expect(el._origins).toBe(first);       // same object — no state change
+    });
+
+    it('does take the change when the track moves to another provider', () => {
+        const el = makeEl();
+        el.connectedCallback();
+
+        el._onPlayerState({ sources: [{ source_id: 'src_mpd', playing: true, origin: 'qobuz', protocol: 'mpd' }] });
+        const first = el._origins;
+        el._onPlayerState({ sources: [{ source_id: 'src_mpd', playing: true, origin: 'radio', origin_name: 'FIP', protocol: 'mpd' }] });
+
+        expect(el._origins).not.toBe(first);
+        expect(el._origins.src_mpd).toEqual({ origin: 'radio', name: 'FIP' });
+    });
+
+    it('lets go of the stream when the tab is left', () => {
+        const el = makeEl();
+        el.connectedCallback();
+        expect(playerSubs.length).toBe(1);
+
+        el.disconnectedCallback();
+
+        expect(playerSubs.length).toBe(0);
     });
 });

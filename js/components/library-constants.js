@@ -161,6 +161,35 @@ export function originBadge(origin, name) {
 }
 
 /**
+ * Specific provider name to hand {@link originBadge} for a now-playing entry.
+ *
+ * `origin_name` is what the core publishes whenever it can name the provider
+ * behind the transport: the UPnP/DLNA server a stream comes from, the station a
+ * radio URL was recognised as. Nothing read it, so a MinimServer stream badged
+ * "UPnP" and a station badged "Radio" — the generic word, when the specific one
+ * was already in the payload.
+ *
+ * It is empty for a playback AG did not start. HQPlayer driven from its own
+ * remote reports `origin: 'external'` and no track identity at all — the API's
+ * Status does not expose one — and the badge then read "External", which names
+ * nobody. The transport is the one thing AG can still name there, so it is
+ * named. Only for `external`: when HQPlayer plays content AG pushed, the origin
+ * IS known (the library, Qobuz…) and naming the processor instead would hide it.
+ *
+ * @param {{origin?: string, origin_name?: string, protocol?: string}} item -
+ *   A now-playing entry (a `sources[]` row of the player state, or an item
+ *   built from one).
+ * @returns {string} The specific name, or '' when the generic origin label is
+ *   the answer.
+ */
+export function originBadgeName(item) {
+    if (!item) return '';
+    if (item.origin_name) return item.origin_name;
+    if (item.origin === 'external' && item.protocol === 'hqplayer') return 'HQPlayer';
+    return '';
+}
+
+/**
  * Resolve the display label for a stream origin kind, falling back to the raw
  * kind when unknown.
  * @param {string|null|undefined} origin - origin kind (e.g. 'qobuz', 'radio').

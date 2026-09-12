@@ -1203,6 +1203,9 @@ export class AgAudioPipeline extends LitElement {
                 </div>
             ` : ''}
 
+            <!-- BACKLOG: this view still names only the transport — "MPD" for a Qobuz album
+                 as for a station. The mobile view reads the origin off the player stream;
+                 doing the same here means reworking the SVG geometry. See /BACKLOG.md. -->
             ${node.metadata?.now_playing?.title ? html`
                 <div class="ndp-section">
                     <div class="ndp-section-title">Now Playing</div>

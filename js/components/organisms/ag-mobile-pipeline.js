@@ -1,6 +1,20 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
+import { subscribePlayerState } from '../../library-store.js';
+import { originBadge, originBadgeName } from '../library-constants.js';
 import { iconSmartphone, iconServer, iconCpu, iconAudioWaveform, iconAudioLines, iconVolume, iconMusicNote as iconFileMusic, iconDatabase, iconConnection } from '../../ag-icons.js';
+import '../atoms/ag-source-badge.js';
+
+/**
+ * Pipeline node id → player source id, for the one service the two name
+ * differently: the pipeline names the daemon that holds the local PCM
+ * (`networkaudiod`), the player names the engine that decides what plays
+ * (`src_hqplayer`). Everything else — MPD, Shairport, the UPnP bridge, Roon
+ * Bridge — carries the same id on both sides.
+ */
+const PLAYER_SOURCE_ALIAS = {
+    src_networkaudiod: 'src_hqplayer',
+};
 
 /**
  * Mobile-optimized read-only view of the active audio pipeline.
@@ -15,6 +29,7 @@ export class AgMobilePipeline extends LitElement {
         _loading:   { state: true },
         _steering:  { state: true },
         _switching: { state: true },
+        _origins:   { state: true },
     };
 
     // Light DOM: inject scoped styles once into <head>
@@ -28,7 +43,13 @@ ag-mobile-pipeline { display: block; min-height: 100%; }
 ag-mobile-pipeline .amp-section-label { font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 10px; padding-left: 2px; }
 ag-mobile-pipeline .amp-streams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 ag-mobile-pipeline .amp-np-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; }
-ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px; }
+ag-mobile-pipeline .amp-source-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm); margin-bottom: 12px; }
+ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
+/* The origin badge is a shared atom sized for the players (--font-size-xs).
+   Here it sits against the transport pill, which is one step down, and two pills
+   of different sizes on one row read as an accident. Same closed scale, one step
+   — not a value of its own (UI rule 6). */
+ag-mobile-pipeline .amp-source-row .ag-source-badge { font-size: var(--font-size-xxs); }
 ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--color-info-text); }
 ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--color-warning-text); }
 ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
@@ -127,6 +148,9 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         this._steering = null;
         this._switching = false;
         this._steeringInterval = null;
+        /** @type {Object<string, {origin: string, name: string}>} source id → badge input */
+        this._origins = {};
+        this._unsubscribeState = null;
 
         // No throttle here, unlike ag-audio-pipeline: that one guards a heavy SVG
         // redraw, this one renders a short list. And the core already publishes only
@@ -153,6 +177,18 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         this._fetch();          // initial state, once
         this._fetchSteering();
 
+        // Where the audio COMES FROM is not in the pipeline payload: its
+        // now-playing block carries the track and the format, and the card could
+        // only name the transport — everything played through MPD read "MPD",
+        // whether it came from Qobuz, a station or the local disk. The player
+        // state carries it (origin + origin_name) for every source, HQPlayer and
+        // a cast renderer included, so it is read rather than added there.
+        //
+        // Free on the box: the mini player, which is always mounted, already
+        // holds this stream open, and library-store multiplexes subscribers onto
+        // the one connection (CLAUDE.md rule 12).
+        this._unsubscribeState = subscribePlayerState(s => this._onPlayerState(s));
+
         // Steering has no event on the dashboard channel (it publishes on its own
         // channel, which the UI does not subscribe to) and costs ~5 ms, so it stays
         // polled — at a third of the previous rate, since it only changes on a user
@@ -164,6 +200,33 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         super.disconnectedCallback();
         window.removeEventListener('audio-pipeline-update', this._onPipelineUpdate);
         clearInterval(this._steeringInterval);
+        if (this._unsubscribeState) {
+            this._unsubscribeState();
+            this._unsubscribeState = null;
+        }
+    }
+
+    /**
+     * Keep the origin of each playing source from the player-state stream.
+     *
+     * That stream also carries the playback position, so it fires about once a
+     * second. Only what this view displays is kept, and `_origins` is replaced
+     * only when it actually differs — otherwise every tick would re-render the
+     * whole tab, on the machine that plays the music (CLAUDE.md rule 12).
+     *
+     * @param {{sources?: Array<object>}} state - PlayerState event payload.
+     */
+    _onPlayerState(state) {
+        const next = {};
+        for (const s of state?.sources ?? []) {
+            if (!s.playing || !s.origin) continue;
+            next[s.source_id] = { origin: s.origin, name: originBadgeName(s) };
+        }
+        const keys = Object.keys(next);
+        const same = keys.length === Object.keys(this._origins).length
+            && keys.every(k => this._origins[k]?.origin === next[k].origin
+                            && this._origins[k]?.name   === next[k].name);
+        if (!same) this._origins = next;
     }
 
     async _fetch() {
@@ -319,6 +382,11 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
                 }
             }
 
+            // The transport node and the player name the same stream with the
+            // same id (src_mpd, src_shairport-sync…) — except HQPlayer, hence
+            // the alias.
+            const origin = this._origins[PLAYER_SOURCE_ALIAS[svc.id] ?? svc.id] ?? null;
+
             return {
                 id: svc.id,
                 label: svc.name || svcKey,
@@ -329,6 +397,8 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
                 format,
                 state: np?.state,
                 volume: np?.volume != null ? np.volume : null,
+                origin:     origin?.origin ?? null,
+                originName: origin?.name   || null,
             };
         });
     }
@@ -403,6 +473,37 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         return result;
     }
 
+    /**
+     * Whether a stream's origin badge says something the transport pill does not.
+     *
+     * An AirPlay session is carried by the AirPlay receiver and comes from
+     * AirPlay: two pills reading the same word teach nothing, and the pipeline
+     * is the one view where the transport is the subject — the chain below the
+     * card is titled with it.
+     *
+     * @param {{origin: string|null, originName: string|null, label: string}} stream
+     * @returns {boolean}
+     */
+    _showOrigin(stream) {
+        if (!stream.origin) return false;
+        // `mpris` is the core's word for "a player is streaming and AG cannot
+        // say from where"; it renders as "Stream", which names no provider. In
+        // the players that is the only indication there is, so it earns its
+        // place — here the transport pill already reads "UPnP Bridge" and a
+        // second pill saying "Stream" would only add furniture.
+        if (stream.origin === 'mpris' && !stream.originName) return false;
+        const badge = originBadge(stream.origin, stream.originName);
+        if (!badge) return false;
+        const label     = badge.label.toLowerCase();
+        const transport = (stream.label || '').toLowerCase();
+        if (!transport) return true;
+        // Containment, not equality: the transport pill names the daemon and the
+        // origin names the thing — "HQPlayer NAA" against "HQPlayer", "Roon
+        // Bridge" against "Roon". Two pills saying one word twice teach nothing,
+        // and an exact match let both of those pairs through.
+        return !transport.includes(label) && !label.includes(transport);
+    }
+
     _renderNowPlayingCards() {
         const streams = this._getActiveStreams();
         if (!streams.length) {
@@ -413,9 +514,14 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
             <div class="amp-streams">
                 ${streams.map(s => html`
                     <div class="amp-np-card">
-                        <div class="amp-source-badge" data-color="${s.color}">
-                            <div class="amp-source-dot" data-color="${s.color}"></div>
-                            ${s.label}
+                        <div class="amp-source-row">
+                            <div class="amp-source-badge" data-color="${s.color}">
+                                <div class="amp-source-dot" data-color="${s.color}"></div>
+                                ${s.label}
+                            </div>
+                            ${this._showOrigin(s)
+                                ? html`<ag-source-badge .origin=${s.origin} .name=${s.originName ?? ''}></ag-source-badge>`
+                                : ''}
                         </div>
                         ${s.title ? html`
                             <div class="amp-np-title">${s.title}</div>
