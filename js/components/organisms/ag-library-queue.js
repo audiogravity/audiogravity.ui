@@ -285,6 +285,9 @@ export class AgLibraryQueue extends LitElement {
                         <div class="lib-queue-col">
                             <span class="lib-queue-col-t">${item.title}</span>
                             <span class="lib-queue-col-a">${item.artist ?? ''}${item.album ? ` — ${item.album}` : ''}</span>
+                            <!-- BACKLOG: no specific name here — a queue item carries the origin
+                                 kind but not the provider name, so two media servers or two
+                                 stations read alike. The players show the name. See /BACKLOG.md. -->
                             ${mixed ? html`<ag-source-badge origin=${item.origin}></ag-source-badge>` : nothing}
                         </div>
                         <span class="lib-queue-dur">${fmtDuration(item.duration)}</span>

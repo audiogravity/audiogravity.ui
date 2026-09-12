@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
+import { originBadgeName } from '../library-constants.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
@@ -691,7 +692,7 @@ export class AgNowPlaying extends LitElement {
                 <div class="np-info">
                     <div class="np-source-row">
                         ${item.origin
-                            ? html`<ag-source-badge .origin=${item.origin}></ag-source-badge>`
+                            ? html`<ag-source-badge .origin=${item.origin} .name=${originBadgeName(item)}></ag-source-badge>`
                             : html`<span class="np-service-badge">${item.display_name}</span>`}
                         ${item.output_connector && !this._rendererActive
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`

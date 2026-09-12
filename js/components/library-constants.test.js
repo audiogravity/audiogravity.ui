@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS } from './library-constants.js';
+import { originBadge, originBadgeName, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -49,6 +49,38 @@ describe('originBadge', () => {
 
     it('gives "external" its own icon, not the generic fallback', () => {
         expect(originBadge('external').icon).not.toEqual(originBadge('mystery').icon);
+    });
+});
+
+describe('originBadgeName — the specific name the core already publishes', () => {
+    it('hands back the name the payload carries', () => {
+        // Both were in the payload all along and nothing read them: a media
+        // server stream badged "UPnP", a recognised station badged "Radio".
+        expect(originBadgeName({ origin: 'upnp', origin_name: 'MinimServer' })).toBe('MinimServer');
+        expect(originBadgeName({ origin: 'radio', origin_name: 'FIP' })).toBe('FIP');
+    });
+
+    it('leaves the generic label alone when there is no specific name', () => {
+        expect(originBadgeName({ origin: 'qobuz' })).toBe('');
+        expect(originBadgeName({ origin: 'library' })).toBe('');
+        expect(originBadgeName(null)).toBe('');
+    });
+
+    it('names HQPlayer when nothing else can be named', () => {
+        // Driven from its own remote, HQPlayer reports no track identity —
+        // the badge read "External", which names nobody.
+        expect(originBadgeName({ origin: 'external', protocol: 'hqplayer' })).toBe('HQPlayer');
+    });
+
+    it('does not hide the content behind the processor that plays it', () => {
+        // A track AG pushed to HQPlayer HAS a known origin; naming the
+        // processor there would replace the answer with the machinery.
+        expect(originBadgeName({ origin: 'library', protocol: 'hqplayer' })).toBe('');
+        expect(originBadgeName({ origin: 'qobuz', protocol: 'hqplayer' })).toBe('');
+    });
+
+    it('leaves a third-party renderer as external — AG cannot name it', () => {
+        expect(originBadgeName({ origin: 'external', protocol: 'upnp' })).toBe('');
     });
 });
 

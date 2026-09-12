@@ -30,7 +30,7 @@ import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
-import { originBadge } from '../library-constants.js';
+import { originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
@@ -832,7 +832,10 @@ export class AgNowPlayingFullscreen extends LitElement {
         const tnLabel     = tn
             ? `A${Math.ceil(parseInt(tn) / 10)} · TRACK ${tn.toString().padStart(2, '0')}`
             : null;
-        const sourceBadge = s?.origin ? originBadge(s.origin, null) : null;
+        // Same specific name as the mini player: this screen is one tap away
+        // from it, and a stream reading "MinimServer" there and "UPnP" here
+        // would look like two different things playing.
+        const sourceBadge = s?.origin ? originBadge(s.origin, originBadgeName(s)) : null;
 
         // A hidden probe <img> detects 404s on the CSS background-image URL (CSS
         // background-image errors are silent — there is no onerror event on the div).

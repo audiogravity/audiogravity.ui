@@ -11,6 +11,9 @@
  * - Index clamping: _activeSourceIdx is clamped when items shrink
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Simulate the _onState auto-follow logic from ag-now-playing.js
@@ -394,5 +397,32 @@ describe('AgNowPlaying — volume in flight (real _sendControl)', () => {
             sources: [{ source_id: 'src_hqplayer', active: true, playing: true, volume: 12 }],
         });
         expect(el._items[0].volume).toBe(12);
+    });
+});
+
+/**
+ * The badge is rendered inside the component's template, which these tests
+ * deliberately do not mount (ag-now-playing pulls in auth and the DOM at import
+ * time — see the module header). What can still be pinned down is the wiring,
+ * and it is the wiring that was wrong: the atom has always accepted a specific
+ * name and no call-site passed one, so a MinimServer stream read "UPnP" and a
+ * station read "Radio" while both names sat in the payload.
+ */
+describe('the source badge is given the specific name, not just the kind', () => {
+    const SOURCE = readFileSync(
+        path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing.js'),
+        'utf8',
+    );
+
+    it('passes a name to every ag-source-badge it renders', () => {
+        const badges = SOURCE.match(/<ag-source-badge[^>]*>/g) ?? [];
+
+        expect(badges.length).toBeGreaterThan(0);
+        for (const badge of badges) expect(badge).toMatch(/\.name=/);
+    });
+
+    it('takes that name from the shared resolver rather than a table of its own', () => {
+        expect(SOURCE).toMatch(/import \{ originBadgeName \} from '\.\.\/library-constants\.js'/);
+        expect(SOURCE).toMatch(/\.name=\$\{originBadgeName\(item\)\}/);
     });
 });

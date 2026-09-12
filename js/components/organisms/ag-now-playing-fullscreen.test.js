@@ -12,6 +12,9 @@
  * - _switchSource is a no-op when already on the target source
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Simulate the _applyState auto-follow logic from ag-now-playing-fullscreen.js
@@ -727,5 +730,28 @@ describe('AgNowPlayingFullscreen — volume in flight (real _control)', () => {
         await first;
         expect(el._state.volume).toBe(60);
         expect(el._volumePending.target).toBe(60);
+    });
+});
+
+/**
+ * The fullscreen player is one tap from the mini player, and both badge the
+ * same stream. This screen resolved its badge with the name hard-wired to
+ * `null`, which went unnoticed while no caller passed a name at all — the
+ * moment the mini player started passing one, the same stream read
+ * "MinimServer" in one and "UPnP" in the other.
+ */
+describe('the badge agrees with the mini player it is opened from', () => {
+    const SOURCE = readFileSync(
+        path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing-fullscreen.js'),
+        'utf8',
+    );
+
+    it('never resolves a badge with the name thrown away', () => {
+        expect(SOURCE).not.toMatch(/originBadge\([^)]*,\s*null\s*\)/);
+    });
+
+    it('uses the shared resolver, so both screens answer from one rule', () => {
+        expect(SOURCE).toMatch(/import \{ originBadge, originBadgeName \} from '\.\.\/library-constants\.js'/);
+        expect(SOURCE).toMatch(/originBadge\(s\.origin, originBadgeName\(s\)\)/);
     });
 });
