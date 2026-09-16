@@ -18,6 +18,9 @@
  *   - left-swipe past threshold    → remove from the current sub-tab's list
  *
  * @element ag-library-radio
+ * @fires radio-started - Bubbles once a station has actually started playing (not
+ *   when it is merely requested). detail: { station }. The library page adopts the
+ *   radio as its browsed source on this.
  * @dependency css/components/library-radio.css
  */
 import { LitElement, html, nothing } from 'lit';
@@ -248,6 +251,13 @@ export class AgLibraryRadio extends LitElement {
         const { station } = e.detail;
         try {
             await radioPlay(station.uuid);
+            // Announce the station that ACTUALLY started, so the page can adopt the
+            // radio as the browsed source. `radio-play` carries the intent and fires
+            // before this await, so a station that failed to start would have moved
+            // the reader onto a radio-shaped tab bar under an error message.
+            this.dispatchEvent(new CustomEvent('radio-started', {
+                detail: { station }, bubbles: true,
+            }));
         } catch (err) {
             // Deliberately NOT `catalogueErrorMessage`: two unrelated failures
             // reach this catch as a 503. The catalogue one is worded for a

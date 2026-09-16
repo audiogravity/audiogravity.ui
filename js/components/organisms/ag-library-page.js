@@ -321,6 +321,8 @@ export class AgLibraryPage extends LitElement {
         _upnpServers:     { state: true },
         /** Non-null when an external source change is detected — drives the banner. */
         _pendingSource:   { state: true },
+        /** What the OUTPUTS view is given — see where _syncActiveSource writes it. */
+        _outputsSourceId: { state: true },
         /** Artist drill-down: the artist whose albums the browse is filtered to. */
         _artistId:        { state: true },
         _artistName:      { state: true },
@@ -339,17 +341,23 @@ export class AgLibraryPage extends LitElement {
         this._sources         = [];
         this._upnpServers     = [];
         this._pendingSource   = null;
+        /** Source GROUP the reader waved away; not rendered, so not a Lit property. */
+        this._dismissedGroup  = null;
+        this._outputsSourceId = '';
         this._artistId        = '';
         this._artistName      = '';
         this._unsubscribeState = null;
         this._boundLibGoto    = (e) => this._onLibGoto(e);
         this._boundSourcesChanged = () => this._onSourcesChanged();
+        this._boundRadioPlay  = () => this._onRadioStarted();
     }
 
     connectedCallback() {
         super.connectedCallback();
         this._injectStyles();
-        this._syncActiveSource();
+        // The one call allowed to open a screen: arriving on the page, landing on
+        // what plays is the answer. Every later sync only refreshes state.
+        this._syncActiveSource({ navigate: true });
         window.addEventListener('lib-goto', this._boundLibGoto);
         // One event for every way the source list can change — a streaming
         // service connected or disconnected, a UPnP server forgotten. Without
@@ -357,11 +365,21 @@ export class AgLibraryPage extends LitElement {
         // plays), and the UPnP half never refreshed at all: its servers are
         // fetched once, on mount.
         this.addEventListener('sources-changed', this._boundSourcesChanged);
+        // A station that STARTED is the reader saying the radio is what they listen
+        // to, so the page adopts it as the browsed source — the picker's own gesture,
+        // reached from the radio screen. Without it the radio was only ever what the
+        // VIEW showed, and stepping off that view (to the queue, to the sources) put
+        // the banner back up, offering a switch to the station just started by hand.
+        // `radio-started` fires after the play call resolves, unlike `radio-play`,
+        // which carries the intent and would move the bar under an error message.
+        this.addEventListener('radio-started', this._boundRadioPlay);
         // BACKLOG item resolved: subscribe permanently so the library stays in sync
         // even when the fullscreen player is closed.
         this._unsubscribeState = subscribePlayerState(s => this._onPlayerState(s));
         // Known UPnP/DLNA media servers (e.g. MinimServer) aren't part of the
         // playback pipeline sources, so fetch them so they appear in search too.
+        // BACKLOG: this races _syncActiveSource's own lookup when a UPnP stream plays
+        // at mount — both may GET /library/upnp-known-servers. See BACKLOG.md.
         this._loadUpnpServers();
     }
 
@@ -382,6 +400,24 @@ export class AgLibraryPage extends LitElement {
         this._refreshBrowse();
     }
 
+    /**
+     * Adopt the radio as the browsed source, because a station the reader started by
+     * hand has actually begun playing. Nothing is posted to /player/source:
+     * `src_radio` is a content id, not a pipeline node, and the core resolves the
+     * transport on its own — measured, it answers `src_mpd` either way.
+     *
+     * `_outputsSourceId` is deliberately left alone: a station plays over MPD, so
+     * the outputs view must keep steering the engine, not a content id.
+     *
+     * @returns {void}
+     */
+    _onRadioStarted() {
+        this._pendingSource = null;
+        this._dismissedGroup = null;
+        this._sourceId = 'src_radio';
+        this._setView('radio');
+    }
+
     async _loadUpnpServers() {
         try {
             const servers = await apiGet('/library/upnp-known-servers');
@@ -398,6 +434,7 @@ export class AgLibraryPage extends LitElement {
         super.disconnectedCallback();
         window.removeEventListener('lib-goto', this._boundLibGoto);
         this.removeEventListener('sources-changed', this._boundSourcesChanged);
+        this.removeEventListener('radio-started', this._boundRadioPlay);
         if (this._unsubscribeState) {
             this._unsubscribeState();
             this._unsubscribeState = null;
@@ -408,38 +445,98 @@ export class AgLibraryPage extends LitElement {
         injectLibStyles();
     }
 
-    async _syncActiveSource({ force = false } = {}) {
+    /**
+     * Adopt the source the snapshot is playing, with the zone that goes with it.
+     *
+     * The id taken is the CONTENT's, never the transport's. A station, a Qobuz
+     * album and a UPnP stream all travel over MPD, so ``source_id`` reads
+     * ``src_mpd`` for the three of them, while ``content_source_id`` names the
+     * source each came from. Measured on the box while a station played:
+     * ``source_id=src_mpd``, ``content_source_id=src_radio``, and
+     * ``origin_name="Radio Choco HD"``.
+     *
+     * This used to read ``source_id``, and it was the ONE writer of ``_sourceId``
+     * that did: every other path here — the picker, the search bar, the banner —
+     * already stores a content id. The banner compares at the content level too,
+     * so the two halves of one screen answered "which source?" off two different
+     * fields, and a reader sitting on the radio screen was offered a switch to the
+     * radio.
+     *
+     * @param {Object}  [opts]
+     * @param {boolean} [opts.force=false] - Bypass the snapshot cache.
+     * @param {boolean} [opts.navigate=false] - Allow this call to OPEN a screen the
+     *   reader did not ask for. True on mount only. `sources-changed` lands here too,
+     *   fired by the account cards that live on the sources screen itself, so a
+     *   Qobuz sign-in while a UPnP stream played would have thrown the reader into a
+     *   media browser mid-task.
+     * @returns {Promise<void>}
+     */
+    async _syncActiveSource({ force = false, navigate = false } = {}) {
         try {
             const state = await getSnapshot({ force });
             if (state?.sources) {
                 this._rawSources = state.sources;
                 this._sources = this._normalizeSources(state.sources);
             }
-            if (state?.source_id) {
-                // HQPlayer is a DSP output, not a browseable library source.
-                // Don't switch the library to it — keep the current source.
-                if (state.source_id !== 'src_hqplayer') {
-                    if (state.zone_id) this._zoneId = state.zone_id;
-                    this._zoneDisplayName = state.zone_display_name || '';
-                    this._sourceId = state.source_id;
-                    // Re-apply the view mapping for the source we just adopted:
-                    // it is keyed on the source, and this assignment changed it.
-                    // Without this, coming back with the radio selected left the
-                    // view on 'browse' while the Browse tab had just been taken
-                    // out of the bar — no tab highlighted, and an empty grid.
-                    this._setView(this._view);
-                    // UPnP control URL is not persisted — redirect to source picker
-                    // so the user can re-select the server rather than seeing a blank browse.
-                    if (this._isUpnp(state.source_id)) this._view = 'library';
-                }
+            // A refresh refreshes, and adopts nothing. `sources-changed` lands here
+            // from the account cards on the sources screen, and adopting there moved
+            // the reader off what they were browsing — onto the radio screen when a
+            // station happened to play, and off a Roon pick for the outputs view,
+            // which then rewrote MPD's ALSA output and called it a success.
+            if (!navigate || !state?.source_id) return;
+            const playing = resolvePlayingSource(state);
+            // Degrade to the transport rather than adopting nothing. A core older
+            // than the one that added `content_source_id` makes the resolver fall
+            // back to a local table, which can name `src_qobuz` while `sources[]`
+            // still lists only `src_mpd` — and this is the ONLY writer of
+            // `_sourceId`, so refusing outright left the library on "Select a
+            // source" with nothing able to repair it.
+            let adopt = playing?.id;
+            if (!this._isBrowsable(state.sources, adopt)) adopt = state.source_id;
+            if (!this._isBrowsable(state.sources, adopt)) return;
+            // The OUTPUTS view asks a different question — which SERVICE feeds the
+            // DAC — so it is fed separately. That view DERIVES a service name from
+            // what it is handed, which is wrong for every content source and worse
+            // for a stale Roon id; this field only preserves what it used to get.
+            // BACKLOG: have that view ask /steering/status instead — see BACKLOG.md.
+            // Fed with exactly what `_sourceId` used to hold before this method
+            // started storing content ids: the transport on arrival, the reader's own
+            // pick on the gesture paths below. Handing it `src_qobuz` instead posted
+            // `{service:'qobuz'}` to /steering/switch-output, unknown to the core.
+            //
+            // Written on arrival and on those gestures, never on a refresh and never
+            // on a live state — both would have erased the reader's pick before they
+            // reached the Outputs button, and an SSE arrives every three seconds.
+            this._outputsSourceId = state.source_id;
+            if (state.zone_id) this._zoneId = state.zone_id;
+            this._zoneDisplayName = state.zone_display_name || '';
+            if (this._isUpnp(adopt)) {
+                // A media server is browsed by ADDRESS, and no player state carries
+                // one — fetch it and open the server, the path the banner's Switch
+                // takes. When nothing opens (not allowed to navigate, or the server
+                // no longer known) the transport is a better answer than adopting a
+                // udn whose browser would render an address-less blank page — but it
+                // has to pass the same test, or a UPnP stream pushed to HQPlayer
+                // falls back onto the very handle the guard above refuses.
+                if (await this._fetchUpnpServerAndSwitch(adopt)) return;
+                if (!this._isBrowsable(state.sources, state.source_id)) return;
+                this._sourceId = state.source_id;
+            } else {
+                this._sourceId = adopt;
             }
+            // Re-apply the view mapping for the source we just adopted: it is keyed
+            // on the source, and this assignment changed it. Without this, coming
+            // back with the radio selected left the view on 'browse' while the
+            // Browse tab had just been taken out of the bar — no tab highlighted,
+            // and an empty grid.
+            this._setView(this._view);
         } catch (_) {}
     }
 
     /**
      * Handle live PlayerState SSE events.
-     * Keeps the source list fresh and surfaces a banner when the active source
-     * changes externally (e.g. Roon starts playing while the user browses MPD).
+     * Keeps the source list fresh and surfaces a banner when what plays is NOT what
+     * the screen shows (e.g. Roon starts playing while the user browses MPD).
      * mpris sources (AirPlay, Spotify) are ignored — they have no library API.
      * @param {object} state - PlayerState from the SSE stream.
      */
@@ -453,23 +550,124 @@ export class AgLibraryPage extends LitElement {
         // Banner logic — skip until the initial snapshot has set _sourceId.
         if (!this._sourceId || !state.source_id) return;
 
-        // Distinguish SOURCE from engine: Qobuz/Tidal/HIGHRESAUDIO and local
-        // files all play over the MPD engine ('src_mpd') but carry a distinct
-        // `origin`. Compare at the source level (as the library view does) so
-        // playing Qobuz while browsing Qobuz does not spuriously offer to switch
-        // to "Local Library" (the engine).
-        const viewedGroup = SOURCE_META[this._sourceId]?.group ?? this._sourceId;
+        // Distinguish SOURCE from engine: Qobuz/Tidal/HIGHRESAUDIO, stations and
+        // local files all play over the MPD engine ('src_mpd') but carry a distinct
+        // `origin`. Compare at the source level, and against what the screen SHOWS
+        // (`_shownGroup`) rather than what it browses, so neither playing Qobuz
+        // while browsing Qobuz nor sitting on the radio screen while a station
+        // plays offers a switch to the source already on screen.
         const playing = resolvePlayingSource(state);
-        if (playing.group === viewedGroup) {
+        if (this._shownGroups.has(playing.group)) {
             this._pendingSource = null;   // same source — only the engine differs
+            // The refusal lapses only when the BROWSED source catches up with what
+            // plays. Merely glancing at the radio screen is not a change of mind,
+            // and clearing it there brought a dismissed banner back three seconds
+            // after the reader stepped away.
+            if (playing.group === this._groupOf(this._sourceId)) this._dismissedGroup = null;
             return;
         }
         // Skip mpris receivers (AirPlay, Spotify) — no library to browse.
         const info = state.sources?.find(s => s.source_id === state.source_id);
         if (info?.protocol === 'mpris') return;
-        // Don't re-raise the banner if it's already showing for this source.
+        // And skip what is no source at all. Under external control the core names
+        // no content source, so the resolver hands back a routing handle: the banner
+        // then offered "HQPlayer is now playing", and its Switch adopted `src_hqplayer`
+        // as the browsed source — POSTing it to /player/source and sending the browse
+        // to /library/albums?source_id=src_hqplayer.
+        //
+        // Judged against the LAST KNOWN list rather than this event's. Measured on
+        // the box, every `state` event does carry `sources`, so the two agree today;
+        // `_rawSources` is preferred because it is refreshed from this very event a
+        // few lines above and still answers if one ever arrives without the list.
+        if (!this._isBrowsable(this._rawSources, playing.id)) return;
+        // Don't re-raise the banner if it's already showing for this source, nor
+        // after the reader has waved it away. The core republishes this state about
+        // every three seconds while something plays (measured on the box: three
+        // events in ten seconds), so a Dismiss that only cleared _pendingSource was
+        // undone before the finger left the screen — the button did nothing at all.
         if (this._pendingSource?.id === playing.id) return;
+        if (this._dismissedGroup === playing.group) return;
+        // Something else plays now: the earlier refusal was about another source
+        // and lapses with it, so that source can raise the banner again later.
+        this._dismissedGroup = null;
         this._pendingSource = { id: playing.id, name: playing.label };
+    }
+
+    /**
+     * Wave the banner away, and remember WHICH source was refused.
+     *
+     * Clearing `_pendingSource` alone did not survive: the core republishes the
+     * player state about every three seconds while something plays, and the next
+     * one raised the banner again — the button looked broken because it was.
+     *
+     * Refused by GROUP, like every other test here. Roon answers under two ids —
+     * `src_roon` is a documented alias of the `src_mono-sgen` node — so a refusal
+     * pinned to an id would be undone the moment the core named the other one.
+     *
+     * @returns {void}
+     */
+    _dismissBanner() {
+        const id = this._pendingSource?.id;
+        this._dismissedGroup = id ? this._groupOf(id) : null;
+        this._pendingSource = null;
+    }
+
+    /**
+     * @param {string} id - A source id.
+     * @returns {string} Its dedup group, or the id itself when it has none.
+     */
+    _groupOf(id) {
+        return SOURCE_META[id]?.group ?? id;
+    }
+
+    /**
+     * Whether an id names something this page can actually open.
+     *
+     * What merely CARRIES audio without holding a catalogue — HQPlayer, a network
+     * renderer — the core publishes ``selectable: false``, and under external
+     * control it names no content source at all, so the resolver's fallback hands
+     * back exactly such a handle. Read the core's answer rather than keeping a copy
+     * of its list here: the copy named HQPlayer alone, and let an externally driven
+     * renderer through as a source nobody can browse.
+     *
+     * An entry MISSING from ``sources[]`` is refused too, not waved through: once
+     * playback stops the handle stays in ``source_id`` while its entry is gone, and
+     * reading absence as consent re-adopted the very thing this refuses. Every real
+     * content source is listed — measured on the box: mpd, radio, qobuz, tidal,
+     * highresaudio, roon and the inputs. The one legitimate absentee is a media
+     * server, which is no pipeline node at all.
+     *
+     * @param {Array<{source_id:string, selectable?:boolean}>} [sources] - `sources[]`.
+     * @param {string} [id] - The source id to judge.
+     * @returns {boolean}
+     */
+    _isBrowsable(sources, id) {
+        if (!id) return false;
+        if (this._isUpnp(id)) return true;
+        const node = sources?.find(s => s.source_id === id);
+        return node !== undefined && node.selectable !== false;
+    }
+
+    /**
+     * The groups the screen is showing the reader — usually one, sometimes two.
+     *
+     * The radio has a screen of its own, reached from the tab bar WITHOUT changing
+     * the browsed source: ``_onTabChange`` moves the view alone. So a reader can sit
+     * on the radio screen, start a station there (``ag-library-radio`` plays it and
+     * tells nobody), and leave ``_sourceId`` still naming the local library. They
+     * are looking at the radio all the same, and there is nothing to offer them a
+     * switch to — which is what the banner did, naming the very station playing.
+     *
+     * The radio ADDS to what the screen shows; it does not replace it. Reading the
+     * radio screen while the local library plays is ordinary, and answering "radio"
+     * alone there offered a switch to the library the reader was already browsing.
+     *
+     * @returns {Set<string>} Source group keys, as SOURCE_META spells them.
+     */
+    get _shownGroups() {
+        const groups = new Set([this._groupOf(this._sourceId)]);
+        if (this._view === 'radio') groups.add(this._groupOf('src_radio'));
+        return groups;
     }
 
     /**
@@ -553,13 +751,15 @@ export class AgLibraryPage extends LitElement {
         const { view, source_id } = e.detail ?? {};
         if (!view) return;
         document.querySelector('ag-tabs')?.selectTab('library');
-        // Honour an explicit source_id passed by the caller (e.g. the fullscreen
-        // player switching to the OUTPUTS view for the source it's currently
-        // showing, which may differ from the library's active source). For Roon
-        // we need a zone_id too, otherwise ag-library-browse rejects the load —
-        // resolve it from the cached Roon zones. We don't POST /player/source
-        // here: this is a navigation, not an active-source switch.
-        if (source_id && source_id !== this._sourceId) {
+        // Honour an explicit source_id passed by the caller — today that is the
+        // fullscreen player opening the OUTPUTS view for the source it is showing,
+        // which may differ from the library's. What it hands over is a TRANSPORT
+        // (`state.source_id`), so it goes to the outputs view and NOT to the browsed
+        // source: writing it there turned a correctly-adopted `src_radio` back into
+        // `src_mpd`, and the next state re-raised the very banner this page now
+        // suppresses. For Roon we still resolve a zone_id — several views read it.
+        // We don't POST /player/source here: this is a navigation, not a switch.
+        if (source_id && source_id !== this._outputsSourceId) {
             if (this._isRoon(source_id)) {
                 try {
                     const zones = await getRoonZones();
@@ -575,7 +775,7 @@ export class AgLibraryPage extends LitElement {
                     this._zoneDisplayName = '';
                 }
             }
-            this._sourceId = source_id;
+            this._outputsSourceId = source_id;
         }
         this._navigate(view);
     }
@@ -627,6 +827,11 @@ export class AgLibraryPage extends LitElement {
             this._upnpLocation   = location;
             this._upnpName       = serverName;
             this._sourceId       = sourceId;
+            // Left behind, the outputs view kept steering the source picked BEFORE
+            // this one — and a stale Roon id there moves the Roon zone's output and
+            // reports success, which is worse than the visible failure an unknown
+            // service gives. Fixing what that view derives is its own job.
+            this._outputsSourceId = sourceId;
             this._zoneId         = '';
             this._zoneDisplayName = '';
             this._view           = this._view === 'search' ? 'search' : 'upnp-browser';
@@ -638,6 +843,10 @@ export class AgLibraryPage extends LitElement {
             }
         } else {
             this._sourceId       = sourceId;
+            // The outputs view steers a SERVICE, and picking a source is the reader
+            // naming it — Roon steers `roonbridge`, and deriving that from the
+            // transport of what happens to play would steer MPD instead.
+            this._outputsSourceId = sourceId;
             this._zoneId         = zoneId;
             this._zoneDisplayName = zoneDisplayName;
             this._setView('browse');
@@ -662,6 +871,7 @@ export class AgLibraryPage extends LitElement {
             this._zoneDisplayName = '';
         }
         this._sourceId = sourceId;
+        this._outputsSourceId = sourceId;   // see _onSourceChange — Roon steers roonbridge
         this._setView('browse');
         apiPost('/player/source', { source_id: sourceId }).catch(err =>
             console.error('[library-page] set source failed:', err)
@@ -682,7 +892,10 @@ export class AgLibraryPage extends LitElement {
      * a blank page, which is worse than not switching.
      *
      * @param {string} sourceId - `upnp:<udn>`.
-     * @returns {Promise<void>}
+     * @returns {Promise<boolean>} Whether the server was opened. The banner ignores
+     *   the answer — it has nowhere better to go — but `_syncActiveSource` needs it:
+     *   a false there falls back to the transport rather than leaving the reader on
+     *   an empty browse with no source at all.
      */
     async _fetchUpnpServerAndSwitch(sourceId) {
         let server = this._sources.find(s => s.id === sourceId);
@@ -692,23 +905,31 @@ export class AgLibraryPage extends LitElement {
                 const hit = Array.isArray(known)
                     ? known.find(s => s.id === sourceId) : null;
                 if (hit) {
+                    // `location`, not `last_location`: that is the persisted model's
+                    // own field name, which the route renames on the way out
+                    // (core router.py, and API.md says so). Reading the internal name
+                    // here left every lookup address-less, so this branch always
+                    // failed — silently, because an empty address is a valid miss.
                     server = { id: hit.id, label: hit.friendly_name || 'UPnP',
-                               group: hit.id, location: hit.last_location || '' };
+                               group: hit.id, location: hit.location || '' };
                 }
             } catch (err) {
                 console.error('[library-page] known UPnP servers failed:', err);
             }
         }
-        if (!server?.location) return;
+        if (!server?.location) return false;
         this._upnpLocation    = server.location;
         this._upnpName        = server.label;
         this._sourceId        = sourceId;
+        this._outputsSourceId = sourceId;   // see _onSourceChange's UPnP branch
+
         this._zoneId          = '';
         this._zoneDisplayName = '';
         this._view            = 'upnp-browser';
         if (!this._sources.some(s => s.id === sourceId)) {
             this._sources = [...this._sources, server];
         }
+        return true;
     }
 
     /**
@@ -791,6 +1012,11 @@ export class AgLibraryPage extends LitElement {
                                         this._fetchUpnpServerAndSwitch(id);
                                     } else {
                                         this._sourceId = id;
+                                        // _outputsSourceId is NOT touched: the banner
+                                        // names what is already playing, so the engine
+                                        // feeding the DAC has not moved. Writing the
+                                        // content id here would have sent the outputs
+                                        // view a service the core does not know.
                                         this._setView('browse');
                                         apiPost('/player/source', { source_id: id }).catch(err =>
                                             console.error('[library-page] banner switch failed:', err)
@@ -800,7 +1026,7 @@ export class AgLibraryPage extends LitElement {
                                 Switch
                             </button>
                             <button class="action-btn compact"
-                                @click=${() => { this._pendingSource = null; }}>
+                                @click=${() => this._dismissBanner()}>
                                 Dismiss
                             </button>
                         </div>
@@ -943,7 +1169,7 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-body">
                         <div class="lib-scroll">
                             <ag-library-outputs
-                                source-id=${_sourceId}
+                                source-id=${this._outputsSourceId || _sourceId}
                                 @lib-output-change=${() => this._navigate('library')}
                             ></ag-library-outputs>
                         </div>

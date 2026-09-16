@@ -9,7 +9,29 @@
  * - A second call aborts the first controller
  * - Results from a cancelled request are ignored (signal.aborted check)
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mocked so the component module can be imported without a DOM mount: the tests
+// below drive one handler on a bare instance, as ag-library-page.test.js does.
+vi.mock('lit', () => ({
+    LitElement: class {},
+    html: (strings, ...values) => ({ strings, values }),
+    svg: (strings, ...values) => ({ strings, values }),
+    nothing: null,
+}));
+vi.mock('../../radio-api.js', () => ({
+    radioSearch: vi.fn(async () => []), radioLibrary: vi.fn(async () => []),
+    radioAddToLibrary: vi.fn(async () => ({})), radioAddCustomStation: vi.fn(async () => ({})),
+    radioRemoveFromLibrary: vi.fn(async () => ({})), radioFavorites: vi.fn(async () => []),
+    radioAddFavorite: vi.fn(async () => ({})), radioRemoveFavorite: vi.fn(async () => ({})),
+    radioEditStation: vi.fn(async () => ({})), radioPlay: vi.fn(async () => ({})),
+}));
+vi.mock('../molecules/ag-radio-card.js', () => ({}));
+// Both pull the auth layer in transitively (library-constants → api.js →
+// common.js), which redirects when imported outside a signed-in page. Neither is
+// touched by the handler under test.
+vi.mock('../utils-lit.js', () => ({ catalogueErrorMessage: () => 'error' }));
+vi.mock('../library-constants.js', () => ({ RADIO_COUNTRIES: [], RADIO_GENRES: [] }));
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -301,5 +323,48 @@ describe('catalogue failures on membership actions', () => {
         expect(shown).not.toBeNull();
         expect(shown[2]).not.toMatch(/MPD/);
         expect(onPlay[0]).not.toContain('catalogueErrorMessage(');
+    });
+});
+
+
+describe('ag-library-radio — announcing a station that actually started', () => {
+    /*
+     * `radio-play` carries the reader's INTENT and fires before the play call
+     * resolves. The library page adopts the radio as its browsed source on this
+     * signal, so firing it on intent moved the reader onto a radio-shaped tab bar
+     * underneath an error message when the station failed to start.
+     */
+    beforeEach(() => vi.clearAllMocks());
+
+    it('stays quiet when the station does not start', async () => {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const { radioPlay } = await import('../../radio-api.js');
+        radioPlay.mockRejectedValue(new Error('503'));
+
+        // Constructed, not Object.create'd: _onPlay is a bound class FIELD, so it
+        // lives on the instance and a bare prototype object does not have it.
+        const el = new AgLibraryRadio();
+        const seen = [];
+        el.dispatchEvent = (e) => seen.push(e.type);
+
+        await el._onPlay({ detail: { station: { uuid: 'u1' } } });
+
+        expect(seen).not.toContain('radio-started');
+        expect(el._error).toMatch(/Could not start/);
+    });
+
+    it('announces the station once it plays', async () => {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const { radioPlay } = await import('../../radio-api.js');
+        radioPlay.mockResolvedValue({});
+
+        const el = new AgLibraryRadio();
+        const seen = [];
+        el.dispatchEvent = (e) => seen.push(e);
+
+        await el._onPlay({ detail: { station: { uuid: 'u1' } } });
+
+        expect(seen.map(e => e.type)).toContain('radio-started');
+        expect(seen[0].bubbles).toBe(true);
     });
 });
