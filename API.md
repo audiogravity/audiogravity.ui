@@ -269,6 +269,12 @@ to MPD, or to HQPlayer's queue when it is the output — and never interrupts wh
 a network renderer has no persistent queue, so an `add` stays with MPD. A UPnP stream is
 badged `origin: "upnp"`, a station `origin: "radio"`.
 
+**Starting playback on a network renderer stops the local output.** The renderer becomes
+the one device carrying the audio, so MPD is stopped before the push: a client will see
+the local entry of `outputs[]` leave `PLAYING`, and the active item become the renderer's
+— badged by its content, `played_on` naming the speaker. Nothing has to be stopped by the
+caller first.
+
 **When the push went to HQPlayer**, the response carries `routed_to: "hqplayer"` alongside
 the usual `{ ok, action, item_type, tracks }`. The field is absent on every other path, so
 its presence is the signal — a client must not infer the destination from the selected
