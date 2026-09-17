@@ -49,6 +49,21 @@
             letter-spacing: 0.5px;
         }
 
+        /* The brand rule: the mark is written Audiogravi<sup>ty</sup> wherever it is
+           rendered as HTML. The superscript ratio is the shared one from
+           css/components/wordmark.css, repeated here because this page loads no
+           stylesheet of the interface — it has to stand alone, which is the whole
+           point of it. The rest of that treatment (Inter 900, letter-spacing) is NOT
+           reproduced: this page has no access to the packaged font, and asking a
+           system font for weight 900 would draw a different mark on every device —
+           exactly the defect the wordmark work removed. Tracked in
+           audiogravity.ops/BACKLOG.md, with the font question it belongs to. */
+        h1 sup {
+            font-size: 0.38em;
+            font-weight: inherit;
+            vertical-align: super;
+        }
+
         p {
             color: var(--text-muted);
             font-size: 1rem;
@@ -104,10 +119,10 @@
             <line x1="12" y1="20" x2="12.01" y2="20"></line>
         </svg>
 
-        <h1>Vous êtes hors ligne</h1>
-        <p>L'application nécessite une connexion réseau pour contrôler Gravity.<br>Veuillez vérifier votre connexion.</p>
-        
-        <button class="retry-btn" onclick="window.location.reload()">Réessayer</button>
+        <h1>Audiogravi<sup>ty</sup> is offline</h1>
+        <p>A network connection is required to control your streamer.<br>Please check your connection.</p>
+
+        <button class="retry-btn" onclick="window.location.reload()">Retry</button>
     </div>
 </body>
 </html>

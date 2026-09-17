@@ -136,6 +136,13 @@
    --tabs-height: 50px;
    --tabs-vertical-width: 225px;
 
+   /* @var --offline-banner-height @description Offline banner, when shown (32px).
+      A dimension and not a local value: the banner is fixed, so every layout that
+      starts under the topbar has to reserve it, and the number was written out
+      three times — its height, its hidden position, and the one compensation that
+      existed. */
+   --offline-banner-height: 32px;
+
    /**
     * @group Z-Index Layers
     */

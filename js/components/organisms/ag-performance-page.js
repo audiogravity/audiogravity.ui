@@ -78,6 +78,15 @@ export class AgPerformancePage extends LitElement {
 
                 return { cpuGeneralInfo: cpuGen, cpuInfo: formattedCpuInfo };
             },
+            // The description of the processor: model, cores, threads. As stable as anything
+            // this interface shows — it cannot change unless the hardware does — so serving
+            // it from a snapshot says nothing false. Only this panel is covered: the latency
+            // and network tests on the same tab measure the network, and reporting a stored
+            // result for those would be an outright lie. They report their own failure.
+            snapshotKey: 'cpu-info',
+            // `/sysinfo/cpu` is swallowed to null above, so a half-answer still resolves.
+            snapshotWhen: (data) => !!data.cpuGeneralInfo
+                && Array.isArray(data.cpuInfo) && data.cpuInfo.length > 0,
             onSuccess: (data) => {
                 this.cpuGeneralInfo = data.cpuGeneralInfo;
                 this.cpuInfo = data.cpuInfo;

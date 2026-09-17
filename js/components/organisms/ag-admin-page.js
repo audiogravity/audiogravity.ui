@@ -67,6 +67,15 @@ export class AgAdminPage extends LitElement {
                 ]);
                 return { users, activeUsersList };
             },
+            // The account list is a read-only view of the box, and it barely changes — the
+            // licence panel is NOT part of this, it lives in ag-license-status and keeps
+            // asking for itself, so nothing here can show an expired licence as active.
+            snapshotKey: 'users',
+            // This fetch resolves in two situations where it learned nothing: the caller is
+            // not an admin (empty lists, by design above), and `/auth/users/active` failed
+            // and was swallowed. An empty account list is never a true statement about a box
+            // — there is always at least the one signed in — so it is never worth keeping.
+            snapshotWhen: (data) => Array.isArray(data.users) && data.users.length > 0,
             onSuccess: (data) => {
                 this.users = data.users;
                 this.activeUsers = data.activeUsersList;

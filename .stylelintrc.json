@@ -52,7 +52,13 @@
 
     "font-weight-notation": "numeric",
 
-    "length-zero-no-unit": true,
+    "length-zero-no-unit": [
+      true,
+      {
+        "ignore": ["custom-properties"],
+        "message": "Zero needs no unit — except in a custom property a calc() consumes, where dropping it makes the whole expression invalid."
+      }
+    ],
 
     "shorthand-property-no-redundant-values": true,
 

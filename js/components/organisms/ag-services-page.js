@@ -62,6 +62,12 @@ export class AgServicesPage extends LitElement {
                 const servicesConfig = config.services || {};
                 
                 const servicesList = [];
+                // Raised when a service could not be read. The loop answers for it rather
+                // than failing, so the caller cannot tell a degraded list from a whole one
+                // by looking at it: `state: 'unknown'` is also what the core itself returns
+                // when systemd reports no ActiveState, so the value proves nothing. The
+                // flag is set where the degradation actually happens.
+                let degraded = false;
                 for (const [serviceId, serviceConfig] of Object.entries(servicesConfig)) {
                     try {
                         const info = await apiGet(`/services/${serviceConfig.systemd_unit}`);
@@ -74,6 +80,7 @@ export class AgServicesPage extends LitElement {
                         });
                     } catch (error) {
                         console.error(`Failed to load service ${serviceId}:`, error);
+                        degraded = true;
                         servicesList.push({
                             id: serviceId,
                             systemd_unit: serviceConfig.systemd_unit,
@@ -86,8 +93,17 @@ export class AgServicesPage extends LitElement {
                         });
                     }
                 }
-                return { config: servicesConfig, servicesList };
+                return { config: servicesConfig, servicesList, degraded };
             },
+            // See ag-profiles-page: restores this panel on an offline start instead of
+            // contradicting the offline banner.
+            snapshotKey: 'services',
+            // …but only a list worth restoring. A connection lost partway through the loop
+            // above still RESOLVES, carrying placeholders for whatever it could not read.
+            // Saved, that payload would overwrite a good snapshot, and the next offline
+            // start would show every service unknown — worse than the error it replaced,
+            // because it looks like an answer.
+            snapshotWhen: (data) => !data.degraded && (data.servicesList || []).length > 0,
             onSuccess: (data) => {
                 this.config = data.config;
                 this.services = data.servicesList;
