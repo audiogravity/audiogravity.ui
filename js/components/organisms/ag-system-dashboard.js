@@ -60,21 +60,29 @@ export class AgSystemDashboard extends LitElement {
         this.MAX_HISTORY = 60;
 
         // Fetch Controllers
+        // Each reading is kept for the next offline start. This page qualifies because it
+        // only ever SHOWS the state of the box: served stale, it says "here is what the box
+        // looked like last time", which is exactly what the offline banner promises. The
+        // pages that let you edit and save — the configuration and systemd override editors —
+        // must never do this, or a stale copy becomes the base of a write.
         this.statusFetch = new FetchController(this, {
             url: '/sysinfo/status',
+            snapshotKey: 'system-status',
             onSuccess: (data) => {
                 if (data && data.system && data.system.network_interfaces) {
-                    this.requestUpdate(); 
+                    this.requestUpdate();
                 }
             }
         });
 
         this.audioFetch = new FetchController(this, {
-            url: '/audio-hw/devices'
+            url: '/audio-hw/devices',
+            snapshotKey: 'audio-devices'
         });
 
         this.metricsFetch = new FetchController(this, {
             url: '/sysinfo/metrics',
+            snapshotKey: 'system-metrics',
             onSuccess: (data) => this._handleSysinfoUpdate(data)
         });
 

@@ -86,6 +86,14 @@ export class AgAudioSoftwarePage extends LitElement {
             // version that had stopped being offered could keep an update badge
             // lit on that browser indefinitely.
             fetchFn: async () => await apiGet('/packages/') || [],
+            // Kept for the next offline start: a read-only listing of what is installed is
+            // meaningful stale, and this panel answered "Unable to connect to server" under a
+            // banner announcing cached data.
+            snapshotKey: 'packages',
+            // Never keep an empty one. The `|| []` above turns a 204 or a null body into a
+            // valid-looking answer, and saved, that would restore as a box with no audio
+            // software installed at all — a statement, and a false one.
+            snapshotWhen: (data) => Array.isArray(data) && data.length > 0,
             onSuccess: (data) => {
                 this.packages = data;
                 this._updateGlobalUpdateBadge();

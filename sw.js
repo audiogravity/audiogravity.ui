@@ -4,30 +4,60 @@
 
 const CACHE_NAME = 'audiogravity-v0.9.56-dev';
 
+// What marks a cache as this file's own, so activate sweeps ours and leaves anything
+// else on the origin alone. Derived from CACHE_NAME rather than written out again —
+// that line is rewritten at every release by ops/scripts/sync-version.mjs, which
+// matches it exactly, so it must keep its shape and must stay the only source.
+const CACHE_PREFIX = CACHE_NAME.split('-v')[0] + '-v';
+
 // Vite-hashed assets injected at build time by vite-plugin-pwa (injectManifest).
 // At runtime this becomes an array of { url, revision } objects covering all
 // JS/CSS/image assets produced by Vite. During development it is an empty array.
 const WB_MANIFEST = self.__WB_MANIFEST || [];
 
-// Inline offline fallback — hoisted to module scope so it is not re-created on
-// every fetch event invocation.
-const FALLBACK_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#12141c"><title>Audiogravity - Offline</title><style>:root{--bg-color:#12141c;--text-color:#f8fafc;--text-muted:#94a3b8;--accent:#00f2fe;}body{margin:0;padding:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:var(--bg-color);color:var(--text-color);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;text-align:center;overflow:hidden;}.container{padding:2rem;max-width:400px;animation:fadeIn 0.5s ease-out;}.icon{width:80px;height:80px;margin-bottom:2rem;opacity:0.8;filter:drop-shadow(0 0 10px rgba(0,242,254,0.3));}h1{font-size:1.5rem;font-weight:600;margin:0 0 1rem 0;letter-spacing:0.5px;}p{color:var(--text-muted);font-size:1rem;line-height:1.5;margin:0 0 2rem 0;}.retry-btn{background:transparent;color:var(--accent);border:1px solid var(--accent);padding:0.75rem 2rem;border-radius:8px;font-size:1rem;font-weight:500;cursor:pointer;transition:all 0.2s ease;text-transform:uppercase;letter-spacing:1px;}.retry-btn:hover,.retry-btn:active{background:rgba(0,242,254,0.1);box-shadow:0 0 15px rgba(0,242,254,0.2);}.pulse{animation:pulse 2s infinite;}@keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}@keyframes pulse{0%{opacity:0.6;transform:scale(0.98);}50%{opacity:1;transform:scale(1.02);}100%{opacity:0.6;transform:scale(0.98);}}</style></head><body><div class="container"><svg class="icon pulse" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><h1>Audiogravity is offline</h1><p>A network connection is required to control your streamer.<br>Please check your connection.</p><button class="retry-btn" onclick="window.location.reload()">Retry</button></div></body></html>`;
+// Last resort, and only that: the offline page is /offline.html, precached below, and
+// this string is what answers if precaching it ever failed. It used to be a full copy of
+// that page — same markup, same 3 KB of styles — and the two drifted, as two copies do:
+// the file the box actually served had been translated to French and named a product
+// that does not exist ("contrôler Gravity"), while this copy stayed in English. Keeping
+// it deliberately plain is what stops that happening again; there is nothing here worth
+// synchronising, and the case it covers puts nothing on screen in the normal course.
+const FALLBACK_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#12141c"><title>Audiogravity - Offline</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#12141c;color:#f8fafc;font-family:system-ui,sans-serif;text-align:center;padding:2rem}h1 sup{font-size:.38em;font-weight:inherit;vertical-align:super}</style></head><body><div><h1>Audiogravi<sup>ty</sup> is offline</h1><p>A network connection is required to control your streamer.</p></div></body></html>`;
 
-// Regex hoisted to module scope — avoids re-compilation on every fetch event.
-const RE_HASHED_ASSET = /\/assets\/[^/]+-[A-Za-z0-9_]{8,}\.(js|css|png|webp|svg|woff2?)$/;
+// Everything Vite emits lands in /assets/ under a content hash — `chunkFileNames`
+// and `assetFileNames` in vite.config.js both end in `-[hash]`, so the directory
+// IS the immutability guarantee and nothing else needs to be read.
+//
+// This replaced a regex that spelled the hash out as `-[A-Za-z0-9_]{8,}`. Vite's
+// hash alphabet is base64url, so it contains `-` too, and any chunk whose hash
+// happened to carry one failed the test: measured on a build, `nowplaying-1_u92sT-.js`
+// and `webauthn-_7fd-y_O.js` — 2 of 25. They fell through to network-first and
+// rewrote their own precached entry on every single page load, which is a disk
+// write per load for a file that cannot change. Worse, the affected set is drawn
+// anew at every build, since it depends on the content hash: nothing could be
+// reproduced twice, and a passing check proved nothing about the next build.
+const ASSETS_PREFIX = '/assets/';
 
 // CDN classification:
 //   CDN_IMMUTABLE — version-pinned content (cdn.jsdelivr.net@x.y.z), cache-first like hashed assets.
 //
-// There is no longer a stale-while-revalidate CDN class. It existed for Google
-// Fonts, whose stylesheet is mutable (the subset served depends on the browser
-// asking); Inter now ships with the box, so no third-party host is left to
-// revalidate. Same-origin /pics/ and /fonts/ keep that strategy below.
+// There is no stale-while-revalidate class left at all, here or same-origin. It
+// existed for Google Fonts, whose stylesheet is mutable (the subset served depends
+// on the browser asking); Inter now ships with the box, so no third-party host is
+// left to revalidate — and the same-origin files that inherited that strategy could
+// not be revalidated either, since the cache is renamed at every release. See the
+// asset classification in the fetch handler.
 const CDN_IMMUTABLE = new Set(['cdn.jsdelivr.net']);
 
 // App shell: static files that never change between releases (no hash in name).
 // Vite-hashed assets are in WB_MANIFEST above.
 const CACHE_URLS = [
+    // Both, deliberately, although the box answers them with the same bytes. The root is
+    // the start_url the web manifest declares, and every shortcut in it points at the
+    // index page with a hash. A Cache matches on the URL, so dropping either one loses an
+    // offline entry point.
+    // NOTE — no quoted paths in the comments of this list: js/static-assets.test.js reads
+    // the entries by scanning for quoted strings inside it, and would take them for files.
     '/',
     '/index.html',
     '/login.html',
@@ -36,6 +66,22 @@ const CACHE_URLS = [
     // Runs before the first paint; a cache miss here would put the white flash
     // back on exactly the cold loads this file exists to fix.
     '/theme-boot.js',
+    // The two files the shell cannot start without, and neither carries a hash,
+    // so the Workbox manifest above does not cover them. The cache is named after
+    // the version, so a release empties it: without these entries the FIRST launch
+    // after an update, made offline, starts a shell that is missing
+    //   - its credentials — ag-config.js is a blocking <head> script carrying
+    //     apiUrl and apiKey. Absent, window.AG_CONFIG is undefined, API_KEY falls
+    //     to null and the interface suppresses its own requests until a reload;
+    //     coming back online does not re-run a script the page already skipped.
+    //   - its event stream — new Worker() reports failure asynchronously, so the
+    //     try/catch around it in js/sse.js never fires and there is no main-thread
+    //     fallback. The dashboard simply stops updating, silently.
+    // Network-first still applies to both once online (Strategy 2 below rewrites
+    // the entry on every successful load), so a key rotated by a same-version
+    // reinstall is still picked up — precaching only supplies the offline floor.
+    '/ag-config.js',
+    '/js/sse-worker.js',
     // The icons, under the names public/pics/ actually ships. The three of them were
     // listed as apple-touch-icon.png, favicon-32x32.png and favicon-16x16.png — names no
     // file in the repository has ever carried — beside two logo_audiogravity_*.png that
@@ -65,7 +111,10 @@ self.addEventListener('install', (event) => {
         const cache = await caches.open(CACHE_NAME);
 
         // Precache Vite-hashed assets (injected by vite-plugin-pwa at build time).
-        // These use revision-based cache busting so stale entries are replaced.
+        // Only `url` is read: every entry Vite produces is content-addressed, so its
+        // `revision` is null and there is nothing to bust. What replaces a stale entry
+        // is the cache rename at each release, not a revision check — the comment that
+        // stood here claimed the opposite for as long as the code ignored the field.
         if (WB_MANIFEST.length > 0) {
             await Promise.all(
                 WB_MANIFEST.map(({ url }) =>
@@ -98,7 +147,11 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
+                    // Only ours. This used to delete EVERY cache whose name was not the
+                    // current one — harmless while this file owns the only one, and a
+                    // trap for the first feature to open a second store on this origin,
+                    // which would be wiped at the next release with nothing to say why.
+                    if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
                         console.log('[Service Worker] Deleting old cache:', cacheName);
                         return caches.delete(cacheName);
                     }
@@ -120,13 +173,20 @@ self.addEventListener('fetch', (event) => {
     // Ignorer ce qui n'est pas GET
     if (request.method !== 'GET') return;
 
+    // Every rule below reads a PATH, and a path means nothing on its own: a third
+    // party serving /assets/ or /api/ would otherwise be classified as ours. The
+    // only cross-origin hosts this file knows about are named explicitly, in
+    // CDN_IMMUTABLE.
+    const isSameOrigin = url.origin === self.location.origin;
+
     // 1. GESTION DES APPELS API / SSE / SYSINFO
     // On ne cache JAMAIS les données dynamiques, mais on gère l'échec offline
-    if (url.pathname.startsWith('/api') || 
-        url.pathname.startsWith('/sse') || 
+    if (isSameOrigin && (
+        url.pathname.startsWith('/api') ||
+        url.pathname.startsWith('/sse') ||
         url.pathname.startsWith('/auth') ||
         url.pathname.startsWith('/status') ||
-        url.pathname.startsWith('/sysinfo')) {
+        url.pathname.startsWith('/sysinfo'))) {
         event.respondWith(
             fetch(request).catch(() => {
                 // Retourner une erreur JSON propre au lieu d'une erreur réseau brute (évite popup iOS)
@@ -145,34 +205,43 @@ self.addEventListener('fetch', (event) => {
     }
 
     // ── Asset classification ──────────────────────────────────────────────────
-    const isHashedAsset = RE_HASHED_ASSET.test(url.pathname);
+    //
+    // Same-origin static files that carry no hash in their name — the interface's
+    // images and the pre-paint theme script. They are immutable all the same, and
+    // for a reason that has nothing to do with their names: CACHE_NAME carries the
+    // product version, so a release DROPS the whole cache (see activate). Within one
+    // version, nothing the box serves under these paths can change.
+    //
+    // That is why they no longer sit on a stale-while-revalidate strategy. Nothing
+    // was ever revalidated by it: the background fetch was fired on EVERY request,
+    // cache hit included, so each page load cost one network round trip and one disk
+    // write per image — the brand marks, the favicons, and the 54 iOS splash screens
+    // index.html declares — to re-store bytes that were already identical.
+    //
+    // /fonts/ was in that list too and matched nothing: the .woff2 files are pulled
+    // in by css/fonts.css, so Vite hashes them into /assets/. What /fonts/ actually
+    // serves is the two OFL licence texts, which no page requests.
+    const isStableStatic = isSameOrigin &&
+        (url.pathname.startsWith('/pics/') || url.pathname === '/theme-boot.js');
+
+    const isHashedAsset  = isSameOrigin && url.pathname.startsWith(ASSETS_PREFIX);
     const isCDNImmutable = CDN_IMMUTABLE.has(url.hostname);
     const isNavigation   = request.mode === 'navigate';
-
-    // ── Strategy 2 background refresh ────────────────────────────────────────
-    // Must be initiated synchronously (before event.respondWith) so we can cover
-    // it with event.waitUntil() — extending SW lifetime past the respondWith.
-    // Without this, the browser may kill the SW before cache.put() completes.
-    let _swrRefresh = null;
-    if (!isHashedAsset && !isCDNImmutable &&
-        (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/fonts/') ||
-         url.pathname === '/theme-boot.js')) {
-        _swrRefresh = fetch(request).then(async res => {
-            if (!res.ok) return;
-            const c = await caches.open(CACHE_NAME);
-            await c.put(request, res);
-        }).catch(() => {});
-        event.waitUntil(_swrRefresh);
-    }
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);
 
-        // ── Strategy 1: Cache-first (hashed Vite assets + version-pinned CDN) ─
-        // Immutable content: same URL always means same bytes.
+        // ── Strategy 1: Cache-first (immutable for the life of this cache) ────
+        // Hashed Vite assets, version-pinned CDN files, and the stable static files
+        // above. Same URL, same bytes, until a release renames the cache.
+        //
         // cdn.jsdelivr.net URLs are version-pinned (@x.y.z) — cache-first avoids
         // unnecessary CDN requests on every navigation (CLAUDE.md §12).
-        if (isHashedAsset || isCDNImmutable) {
+        //
+        // theme-boot.js belongs here and never on the network path: it is a
+        // render-blocking <head> script, so a round trip in front of it is a round
+        // trip in front of every paint — the delay that file exists to remove.
+        if (isHashedAsset || isCDNImmutable || isStableStatic) {
             const cached = await caches.match(request);
             if (cached) return cached;
             try {
@@ -184,22 +253,7 @@ self.addEventListener('fetch', (event) => {
             }
         }
 
-        // ── Strategy 2: Stale-while-revalidate (/pics/, /fonts/, theme-boot) ──
-        //
-        // theme-boot.js belongs here and not in network-first: it is a
-        // render-blocking <head> script, so serving it from the network would
-        // put a round trip in front of every paint — the delay this file exists
-        // to remove. Cached first, refreshed behind.
-        // Background refresh already in flight via _swrRefresh + event.waitUntil().
-        if (_swrRefresh !== null) {
-            const cached = await caches.match(request);
-            if (cached) return cached;
-            // No cached version yet — wait for the in-flight fetch.
-            await _swrRefresh;
-            return await caches.match(request) || new Response('', { status: 404 });
-        }
-
-        // ── Strategy 3: Network-first (HTML navigation, everything else) ──────
+        // ── Strategy 2: Network-first (HTML navigation, everything else) ──────
         try {
             const networkResponse = await fetch(request);
             if (networkResponse.ok && !isNavigation) {
@@ -283,19 +337,44 @@ self.addEventListener('notificationclick', (event) => {
     if (event.action === 'close') return;
 
     const urlToOpen = event.notification.data.url || '/index.html';
+    // The notification carries a PATH; a client carries a full URL. Resolving it against
+    // this worker's own scope is what let the two be compared at all — the first test
+    // below read `client.url === '/index.html'`, which no client URL can ever equal, and
+    // the second asked whether the client's URL contained the string "audiogravity",
+    // which is false on a box reached at an address. That is the address the installer
+    // prints, so on an ordinary install NEITHER matched and every notification opened a
+    // second window beside the one already showing the interface.
+    const target = new URL(urlToOpen, self.location.origin);
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((windowClients) => {
-                for (let client of windowClients) {
-                    if (client.url === urlToOpen && 'focus' in client) return client.focus();
+                const ours = windowClients.filter((client) => {
+                    try { return new URL(client.url).origin === self.location.origin; }
+                    catch { return false; }
+                });
+                // Already on the right page, hash included: just raise it.
+                for (const client of ours) {
+                    if (client.url === target.href && 'focus' in client) return client.focus();
                 }
-                for (let client of windowClients) {
-                    if (client.url.includes('audiogravity') && 'focus' in client) {
-                        return client.navigate(urlToOpen).then(() => client.focus());
-                    }
+                // Otherwise steer the interface that is already open, rather than
+                // stacking another copy of it.
+                //
+                // navigate() REJECTS for a client this worker does not control, and
+                // matchAll was asked for uncontrolled ones too — a window loaded before
+                // this version took over is exactly that. Unhandled, the rejection ends
+                // the handler with the loop already returned, so the click would do
+                // nothing at all: worse than the defect this replaced, which at least
+                // fell through to opening a window. Falling back to focus alone keeps
+                // the notification useful; the page is the interface either way.
+                const open = ours.find(client => 'focus' in client);
+                if (open) {
+                    if (!open.navigate) return open.focus();
+                    return open.navigate(target.href)
+                        .then(() => open.focus())
+                        .catch(() => open.focus());
                 }
-                if (clients.openWindow) return clients.openWindow(urlToOpen);
+                if (clients.openWindow) return clients.openWindow(target.href);
             })
     );
 });

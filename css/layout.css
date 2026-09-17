@@ -137,11 +137,12 @@ body:has(.tabs--vertical) .nav-menu {
     position: fixed;
 
     /* Fully off-screen when hidden — must be outside the viewport to avoid
-       bleeding through the topbar's backdrop-filter:blur() */
-    top: -40px;
+       bleeding through the topbar's backdrop-filter:blur(). The extra step clears
+       the shadow, which would otherwise show at the top edge. */
+    top: calc((var(--offline-banner-height) + var(--spacing-sm)) * -1);
     left: 0;
     right: 0;
-    height: 32px;
+    height: var(--offline-banner-height);
     background: var(--color-warning);
     color: var(--text-on-warning);
     display: flex;
@@ -178,10 +179,25 @@ body.is-offline .offline-banner {
     pointer-events: auto;
 }
 
-/* Adjusted layout when offline banner is displayed */
+/* How much every layout below the topbar must give back to the banner. Inherited, so
+   the four mobile padding rules read it without repeating a condition, and it is 0
+   whenever the banner is parked off-screen. */
+:root {
+    --offline-banner-offset: 0px;
+}
+
+body.is-offline {
+    --offline-banner-offset: var(--offline-banner-height);
+}
+
+/* Adjusted layout when offline banner is displayed.
+   This compensation used to live here ALONE, inside the desktop query — so the title of
+   the first section was cut in half by the banner on every phone, which is where the
+   offline state is seen most. The mobile layouts now read --offline-banner-offset in
+   their own padding. */
 @media (width > 768px) {
     body.is-offline:has(.tabs--horizontal) .main-content {
-        margin-top: 32px;
+        margin-top: var(--offline-banner-height);
     }
 }
 
@@ -838,6 +854,12 @@ body.dark-mode .logo-dark {
         top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
     }
 
+    /* No banner offset here, and that is not an oversight. With horizontal tabs the bar
+       is moved up to the banner's own top (see .tabs above), and the banner outranks it
+       — z-index 999 against 100 — so the banner takes the room --tabs-height already
+       reserves. Adding the offset would push the content down by a second banner's
+       worth of nothing. The rule below, where the sidebar is vertical and no bar sits
+       there, is the one that needs it. */
     .content-grid,
     .amp-mobile-view {
         padding: var(--spacing-md);
@@ -858,7 +880,7 @@ body.dark-mode .logo-dark {
     body:has(.tabs--vertical) .content-grid,
     body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
-        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
     }
 }
 
@@ -899,14 +921,14 @@ body.dark-mode .logo-dark {
     .content-grid,
     .amp-mobile-view {
         padding: var(--spacing-md);
-        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
         padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
     }
 
     body:has(.tabs--vertical) .content-grid,
     body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
-        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md));
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
         padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
     }
 }

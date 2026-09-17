@@ -64,6 +64,9 @@ export class AgProfilesPage extends LitElement {
                 ]);
                 return { config, detailedProfiles };
             },
+            // Kept for the next offline start: without it this panel answers "Unable to
+            // connect to server" under a banner announcing cached data.
+            snapshotKey: 'profiles',
             onSuccess: (data) => {
                 this.services = data.config?.services || {};
                 this.profiles = data.detailedProfiles || [];
