@@ -23,8 +23,15 @@
 /* Burger Menu & App Shell Actions */
 
 /* Settings button (right) — opens the config panel. Renders the Lucide settings
-   glyph; always visible. */
-.burger-menu {
+   glyph; always visible.
+   The Library button beside it shares this rule. It used to borrow the generic
+   .icon-btn from components/button.css — 38px, its own background, a border and
+   rounded corners, and an icon left at the inherited text size — so it was the one
+   element of the bar drawn in a box, taller than its neighbours, with a small glyph
+   in the middle. Nothing recorded that as a choice. Scoped to .topbar so the footer,
+   the only other user of .icon-btn, keeps its boxed button. */
+.burger-menu,
+.topbar .icon-btn {
     width: var(--burger-menu-size);
     height: var(--burger-menu-size);
     align-items: center;
@@ -42,8 +49,12 @@
     display: flex;
 }
 
-.burger-menu:hover {
+.burger-menu:hover,
+.topbar .icon-btn:hover {
     color: var(--btn-primary);
+
+    /* .icon-btn:hover fills the box with --bg-hover; a borderless button has no box. */
+    background: none;
 }
 
 /* Mobile navigation button (left) — opens the vertical tab sidebar. Renders a
