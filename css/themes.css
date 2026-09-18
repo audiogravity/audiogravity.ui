@@ -152,11 +152,15 @@
    --z-modal-backdrop: 999;
    --z-topbar: 1000;
 
-    /* Mobile/Tablet Density Adjustments */
+    /* Mobile/Tablet Density Adjustments.
+       The layout dimensions for this width are NOT declared here: layout.css
+       redefines --topbar-height, --tabs-height, --title-bar-height and
+       --footer-height for the same breakpoint, and is imported after this file.
+       This block used to carry its own values for the first three (46, 44 and
+       48px), which never applied — measured in a browser, a phone computes 44, 42
+       and 0 — and misled anyone who read them, sizing the top bar two pixels off
+       in every calculation built on it. One declaration per token per width. */
     @media (width <= 768px) {
-        --topbar-height: 46px;
-        --tabs-height: 44px;
-        --title-bar-height: 48px;
         --font-size-xl: 18px;
         --font-size-lg: 15px;
     }
