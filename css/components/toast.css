@@ -17,7 +17,7 @@
 .toast {
     background: var(--bg-primary);
     border: 2px solid var(--text-primary);
-    border-radius: var(--radius-none);
+    border-radius: var(--radius-toast);
     padding: var(--spacing-md);
     min-width: 300px;
     max-width: 400px;

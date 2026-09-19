@@ -97,10 +97,23 @@
        A theme that genuinely wants another face declares --font-family here —
        see the contract beside the token in themes.css. */
 
-    /* Minimal Theme: Strictly Clean & Square */
-    --radius-sm: 0;
-    --radius-md: 0;
-    --radius-lg: 0;
+    /* Minimal Theme: clean, nearly square. The corners were 0 everywhere, which read
+       as hard; one 2px radius on every step takes the edge off without rounding
+       anything. Deliberately flat: a graded 2/4/6 took the large tab panel from 0 to
+       6px, a jump that changed the theme's character more than it softened it.
+       --radius-xs is declared here too: left to the 1px default of :root, the card
+       buttons, badges and log controls that use it sat a pixel off every card. */
+    --radius-xs: 2px;
+    --radius-sm: 2px;
+    --radius-md: 2px;
+    --radius-lg: 2px;
+
+    /* The elements that used to carry their own literal (see themes.css). */
+    --radius-chip: 2px;
+    --radius-cover: 2px;
+    --radius-pipeline: 2px;
+    --radius-toast: 2px;
+    --radius-badge: 2px;
 
     /* Accent Colors (for buttons, links, etc.) */
     --accent-primary: #000000;

@@ -4,7 +4,11 @@
  * Prefix: ag-connector-badge
  */
 
-ag-connector-badge {
+/* The stream-origin badge of the mini player sits right beside this one and is
+   drawn as its twin — same box, type, greys and border. One rule for both, so the
+   pair cannot drift apart the way two copies would. */
+ag-connector-badge,
+.np-source-row .ag-source-badge {
     display: inline-flex;
     align-items: center;
     font-size: var(--font-size-xxs);
@@ -14,7 +18,7 @@ ag-connector-badge {
     color: var(--text-tertiary);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-badge);
     padding: 0 var(--spacing-xs);
     line-height: 1.6;
     flex-shrink: 0;
