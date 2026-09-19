@@ -255,7 +255,6 @@ body.dark-mode .lib-src-mark-dark { display: block; }
 
 .lib-src-status.up .lib-src-dot {
     background: var(--color-success);
-    box-shadow: 0 0 4px var(--color-success);
 }
 
 .lib-src-status.down .lib-src-dot { background: var(--text-tertiary); }

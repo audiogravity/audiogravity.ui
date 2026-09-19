@@ -206,7 +206,6 @@
 
 .connection-dot-large.connected {
     background: var(--color-success);
-    box-shadow: 0 0 10px var(--color-success);
     animation: blinkSlow 3s infinite ease-in-out;
 }
 

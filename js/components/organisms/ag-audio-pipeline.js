@@ -1107,7 +1107,7 @@ export class AgAudioPipeline extends LitElement {
         return html`
             <div class="node-detail-panel" @mousedown=${(e) => e.stopPropagation()}>
                 <div class="ndp-header">
-                    <div class="ndp-dot" style="background: ${statusFill}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusFill + ';' : ''}"></div>
+                    <div class="ndp-dot" style="background: ${statusFill};"></div>
                     <span class="ndp-name" title="${node.name}">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>
