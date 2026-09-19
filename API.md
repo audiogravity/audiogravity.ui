@@ -556,7 +556,7 @@ ends. Never present it as what will be heard.
 | POST | `/services/{name}/properties/restore` | Undo the previous override |
 | DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults |
 | POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravi<sup>ty</sup>-managed units** (audio engines + core AG services); a non-managed unit is rejected |
-| GET | `/services/{name}/properties` | systemd unit properties |
+| GET | `/services/{name}/properties` | systemd unit properties. `nice` and `cpu_scheduling_policy` are `null` when the unit keeps systemd's default (nice 0, policy `other`) — render as "default"; an unlimited limit reads `infinity`. The `properties` block of `/services/{name}` follows the same rules |
 | POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
 ### Profiles — `/profiles/*`
