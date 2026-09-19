@@ -22,6 +22,7 @@ const Template = (args) => html`
         .label="${args.label}"
         .color="${args.color}"
         .unit="${args.unit}"
+        .slots="${args.slots ?? 0}"
         .data="${args.data}">
     </ag-metric-detail>
   </div>
@@ -50,3 +51,33 @@ Rate.args = {
     unit: 'rate',
     data: Array.from({ length: 30 }, () => Math.random() * 500000)
 };
+
+/**
+ * The cases the Services boxes meet now that their history starts empty: the view
+ * places what it has on the same 30-measurement window as the small chart.
+ */
+
+/** One minute after opening the tab: three measurements on the right. */
+export const PartialWindow = Template.bind({});
+PartialWindow.args = {
+    label: 'CPU Usage',
+    color: 'var(--accent-primary)',
+    unit: '%',
+    slots: 30,
+    data: [1.2, 1.6, 1.4],
+};
+
+/** The very first measurement: a point, not an empty chart. */
+export const LonePoint = Template.bind({});
+LonePoint.args = { ...PartialWindow.args, data: [1.2] };
+
+/** A missing sample is a gap, and one measured alone between gaps is a point. */
+export const WithGaps = Template.bind({});
+WithGaps.args = {
+    ...PartialWindow.args,
+    data: [1.2, 1.6, 1.4, null, 2.1, null, 1.8, 1.9, 2.4, 2.2],
+};
+
+/** The newest sample is missing: the figure shows a dash, not an older value. */
+export const StaleValue = Template.bind({});
+StaleValue.args = { ...PartialWindow.args, data: [1.2, 1.6, 1.4, null] };

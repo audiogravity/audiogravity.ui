@@ -209,7 +209,7 @@ export class AgAudioPipeline extends LitElement {
             justify-content: center;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: var(--radius-pipeline);
             color: var(--text-primary);
             cursor: pointer;
             font-size: var(--font-size-lg);
@@ -503,7 +503,7 @@ export class AgAudioPipeline extends LitElement {
         .steering-svc-btn {
             background: rgba(99,102,241,0.15);
             border: 1px solid rgba(99,102,241,0.4);
-            border-radius: 4px;
+            border-radius: var(--radius-pipeline);
             color: #a5b4fc;
             font-size: var(--font-size-xxs);
             font-weight: 600;
@@ -532,7 +532,7 @@ export class AgAudioPipeline extends LitElement {
         .steering-result {
             margin: 4px 12px 6px;
             padding: 5px 8px;
-            border-radius: 4px;
+            border-radius: var(--radius-pipeline);
             font-size: var(--font-size-xxs);
             font-weight: 600;
         }
@@ -1107,7 +1107,7 @@ export class AgAudioPipeline extends LitElement {
         return html`
             <div class="node-detail-panel" @mousedown=${(e) => e.stopPropagation()}>
                 <div class="ndp-header">
-                    <div class="ndp-dot" style="background: ${statusFill}; ${node.status === 'active' ? 'box-shadow: 0 0 4px ' + statusFill + ';' : ''}"></div>
+                    <div class="ndp-dot" style="background: ${statusFill};"></div>
                     <span class="ndp-name" title="${node.name}">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>

@@ -12,7 +12,7 @@
     gap: var(--spacing-xs);
     max-width: 100%;
     padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-badge);
     background: var(--bg-tertiary);
     color: var(--text-secondary);
     font-family: var(--font-family);
@@ -28,7 +28,9 @@
 }
 
 /* Size every glyph variant (svg icon, qobuz <img>, masked roon/tidal logos)
-   relative to the label so the badge scales cleanly with the font token. */
+   relative to the label so the badge scales cleanly with the font token.
+   BACKLOG: .lib-src-logo-hra is not in this list and keeps its 24px box (queue rows,
+   mobile pipeline); the mini player hides it instead — see BACKLOG.md. */
 .ag-source-badge__icon > *,
 .ag-source-badge__icon img,
 .ag-source-badge__icon svg,

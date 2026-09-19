@@ -135,7 +135,7 @@ body:has(.tabs--vertical) .nav-menu {
 .topbar .metric-value.activity-medium,
 .topbar .metric-value.activity-high {
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-chip);
     background: var(--bg-tertiary);
 }
 
@@ -178,7 +178,7 @@ body:has(.tabs--vertical) .nav-menu {
     background: rgb(0 0 0 / 0.1);
     border: 1px solid rgb(0 0 0 / 0.2);
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-xxs);
     cursor: pointer;
     text-transform: uppercase;

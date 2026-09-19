@@ -44,6 +44,7 @@ ag-mobile-pipeline .amp-section-label { font-size: var(--font-size-xxs); font-we
 ag-mobile-pipeline .amp-streams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 ag-mobile-pipeline .amp-np-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; }
 ag-mobile-pipeline .amp-source-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm); margin-bottom: 12px; }
+/* BACKLOG: still a pill beside the origin badge, which minimal now draws at 2px — see BACKLOG.md. */
 ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
 /* The origin badge is a shared atom sized for the players (--font-size-xs).
    Here it sits against the transport pill, which is one step down, and two pills

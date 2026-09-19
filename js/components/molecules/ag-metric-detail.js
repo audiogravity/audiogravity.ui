@@ -8,14 +8,17 @@
  * @attr {String} label - Label for the metric
  * @attr {String} color - CSS color variable or value
  * @attr {String} unit - Unit to format ('%', 'mem', 'rate', or '')
- * @prop {Array} data - Array of historical values (e.g., 30 data points)
+ * @attr {Number} slots - Window capacity: values fill it from the right, as in the
+ *   sparkline this view expands. 0 (default) spreads them over the whole width.
+ * @prop {Array} data - Historical values, oldest first; null = not measured (a gap).
  *
- * @dependency ag-sparkline - SVG sparkline chart component
+ * @dependency ag-sparkline - placeOnSlots / measuredRuns, shared with the small chart
  * @dependency js/utils.js - formatRate, formatMemory, safeToFixed helpers
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, svg } from 'lit';
 import { formatRate, formatMemory, safeToFixed } from '../utils-lit.js';
+import { placeOnSlots, measuredRuns } from '../atoms/ag-sparkline.js';
 
 
 export class AgMetricDetail extends LitElement {
@@ -23,6 +26,7 @@ export class AgMetricDetail extends LitElement {
         label: { type: String },
         color: { type: String },
         unit: { type: String },
+        slots: { type: Number },
         data: { type: Array }
     };
 
@@ -31,6 +35,7 @@ export class AgMetricDetail extends LitElement {
         this.label = '';
         this.color = 'var(--text-primary)';
         this.unit = '';
+        this.slots = 0;
         this.data = [];
     }
 
@@ -58,33 +63,26 @@ export class AgMetricDetail extends LitElement {
     }
 
     render() {
-        if (!this.data || this.data.length === 0) return html``;
+        // Only what was measured: a null is a gap, not a zero, and a measurement alone
+        // between gaps (the very first one included) is drawn as a point.
+        const { count, points } = placeOnSlots(this.data, this.slots);
+        if (points.length === 0) return html``;
 
         const width = 100;
         const height = 60;
-        const max = Math.max(...this.data, 0.1);
-
-        // Generate line points
-        const points = this.data.map((value, index) => {
-            const x = (index / (this.data.length - 1)) * width;
-            const y = height - (value / max) * height;
-            return `${x},${y}`;
-        }).join(' ');
-
-        // Generate area path
-        const areaPoints = this.data.map((value, index) => {
-            const x = (index / (this.data.length - 1)) * width;
-            const y = height - (value / max) * height;
-            return `${x},${y}`;
-        });
-        const areaPath = `M 0,${height} L ${areaPoints.join(' L ')} L ${width},${height} Z`;
+        const max = Math.max(...points.map(p => p.value), 0.1);
+        const x = slot => (count > 1 ? (slot / (count - 1)) * width : width);
+        const y = value => height - (value / max) * height;
+        const runs = measuredRuns(points).map(run => run.map(p => [x(p.slot), y(p.value)]));
 
         // Generate unique gradient ID to avoid conflicts
         const cleanLabel = this.label.replace(/<[^>]+>/g, ''); // Remove HTML tags
         const gradientId = `gradient-${cleanLabel.replace(/[^a-z0-9]/gi, '-')}-${Math.random().toString(36).substr(2, 5)}`;
 
-        const currentValue = this.data[this.data.length - 1] || 0;
-        const formattedValue = this._formatValue(currentValue);
+        // The big figure is the current value, so it is shown only when the newest slot
+        // holds a measurement; an older one would be presented as current.
+        const latest = points[points.length - 1];
+        const formattedValue = latest.slot === count - 1 ? this._formatValue(latest.value) : '—';
 
         return html`
             <div class="detailed-chart">
@@ -99,19 +97,32 @@ export class AgMetricDetail extends LitElement {
                             <stop offset="100%" style="stop-color:${this.color};stop-opacity:0.05" />
                         </linearGradient>
                     </defs>
-                    <!-- Area fill -->
-                    <path
-                        d="${areaPath}"
-                        fill="url(#${gradientId})"
-                    />
-                    <!-- Line -->
-                    <polyline
-                        points="${points}"
-                        fill="none"
-                        stroke="${this.color}"
-                        stroke-width="1.5"
-                        vector-effect="non-scaling-stroke"
-                    />
+                    ${runs.map(run => run.length === 1 ? svg`
+                        <!-- A lone measurement: a zero-length stroke with round caps is a dot,
+                             and non-scaling it stays round in this stretched viewBox. -->
+                        <path class="detailed-chart-point"
+                            d="M ${run[0][0]},${run[0][1]} h 0.001"
+                            fill="none"
+                            stroke="${this.color}"
+                            stroke-width="4"
+                            stroke-linecap="round"
+                            vector-effect="non-scaling-stroke"
+                        />
+                    ` : svg`
+                        <!-- Area fill -->
+                        <path
+                            d="M ${run[0][0]},${height} L ${run.map(p => p.join(',')).join(' L ')} L ${run[run.length - 1][0]},${height} Z"
+                            fill="url(#${gradientId})"
+                        />
+                        <!-- Line -->
+                        <polyline
+                            points="${run.map(p => p.join(',')).join(' ')}"
+                            fill="none"
+                            stroke="${this.color}"
+                            stroke-width="1.5"
+                            vector-effect="non-scaling-stroke"
+                        />
+                    `)}
                 </svg>
             </div>
         `;

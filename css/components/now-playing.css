@@ -232,7 +232,7 @@ ag-now-playing {
     width: 52px;
     height: 52px;
     object-fit: cover;
-    border-radius: 3px;
+    border-radius: var(--radius-cover);
     display: block;
 }
 
@@ -244,7 +244,7 @@ ag-now-playing {
     align-items: center;
     justify-content: center;
     background: var(--bg-tertiary, var(--bg-primary));
-    border-radius: 3px;
+    border-radius: var(--radius-cover);
     color: var(--text-tertiary);
 
     /* rule 12 exception — this sizes an icon, not text. The SVG inside is width/height
@@ -309,10 +309,24 @@ ag-now-playing {
 }
 
 /* Allow the source badge to shrink below its natural content width when a
-   renderer badge is present, so the renderer name is never truncated. */
+   renderer badge is present, so the renderer name is never truncated.
+   Its look is not set here: it is drawn as the twin of the output badge beside
+   it, in components/connector-badge.css. */
 .np-source-row .ag-source-badge {
     min-width: 0;
     flex-shrink: 1;
+}
+
+/* The label sets its own tracking for the players; here it takes the badge's. */
+.np-source-row .ag-source-badge__label {
+    letter-spacing: inherit;
+}
+
+/* No HIGHRESAUDIO logo in this badge, the name alone. The mark is wider than tall
+   and kept its 24px box from the source list, which stretched the badge to 26px
+   beside an 18px output badge and cut the name to "HIGHRE…" (measured). */
+.np-source-row .ag-source-badge__icon:has(.lib-src-logo-hra) {
+    display: none;
 }
 
 .np-service-badge {

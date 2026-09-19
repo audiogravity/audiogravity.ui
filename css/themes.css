@@ -121,6 +121,38 @@
    --radius-full: 9999px;
    --radius-xs: 1px;
 
+   /* Elements whose corners were written as literals and so escaped every theme.
+      The defaults below ARE those literals: slate and gravity look exactly as
+      before, and a theme that wants them on its own scale redefines them (minimal
+      sets chip, cover, pipeline, toast and badge to 2px, and leaves the pull tab
+      and the queue tip where they are). */
+
+   /* @var --radius-chip @description Value chips of the top bar (CPU, temperature, memory). */
+   --radius-chip: 4px;
+
+   /* @var --radius-cover @description Artwork thumbnail of the now-playing bar. */
+   --radius-cover: 3px;
+
+   /* @var --radius-pipeline @description Controls drawn over the audio pipeline diagram
+      (zoom, steering buttons and their result). */
+   --radius-pipeline: 4px;
+
+   /* @var --radius-toast @description Notifications. Square by default. */
+   --radius-toast: 0px;
+
+   /* @var --radius-pull-tab @description Top corners of the tab that brings back a
+      dismissed now-playing bar. */
+   --radius-pull-tab: 6px;
+
+   /* @var --radius-queue-tip @description The explanation bubble over the disabled
+      Clear of a Roon queue. Its own entry: the shared tooltip follows --radius-sm. */
+   --radius-queue-tip: 4px;
+
+   /* @var --radius-badge @description Badges: the output connector (USB, TOSLINK…) and
+      the stream origin (Qobuz, Tidal, radio, UPnP server…). The connector's own small
+      radius by default; the origin badge, a pill until then, takes the same. */
+   --radius-badge: var(--radius-sm);
+
    /* Shadows (Defaults) */
    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
    --shadow-md: 0 1px 3px var(--shadow-color, rgb(0 0 0 / 0.1));

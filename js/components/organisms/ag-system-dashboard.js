@@ -11,6 +11,7 @@ import './ag-card-grid.js';
 import '../molecules/ag-network-card.js';
 import '../molecules/ag-system-info.js';
 import '../molecules/ag-system-tile.js';
+import { SYSTEM_METRICS_WINDOW, MAX_SAMPLE_GAP_MS, isMeasured, appendMeasured, appendBounded } from '../../core/metrics-window.js';
 
 /**
  * System Dashboard Web Component
@@ -57,7 +58,11 @@ export class AgSystemDashboard extends LitElement {
             network: [],
             disk: []
         };
-        this.MAX_HISTORY = 60;
+        this.MAX_HISTORY = SYSTEM_METRICS_WINDOW;
+        // When each update arrived. The core's rate is adaptive (2 s to 30 s), so the
+        // time a window of MAX_HISTORY measurements covers is read from here, never
+        // assumed from the count.
+        this._historyTimes = [];
 
         // Fetch Controllers
         // Each reading is kept for the next offline start. This page qualifies because it
@@ -124,12 +129,27 @@ export class AgSystemDashboard extends LitElement {
         EventEmitter.off('connection-status', this._handleConnectionStatus);
     }
 
+    /**
+     * The metric's series with one more sample: `value` when measured, else null (a gap).
+     * A new array, never the one a tile was handed at its last render.
+     * @param {string} metric - Key of this._historyStore.
+     * @param {*} value - This update's reading, as received.
+     * @returns {Array<number|null>}
+     */
     _addHistory(metric, value) {
-        this._historyStore[metric].push(value);
-        if (this._historyStore[metric].length > this.MAX_HISTORY) {
-            this._historyStore[metric].shift();
-        }
-        return [...this._historyStore[metric]];
+        return appendMeasured(this._historyStore[metric], value, this.MAX_HISTORY);
+    }
+
+    /**
+     * Time covered by the measurements a tile's chart currently holds.
+     * @param {string} metric - Key of this._historyStore.
+     * @returns {number} Milliseconds from its oldest to its newest measurement (0 below two).
+     */
+    _spanOf(metric) {
+        const n = this._historyStore[metric].length;
+        const times = this._historyTimes;
+        if (n < 2 || times.length < n) return 0;
+        return times[times.length - 1] - times[times.length - n];
     }
 
     _handleSysinfoUpdate(data) {
@@ -148,20 +168,28 @@ export class AgSystemDashboard extends LitElement {
         if (data.disk_used_gb !== undefined) updated.disk_used_gb = data.disk_used_gb;
         if (data.disk_total_gb !== undefined) updated.disk_total_gb = data.disk_total_gb;
 
-        const temp = data.cpu_temp || data.temperature || data.max_temp;
-        if (temp !== undefined) updated.temperature = temp;
+        // `??`, not `||`: a reading of 0 is a reading.
+        const temp = data.cpu_temp ?? data.temperature ?? data.max_temp;
+        if (temp !== undefined && temp !== null) updated.temperature = temp;
 
         if (data.uptime !== undefined) updated.uptime = data.uptime;
 
-        // Calculate network rate
+        // A pause in the stream (app hidden, offline): the next sample opens a gap.
+        const now = Date.now();
+        const lastSample = this._historyTimes[this._historyTimes.length - 1];
+        const paused = lastSample !== undefined && now - lastSample > MAX_SAMPLE_GAP_MS;
+
+        // Calculate network rate. Not across a pause: that would be an average over the
+        // whole silence, drawn as if it were one sample's rate.
+        let networkRate = null;
         if (data.network_bytes_sent !== undefined && data.network_bytes_recv !== undefined) {
-            const now = Date.now();
-            if (this.lastNetworkStats.timestamp !== 0) {
+            if (this.lastNetworkStats.timestamp !== 0 && !paused) {
                 const timeDiff = (now - this.lastNetworkStats.timestamp) / 1000;
                 if (timeDiff > 0) {
                     const sentRate = (data.network_bytes_sent - this.lastNetworkStats.sent) / 1024 / timeDiff;
                     const recvRate = (data.network_bytes_recv - this.lastNetworkStats.recv) / 1024 / timeDiff;
                     updated.network_rate = sentRate + recvRate;
+                    networkRate = updated.network_rate;
                     updated.network_sent_detail = sentRate;
                     updated.network_recv_detail = recvRate;
                 }
@@ -169,12 +197,27 @@ export class AgSystemDashboard extends LitElement {
             this.lastNetworkStats = { sent: data.network_bytes_sent, recv: data.network_bytes_recv, timestamp: now };
         }
 
-        // Add to history
-        this._historyStore.cpu = this._addHistory('cpu', updated.cpu_percent);
-        this._historyStore.memory = this._addHistory('memory', updated.memory_percent);
-        this._historyStore.temperature = this._addHistory('temperature', updated.temperature);
-        if (updated.network_rate !== undefined) this._historyStore.network = this._addHistory('network', updated.network_rate);
-        this._historyStore.disk = this._addHistory('disk', updated.disk_usage_percent);
+        // Add to history — what THIS update measured, never the value carried over in
+        // `updated` (which is for the figures on screen). An update that measures none
+        // of the charted metrics, such as the uptime-only one sse.js sends on its own,
+        // adds no sample; an absent reading is a null, a gap in its chart.
+        const readings = {
+            cpu: data.cpu_percent,
+            memory: data.memory_percent,
+            temperature: temp,
+            network: networkRate,
+            disk: data.disk_usage_percent,
+        };
+        const measuredNow = Object.values(readings).some(isMeasured)
+            || (data.network_bytes_sent !== undefined && data.network_bytes_recv !== undefined);
+        if (measuredNow) {
+            if (paused) {
+                for (const metric of Object.keys(readings)) this._historyStore[metric] = this._addHistory(metric, null);
+                this._historyTimes = appendBounded(this._historyTimes, now, this.MAX_HISTORY);
+            }
+            for (const [metric, value] of Object.entries(readings)) this._historyStore[metric] = this._addHistory(metric, value);
+            this._historyTimes = appendBounded(this._historyTimes, now, this.MAX_HISTORY);
+        }
 
         this.metrics = updated;
     }
@@ -216,6 +259,8 @@ export class AgSystemDashboard extends LitElement {
                     detail="Load: ${this.metrics.load_avg.map(n => typeof n === 'number' ? n.toFixed(2) : n).join(', ')}"
                     .value=${this.metrics.cpu_percent.toFixed(1)}
                     .sparklineData=${this._historyStore.cpu}
+                    .sparklineSpan=${this._spanOf('cpu')}
+                    sparkline-slots=${this.MAX_HISTORY}
                     sparkline-color="var(--chart-cpu)" 
                     sparkline-fill="var(--chart-cpu-bg)">
                 </ag-system-tile>
@@ -228,6 +273,8 @@ export class AgSystemDashboard extends LitElement {
                     detail="${this.metrics.temperature > 80 ? 'Critical Overheat!' : 'Core Temp'}"
                     .value=${this.metrics.temperature.toFixed(1)}
                     .sparklineData=${this._historyStore.temperature}
+                    .sparklineSpan=${this._spanOf('temperature')}
+                    sparkline-slots=${this.MAX_HISTORY}
                     sparkline-color="var(--chart-temperature)" 
                     sparkline-fill="var(--chart-temperature-bg)">
                 </ag-system-tile>
@@ -240,6 +287,8 @@ export class AgSystemDashboard extends LitElement {
                     detail="${memUsedGB} GB / ${memTotalGB} GB"
                     .value=${this.metrics.memory_percent.toFixed(1)}
                     .sparklineData=${this._historyStore.memory}
+                    .sparklineSpan=${this._spanOf('memory')}
+                    sparkline-slots=${this.MAX_HISTORY}
                     sparkline-color="var(--chart-memory)" 
                     sparkline-fill="var(--chart-memory-bg)">
                 </ag-system-tile>
@@ -252,6 +301,8 @@ export class AgSystemDashboard extends LitElement {
                     detail="${this.metrics.disk_used_gb?.toFixed(1) || '--'} GB / ${this.metrics.disk_total_gb?.toFixed(1) || '--'} GB"
                     .value=${this.metrics.disk_usage_percent.toFixed(1)}
                     .sparklineData=${this._historyStore.disk}
+                    .sparklineSpan=${this._spanOf('disk')}
+                    sparkline-slots=${this.MAX_HISTORY}
                     sparkline-color="var(--chart-disk)" 
                     sparkline-fill="var(--chart-disk-bg)">
                 </ag-system-tile>
@@ -264,6 +315,8 @@ export class AgSystemDashboard extends LitElement {
                     detail="↑ ${this.metrics.network_sent_detail?.toFixed(1) || '0.0'} / ↓ ${this.metrics.network_recv_detail?.toFixed(1) || '0.0'}"
                     .value=${(this.metrics.network_rate || 0).toFixed(1)}
                     .sparklineData=${this._historyStore.network}
+                    .sparklineSpan=${this._spanOf('network')}
+                    sparkline-slots=${this.MAX_HISTORY}
                     sparkline-color="var(--chart-network)" 
                     sparkline-fill="var(--chart-network-bg)">
                 </ag-system-tile>

@@ -38,25 +38,26 @@
     transition: background var(--transition-fast);
 }
 
-/* UP State (Green with glow & slow blink) */
+/* UP State (Green, slow blink). No glow — no status dot has one, green or orange:
+   a flat disc, here and on every other "up / online / active" dot (system.css,
+   library-queue.css, library-sources.css, the pipeline's node panel). */
 .service-state-dot.up,
 .profile-status-dot.up,
 .profile-status.active {
     background: var(--color-success);
-    box-shadow: 0 0 8px var(--color-success);
     animation: blinkSlow 3s infinite ease-in-out;
 }
 
+/* Opacity only: the keyframes used to animate the glow too, so removing it from the
+   rule above alone would have brought it back on every frame. */
 @keyframes blinkSlow {
     0%,
     100% {
         opacity: 1;
-        box-shadow: 0 0 8px var(--color-success);
     }
 
     50% {
         opacity: 0.4;
-        box-shadow: 0 0 2px var(--color-success);
     }
 }
 
@@ -67,26 +68,16 @@
     background: var(--text-tertiary);
 }
 
-/* PENDING State (Orange pulsing — activating/deactivating) */
+/* PENDING State (Orange pulsing — activating/deactivating), no glow either */
 .service-state-dot.pending,
 .profile-status-dot.pending {
     background: var(--color-warning);
-    box-shadow: 0 0 8px var(--color-warning);
     animation: blinkFast 1s infinite ease-in-out;
 }
 
 @keyframes blinkFast {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
-}
-
-/* No-animations: remove glow, keep solid dot */
-body.no-animations .service-state-dot.up,
-body.no-animations .profile-status-dot.up,
-body.no-animations .profile-status.active,
-body.no-animations .service-state-dot.pending,
-body.no-animations .profile-status-dot.pending {
-    box-shadow: none;
 }
 
 /* Status Text */

@@ -58,6 +58,10 @@
     --chart-disk: #ec4899;
     --chart-disk-bg: rgb(236 72 153 / 0.12);
 
+    /* Second series of a chart (outgoing, writes). Resolved where it is read, so
+       it follows the dark block's tertiary text without a second declaration. */
+    --chart-secondary: var(--text-tertiary);
+
     /* UI Colors */
     --border-color: #e2e8f0;
     --shadow-color: rgb(15 23 42 / 0.06);
