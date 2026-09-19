@@ -92,6 +92,10 @@
     --chart-disk: #EC4899;
     --chart-disk-bg: rgb(236 72 153 / 0.15);
 
+    /* Second series of a chart (outgoing, writes). Resolved where it is read, so
+       it follows the dark block's tertiary text without a second declaration. */
+    --chart-secondary: var(--text-tertiary);
+
     /* Component Specific: Toasts */
 
     /* UI Colors */

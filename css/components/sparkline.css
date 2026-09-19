@@ -79,6 +79,40 @@ ag-sparkline .sparkline-svg {
 }
 
 /* =====================
+   MEASURED VARIANTS ('area', 'bars')
+   Drawn with the chart's own tokens so both follow the theme; colours set here in
+   CSS rather than as SVG attributes, where a var() is not resolved everywhere.
+   ===================== */
+
+/* The zero line: where a window starts before anything was measured. */
+.sparkline-baseline {
+    stroke: var(--border-color);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+/* Last measurement. The ring is the box's own ground, so the dot reads off the line. */
+.sparkline-dot {
+    stroke: var(--bg-primary);
+    stroke-width: 1;
+}
+
+/* Every bar but the latest is lightened, so the current value stands out. */
+.sparkline-bar {
+    fill-opacity: 0.55;
+}
+
+.sparkline-bar.is-last {
+    fill-opacity: 1;
+}
+
+.sparkline-caption {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    fill: var(--text-tertiary);
+}
+
+/* =====================
    ACTIVITY LEVEL COLORS (SERVICES)
    Colors defined per-theme via --activity-low/medium/high in css/themes/*.css
    ===================== */

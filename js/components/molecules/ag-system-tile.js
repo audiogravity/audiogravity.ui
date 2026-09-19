@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { iconWifi, iconCpu, iconThermometer, iconMemory, iconHardDrive, iconConnection, iconClock } from '../../ag-icons.js';
 import '../atoms/ag-sparkline.js';
+import { formatUptime, safeToFixed } from '../utils-lit.js';
+import { isMeasured } from '../../core/metrics-window.js';
 
 /** Map from legacy icomoon class name to SVG icon template. */
 const ICON_MAP = {
@@ -28,7 +30,9 @@ const ICON_MAP = {
  * @prop {string} connectionId - for type="connection"
  * @prop {string} sparklineColor
  * @prop {string} sparklineFill
- * @prop {Array} sparklineData
+ * @prop {Array} sparklineData - Oldest first; null/undefined = not measured (a gap).
+ * @prop {number} sparklineSlots - Window capacity: one bar per measurement, filled from the right.
+ * @prop {number} sparklineSpan - Milliseconds the held measurements cover, for the duration caption.
  * 
  * @dependency css/system.css - Uses .system-tile, .metric-large, .connection-status-large
  * @dependency ag-sparkline - Uses ag-sparkline for metric visualization
@@ -45,7 +49,9 @@ export class AgSystemTile extends LitElement {
         connectionId: { type: String },
         sparklineColor: { type: String, attribute: 'sparkline-color' },
         sparklineFill: { type: String, attribute: 'sparkline-fill' },
-        sparklineData: { type: Array }
+        sparklineData: { type: Array },
+        sparklineSlots: { type: Number, attribute: 'sparkline-slots' },
+        sparklineSpan: { type: Number }
     };
 
     constructor() {
@@ -59,6 +65,31 @@ export class AgSystemTile extends LitElement {
         this.connected = false;
         this.connectionId = '';
         this.sparklineData = [];
+        this.sparklineSlots = 0;
+        this.sparklineSpan = 0;
+    }
+
+    /**
+     * Highest measurement the chart holds, with the tile's unit — the scale's top,
+     * since the bars start at zero and end just above it.
+     * @returns {string} e.g. "max 34.2%", or '' before anything was measured.
+     */
+    _maxCaption() {
+        const values = (this.sparklineData || []).filter(isMeasured);
+        if (!values.length) return '';
+        const unit = !this.unit ? '' : this.unit === '%' ? '%' : ` ${this.unit}`;
+        return `max ${safeToFixed(Math.max(...values), 1)}${unit}`;
+    }
+
+    /**
+     * Time the chart covers, measured from the updates' arrival — the core's rate
+     * is adaptive, so a count of bars says nothing about minutes on its own.
+     * @returns {string} e.g. "10m", "1h 5m", "<1m", or '' below two measurements.
+     */
+    _spanCaption() {
+        if (!(this.sparklineSpan > 0)) return '';
+        const seconds = this.sparklineSpan / 1000;
+        return seconds < 60 ? '<1m' : formatUptime(seconds);
     }
 
     createRenderRoot() {
@@ -115,11 +146,14 @@ export class AgSystemTile extends LitElement {
                 
                 ${this.sparklineColor ? html`
                     <div class="sparkline-container">
-                        <ag-sparkline 
+                        <ag-sparkline
+                            variant="bars"
+                            slots=${this.sparklineSlots}
                             .data=${this.sparklineData}
-                            line-color="${this.sparklineColor}" 
-                            fill-color="${this.sparklineFill || 'transparent'}" 
-                            smooth 
+                            line-color="${this.sparklineColor}"
+                            fill-color="${this.sparklineFill || 'transparent'}"
+                            caption-start=${this._maxCaption()}
+                            caption-end=${this._spanCaption()}
                             auto-scale>
                         </ag-sparkline>
                     </div>

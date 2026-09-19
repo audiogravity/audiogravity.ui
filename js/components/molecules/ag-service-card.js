@@ -26,6 +26,7 @@ import { isGuest } from '../../auth.js';
 import { iconPower, iconArrowDown, iconArrowUp, iconFileText, iconPencil } from '../../ag-icons.js';
 import './ag-metric-detail.js';
 import '../atoms/ag-sparkline.js';
+import { SERVICE_METRICS_WINDOW } from '../../core/metrics-window.js';
 import '../atoms/ag-status-indicator.js';
 
 export class AgServiceCard extends LitElement {
@@ -291,8 +292,9 @@ export class AgServiceCard extends LitElement {
                         <div class="sparkline-container" @click=${() => this._handleExpandMetric('cpu')}>
                             <ag-sparkline
                                 .data=${this.history?.cpu || []}
+                                variant="area"
+                                slots=${SERVICE_METRICS_WINDOW}
                                 auto-scale
-                                smooth
                                 line-color="var(--chart-cpu)"
                                 fill-color="var(--chart-cpu-bg)">
                             </ag-sparkline>
@@ -307,8 +309,9 @@ export class AgServiceCard extends LitElement {
                             <div class="sparkline-container" @click=${() => this._handleExpandMetric('mem')}>
                                 <ag-sparkline
                                     .data=${this.history?.mem || []}
+                                    variant="area"
+                                    slots=${SERVICE_METRICS_WINDOW}
                                     auto-scale
-                                    smooth
                                     line-color="var(--chart-memory)"
                                     fill-color="var(--chart-memory-bg)">
                                 </ag-sparkline>
@@ -331,11 +334,12 @@ export class AgServiceCard extends LitElement {
                                 <ag-sparkline
                                     .data=${this.history?.netRx || []}
                                     .data2=${this.history?.netTx || []}
+                                    variant="area"
+                                    slots=${SERVICE_METRICS_WINDOW}
                                     auto-scale
-                                    smooth
                                     line-color="var(--chart-network)"
                                     fill-color="var(--chart-network-bg)"
-                                    second-line-color="var(--chart-network-tx, var(--color-warning))">
+                                    second-line-color="var(--chart-secondary)">
                                 </ag-sparkline>
                             </div>
                         ` : nothing}
@@ -356,11 +360,12 @@ export class AgServiceCard extends LitElement {
                                 <ag-sparkline
                                     .data=${this.history?.diskRead || []}
                                     .data2=${this.history?.diskWrite || []}
+                                    variant="area"
+                                    slots=${SERVICE_METRICS_WINDOW}
                                     auto-scale
-                                    smooth
                                     line-color="var(--chart-disk)"
                                     fill-color="var(--chart-disk-bg)"
-                                    second-line-color="var(--chart-disk-write, var(--color-warning))">
+                                    second-line-color="var(--chart-secondary)">
                                 </ag-sparkline>
                             </div>
                         ` : nothing}
@@ -374,7 +379,7 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('cpu')}>×</button>
                         </div>
                         <div class="expanded-metric-content">
-                            <ag-metric-detail label="CPU" .data=${this.history?.cpu || []} color="var(--color-info)" unit="%"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="CPU" .data=${this.history?.cpu || []} color="var(--color-info)" unit="%"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -386,7 +391,7 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('mem')}>×</button>
                         </div>
                         <div class="expanded-metric-content">
-                            <ag-metric-detail label="Memory" .data=${this.history?.mem || []} color="var(--color-success)" unit="mem"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Memory" .data=${this.history?.mem || []} color="var(--color-success)" unit="mem"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -398,8 +403,8 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('net')}>×</button>
                         </div>
                         <div class="expanded-metric-content split">
-                            <ag-metric-detail label="↓ Ingress" .data=${this.history?.netRx || []} color="var(--color-success)" unit="rate"></ag-metric-detail>
-                            <ag-metric-detail label="↑ Egress" .data=${this.history?.netTx || []} color="var(--color-warning)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↓ Ingress" .data=${this.history?.netRx || []} color="var(--color-success)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↑ Egress" .data=${this.history?.netTx || []} color="var(--color-warning)" unit="rate"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -411,8 +416,8 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('disk')}>×</button>
                         </div>
                         <div class="expanded-metric-content split">
-                            <ag-metric-detail label="Read" .data=${this.history?.diskRead || []} color="var(--color-info)" unit="rate"></ag-metric-detail>
-                            <ag-metric-detail label="Write" .data=${this.history?.diskWrite || []} color="var(--color-error)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Read" .data=${this.history?.diskRead || []} color="var(--color-info)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Write" .data=${this.history?.diskWrite || []} color="var(--color-error)" unit="rate"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}

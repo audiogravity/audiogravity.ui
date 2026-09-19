@@ -45,3 +45,40 @@ HighActivity.args = {
     color: 'var(--color-error)',
     activityLevel: 'high'
 };
+
+/**
+ * 'area' — the Services boxes. Values fill a 30-measurement window from the right;
+ * a null is a gap; the second series (outgoing) is a thin grey line.
+ */
+export const MeasuredArea = () => html`
+  <div style="padding: 20px; background: var(--bg-primary); border: 1px solid var(--border-color); width: 65px; height: 20px;">
+    <ag-sparkline
+        variant="area"
+        slots="30"
+        auto-scale
+        .data=${[18, 21, 19, 24, null, 22, 20, 23, 25, 21, 19, 22]}
+        .data2=${[2, 2, 1, 3, null, 2, 2, 1, 2, 2, 3, 2]}
+        line-color="var(--chart-network)"
+        fill-color="var(--chart-network-bg)"
+        second-line-color="var(--chart-secondary)">
+    </ag-sparkline>
+  </div>
+`;
+
+/**
+ * 'bars' — the System tiles. One bar per measurement, the latest in full, and
+ * captions for the scale's top and the time covered.
+ */
+export const MeasuredBars = () => html`
+  <div style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--border-color); width: 225px; height: 40px;">
+    <ag-sparkline
+        variant="bars"
+        slots="60"
+        auto-scale
+        caption-start="max 38.0%"
+        caption-end="3m"
+        .data=${[22, 19, 25, 21, 38, 24, 20, 23, 26, 22, 21, 24, 19, 22, 20, 23, 21, 25]}
+        line-color="var(--chart-cpu)">
+    </ag-sparkline>
+  </div>
+`;

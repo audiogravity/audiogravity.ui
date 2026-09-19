@@ -23,11 +23,19 @@ import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
+import { SERVICE_METRICS_WINDOW, MAX_SAMPLE_GAP_MS, appendMeasured } from '../../core/metrics-window.js';
 import '../atoms/ag-filter-bar.js';
 import '../atoms/ag-health-bar.js';
 import '../molecules/ag-service-detail-modal.js';
 import './ag-card-grid.js';
 import '../molecules/ag-service-card.js';
+
+/** Where the per-service chart history survives a reload. */
+const METRICS_HISTORY_KEY = 'ag_metricsHistory_v2';
+/** Pre-v2 key: histories padded with 30 zeros ahead of the first measurement. */
+const LEGACY_METRICS_HISTORY_KEY = 'ag_metricsHistory';
+/** At most one write of the history to localStorage per this many ms (it is synchronous). */
+const METRICS_HISTORY_SAVE_MS = 30000;
 
 export class AgServicesPage extends LitElement {
     static properties = {
@@ -44,6 +52,8 @@ export class AgServicesPage extends LitElement {
         super();
         this.services = [];
         this.config = {};
+        // When each service last sent a sample, to tell a pause from the normal rate.
+        this._lastSampleAt = {};
         this.metricsHistory = this._loadMetricsHistory();
         this._filter = 'all';
         this._detailService = null;
@@ -235,16 +245,12 @@ export class AgServicesPage extends LitElement {
     }
 
     _initMetricsHistory(serviceId) {
+        // Empty, not 30 zeros: the charts place what they are given on a fixed
+        // window from the right, and a pre-filled buffer drew five to fifteen
+        // minutes of invented zeros ahead of the first real measurement.
         if (!this.metricsHistory[serviceId]) {
             this.metricsHistory[serviceId] = {
-                cpu: Array(30).fill(0),
-                mem: Array(30).fill(0),
-                net: Array(30).fill(0),
-                netRx: Array(30).fill(0),
-                netTx: Array(30).fill(0),
-                disk: Array(30).fill(0),
-                diskRead: Array(30).fill(0),
-                diskWrite: Array(30).fill(0)
+                cpu: [], mem: [], netRx: [], netTx: [], diskRead: [], diskWrite: []
             };
         }
     }
@@ -253,22 +259,51 @@ export class AgServicesPage extends LitElement {
         const history = this.metricsHistory[serviceId];
         if (!history) return;
 
-        history[metric].shift();
-        history[metric].push(value || 0);
-
-        // Save to localStorage periodically (debounced by natural SSE frequency)
+        // A value that is not a number was not measured: kept as null, it is a gap
+        // in the chart — `value || 0` made it a zero the machine never reported.
+        // A NEW array each time (appendMeasured): the chart only redraws when handed
+        // a different array, so an in-place push/shift left it showing whatever it
+        // held at its last redraw — hidden while 30 zeros filled the picture anyway.
+        history[metric] = appendMeasured(history[metric], value, SERVICE_METRICS_WINDOW);
         this._saveMetricsHistory();
+    }
+
+    /**
+     * Mark a pause in a service's samples as a gap in each of its series. The stream
+     * stops while the app is hidden or offline, and a restored history is from an
+     * earlier visit: without the gap, samples minutes or hours apart would be drawn
+     * side by side as if consecutive.
+     * @param {string} serviceId
+     * @param {number} now - Arrival time of the sample about to be added (ms).
+     */
+    _markGapIfPaused(serviceId, now) {
+        const last = this._lastSampleAt[serviceId];
+        const history = this.metricsHistory[serviceId];
+        if (history && last !== undefined && now - last > MAX_SAMPLE_GAP_MS) {
+            for (const metric of Object.keys(history)) {
+                history[metric] = appendMeasured(history[metric], null, SERVICE_METRICS_WINDOW);
+            }
+        }
+        this._lastSampleAt[serviceId] = now;
     }
 
     _loadMetricsHistory() {
         try {
-            const saved = localStorage.getItem('ag_metricsHistory');
+            // The pre-v2 key holds histories that start with the 30 invented zeros;
+            // restoring them would draw those zeros as measurements. Dropped once.
+            localStorage.removeItem(LEGACY_METRICS_HISTORY_KEY);
+            const saved = localStorage.getItem(METRICS_HISTORY_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                // Validate structure
-                if (typeof parsed === 'object' && parsed !== null) {
+                // { savedAt, histories }: the time lets the first new sample open a gap
+                // after the restored ones instead of being drawn right against them.
+                if (parsed && typeof parsed.histories === 'object' && parsed.histories !== null) {
+                    this._lastSampleAt = this._lastSampleAt || {};
+                    for (const serviceId of Object.keys(parsed.histories)) {
+                        this._lastSampleAt[serviceId] = Number(parsed.savedAt) || 0;
+                    }
                     logger.log('Restored metrics history from localStorage');
-                    return parsed;
+                    return parsed.histories;
                 }
             }
         } catch (e) {
@@ -278,28 +313,32 @@ export class AgServicesPage extends LitElement {
     }
 
     _saveMetricsHistory() {
-        // Debounce: écriture localStorage max toutes les 30s (synchrone et coûteux)
-        clearTimeout(this._saveTimer);
+        // Throttle, not debounce: at most one write per METRICS_HISTORY_SAVE_MS, since
+        // localStorage is synchronous. A debounce restarted on every sample (up to six
+        // per service, every 2 to 30 s) never reached its 30 s, so nothing was written
+        // while the tab was in use.
+        if (this._saveTimer) return;
         this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
             try {
                 const toSave = {};
                 for (const [serviceId, history] of Object.entries(this.metricsHistory)) {
                     const hasData = Object.values(history).some(arr =>
-                        arr.some(val => val !== 0)
+                        arr.some(val => typeof val === 'number' && val !== 0)
                     );
                     if (hasData) {
                         toSave[serviceId] = history;
                     }
                 }
-                localStorage.setItem('ag_metricsHistory', JSON.stringify(toSave));
+                localStorage.setItem(METRICS_HISTORY_KEY, JSON.stringify({ savedAt: Date.now(), histories: toSave }));
             } catch (e) {
                 // Quota exceeded or other error - ignore silently
                 if (e.name === 'QuotaExceededError') {
                     logger.warn('localStorage quota exceeded, clearing old metrics history');
-                    localStorage.removeItem('ag_metricsHistory');
+                    localStorage.removeItem(METRICS_HISTORY_KEY);
                 }
             }
-        }, 30000);
+        }, METRICS_HISTORY_SAVE_MS);
     }
 
     _updateServiceMetrics(serviceId, metrics) {
@@ -309,19 +348,18 @@ export class AgServicesPage extends LitElement {
         const service = this.services[serviceIndex];
 
         this._initMetricsHistory(serviceId);
+        this._markGapIfPaused(serviceId, Date.now());
 
         if (metrics.cpu_percent !== undefined) this._addMetricToHistory(serviceId, 'cpu', metrics.cpu_percent);
         if (metrics.memory_mb !== undefined) this._addMetricToHistory(serviceId, 'mem', metrics.memory_mb);
 
-        let rxMBps = metrics.network_rx_rate !== undefined ? metrics.network_rx_rate : (metrics.ip_ingress_mb_per_sec || 0);
-        let txMBps = metrics.network_tx_rate !== undefined ? metrics.network_tx_rate : (metrics.ip_egress_mb_per_sec || 0);
-        this._addMetricToHistory(serviceId, 'net', rxMBps + txMBps);
+        let rxMBps = metrics.network_rx_rate !== undefined ? metrics.network_rx_rate : (metrics.ip_ingress_mb_per_sec ?? null);
+        let txMBps = metrics.network_tx_rate !== undefined ? metrics.network_tx_rate : (metrics.ip_egress_mb_per_sec ?? null);
         this._addMetricToHistory(serviceId, 'netRx', rxMBps);
         this._addMetricToHistory(serviceId, 'netTx', txMBps);
 
-        let read = metrics.io_read_rate !== undefined ? metrics.io_read_rate : (metrics.io_read_mb_per_sec || 0);
-        let write = metrics.io_write_rate !== undefined ? metrics.io_write_rate : (metrics.io_write_mb_per_sec || 0);
-        this._addMetricToHistory(serviceId, 'disk', read + write);
+        let read = metrics.io_read_rate !== undefined ? metrics.io_read_rate : (metrics.io_read_mb_per_sec ?? null);
+        let write = metrics.io_write_rate !== undefined ? metrics.io_write_rate : (metrics.io_write_mb_per_sec ?? null);
         this._addMetricToHistory(serviceId, 'diskRead', read);
         this._addMetricToHistory(serviceId, 'diskWrite', write);
 
@@ -335,8 +373,9 @@ export class AgServicesPage extends LitElement {
         // Trigger Lit reactive rendering
         this.requestUpdate('services');
 
-        // Also we want to ensure the specific card receives the updated history object reference
-        // to re-render its sparklines. This is done by requesting an update on `metricsHistory`
+        // Marks the page's history as changed. On its own this never redrew a chart:
+        // each chart compares the ARRAY it is handed, and those used to be the same
+        // arrays pushed in place. They are new on every sample now (_addMetricToHistory).
         this.metricsHistory = { ...this.metricsHistory };
     }
 
