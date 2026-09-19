@@ -97,6 +97,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
+| GET | `/library/signed/{sig}/{path}` | **HQPlayer-facing** (public, HMAC-signed): the same files, with the signature as a path segment so the URL ends with the file's extension — HQPlayer picks its decoder from it. An MP3 is sent without a size and from its first audio frame (HQPlayer keeps neither a sized MP3 nor one opening with its tag). Not called by the UI. |
 | POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }`. ⚠️ `source_id` names the **media server being browsed** (`upnp:<udn>`), not an MPD source: it is registered with the stream so the player state can say which server the audio came from. Anything else still plays — the MPD output is chosen on its own — but the stream then lights no source card, and two servers sharing a friendly name become indistinguishable |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL. Items now carry **`duration`** (seconds, from DIDL `res@duration`, `null` when the server publishes none); it was parsed and then silently dropped, so clients received nothing to size a progress bar with |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL. On a local (MPD) source, same **503** as `/library/albums` for a stopped daemon or a box with no library — rather than "no results", which reads as "your music does not contain that" |
@@ -278,7 +279,13 @@ caller first.
 **When the push went to HQPlayer**, the response carries `routed_to: "hqplayer"` alongside
 the usual `{ ok, action, item_type, tracks }`. The field is absent on every other path, so
 its presence is the signal — a client must not infer the destination from the selected
-output, which can change between the request and the answer. The item then appears in
+output, which can change between the request and the answer. HQPlayer accepts a URL and
+may then drop it without an error of its own, so the response says what it **kept**:
+`tracks` is the number HQPlayer actually queued, `refused` how many it dropped and
+`refused_titles` which ones (empty when they cannot be told apart). A `play` goes on with
+the tracks kept; a `play` that keeps none, or an `add` that loses any, answers **503** with
+the titles in the detail. A local-library item MPD does not know answers **400** before
+anything is pushed. The item then appears in
 `PlayerState` under `source_id`/`control_id` `src_hqplayer`, badged by its **content**:
 `origin` is `qobuz`, `tidal`, `highresaudio`, `upnp`, `radio` or `library`, never
 `hqplayer` — HQPlayer is a processor in the signal path, not the identity of what plays.
@@ -464,11 +471,13 @@ only what is running. Same entry shape, different contents.
 is known, and `POST /player/control` with `action: "seek"` reaches HQPlayer's own seek
 (position in seconds, same payload convention as every other source). `duration` is
 HQPlayer's own measurement in preference to the source's — it is the only value available
-for a playback started outside Audiogravi<sup>ty</sup>.
+for a playback started outside Audiogravi<sup>ty</sup>. For a track Audiogravi<sup>ty</sup>
+pushed, the length the source declared stands in when HQPlayer measures none — a local MP3
+without an Xing/Info header, whose length comes from the library.
 
 **Every source reaches HQPlayer**, streaming services included — there is no source-based
 refusal left, only the format deny-list. HQPlayer pulls each track over HTTP from an address
-on the LAN: `/hqplayer/stream/` for local files, and the service's own public proxy path for
+on the LAN: `/library/signed/` for local files, and the service's own public proxy path for
 Qobuz / Tidal / HIGHRESAUDIO. Those URLs carry **no `api_key`** by design (the same reason
 renderer-facing URLs do not), so they must stay in the public-path allow-list. Qobuz and HRA
 are pushed with `?mode=redirect`, which 302s HQPlayer to the CDN so the box relays nothing;
@@ -916,7 +925,7 @@ exist, so hunting for them in Swagger is a dead end.
 |---|---|---|
 | GET | `/library/stream/{path}?sig=` | A network renderer fetching a local file (HMAC-signed, Range) |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | A renderer fetching the cover of that file |
-| GET | `/hqplayer/stream/{path}` | HQPlayer fetching a local file over HTTP |
+| GET | `/library/signed/{sig}/{path}` | HQPlayer fetching a local file (HMAC-signed, the extension last) |
 | POST | `/upnp-renderer/{udn}/notify` | The renderer's own GENA callback |
 
 ---
