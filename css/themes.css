@@ -35,18 +35,18 @@
    --spacing-xs: 4px;
 
    /* @var --spacing-xs @description Extra small spacing (4px) */
-   --spacing-sm: 8px;
+   --spacing-sm: 6px;
 
-   /* @var --spacing-sm @description Small spacing (8px) */
-   --spacing-md: 16px;
+   /* @var --spacing-sm @description Small spacing (6px) */
+   --spacing-md: 12px;
 
-   /* @var --spacing-md @description Medium spacing (16px) */
-   --spacing-lg: 24px;
+   /* @var --spacing-md @description Medium spacing (12px) */
+   --spacing-lg: 18px;
 
-   /* @var --spacing-lg @description Large spacing (24px) */
-   --spacing-xl: 32px;
+   /* @var --spacing-lg @description Large spacing (18px) */
+   --spacing-xl: 24px;
 
-   /* @var --spacing-xl @description Extra large spacing (32px) */
+   /* @var --spacing-xl @description Extra large spacing (24px) */
 
    /**
     * @group Typography
@@ -88,15 +88,32 @@
     * xxs is 10px and is for labels that are identified rather than read — a badge, a unit,
     * a format tag. Anything a reader actually reads starts at xs.
     *
+    * sm/md/lg (12/13/14) are the values a `body.compact-mode` block used to substitute for
+    * 13/14/16 — a switch in the settings panel, on by default, that nobody had reason to
+    * turn off. The switch, the class and the thirty-one rules that hung off it are gone,
+    * and its values are written here.
+    *
+    * One screen is not covered by this scale, and it was measured rather than assumed: the
+    * class was added by js/common.js, which login.html does not load, so the SIGN-IN page
+    * rendered at 13/14/16 and 8/16/24/32 while everything else showed the tighter steps.
+    * Writing them here would have resized that page alone (card padding 32px → 24px on a
+    * desktop, 24 → 18 on a phone), so it keeps its own steps in css/login.css, along with
+    * the touch ratio that goes with them. Any new page loading css/main.css without the
+    * app shell lands in the same case — js/login-density.test.js fails on it.
+    *
+    * AG is a control surface: 13px is its base step (audiogravity.design/UI_GUIDELINES.md
+    * rule 16), and the browser's own zoom, which the app never restricts, answers "too
+    * small".
+    *
     * The audio pipeline's SVG text is NOT on this scale and must not be put on it: those
     * sizes are chosen to fit inside a drawn node at a given viewBox, so they answer to the
     * geometry of the diagram rather than to the typography of the page. See
     * js/sizes.test.js. */
    --font-size-xxs: 10px;
    --font-size-xs: 11px;
-   --font-size-sm: 13px;
-   --font-size-md: 14px;
-   --font-size-lg: 16px;
+   --font-size-sm: 12px;
+   --font-size-md: 13px;
+   --font-size-lg: 14px;
    --font-size-xl: 20px;
    --font-size-xxl: 28px;
 
@@ -194,7 +211,6 @@
        in every calculation built on it. One declaration per token per width. */
     @media (width <= 768px) {
         --font-size-xl: 18px;
-        --font-size-lg: 15px;
     }
 
    --z-modal: 10000;
@@ -328,20 +344,7 @@ body.dark-mode {
 }
 
 /* =========================================
-   3. COMPACT MODE
-   ========================================= */
-body.compact-mode {
-   --spacing-sm: 6px;
-   --spacing-md: 12px;
-   --spacing-lg: 18px;
-   --spacing-xl: 24px;
-   --font-size-sm: 12px;
-   --font-size-md: 13px;
-   --font-size-lg: 14px;
-}
-
-/* =========================================
-   4. ACCESSIBILITY - REDUCED MOTION
+   3. ACCESSIBILITY - REDUCED MOTION
    ========================================= */
 
 /**
@@ -404,7 +407,7 @@ body.compact-mode {
 }
 
 /* =========================================
-   5. NO ANIMATIONS MODE (User Toggle)
+   4. NO ANIMATIONS MODE (User Toggle)
    ========================================= */
 
 /**

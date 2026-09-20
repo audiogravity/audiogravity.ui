@@ -249,7 +249,6 @@ const AppState = {
     connected: false,
     theme: (MemoryCache.get('theme', 'minimal') || 'minimal').toLowerCase().trim(),
     darkMode: MemoryCache.get('darkMode', false),
-    compactMode: MemoryCache.get('compactMode', true),
     animationsEnabled: MemoryCache.get('animationsEnabled', true),
     lockPortrait: MemoryCache.get('lockPortrait', true),
     currentTab: window.location.hash.slice(1) || MemoryCache.get('activeTab', 'profiles'),
@@ -347,7 +346,6 @@ if (document.body) {
         document.body.classList.add('dark-mode');
         document.documentElement.classList.add('dark-mode');
     }
-    if (AppState.compactMode) document.body.classList.add('compact-mode');
     if (!AppState.animationsEnabled) document.body.classList.add('no-animations');
     applyOrientationLock(AppState.lockPortrait); // portrait lock (class + touch OS lock)
     applyTheme(AppState.theme);

@@ -181,22 +181,16 @@
     font-family: var(--font-family) !important; /* Force standard font even if nested near icons */
 }
 
-/* Row-based items (toggles) */
+/* Toggles: one per row, the label at the left edge and the control at the right.
+   They used to be paired two by two in half-width cells, which put a switch in the
+   middle of the panel as soon as a row held a single toggle. */
 .config-item-row {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
 }
 
-.config-item-half {
-    width: 48%;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.config-item-half label {
+.config-item-row > label {
     margin-bottom: 0;
 }
 

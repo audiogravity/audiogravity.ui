@@ -129,10 +129,11 @@ function tokenPx(src, name, nth = 0) {
 /**
  * Read the `font-size-adjust` values declared inside the coarse-pointer block.
  * @param {string} base - base.css contents.
- * @returns {number[]} values in source order: default first, compact-mode second
+ * @returns {number[]} the values declared there (one, since compact mode was removed)
  */
 function adjustValues(base) {
-    const block = base.slice(base.indexOf('@media (pointer: coarse)'));
+    const start = base.indexOf('@media (pointer: coarse)');
+    const block = base.slice(start, base.indexOf('\n}', start));
     return [...block.matchAll(/font-size-adjust:\s*(\d*\.\d+)/g)].map((m) => Number(m[1]));
 }
 
@@ -160,13 +161,12 @@ describe('field size tracks its label on touch', () => {
         expect(painted).toBeCloseTo(tokenPx(themes, '--font-size-sm'), 1);
     });
 
-    it('follows the label down when compact mode shrinks the scale', () => {
-        const [, compact] = adjustValues(base);
-        expect(compact).toBeDefined();
-
-        const painted = (DECLARED_PX * compact) / INTER_X_HEIGHT_RATIO;
-        // Second occurrence: the body.compact-mode override in themes.css.
-        expect(painted).toBeCloseTo(tokenPx(themes, '--font-size-sm', 1), 1);
+    it('declares one ratio, for the one label step there is', () => {
+        // There were two: the scale had a compact variant, and a field had to follow
+        // whichever was in force. The class is gone, so a second value HERE would mean
+        // a step nothing reads. The sign-in page is the one screen that kept the older
+        // step, and it carries its own ratio in css/login.css — see below.
+        expect(adjustValues(base)).toHaveLength(1);
     });
 
     it('leaves dropdowns out of the anti-zoom rule entirely', () => {
@@ -176,7 +176,6 @@ describe('field size tracks its label on touch', () => {
         // sat next to 10px labels. Re-adding `select` here would bring that back.
         const block = base.slice(base.indexOf('@media (pointer: coarse)'));
         expect(block).not.toMatch(/^\s*select\s*,?\s*$/m);
-        expect(block).not.toMatch(/body\.compact-mode select/);
     });
 
     it('never lets the drawn size reach the 16px the declaration claims', () => {
@@ -185,5 +184,45 @@ describe('field size tracks its label on touch', () => {
         for (const adjust of adjustValues(base)) {
             expect((DECLARED_PX * adjust) / INTER_X_HEIGHT_RATIO).toBeLessThan(DECLARED_PX);
         }
+    });
+});
+
+/**
+ * The sign-in page keeps its own label step, so it keeps its own ratio.
+ *
+ * `body.compact-mode` was added by js/common.js, which login.html does not load, so that
+ * page alone rendered at the untouched steps. Writing the tighter steps into the theme
+ * would have resized it and nothing else, so css/login.css declares what it used to
+ * inherit — and the ratio has to follow those steps, or the field alone drops a step under
+ * the labels around it. That was the single difference left by the first measurement of
+ * the page after the flattening, at 390x844.
+ */
+describe('the sign-in page keeps its own field ratio', () => {
+    const login = fs.readFileSync(path.join(CSS_ROOT, 'login.css'), 'utf8');
+
+    /** @returns {number} the ratio declared for this page */
+    const loginAdjust = () => {
+        const m = login.match(/font-size-adjust:\s*(\d*\.\d+)/);
+        if (!m) throw new Error('css/login.css declares no font-size-adjust');
+        return Number(m[1]);
+    };
+
+    it('draws its field at its own label step, not at the app’s', () => {
+        const painted = (DECLARED_PX * loginAdjust()) / INTER_X_HEIGHT_RATIO;
+        expect(painted).toBeCloseTo(tokenPx(login, '--font-size-sm'), 1);
+    });
+
+    it('keeps the selector specific enough to beat the one in base.css', () => {
+        // base.css reaches (0,3,1) with three chained :not(); prefixing the page class
+        // takes it to (0,4,2). The list form would collapse it and lose the tie.
+        expect(login).toMatch(
+            /body\.login-page input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="range"\]\)/,
+        );
+    });
+
+    it('gates it on the pointer, like the rule it overrides', () => {
+        // A width breakpoint here would leave the field mismatched on a phone in
+        // landscape — the defect this whole file was written for.
+        expect(login).toContain('@media (pointer: coarse)');
     });
 });

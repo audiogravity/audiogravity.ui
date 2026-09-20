@@ -797,8 +797,7 @@ body.no-animations .animate-stagger {
 /* Responsibility handled by grid components */
 }
 
-/* Compact Mode */
-body.compact-mode .performance-zone .metric-value,
-body.compact-mode .performance-zone .stat-value {
+.performance-zone .metric-value,
+.performance-zone .stat-value {
     font-size: var(--font-size-lg);
 }

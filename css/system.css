@@ -151,9 +151,8 @@
     gap: var(--spacing-md);
 }
 
-.system-tile {
-    padding: var(--spacing-md);
-}
+/* Padding comes from components/tile.css (--spacing-sm). The --spacing-md declared
+   here never applied: body.compact-mode outranked it. */
 
 .system-tile.span-2 {
     grid-column: span 2;

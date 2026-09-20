@@ -171,16 +171,12 @@
     }
 }
 
-/* =====================
-   COMPACT MODE
-   ===================== */
-
-body.compact-mode .profiles-zone .profiles-grid,
-body.compact-mode .profiles-zone .profiles-grid-container,
-body.compact-mode .services-zone .services-grid,
-body.compact-mode .services-zone .services-grid-container,
-body.compact-mode .software-zone .software-grid,
-body.compact-mode .software-zone .software-grid-container,
-body.compact-mode .responsive-grid {
+.profiles-zone .profiles-grid,
+.profiles-zone .profiles-grid-container,
+.services-zone .services-grid,
+.services-zone .services-grid-container,
+.software-zone .software-grid,
+.software-zone .software-grid-container,
+.responsive-grid {
     gap: var(--spacing-sm);
 }

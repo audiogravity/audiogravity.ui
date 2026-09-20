@@ -44,11 +44,8 @@
 
 /* Software grid */
 
-/* Software grid: Rely on components/grid.css for standard behavior */
-.software-zone .software-grid,
-.software-zone .software-grid-container {
-    gap: var(--spacing-md);
-}
+/* Software grid: components/grid.css sets its gap (--spacing-sm). The --spacing-md
+   declared here never applied: body.compact-mode outranked it. */
 
 /* Mobile overrides for layout */
 @media (width <= 768px) {

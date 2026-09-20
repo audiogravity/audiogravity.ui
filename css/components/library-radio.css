@@ -277,7 +277,7 @@
    widening the button pushes the icons apart far more than the gap does. Square
    44px buttons took the visible spacing from 10px to 34px, and only 8 of those
    34 came from the gap. 36px keeps the row looking as dense as it did while
-   still giving the pencil a target 2.5× the compact-mode area.
+   still giving the pencil a target 2.5× the area it had.
 
    A mouse is precise, so desktop keeps the original geometry. */
 @media (pointer: coarse) {

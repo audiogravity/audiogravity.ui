@@ -6,7 +6,6 @@
  * 
  * @attr {boolean} active - Visibility of the panel (toggled by burger menu)
  * @attr {boolean} darkMode - UI dark mode state
- * @attr {boolean} compactMode - UI compact layout state
  * @attr {boolean} animations - Whether UI animations are enabled
  * @attr {string} theme - Current selected theme ID
  * @attr {boolean} pushSubscribed - Push notification status
@@ -42,7 +41,6 @@ export class AgConfigPanel extends LitElement {
     static properties = {
         active: { type: Boolean, reflect: true },
         darkMode: { type: Boolean },
-        compactMode: { type: Boolean },
         animations: { type: Boolean },
         lockPortrait: { type: Boolean },
         theme: { type: String },
@@ -70,7 +68,6 @@ export class AgConfigPanel extends LitElement {
 
         // Load initial state from imported AppState
         this.darkMode = AppState ? AppState.darkMode : false;
-        this.compactMode = AppState ? AppState.compactMode : true;
         this.animations = AppState ? AppState.animationsEnabled : true;
         this.lockPortrait = AppState ? AppState.lockPortrait : true;
         // Portrait Lock is a touch affordance — hide the toggle on desktop/mouse,
@@ -225,7 +222,6 @@ export class AgConfigPanel extends LitElement {
             // Re-sync properties from AppState when opening to ensure they are up to date
             if (AppState) {
                 this.darkMode = AppState.darkMode;
-                this.compactMode = AppState.compactMode;
                 this.animations = AppState.animationsEnabled;
                 this.lockPortrait = AppState.lockPortrait;
                 this.theme = AppState.theme;
@@ -528,13 +524,6 @@ export class AgConfigPanel extends LitElement {
         this.darkMode = setDarkMode(e.detail ? e.detail.checked : e.target.checked);
     }
 
-    _handleCompactMode(e) {
-        this.compactMode = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.compactMode = this.compactMode;
-        if (MemoryCache) MemoryCache.set('compactMode', this.compactMode);
-        document.body.classList.toggle('compact-mode', this.compactMode);
-    }
-
     _handleAnimations(e) {
         this.animations = e.detail ? e.detail.checked : e.target.checked;
         if (AppState) AppState.animationsEnabled = this.animations;
@@ -705,47 +694,38 @@ export class AgConfigPanel extends LitElement {
                     </div>
                     
                     <div class="config-item config-item-row">
-                        <div class="config-item-half">
-                            <label>Light/Dark Mode</label>
-                            <ag-switch .checked=${this.darkMode} @ag-change=${this._handleDarkMode}></ag-switch>
-                        </div>
-                        <div class="config-item-half">
-                            <label>Notifications</label>
-                            <ag-switch variant="notification" .checked=${this.pushSubscribed} @ag-change=${this._togglePush}></ag-switch>
-                        </div>
+                        <label>Light/Dark Mode</label>
+                        <ag-switch .checked=${this.darkMode} @ag-change=${this._handleDarkMode}></ag-switch>
                     </div>
-                    
+
                     <div class="config-item config-item-row">
-                        <div class="config-item-half">
-                            <label>Compact Mode</label>
-                            <ag-switch .checked=${this.compactMode} @ag-change=${this._handleCompactMode}></ag-switch>
-                        </div>
-                        <div class="config-item-half">
-                            <label>Animations</label>
-                            <ag-switch .checked=${this.animations} @ag-change=${this._handleAnimations}></ag-switch>
-                        </div>
+                        <label>Notifications</label>
+                        <ag-switch variant="notification" .checked=${this.pushSubscribed} @ag-change=${this._togglePush}></ag-switch>
+                    </div>
+
+                    <div class="config-item config-item-row">
+                        <label>Animations</label>
+                        <ag-switch .checked=${this.animations} @ag-change=${this._handleAnimations}></ag-switch>
                     </div>
 
                     ${this._isTouchDevice ? html`
                     <div class="config-item config-item-row">
-                        <div class="config-item-half">
-                            <label>Portrait Lock</label>
-                            <ag-switch .checked=${this.lockPortrait} @ag-change=${this._handleLockPortrait}></ag-switch>
-                        </div>
+                        <label>Portrait Lock</label>
+                        <ag-switch .checked=${this.lockPortrait} @ag-change=${this._handleLockPortrait}></ag-switch>
                     </div>` : ''}
 
                     ${isWebAuthnAvailable() ? html`
                     <div class="config-item config-item-row">
-                        <div class="config-item-half">
-                            <label>Face ID / Touch ID</label>
-                            <ag-switch
-                                variant="notification"
-                                .checked=${this.passkeys.length > 0}
-                                ?disabled=${this.passkeysLoading}
-                                @ag-change=${this._handlePasskeyToggle}>
-                            </ag-switch>
-                        </div>
-                        <div class="config-item-half passkey-devices">
+                        <label>Face ID / Touch ID</label>
+                        <ag-switch
+                            variant="notification"
+                            .checked=${this.passkeys.length > 0}
+                            ?disabled=${this.passkeysLoading}
+                            @ag-change=${this._handlePasskeyToggle}>
+                        </ag-switch>
+                    </div>
+                    ${this.passkeys.length > 0 ? html`
+                        <div class="config-item passkey-devices">
                             ${this.passkeys.map(p => html`
                                 <span class="passkey-device-chip">
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg>
@@ -756,8 +736,7 @@ export class AgConfigPanel extends LitElement {
                                     </button>
                                 </span>
                             `)}
-                        </div>
-                    </div>
+                        </div>` : ''}
                     ` : ''}
 
                     <div class="config-footer">

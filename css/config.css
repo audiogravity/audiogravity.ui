@@ -70,8 +70,7 @@
 }
 
 .config-backup-badge {
-    font-size: var(--font-size-xxs);
-    padding: 1px 5px;
+    /* Size and padding come from .badge; the 1px 5px declared here never applied. */
     opacity: 0.7;
 }
 
@@ -239,7 +238,7 @@
 }
 
 .config-field {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .config-field label {
@@ -331,7 +330,7 @@
 /* Fallback textarea (hidden while CodeMirror is active) */
 .config-editor {
     width: 100%;
-    min-height: 400px;
+    min-height: 300px;
     padding: var(--spacing-md);
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -741,11 +740,6 @@
         grid-template-columns: 1fr;
     }
 
-
-    .config-editor {
-        min-height: 300px;
-    }
-
     .config-editor-header {
         flex-wrap: wrap;
     }
@@ -756,21 +750,9 @@
     }
 }
 
-/* =====================
-   COMPACT MODE
-   ===================== */
-
-body.compact-mode .config-service-card {
+.config-service-card {
     min-height: 100px;
     padding: var(--spacing-md);
-}
-
-body.compact-mode .config-editor {
-    min-height: 300px;
-}
-
-body.compact-mode .config-field {
-    margin-bottom: var(--spacing-md);
 }
 
 /* =====================

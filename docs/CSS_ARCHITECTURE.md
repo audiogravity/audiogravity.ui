@@ -322,21 +322,21 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
 
 ```css
 :root {
-  /* Spacing (base 8px) */
+  /* Spacing */
   --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
+  --spacing-sm: 6px;
+  --spacing-md: 12px;
+  --spacing-lg: 18px;
+  --spacing-xl: 24px;
 
   /* Typography */
   --font-family: 'Inter', -apple-system, sans-serif;
   --font-mono:   'Courier New', monospace;
   --font-size-xxs:  10px;
   --font-size-xs:   11px;
-  --font-size-sm:   13px;
-  --font-size-md:   14px;
-  --font-size-lg:   16px;
+  --font-size-sm:   12px;
+  --font-size-md:   13px;
+  --font-size-lg:   14px;
   --font-size-xl:   20px;
   --font-size-xxl:  28px;
 
@@ -430,7 +430,7 @@ body.dark-mode {
 |---|---|---|
 | Backgrounds | `var(--bg-primary)` | `#F8F9FA` |
 | Primary text | `var(--text-primary)` | `#000` / `black` |
-| Spacing | `var(--spacing-md)` | `16px` |
+| Spacing | `var(--spacing-md)` | `12px` |
 | Border radius | `var(--radius-md)` | `4px` |
 | Shadows | `var(--shadow-md)` | `0 1px 3px rgba(…)` |
 | Transitions | `var(--transition-fast)` | `150ms ease` |
