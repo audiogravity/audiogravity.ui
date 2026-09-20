@@ -426,3 +426,71 @@ describe('the source badge is given the specific name, not just the kind', () =>
         expect(SOURCE).toMatch(/\.name=\$\{originBadgeName\(item\)\}/);
     });
 });
+
+/**
+ * Repeat and shuffle belong to the fullscreen player.
+ *
+ * The playback bar is a glance at what is playing plus the transport; a second row of
+ * mode buttons under the title crowded it, and the same two controls sit in the
+ * fullscreen player. Pinned from the source for the same reason as above — the
+ * component is not mounted here — and from both sides, so the two controls are not
+ * lost from the whole app by a later tidy-up.
+ *
+ * Code is read with comments stripped: a `// BACKLOG: set_repeat …` pointer, which
+ * CLAUDE.md rule 15 asks for, must not turn this file red. And every file is read
+ * inside its own case — reading at describe level turns a renamed file into a
+ * collection error that takes the unrelated auto-follow coverage down with it.
+ */
+describe('the playback bar leaves the playback modes to the fullscreen player', () => {
+    const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+    /**
+     * Read a source file with its comments blanked out, so assertions see code only.
+     * @param {...string} segments - Path segments, relative to this directory.
+     * @returns {string} the file's code, comments replaced by spaces
+     */
+    const code = (...segments) => readFileSync(path.join(HERE, ...segments), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, (c) => ' '.repeat(c.length))
+        .replace(/\/\/[^\n]*/g, (c) => ' '.repeat(c.length))
+        .replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length));
+
+    it('sends no repeat or shuffle control from the bar', () => {
+        expect(code('ag-now-playing.js')).not.toMatch(/set_repeat|set_shuffle/);
+    });
+
+    it('carries neither icon, nor the rules that styled the buttons', () => {
+        // An import or a class left behind is dead weight that reads as "still used".
+        const bar = code('ag-now-playing.js');
+        expect(bar).not.toMatch(/iconRepeat|iconShuffle/);
+        expect(bar).not.toMatch(/np-mode-btn/);
+        expect(code('..', '..', '..', 'css', 'components', 'now-playing.css'))
+            .not.toMatch(/np-mode-btn|np-btn--active/);
+    });
+
+    it('still mounts the transport that carries them in the fullscreen player', () => {
+        // The half that matters: asserting the molecule implements set_repeat proves
+        // nothing if no screen renders the molecule any more.
+        expect(code('ag-now-playing-fullscreen.js')).toMatch(/<ag-playback-controls/);
+        expect(code('ag-now-playing-fullscreen.js'))
+            .toMatch(/import '\.\.\/molecules\/ag-playback-controls\.js'/);
+    });
+
+    it('and that transport still offers both', () => {
+        const controls = code('..', 'molecules', 'ag-playback-controls.js');
+        expect(controls).toMatch(/set_repeat/);
+        expect(controls).toMatch(/set_shuffle/);
+    });
+
+    it('keeps the bar at the height it had with the buttons', () => {
+        // Asked for explicitly: the space freed is not taken back. The bar was sized by
+        // its tallest content, so dropping the two buttons pulled it from 83px to 61px on
+        // a desktop and 67px to 61px on a phone (measured on one track, both viewports).
+        // The row carries 82/66 plus its 1px bottom border.
+        const css = code('..', '..', '..', 'css', 'components', 'now-playing.css');
+        const row = css.slice(css.indexOf('.np-row {'));
+        expect(row.slice(0, row.indexOf('}'))).toMatch(/min-height:\s*82px/);
+
+        const phone = css.slice(css.search(/@media\s*\(width\s*<=\s*768px\)/));
+        expect(phone.slice(0, phone.indexOf('\n}'))).toMatch(/min-height:\s*66px/);
+    });
+});

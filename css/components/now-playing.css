@@ -37,16 +37,29 @@ ag-now-playing {
    Full row (expanded)
    -------------------------------------------------------------------------- */
 
+/* The bar keeps the height it has always had.
+   It used to be set by its tallest content, so removing the repeat and shuffle buttons
+   would have pulled it down with them — measured on the same track: 83px -> 61px on a
+   desktop, 67px -> 61px on a phone. The space freed is deliberately left as breathing
+   room rather than taken back, so the bar above the footer does not move. The row is
+   `align-items: center`, so what remains sits centred in it.
+   82px + the 1px bottom border is the 83px measured above; 66px + 1px the phone's 67. */
 .np-row {
     container-type: inline-size;
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-md) 0;
-    min-height: 60px;
+    min-height: 82px;
     border-bottom: 1px solid var(--border-color);
     background: var(--np-bg-color, transparent);
     transition: background 0.6s ease;
+}
+
+@media (width <= 768px) {
+    .np-row {
+        min-height: 66px;
+    }
 }
 
 .np-row:last-child {
@@ -265,40 +278,7 @@ ag-now-playing {
     overflow: hidden;
 }
 
-/* Repeat / Shuffle compact buttons inside .np-info */
-.np-mode-btns {
-    display: flex;
-    gap: 4px;
-    margin-top: 2px;
-}
-
-.np-mode-btn {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-sm);
-    padding: 0;
-    transition: color var(--transition-fast);
-    flex-shrink: 0;
-}
-
-@media (hover: hover) {
-    .np-mode-btn:hover {
-        color: var(--text-primary);
-    }
-}
-
-.np-mode-btn.np-btn--active {
-    color: var(--accent-primary);
-    background: var(--accent-primary-alpha);
-}
+/* Repeat / shuffle buttons removed — see js/components/organisms/ag-now-playing.js */
 
 .np-source-row {
     display: flex;

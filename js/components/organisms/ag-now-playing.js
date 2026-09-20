@@ -4,7 +4,7 @@ import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-st
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
-import { iconChevronUp, iconMusicNote, iconRepeat, iconShuffle, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
+import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
@@ -18,6 +18,10 @@ import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
  * @module AgNowPlaying
  * @description Sticky "Now Playing" banner that shows all active audio sources
  * and provides transport controls (play/pause, next, volume).
+ *
+ * Repeat and shuffle are deliberately NOT here — they belong to the fullscreen
+ * player, where ag-playback-controls draws them. See the guard in
+ * ag-now-playing.test.js, which holds both halves of that.
  *
  * Placed above the footer, it updates `--now-playing-height` on `:root` via
  * ResizeObserver so `.main-content` can adjust its bottom inset automatically.
@@ -456,7 +460,7 @@ export class AgNowPlaying extends LitElement {
     _handleTouchStart(e) {
         if (!this._hasItems || this._dismissed) return;
         if (e.touches.length > 1) return; // ignore pinch-zoom
-        if (e.target.closest('.np-controls, .np-mode-btns, .np-cover-wrap, ag-progress-bar')) {
+        if (e.target.closest('.np-controls, .np-cover-wrap, ag-progress-bar')) {
             this._touchIgnored = true;
             return;
         }
@@ -711,22 +715,6 @@ export class AgNowPlaying extends LitElement {
                         ></ag-track-meta>
                     </div>
                     ${item.source_format ? html`<span class="np-format">${item.source_format}</span>` : nothing}
-                    ${item.can_seek ? html`
-                        <div class="np-mode-btns">
-                            <button
-                                class="np-mode-btn ${item.repeat ? 'np-btn--active' : ''}"
-                                aria-label="Repeat"
-                                title="Repeat"
-                                @click="${() => this._sendControl(item.source_id, 'set_repeat', item.repeat ? 0 : 1, item)}"
-                            ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></button>
-                            <button
-                                class="np-mode-btn ${item.shuffle ? 'np-btn--active' : ''}"
-                                aria-label="Shuffle"
-                                title="Shuffle"
-                                @click="${() => this._sendControl(item.source_id, 'set_shuffle', item.shuffle ? 0 : 1, item)}"
-                            ><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconShuffle}</svg></button>
-                        </div>
-                    ` : nothing}
                 </div>
 
                 <!-- Transport controls -->
