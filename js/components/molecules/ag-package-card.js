@@ -91,15 +91,23 @@ export class AgPackageCard extends LitElement {
                 </div>
             `;
         } else if (this.pkg.available_version) {
-            const hasUpdate = this.pkg.available_version !== this.pkg.installed_version;
-            const badgeClass = `badge warning pill ${this.animationsEnabled ? 'animate-pulse' : ''}`;
+            const differs = this.pkg.available_version !== this.pkg.installed_version;
+            // A package held to another component's major line can be offered a
+            // version OLDER than the one installed — that is how a box that
+            // drifted gets brought back. Calling it "Update available" was a
+            // plain lie, and the direction cannot be worked out here: ordering
+            // Debian versions is not a string comparison, so the core says it.
+            const isOlder = this.pkg.available_is_older === true;
+            const badgeClass = `badge warning pill ${this.animationsEnabled && !isOlder ? 'animate-pulse' : ''}`;
 
             availableVersionHtml = html`
                 <div class="version-info">
                     <span class="version-label">Available:</span>
                     <span class="version-value available-version-value">
                         <span>${this.pkg.available_version}</span>
-                        ${hasUpdate ? html`<span class="${badgeClass}">Update available</span>` : ''}
+                        ${differs ? html`<span class="${badgeClass}">${
+                            isOlder ? 'Older version offered' : 'Update available'
+                        }</span>` : ''}
                     </span>
                 </div>
             `;

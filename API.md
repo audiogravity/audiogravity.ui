@@ -452,11 +452,11 @@ only what is running. Same entry shape, different contents.
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer) |
+| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer). Also identifies the instance: `product`, `engine_version`, `major`, and the pairing with the local adapter — `naa_version` and `pairing_ok` |
 | PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available` |
 | DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first**, so its NAA releases the local sound card |
 | PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → `{ use_as_output }` |
-| GET | `/hqplayer/discover` | Scan local subnet |
+| GET | `/hqplayer/discover` | Scan local subnet. Each instance carries `product` and `engine_version`, which is what tells a Desktop from an Embedded when a network holds both |
 | GET | `/hqplayer/filters` | Available interpolation filters (the active one is in `/hqplayer/status`) |
 | PUT | `/hqplayer/filter` | Select a filter by index |
 | GET | `/hqplayer/shapers` | Available noise shapers |
@@ -489,6 +489,16 @@ library playback goes. Enabling answers **503** when no HQPlayer is configured o
 NAA is not running; disabling is always allowed and stops HQPlayer, releasing the local
 sound card. Clients must not write this setting to correct an observed NAA outage — the
 core refuses the play instead, naming the daemon.
+
+Enabling also answers **503** when the local adapter and HQPlayer are on **different
+major lines** (`pairing_ok` false), which does not carry sound. An *unknown* pairing —
+`pairing_ok` null, because one of the two versions could not be read — is not a broken
+one and is allowed.
+
+The same refusal applies **at play time**, not only when the setting is switched on:
+the setting is persisted, and the pairing can break under it — updating the adapter from
+Audio Software is enough. A play routed to a mismatched pair answers 503 naming both
+versions, exactly as it already does for an adapter that is not running.
 
 ### Streaming subscription state — Qobuz, Tidal, HIGHRESAUDIO
 
@@ -762,7 +772,9 @@ badged `origin: "radio"`.
 
 `available_version` comes from apt for packages that live in a repository, and **from the source itself** for those that do not — a downloaded `.deb` (HQPlayer NAA) is read from the vendor's own listing, and an AG-hosted bundle from the checksum manifest published beside it. Asking apt about those returns the version already installed, so a comparison against it always said "up to date". It stays `null` for a vendor that publishes no version at all (Roon): there, `installer_type` is `script` and updating means reinstalling the current build rather than comparing.
 
-A few packages are **held to the major line already installed** on the machine, because their major has to match something else on the system: HQPlayer NAA 6 does not work with HQPlayer 5. For those, the version offered is the highest of the installed line, not the highest published — a box on the 5 line is offered 5.x and reports itself up to date once it holds the newest 5. A machine with nothing installed is offered the highest version published. `available_version` is therefore machine-specific for those packages, and equal to `installed_version` when their line holds no newer build. Every other package is offered the highest version published, as before.
+A few packages are **held to a major line**, because their major has to match something else on the system: HQPlayer NAA 6 does not work with HQPlayer 5. The line comes from the paired component when it can be reached — the NAA follows the HQPlayer it serves — and otherwise from the version already installed. A machine with nothing installed and nothing paired is offered the highest version published. `available_version` is therefore machine-specific for those packages, and equal to `installed_version` when their line holds no newer build. Every other package is offered the highest version published, as before.
+
+Because the line can come from elsewhere, the version offered may be **older** than the one installed: that is how a machine that drifted onto the wrong line is brought back. **`available_is_older`** says so — true when the offered version is the older of the two, null when either is missing or cannot be ordered. Clients must not work the direction out by comparing the two strings: ordering Debian versions is not a string comparison, and a display that assumed it called a downgrade an update.
 
 `GET /packages/` and `GET /packages/{package_id}` also return **`availability`** and **`availability_reason`**. `availability` is one of `available`, `unsupported` (the source genuinely publishes nothing for this box — permanent), `unknown` (the source could not be reached when the config was resolved — worth retrying) or `blocked` (another installed package forbids it, e.g. Roon Server next to Roon Bridge). `availability_reason` is a short sentence for display, `null` when nothing is wrong. `is_supported` keeps its meaning — can this box install it — and is now derived from the same facts; the two extra fields exist because a greyed-out button needs to say **why**, and because "no build for your machine" and "we could not ask" are not the same answer. A **vendor verdict outranks a local one**: a package with no build for this architecture reports `unsupported` even when a conflicting package is also installed, since removing the other one would not make it installable. Package ids are `airplay`, `mpd`, `hqplayer`, `upmpdcli`, `roon` and `roonserver`. The `is_test_package` flag stays in the response model, but no shipped package sets it: the no-op `test-dummy` entry that exercised the install workflow is no longer declared in the registry, so it is no longer resolved into a box's config. A **`required`** flag marks a package the box cannot work without: `POST /packages/{id}/uninstall` refuses it, and the interface offers no button for it. Only `mpd` sets it today — the local library, the queue, internet radio and all three streaming services play through MPD, so a box that lost it would keep an interface and lose the product. Stopping the service is still allowed, and is the way to run a box purely as a Roon endpoint or an HQPlayer NAA.
 

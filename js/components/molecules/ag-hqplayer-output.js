@@ -364,6 +364,8 @@ class AgHqplayerOutput extends LitElement {
                                 <div class="lib-hqp-name">HQPlayer</div>
                                 <div class="lib-hqp-desc">
                                     ${inst.host}:${inst.port}
+                                    ${this._identity(inst.product, inst.engine_version)
+                                        ? ` · ${this._identity(inst.product, inst.engine_version)}` : ''}
                                     ${inst.active_mode ? ` · ${inst.active_mode}` : ''}
                                 </div>
                             </div>
@@ -401,6 +403,26 @@ class AgHqplayerOutput extends LitElement {
         `;
     }
 
+    /**
+     * Short label for an instance: what it is, and which engine it runs.
+     *
+     * HQPlayer answers `Signalyst HQPlayer Desktop`, and the only part worth
+     * the width is the last word — Desktop or Embedded, which is how you tell
+     * two instances apart on one network. A product that does not carry the
+     * expected prefix is shown whole rather than trimmed on a guess.
+     *
+     * @param {string|null} product        - `product` as HQPlayer reports it.
+     * @param {string|null} engineVersion  - `engine_version`, e.g. `5.28.1`.
+     * @returns {string} The label, or an empty string when nothing is known.
+     */
+    _identity(product, engineVersion) {
+        const PREFIX = 'Signalyst HQPlayer ';
+        const kind = product?.startsWith(PREFIX)
+            ? product.slice(PREFIX.length)
+            : (product || '');
+        return [kind, engineVersion].filter(Boolean).join(' ');
+    }
+
     /** Render the connected/offline HQPlayer card with optional DSP panel. */
     _renderCard() {
         const available     = this._connection.available;
@@ -414,7 +436,10 @@ class AgHqplayerOutput extends LitElement {
                         <img src="./pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
                     </div>
                     <div class="lib-hqp-col">
-                        <div class="lib-hqp-name">HQPlayer</div>
+                        <div class="lib-hqp-name">
+                            HQPlayer${this._connection.engine_version
+                                ? ` ${this._connection.engine_version}` : ''}
+                        </div>
                         <div class="lib-hqp-desc">
                             ${this._connection.host}:${this._connection.port}
                             ${this._status?.active_mode ? ` · ${this._status.active_mode}` : ''}
@@ -440,6 +465,16 @@ class AgHqplayerOutput extends LitElement {
                   state, see the note above _toggleDsp.
                   Still hidden when OFF and unreachable: nothing to act on.
                 -->
+                ${this._connection.pairing_ok === false ? html`
+                    <div class="lib-hqp-pairing" role="status">
+                        This box runs <strong>NAA ${this._connection.naa_version}</strong>,
+                        which does not work with <strong>HQPlayer ${this._connection.major}.x</strong>.
+                        Install the matching line from <strong>Audio Software</strong> —
+                        Audiogravity now offers it there. Until then HQPlayer cannot be
+                        used as the output.
+                    </div>
+                ` : nothing}
+
                 ${fullyConnected || this._useAsOutput ? html`
                     <div class="lib-hqp-output-toggle">
                         <span class="lib-hqp-output-label">Use as output</span>

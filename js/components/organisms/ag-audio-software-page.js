@@ -488,7 +488,7 @@ export class AgAudioSoftwarePage extends LitElement {
             // card in error with nothing on disk — and printing it unguarded
             // offered to update "from version null".
             confirmMessage = currentPkg.installed_version
-                ? `Update ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`
+                ? `${currentPkg.available_is_older ? 'Switch' : 'Update'} ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`
                 : `Install ${label} version ${escapeHtml(currentPkg.available_version)}?`;
         }
 
