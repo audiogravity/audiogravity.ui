@@ -178,10 +178,8 @@
     font-size: var(--font-size-sm);
 }
 
-.audio-card-badge {
-    font-size: var(--font-size-xs);
-    padding: 2px 6px;
-}
+/* .audio-card-badge is a .badge and takes its size and padding; what was declared
+   here (--font-size-xs, 2px 6px) never applied under body.compact-mode. */
 
 .audio-card-version {
     color: var(--text-tertiary);

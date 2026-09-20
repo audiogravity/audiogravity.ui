@@ -15,7 +15,7 @@
 .metric-box {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     text-align: center;
     border-radius: var(--radius-sm);
     display: flex;
@@ -94,7 +94,7 @@
 }
 
 .metric-value {
-    font-size: var(--font-size-lg); /* Slightly larger for premium feel */
+    font-size: var(--font-size-sm);
     color: var(--text-primary);
     font-weight: 600;
     line-height: normal;
@@ -125,6 +125,10 @@
     white-space: nowrap;
 }
 
+.metric-value.stat-value {
+    font-size: var(--font-size-sm);
+}
+
 .stat-value,
 .version-value,
 .property-value {
@@ -143,20 +147,14 @@
    RESPONSIVE Adjustments
    ===================== */
 
-body.compact-mode .metric-box {
-    padding: var(--spacing-xs);
-}
-
-body.compact-mode .metric-value {
-    font-size: var(--font-size-sm);
-}
-
 @media (width <= 768px) {
     .metric-label, .stat-label {
         font-size: var(--font-size-xxs);
     }
 
-    .metric-value, .stat-value {
+    /* .metric-value is not here: it reads --font-size-sm at every width, as the
+       compact class made it do by outranking this block. */
+    .stat-value {
         font-size: var(--font-size-xs);
     }
 }

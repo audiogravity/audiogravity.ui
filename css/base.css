@@ -214,11 +214,14 @@ button, a, select, [role="button"], [role="tab"], label {
            declaration above keeps the zoom disarmed and this one restores the size the
            form was designed at.
 
-           Where 0.4435 comes from — font-size-adjust sets the ratio x-height/font-size,
+           Where 0.4095 comes from — font-size-adjust sets the ratio x-height/font-size,
            so used_size = declared * adjust / (the face's own ratio). Inter measured on
-           device at 0.546, and 0.546 * 13/16 = 0.4435. The number is therefore tied to
-           BOTH Inter's metrics and the 13px --font-size-sm the labels use; changing
-           either without recomputing it silently resizes every field in the app.
+           device at 0.546, and 0.546 * 12/16 = 0.4095 exactly. The number is therefore
+           tied to BOTH Inter's metrics and the 12px --font-size-sm the labels use;
+           changing either without recomputing it silently resizes every field in the app.
+           (It was 0.4435 for a 13px label, before the compact class was removed and its
+           12px step became the scale's own. The sign-in page kept the 13px step, so it
+           also kept 0.4435 — see css/login.css.)
 
            rule 12 exception — a ratio, not a step: it cannot be expressed on the scale.
 
@@ -229,17 +232,9 @@ button, a, select, [role="button"], [role="tab"], label {
 
            Bonus, and the reason the property exists: should Inter fail to load, the
            fallback face is drawn at the same x-height rather than at its own. */
-        font-size-adjust: 0.4435;
+        font-size-adjust: 0.4095;
     }
 
-    /* Compact mode pulls --font-size-sm down to 12px (themes.css), so the labels move
-       and the fields have to follow: 0.4435 * 12/13. Without this the pair drifts
-       apart again for anyone who turns the setting on. */
-    /* stylelint-disable-next-line selector-not-notation -- same (0,3,1) reason as above. */
-    body.compact-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-    body.compact-mode textarea {
-        font-size-adjust: 0.4094;
-    }
 }
 
 /* MONOSPACE UTILITY */

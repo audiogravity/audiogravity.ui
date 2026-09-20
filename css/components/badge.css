@@ -12,9 +12,9 @@
  */
 .badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-xxs);
     font-weight: 500;
     border: 1px solid;
     transition: all var(--transition-fast);
@@ -224,26 +224,14 @@
 }
 
 /**
- * @section Badge Sizes
- */
-.badge.small {
-    padding: 1px 6px;
-    font-size: var(--font-size-xxs);
-}
-
-.badge.large {
-    padding: 4px 12px;
-    font-size: var(--font-size-sm);
-}
-
-/**
  * @variant .badge.pill
  * @description Pill-shaped badge with full border radius.
  */
+
+/* Only the shape: the horizontal padding this variant declared never applied, since
+   body.compact-mode set the padding of every badge. */
 .badge.pill {
     border-radius: var(--radius-full);
-    padding-left: 12px;
-    padding-right: 12px;
 }
 
 
@@ -253,13 +241,4 @@
 
 body.dark-mode .badge.clickable:hover {
     box-shadow: 0 2px 8px rgb(255 255 255 / 0.15);
-}
-
-/* =====================
-   COMPACT MODE
-   ===================== */
-
-body.compact-mode .badge {
-    padding: 1px 6px;
-    font-size: var(--font-size-xxs);
 }

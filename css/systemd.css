@@ -13,11 +13,8 @@
    SYSTEMD TILE - SPÉCIFICITÉS
    ===================== */
 
-/* The shared styles live in components/tile.css */
-
-.systemd-tile {
-    padding: var(--spacing-lg);
-}
+/* The shared styles live in components/tile.css, padding included: the --spacing-lg
+   declared here never applied, body.compact-mode held this tile at --spacing-md. */
 
 /* Header */
 .systemd-header {
@@ -54,9 +51,9 @@
     max-width: 60%;
 }
 
+/* Size and padding come from .badge. They were declared here as --font-size-xs and
+   1px 6px, and never applied: `body.compact-mode .badge` weighed one element more. */
 .systemd-badges .badge {
-    padding: 1px 6px;
-    font-size: var(--font-size-xs);
     line-height: 1.2;
 }
 
@@ -170,9 +167,4 @@
     .systemd-actions button {
         width: 100%;
     }
-}
-
-/* Compact Mode */
-body.compact-mode .systemd-properties .property-item {
-    font-size: var(--font-size-xs);
 }

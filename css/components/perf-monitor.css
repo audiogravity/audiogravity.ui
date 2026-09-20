@@ -40,9 +40,11 @@
 }
 
 /* stat-box uses local background to contrast with perf-container (bg-tertiary) */
+
+/* Padding comes from .metric-box (--spacing-xs); the --spacing-sm declared here never
+   applied, body.compact-mode outranked it. */
 .perf-container .stat-box {
     background: var(--bg-secondary);
-    padding: var(--spacing-sm);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);

@@ -11,15 +11,17 @@
  * @prop --border-color - Border color
  * @prop --radius-sm - Corner radius
  */
+.governor-tile,
 .service-tile,
 .profile-tile,
 .systemd-tile,
-.system-tile,
-.governor-tile {
+.system-tile {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-lg);
+
+    /* No padding here: the five tiles below take --spacing-sm (--spacing-md for the
+       systemd one), and .governor-tile takes --spacing-md from css/performance.css. */
     cursor: default;
     transition: all var(--transition-fast), transform var(--transition-normal), box-shadow var(--transition-normal);
     position: relative;
@@ -34,7 +36,6 @@
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-lg);
     cursor: default;
     transition: all var(--transition-fast);
     position: relative;
@@ -68,13 +69,18 @@
  * @description State for currently active/running items.
  * Uses a thicker border for emphasis.
  */
+
+/* The second border pixel is taken out of the padding, so the content keeps its box
+   (`box-sizing: border-box`, css/base.css). This carried --spacing-lg and never applied:
+   `body.compact-mode .service-tile` weighed one element more and set every tile's
+   padding. .governor-tile.active compensates the same way in css/performance.css. */
 .service-tile.running,
 .service-tile.active,
 .profile-tile.active,
 .system-tile.active {
     border-color: var(--text-primary);
     border-width: 2px;
-    padding: calc(var(--spacing-lg) - 1px);
+    padding: calc(var(--spacing-sm) - 1px);
 }
 
 
@@ -182,6 +188,7 @@
 /* Overflow visible pour profiles (tooltips) */
 .profile-tile {
     overflow: visible;
+    min-height: 110px;
 }
 
 /**
@@ -264,26 +271,25 @@
 }
 
 /**
- * @section Tile Compact Mode
+ * @section Tile padding and heights
+ * @description These used to sit behind `body.compact-mode`, a class the app always
+ * carried, so they are simply what a tile is. Only .governor-tile kept the larger
+ * padding of the shared rule above.
  */
-body.compact-mode .service-tile,
-body.compact-mode .profile-tile,
-body.compact-mode .systemd-tile,
-body.compact-mode .config-tile,
-body.compact-mode .system-tile {
+.service-tile,
+.profile-tile,
+.systemd-tile,
+.config-tile,
+.system-tile {
     padding: var(--spacing-sm);
 }
 
-
-body.compact-mode .service-tile {
+.service-tile {
     min-height: 140px;
 }
 
-body.compact-mode .profile-tile {
-    min-height: 110px;
-}
 
-body.compact-mode .systemd-tile {
+.systemd-tile {
     padding: var(--spacing-md);
 }
 
@@ -337,7 +343,6 @@ body.compact-mode .systemd-tile {
     .service-tile,
     .profile-tile {
         margin-bottom: var(--spacing-md);
-        padding: 12px; /* Reduced from 16px */
     }
 
     .service-footer,
@@ -346,12 +351,3 @@ body.compact-mode .systemd-tile {
     }
 }
 
-@media (width <= 480px) {
-    .service-tile {
-        min-height: 140px;
-    }
-
-    .profile-tile {
-        min-height: 120px;
-    }
-}

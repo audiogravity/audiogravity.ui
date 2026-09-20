@@ -126,9 +126,9 @@ body:has(.tabs--vertical) .nav-menu {
     white-space: nowrap;
 }
 
-.metric-value.topbar-value {
-    font-size: var(--font-size-xs);
-}
+/* The top bar's figures read --font-size-sm, from .metric-value in
+   components/metrics.css. A rule here asked for --font-size-xs and never applied:
+   `body.compact-mode .metric-value` weighed one element more. */
 
 /* Activity indicators (shared with components/metrics.css) */
 .topbar .metric-value.activity-low,
@@ -951,7 +951,9 @@ body.dark-mode .logo-dark {
 
     .metric-value {
         min-width: auto;
-        font-size: var(--font-size-xs);
+
+        /* No font-size: it reads --font-size-sm at every width. This block asked for
+           --font-size-xs and never applied — body.compact-mode outranked it. */
     }
 
     .metric {

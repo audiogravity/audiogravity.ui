@@ -15,6 +15,67 @@
  * var(--font-family) is all this page is entitled to do.
  */
 
+/*
+ * The spacing and type steps this page keeps for itself.
+ *
+ * Until compact mode was flattened into the theme, `body.compact-mode` was added by
+ * js/common.js — which login.html does not load. So this page, alone in the app, rendered
+ * at the untouched steps while every other screen showed the tighter ones. Writing the
+ * tighter steps into css/themes.css would therefore have resized this page and nothing
+ * else: measured at 1440x900 and 390x844, the card's padding went 32px -> 24px on a
+ * desktop and 24px -> 18px on a phone, its height 558px -> 460px and 536px -> 445px. The
+ * sign-in screen is deliberately kept as it was, so it now declares what it used to
+ * inherit. These are values, not steps of the scale: they are what this one page is, and
+ * the scale in css/themes.css stays the interface's.
+ *
+ * This is the only page of the app in that situation: index.html loads the shell, and
+ * stats.html is Rollup's bundle report, which names css/main.css inside its data without
+ * ever loading it. js/login-density.test.js guards both halves — the steps pinned here,
+ * and the fact that no new page joins this case unnoticed.
+ */
+body.login-page {
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --font-size-sm: 13px;
+    --font-size-md: 14px;
+    --font-size-lg: 16px;
+}
+
+/* The step down css/themes.css used to declare at this width, for the same reason. */
+@media (width <= 768px) {
+    body.login-page {
+        --font-size-lg: 15px;
+    }
+}
+
+/*
+ * ...and the anti-zoom ratio that goes with those steps.
+ *
+ * css/base.css declares touch fields at 16px — the size Safari inspects, so it never zooms
+ * on focus — and pulls them visually back onto the label step with font-size-adjust. That
+ * ratio is x-height x (target / 16), so it belongs to the step the page uses: 0.4095 for
+ * the app's 12px, and 0.4435 for the 13px this page keeps. Without this the field alone
+ * would have shrunk a step while everything around it stayed put (the single difference
+ * left by the first measurement of this page, at 390x844).
+ *
+ * rule 12 exception — a ratio, not a step. 0.546 x 13/16 is 0.443625; 0.4435 is the value
+ * this screen has always rendered with and is kept unrounded-up on purpose, so the field
+ * is pixel-identical to what it was.
+ *
+ * Specificity: base.css uses the chained :not() to reach (0,3,1); prefixed here it reads
+ * (0,4,2) and wins wherever it is imported from.
+ */
+@media (pointer: coarse) {
+    /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
+       intentional, as in css/base.css: the list form would collapse the specificity. */
+    body.login-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    body.login-page textarea {
+        font-size-adjust: 0.4435;
+    }
+}
+
 /* Container principal */
 .login-page {
     margin: 0;
