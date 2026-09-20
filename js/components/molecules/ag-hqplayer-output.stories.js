@@ -51,6 +51,11 @@ const CONNECTED = {
     naa_available: true,
     active_filter: 'sinc-short',
     active_mode: 'SDM (DSD)',
+    product: 'Signalyst HQPlayer Desktop',
+    engine_version: '5.28.1',
+    major: 5,
+    naa_version: '5.1.8-68',
+    pairing_ok: true,
 };
 
 /** HQPlayer connected, library playback routed through it — the manual shot. */
@@ -66,3 +71,20 @@ export const ConnectedNotOutput = () => seeded(CONNECTED, false);
  */
 export const OutputButUnreachable = () =>
     seeded({ ...CONNECTED, available: false, naa_available: true }, true);
+
+/**
+ * The adapter on the box is on another major line than HQPlayer, which does not
+ * carry sound. The card names both versions and *Use as output* is refused, so
+ * the state has to be readable without anyone having to try the switch.
+ */
+export const PairingMismatch = () => seeded(
+    { ...CONNECTED, major: 5, naa_version: '6.1.4-71', pairing_ok: false }, false);
+
+/**
+ * Either version could not be read — HQPlayer asleep, or an adapter that is not
+ * installed. An unknown pairing is not a broken one: nothing is claimed and
+ * nothing is blocked.
+ */
+export const PairingUnknown = () => seeded(
+    { ...CONNECTED, engine_version: null, major: null, naa_version: null, pairing_ok: null },
+    false);

@@ -435,6 +435,20 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     padding: 0 14px 10px;
 }
 
+/* Shown when HQPlayer and the local NAA are on different major lines, which
+   does not work. A state on the card, not a notification: it stays true until
+   one of the two is changed, and repeating it would say nothing new. */
+.lib-hqp-pairing {
+    margin: 0 14px 10px;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-sm);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    font-size: var(--font-size-xs);
+    line-height: 1.45;
+}
+
 .lib-hqp-output-toggle .switch {
     --switch-width: 38px;
     --switch-height: 19px;

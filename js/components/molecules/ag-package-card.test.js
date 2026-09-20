@@ -342,3 +342,51 @@ describe('ag-package-card — configuration state', () => {
         expect(badges(el)).not.toContain('Not configured');
     });
 });
+
+describe('ag-package-card — which way the offered version goes', () => {
+    beforeEach(() => { document.body.innerHTML = ''; });
+
+    it('calls a newer version an update', async () => {
+        const el = await mount({
+            ...basePkg, status: 'installed',
+            installed_version: '5.1.5-67', available_version: '5.1.8-68',
+            available_is_older: false,
+        });
+        expect(el.textContent).toContain('Update available');
+        el.remove();
+    });
+
+    it('does not call an older version an update', async () => {
+        // A package held to another component's major line is offered an older
+        // build to bring a drifted box back. Announcing that as an update was
+        // a plain lie, and the card cannot work the direction out on its own.
+        const el = await mount({
+            ...basePkg, status: 'installed',
+            installed_version: '6.1.4-71', available_version: '5.1.8-68',
+            available_is_older: true,
+        });
+        expect(el.textContent).not.toContain('Update available');
+        expect(el.textContent).toContain('Older version offered');
+        el.remove();
+    });
+
+    it('says nothing at all when the two versions match', async () => {
+        const el = await mount({
+            ...basePkg, status: 'installed',
+            installed_version: '5.1.8-68', available_version: '5.1.8-68',
+            available_is_older: false,
+        });
+        expect(el.textContent).not.toContain('Update available');
+        expect(el.textContent).not.toContain('Older version offered');
+        el.remove();
+    });
+
+    it('falls back to "update" for a core that does not send the field yet', async () => {
+        const el = await mount({
+            ...basePkg, status: 'installed',
+            installed_version: '5.1.5-67', available_version: '5.1.8-68',
+        });
+        expect(el.textContent).toContain('Update available');
+        el.remove();
+    });
+});

@@ -390,3 +390,48 @@ describe('AgHqplayerOutput._renderDsp — volume label', () => {
         expect(flatValues(el._renderDsp()).map(String)).toContain('0.0');
     });
 });
+
+describe('AgHqplayerOutput — which HQPlayer this is, and whether it pairs', () => {
+    it('trims the vendor prefix so the useful word is what shows', () => {
+        const el = makeEl();
+        expect(el._identity('Signalyst HQPlayer Desktop', '5.28.1')).toBe('Desktop 5.28.1');
+        expect(el._identity('Signalyst HQPlayer Embedded', '6.0.2')).toBe('Embedded 6.0.2');
+    });
+
+    it('shows an unexpected product whole rather than trimming it on a guess', () => {
+        const el = makeEl();
+        expect(el._identity('Something Else', '1.0')).toBe('Something Else 1.0');
+    });
+
+    it('says nothing when the instance has not answered', () => {
+        const el = makeEl();
+        expect(el._identity(null, null)).toBe('');
+        expect(el._identity('Signalyst HQPlayer Desktop', null)).toBe('Desktop');
+    });
+
+    it('puts the engine version beside the name on the connected card', () => {
+        const el = makeEl({ available: true, naa_available: true, engine_version: '5.28.1' });
+        expect(renderToString(el._renderCard())).toContain('5.28.1');
+    });
+
+    it('warns when the two major lines do not match, naming both', () => {
+        const el = makeEl({
+            available: true, naa_available: true,
+            pairing_ok: false, major: 5, naa_version: '6.1.4-71',
+        });
+        const html = renderToString(el._renderCard());
+        expect(html).toContain('lib-hqp-pairing');
+        expect(html).toContain('6.1.4-71');
+        expect(html).toContain('5');
+    });
+
+    it('stays quiet when the pairing is fine', () => {
+        const el = makeEl({ available: true, naa_available: true, pairing_ok: true });
+        expect(renderToString(el._renderCard())).not.toContain('lib-hqp-pairing');
+    });
+
+    it('stays quiet when the pairing is unknown — unknown is not broken', () => {
+        const el = makeEl({ available: true, naa_available: true, pairing_ok: null });
+        expect(renderToString(el._renderCard())).not.toContain('lib-hqp-pairing');
+    });
+});
