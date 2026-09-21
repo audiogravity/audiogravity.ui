@@ -404,3 +404,93 @@
 }
 
 /* Reuse log styles from system.css (.log-container, .log-entry, etc.) */
+
+/* ---------------------------------------------------------------------------
+   ag-package-install-dialog — what a package asks to be read before it installs
+   (the vendor's licence, which a noninteractive install would skip) and which
+   major line to install, for a package whose vendor publishes several.
+   --------------------------------------------------------------------------- */
+
+.ag-pid-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.ag-pid-heading {
+    margin: 0 0 var(--spacing-xs);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+}
+
+.ag-pid-hint {
+    margin: 0 0 var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.ag-pid-warning {
+    margin: 0 0 var(--spacing-md);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.ag-pid-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+}
+
+.ag-pid-choice:hover {
+    border-color: var(--accent-primary);
+}
+
+.ag-pid-choice-major {
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+}
+
+.ag-pid-choice-version {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* The licence itself. Scrolls rather than stretching the dialog past the
+   screen: these run to about seven thousand characters. `pre-wrap` keeps the
+   vendor's own paragraph breaks, which carry its numbered clauses. */
+.ag-pid-notice {
+    max-height: 14rem;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
+.ag-pid-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.ag-pid-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+}

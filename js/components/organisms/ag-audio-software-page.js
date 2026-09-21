@@ -36,6 +36,7 @@ import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import './ag-card-grid.js';
 import '../molecules/ag-package-card.js';
+import '../molecules/ag-package-install-dialog.js';
 
 export class AgAudioSoftwarePage extends LitElement {
     static properties = {
@@ -43,7 +44,11 @@ export class AgAudioSoftwarePage extends LitElement {
         dryRun: { type: Boolean },
         isCheckingAll: { type: Boolean },
         _filter: { type: String, state: true },
-        _isRefreshing: { type: Boolean, state: true }
+        _isRefreshing: { type: Boolean, state: true },
+        // The package whose install dialog is open, or null. Holds the whole
+        // package rather than its id so the dialog can read its label and
+        // installed version without looking it up again.
+        _installDialogFor: { type: Object, state: true }
     };
 
     constructor() {
@@ -53,6 +58,7 @@ export class AgAudioSoftwarePage extends LitElement {
         this.isCheckingAll = false;
         this._filter = 'all';
         this._isRefreshing = false;
+        this._installDialogFor = null;
         this._pollInterval = null;
         this._loaded = false;
         this._restartNeeded = new Set(MemoryCache.get('softwareRestartNeeded', []));
@@ -437,6 +443,16 @@ export class AgAudioSoftwarePage extends LitElement {
         if (pkgIndex === -1) return;
         const pkg = this.packages[pkgIndex];
 
+        // Installing goes through its own dialog rather than a yes/no box: the
+        // package may carry a licence the noninteractive install would skip
+        // (both Signalyst packages do), and may let the operator choose which
+        // major line to install. The dialog asks the core what this one has.
+        // Before the update checks below, which have nothing to say about it.
+        if (action === 'install') {
+            this._installDialogFor = pkg;
+            return;
+        }
+
         let reinstallOnly = false;
 
         if (action === 'update') {
@@ -501,24 +517,71 @@ export class AgAudioSoftwarePage extends LitElement {
 
         if (!confirmed) return;
 
+        await this._runPackageAction(currentPkg, action);
+    }
+
+    /**
+     * Carry out an action the user has already agreed to.
+     *
+     * Split out of `_handleAction` so the install dialog and the plain
+     * confirmation reach exactly the same code — an install started from the
+     * dialog must stream its logs and update its history like any other.
+     *
+     * @param {Object} pkg - The package, as the card holds it.
+     * @param {'install'|'update'|'uninstall'} action - What to do.
+     * @param {string|null} [version] - The version the operator chose, for a
+     *   package that offers the choice. Omitted means the package's own rule.
+     * @param {boolean} [acceptNotices] - The operator accepted, in the install
+     *   dialog, the terms the package shows. The core refuses an install of a
+     *   package with terms without it — the dialog is not the only way in.
+     * @returns {Promise<void>}
+     */
+    async _runPackageAction(pkg, action, version = null, acceptNotices = false) {
+        const packageId = pkg.id;
+        const currentPkg = pkg;
+        const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+
         this._openLogsModal(currentPkg, action);
         this._startPolling(packageId);
 
         try {
-            const result = await apiPost(`/packages/${packageId}/${action}?dry_run=${this.dryRun}`);
+            const versionParam = version ? `&version=${encodeURIComponent(version)}` : '';
+            const acceptParam = acceptNotices ? '&accept_notices=true' : '';
+            const result = await apiPost(
+                `/packages/${packageId}/${action}?dry_run=${this.dryRun}${versionParam}${acceptParam}`);
 
             if (result.success) {
                 addToHistory('software', `${actionLabel} ${currentPkg.label}`, true);
                 showToast('success', `${actionLabel} Successful`, `${currentPkg.label} ${action}ed successfully`);
             } else {
                 addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
-                showToast('error', `${actionLabel} Failed`, `Failed to ${action} ${currentPkg.label}`);
+                // The core's message says WHY — "needs libgmpris, which no
+                // configured source provides", "not enough disk space". A bare
+                // "failed" sent people to the logs for a reason already written.
+                showToast('error', `${actionLabel} Failed`,
+                    result.message || `Failed to ${action} ${currentPkg.label}`);
             }
         } catch (error) {
             console.error('[Audio Software] Error:', error);
             addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
             showToast('error', 'Error', error.message);
         }
+    }
+
+    /**
+     * The install dialog was confirmed: close it and run the install.
+     *
+     * @param {CustomEvent} e - `{ packageId, version }`.
+     * @returns {Promise<void>}
+     */
+    async _handleInstallConfirmed(e) {
+        const { packageId, version } = e.detail;
+        const pkg = this.packages.find(p => p.id === packageId);
+        this._installDialogFor = null;
+        if (!pkg) return;
+        // Confirming the dialog IS the acceptance: its Install button stays
+        // disabled until the terms are accepted, or when there were none.
+        await this._runPackageAction(pkg, 'install', version, true);
     }
 
     async _handleCheckUpdate(e) {
@@ -860,6 +923,13 @@ export class AgAudioSoftwarePage extends LitElement {
                     @package-check-update=${this._handleCheckUpdate}
                     @package-restart-service=${this._handleRestartService}>
                 </ag-card-grid>
+
+                <ag-package-install-dialog
+                    .pkg=${this._installDialogFor}
+                    ?show=${Boolean(this._installDialogFor)}
+                    @install-confirmed=${this._handleInstallConfirmed}
+                    @modal-close=${() => { this._installDialogFor = null; }}>
+                </ag-package-install-dialog>
             </div>
         `;
     }

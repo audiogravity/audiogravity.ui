@@ -72,6 +72,7 @@ import './components/molecules/ag-library-breadcrumbs.js';
 import './components/molecules/ag-service-card.js';
 import './components/molecules/ag-profile-card.js';
 import './components/molecules/ag-package-card.js';
+import './components/molecules/ag-package-install-dialog.js';
 import './components/molecules/ag-skeleton-loader.js';
 import './components/molecules/ag-toast-notification.js';
 import './components/molecules/ag-tabs.js';
