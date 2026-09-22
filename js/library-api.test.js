@@ -137,6 +137,111 @@ describe('playWithFeedback', () => {
         expect(res).toBe(false);
     });
 
+    // -----------------------------------------------------------------------
+    // Tracks HQPlayer dropped. It answers "OK" to a URL it then discards, and
+    // the response says what it kept. Nothing read those fields, so an album
+    // played short with nothing said.
+
+    it('names the tracks HQPlayer dropped, without calling the play a failure', async () => {
+        const playFn = vi.fn().mockResolvedValue({
+            ok: true, action: 'play', routed_to: 'hqplayer',
+            tracks: 10, refused: 2, refused_titles: ['Bonus Take', 'Hidden Track'],
+        });
+        await expect(playWithFeedback(playFn)).resolves.toBe(true);
+        const [type, title, message] = showToast.mock.calls[0];
+        expect(type).toBe('warning');
+        expect(title).toBe('Some tracks were skipped');
+        expect(message).toBe('HQPlayer could not open 2 of 12 tracks: '
+                           + 'Bonus Take, Hidden Track.');
+    });
+
+    it('names the one track when only one was dropped', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            tracks: 0, refused: 1, refused_titles: ['Interlude'],
+        }));
+        expect(showToast.mock.calls[0][2]).toBe('HQPlayer could not open Interlude.');
+    });
+
+    it('still counts them when a CDN redirect hides which ones they were', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            tracks: 8, refused: 3, refused_titles: [],
+        }));
+        expect(showToast.mock.calls[0][2]).toBe('HQPlayer could not open 3 of 11 tracks.');
+    });
+
+    it('trails off rather than listing a whole album', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            tracks: 1, refused: 6,
+            refused_titles: ['A', 'B', 'C', 'D', 'E', 'F'],
+        }));
+        expect(showToast.mock.calls[0][2])
+            .toBe('HQPlayer could not open 6 of 7 tracks: A, B, C, D, E….');
+    });
+
+    it('says nothing when every track was kept', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            ok: true, tracks: 12, refused: 0, refused_titles: [],
+        }));
+        expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it('says nothing on a path that reports no refusals at all', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({ ok: true, tracks: 1 }));
+        expect(showToast).not.toHaveBeenCalled();
+    });
+
+    // -----------------------------------------------------------------------
+    // The seconds a push takes. An album leaves as one exchange, and HQPlayer
+    // answers the first command of a connection only after a delay of its own:
+    // 2.39 s measured for sixteen tracks on the box's own instance, longer
+    // across the network. Nothing on screen said so, and the album was clicked
+    // again.
+
+    it('says it is working when the play takes longer than a moment', async () => {
+        vi.useFakeTimers();
+        try {
+            let release;
+            const playFn = vi.fn(() => new Promise((resolve) => { release = resolve; }));
+            const pending = playWithFeedback(playFn);
+            await vi.advanceTimersByTimeAsync(1600);
+            const [type, title] = showToast.mock.calls[0];
+            expect(type).toBe('info');
+            expect(title).toBe('Starting playback');
+            release({ ok: true, tracks: 16 });
+            await expect(pending).resolves.toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('stays silent for a play that comes back quickly', async () => {
+        vi.useFakeTimers();
+        try {
+            let release;
+            const pending = playWithFeedback(() => new Promise((r) => { release = r; }));
+            await vi.advanceTimersByTimeAsync(900);
+            release({ ok: true, tracks: 1 });
+            await pending;
+            await vi.advanceTimersByTimeAsync(5000);
+            expect(showToast).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not leave the notice pending after a failure either', async () => {
+        vi.useFakeTimers();
+        try {
+            const pending = playWithFeedback(vi.fn().mockRejectedValue(new Error('nope')));
+            await expect(pending).resolves.toBe(false);
+            await vi.advanceTimersByTimeAsync(5000);
+            expect(showToast).toHaveBeenCalledTimes(1);
+            expect(showToast.mock.calls[0][0]).toBe('error');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('never rethrows — the caller must not need its own catch', async () => {
         await expect(playWithFeedback(vi.fn().mockRejectedValue(new Error('boom'))))
             .resolves.toBe(false);

@@ -161,12 +161,71 @@ export async function queueWithFeedback(queueFn, label = '') {
  *                             decide whether to open the now-playing view.
  */
 export async function playWithFeedback(playFn) {
+    const notice = setTimeout(
+        () => showToast('info', 'Starting playback',
+                        'Sending the tracks to the player…', PLAY_NOTICE_DURATION),
+        PLAY_NOTICE_AFTER);
     try {
-        await playFn();
+        warnAboutRefusedTracks(await playFn());
         return true;
     } catch (e) {
         console.error('[library] play failed:', e);
         showToast('error', 'Playback failed', e?.message || 'Could not start playback');
         return false;
+    } finally {
+        clearTimeout(notice);
     }
+}
+
+/**
+ * How long a play may take before the interface admits it is working on it.
+ *
+ * A push to HQPlayer is not instant: it goes out as one exchange — stop, clear,
+ * one add per track, read back, play — and HQPlayer answers the first command
+ * of a connection only after an announcement delay of its own. MEASURED
+ * (2026-09-22) against HQPlayer Embedded on the box, which is the quick case:
+ * 0.47 s for a single track, 1.86 s for eight, 2.39 s for sixteen. A remote
+ * instance is slower still — 2.37 s before it answers anything at all. Until
+ * this notice, those seconds passed with nothing on screen, and the album was
+ * clicked again.
+ *
+ * Above the one-track figure and below the eight-track one, so a single track —
+ * the common click, and the one that feels instant — says nothing at all.
+ */
+const PLAY_NOTICE_AFTER = 1500;
+
+/** Short: the music itself takes over as the feedback, usually within a second. */
+const PLAY_NOTICE_DURATION = 2500;
+
+/** How many dropped titles the notice names before trailing off. */
+const MAX_NAMED_REFUSALS = 5;
+
+/**
+ * Warn about the tracks HQPlayer dropped from a push that otherwise succeeded.
+ *
+ * HQPlayer answers "OK" to a URL it then drops without an error of its own — a
+ * file it cannot open, an address it cannot reach — and the only trace is the
+ * entry missing from its playlist. `POST /library/queue` reports that: `tracks`
+ * is what it kept, `refused` how many it lost and `refused_titles` which ones
+ * (empty when a CDN redirect hides them). Nothing read those fields, so an
+ * album simply played short, with nothing said.
+ *
+ * A warning and not an error, because what was kept IS playing: this explains a
+ * gap. Only a play can get here — a play that keeps nothing, and an add that
+ * loses anything, answer 503 and travel as errors (see API.md, /library/queue).
+ *
+ * @param {object} [result] - The queue response, when the caller returned one.
+ */
+function warnAboutRefusedTracks(result) {
+    const refused = result?.refused;
+    if (!refused) return;
+    const titles = result.refused_titles || [];
+    const named = titles.slice(0, MAX_NAMED_REFUSALS).join(', ')
+        + (titles.length > MAX_NAMED_REFUSALS ? '…' : '');
+    const kept = result.tracks;
+    const what = refused === 1 && named
+        ? `HQPlayer could not open ${named}`
+        : `HQPlayer could not open ${refused} of ${refused + (kept || 0)} tracks`
+          + (named ? `: ${named}` : '');
+    showToast('warning', 'Some tracks were skipped', `${what}.`);
 }
