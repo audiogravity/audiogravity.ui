@@ -88,3 +88,35 @@ export const PairingMismatch = () => seeded(
 export const PairingUnknown = () => seeded(
     { ...CONNECTED, engine_version: null, major: null, naa_version: null, pairing_ok: null },
     false);
+
+const LOCAL = {
+    host: '127.0.0.1',
+    port: 4321,
+    local: true,
+    configured_host: null,
+    configured_port: 4321,
+    available: true,
+    naa_available: false,
+    use_as_output: true,
+    active_filter: 'sinc-short',
+    active_mode: 'SDM (DSD)',
+    product: 'Signalyst HQPlayer Embedded',
+    engine_version: '5.16.2',
+    major: 5,
+    pairing_ok: null,
+};
+
+/**
+ * HQPlayer Embedded runs on this box: the music plays through it, straight to
+ * the DAC, until it stops. The switch is locked on — the core would refuse to
+ * turn it off — and nothing is offered to disconnect.
+ */
+export const LocalInstance = () => seeded(LOCAL, true);
+
+/**
+ * The same, with another HQPlayer chosen in the card beforehand: the card names
+ * it, since the card returns to it — with its own output setting — when
+ * HQPlayer Embedded stops, and offers to forget it.
+ */
+export const LocalInstanceWithChosenOne = () =>
+    seeded({ ...LOCAL, configured_host: '10.0.4.200' }, true);

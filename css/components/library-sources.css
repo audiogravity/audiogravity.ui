@@ -449,6 +449,17 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     line-height: 1.45;
 }
 
+/* Under the locked switch while this box's own HQPlayer runs: why it is on,
+   and which instance the card returns to. The 14 px gutter is the card's, as
+   on the rows around it. */
+.lib-hqp-note {
+    margin: 0;
+    padding: 0 14px 10px;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
 .lib-hqp-output-toggle .switch {
     --switch-width: 38px;
     --switch-height: 19px;

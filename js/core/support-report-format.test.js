@@ -510,6 +510,40 @@ describe('formatSupportReport — kernel, boots, ro, restarts, backups, network 
         expect(formatSupportReport(report)).toContain('not configured · found on network: 10.0.4.200 (filter poly-sinc-ext2)');
     });
 
+    // The instance AG plays through, as its service knows it (2026-09-22): the
+    // section used to read a startup setting, and said "not configured" on a box
+    // whose HQPlayer card had one — and knew nothing of the box's own HQPlayer.
+    const withHqp = (hqplayer) => ({ ...report, av_peers: { ...report.av_peers, hqplayer } });
+
+    it("names this box's own HQPlayer while it plays, with the card's choice alongside", () => {
+        const text = formatSupportReport(withHqp({
+            configured_host: '10.0.4.200', port: 4321, local: true, output: true,
+            product: 'Signalyst HQPlayer Embedded', engine_version: '6.0.4',
+            available: true, state: 'playing', found_on_network: [],
+        }));
+        expect(text).toContain('this box (Signalyst HQPlayer Embedded 6.0.4) · engine answering (playing) · used as output · card: 10.0.4.200:4321');
+    });
+
+    it("says when the box's own runs with nothing chosen in the card", () => {
+        const text = formatSupportReport(withHqp({ configured_host: null, port: 4321, local: true, output: true, available: false }));
+        expect(text).toContain('this box · engine NOT answering · used as output · card: none');
+    });
+
+    it("names the card's instance and whether the music goes to it", () => {
+        const text = formatSupportReport(withHqp({
+            configured_host: '10.0.4.200', port: 4321, local: false, output: false,
+            product: 'Signalyst HQPlayer Desktop', engine_version: '5.28.1',
+            probe: { reachable: true, latency_ms: 3 }, available: true, state: 'stopped',
+        }));
+        expect(text).toContain('10.0.4.200:4321 (Signalyst HQPlayer Desktop 5.28.1) reachable · 3 ms · engine answering (stopped) · not used as output');
+    });
+
+    it('says the state could not be read rather than "not configured"', () => {
+        const text = formatSupportReport(withHqp({ configured_host: null, port: 4321, error: 'RuntimeError: boom', found_on_network: [] }));
+        expect(text).toContain('state unreadable (RuntimeError: boom) · none found on the local /24');
+        expect(text).not.toContain('not configured · none found');
+    });
+
     it('says an unconfigured Roon Core announces itself', () => {
         expect(formatSupportReport(report)).toContain('announced on network at 10.0.4.200:9330');
     });

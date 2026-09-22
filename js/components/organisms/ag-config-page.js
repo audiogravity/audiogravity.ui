@@ -187,6 +187,8 @@ export class AgConfigPage extends LitElement {
         this._outputs = status.outputs || [];
         this._librarySources = status.library_sources || [];
         this._statusServices = status.services || [];
+        // Every service the status lists has a guided view: those whose config
+        // Audiogravity generates, and HQPlayer Embedded, whose output alone it sets.
         this._provisionableIds = this._statusServices.map(s => s.service_id);
     }
 
@@ -216,9 +218,19 @@ export class AgConfigPage extends LitElement {
         await this.servicesFetch.fetch();
     }
 
-    /** Whether the box is unconfigured: provisionable services exist, none AG-provisioned. */
+    /** Whether the box is unconfigured: provisionable services exist, none AG-provisioned.
+     * Judged on the services the first-time setup generates: one whose output alone
+     * is set here (HQPlayer Embedded) is not part of it. */
     get _boxIsNew() {
-        return this._statusServices.length > 0 && this._statusServices.every(s => !s.configured);
+        const generated = this._statusServices.filter(s => s.regenerable !== false);
+        return generated.length > 0 && generated.every(s => !s.configured);
+    }
+
+    /** Whether Audiogravity generates a service's config (offers Reset to default).
+     * True when the status does not say: a core that predates the field generates
+     * every service it lists. */
+    _serviceRegenerable(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.regenerable !== false;
     }
 
     /** Whether a service carries the AG marker (from the last status load). */
@@ -226,12 +238,15 @@ export class AgConfigPage extends LitElement {
         return !!this._statusServices.find(s => s.service_id === serviceId)?.configured;
     }
 
-    /** A guided apply/reset changed the config — reload the editor data + status. */
+    /** A guided apply/reset changed the config — reload the editor data, the status
+     * and the tiles. A tile shows the file's date, its backups and its output, which
+     * the change has just moved: without the list, going back showed the old ones
+     * until the tab was reloaded (seen on HQPlayer Embedded, 2026-09-22). */
     async _handleGuidedChanged() {
         if (this.selectedServiceId) {
             await this._reloadServiceConfig(this.selectedServiceId);
         }
-        await this._loadAudioStatus();
+        await this._loadServices();
     }
 
     async _reloadServiceConfig(serviceId) {
@@ -372,7 +387,7 @@ export class AgConfigPage extends LitElement {
             [
                 { title: 'First-time setup', text: 'On a new box (administrators only), an <strong>Initialize audio stack</strong> panel auto-detects your DAC and music library and generates a minimal working configuration for MPD, AirPlay (shairport-sync) and UPnP (upmpdcli), all wired to the chosen output. It asks for your admin password before applying. Once at least one service is set up, the panel disappears.' },
                 { title: 'Music on a NAS', text: 'The music-library picker lists your USB drives and existing mounts. To use a network share, use <strong>Add network share (NAS)</strong> at the bottom of the picker: enter the host, share and (unless it is a guest share) credentials — Audiogravi<sup>ty</sup> mounts and tests it on the spot, read-only by default. CIFS/SMB only; for NFS, mount it at the OS level under /mnt and it is detected automatically.' },
-                { title: 'Guided mode', text: 'For MPD, AirPlay and UPnP, the editor opens in a <strong>Guided</strong> view where you change the audio output or music library in a couple of clicks — only the changed setting is rewritten, the rest of your config is preserved. A <strong>Reset to default</strong> action there regenerates a minimal working config (admin password required; the current file is backed up first). Each MPD/AirPlay/UPnP tile shows a <strong>CONFIGURED</strong> badge once set up by Audiogravi<sup>ty</sup>.' },
+                { title: 'Guided mode', text: 'For MPD, AirPlay, UPnP and HQPlayer Embedded, the editor opens in a <strong>Guided</strong> view where you change the audio output or music library in a couple of clicks — only the changed setting is rewritten, the rest of your config is preserved. For MPD, AirPlay and UPnP, a <strong>Reset to default</strong> action there regenerates a minimal working config (admin password required; the current file is backed up first). HQPlayer Embedded keeps its own settings: only its audio output is chosen here. Each of these tiles shows a <strong>CONFIGURED</strong> badge once set up by Audiogravi<sup>ty</sup> — for HQPlayer Embedded, once you have chosen its output.' },
                 { title: 'Service Status', text: 'Each tile shows a <strong>RUNNING</strong> (green) or <strong>STOPPED</strong> (grey) badge reflecting the current systemd state of the service — so you know what is active before editing.' },
                 { title: 'Form Mode', text: 'Edit common settings through a user-friendly interface with field descriptions and validation. Ideal for day-to-day configuration.' },
                 { title: 'Expert Mode (Raw)', text: 'Directly edit the raw configuration file for advanced parameters not exposed in Form Mode. Includes syntax validation before save.' },
@@ -405,6 +420,7 @@ export class AgConfigPage extends LitElement {
                     .outputs=${this._outputs}
                     .librarySources=${this._librarySources}
                     .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
+                    .regenerable=${this._serviceRegenerable(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}
                     @restore=${this._handleRestore}

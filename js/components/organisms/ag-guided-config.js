@@ -6,13 +6,17 @@
  * descriptor, and applies them as TARGETED patches (POST /audio-stack/output,
  * /audio-stack/library) that preserve the rest of the config. Also offers a
  * "Reset to default" action that regenerates a minimal working config
- * (POST /audio-stack/provision, admin password required).
+ * (POST /audio-stack/provision, admin password required) — for the services
+ * whose config Audiogravity generates only: HQPlayer Embedded's belongs to its
+ * vendor, and only its output is set here.
  *
  * The descriptor (GUIDED_FIELDS) is intentionally data-driven so new fields can
  * be added per package without reworking the component.
  *
  * @element ag-guided-config
- * @prop {string} serviceId - Provisionable service id (mpd | airplay | upmpdcli).
+ * @prop {string} serviceId - Provisionable service id (mpd | airplay | upmpdcli | hqplayerd).
+ * @prop {boolean} regenerable - Whether Audiogravity generates this service's config,
+ *   which offers "Reset to default" (from /audio-stack/status; true when unknown).
  * @prop {Array} outputs - Detected output candidates (from /audio-stack/status).
  * @prop {Array} librarySources - Detected library sources.
  * @prop {Object} serviceOutput - The service's currently pinned output, or null.
@@ -42,6 +46,7 @@ export const GUIDED_FIELDS = {
     mpd: ['output', 'library'],
     airplay: ['output'],
     upmpdcli: [],
+    hqplayerd: ['output'],
 };
 
 export class AgGuidedConfig extends LitElement {
@@ -50,6 +55,7 @@ export class AgGuidedConfig extends LitElement {
         outputs: { type: Array },
         librarySources: { type: Array },
         serviceOutput: { type: Object },
+        regenerable: { type: Boolean },
         _selectedOutputId: { state: true },
         _libraryChoice: { state: true },
         _manualPath: { state: true },
@@ -62,6 +68,9 @@ export class AgGuidedConfig extends LitElement {
         this.outputs = [];
         this.librarySources = [];
         this.serviceOutput = null;
+        // True unless the status says otherwise: a core that predates the field
+        // generates every service it lists.
+        this.regenerable = true;
         this._selectedOutputId = null;
         this._libraryChoice = null;
         this._manualPath = '';
@@ -279,9 +288,10 @@ export class AgGuidedConfig extends LitElement {
                     ${fields.length ? html`
                         <button class="action-btn primary compact" ?disabled=${!this._canApply}
                                 @click=${this._apply}>Apply changes</button>` : nothing}
-                    <button class="action-btn secondary compact" ?disabled=${this._busy} @click=${this._reset}>
-                        ${svgIcon(iconRefresh)} Reset to default
-                    </button>
+                    ${this.regenerable ? html`
+                        <button class="action-btn secondary compact" ?disabled=${this._busy} @click=${this._reset}>
+                            ${svgIcon(iconRefresh)} Reset to default
+                        </button>` : nothing}
                 </div>
 
                 ${fields.includes('library')

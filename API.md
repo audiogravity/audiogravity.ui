@@ -452,11 +452,11 @@ only what is running. Same entry shape, different contents.
 ### HQPlayer — `/hqplayer/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer). Also identifies the instance: `product`, `engine_version`, `major`, and the pairing with the local adapter — `naa_version` and `pairing_ok` |
-| PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available` |
-| DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first**, so its NAA releases the local sound card |
+| GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer). Also identifies the instance: `product`, `engine_version`, `major`, and the pairing with the local adapter — `naa_version` and `pairing_ok`. **`local`** is true while the box's own HQPlayer runs (see below); `host`/`port` are then the loopback address it answers on, and **`configured_host`** / **`configured_port`** the instance chosen in the card, kept meanwhile |
+| PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available`. **400** when the host is this box: its own HQPlayer is not a choice of the card |
+| DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first**, so its NAA releases the local sound card. Answers with the connection that remains: empty, or the box's own HQPlayer while it runs — which it neither stops nor forgets |
 | PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → `{ use_as_output }` |
-| GET | `/hqplayer/discover` | Scan local subnet. Each instance carries `product` and `engine_version`, which is what tells a Desktop from an Embedded when a network holds both |
+| GET | `/hqplayer/discover` | Scan local subnet. Each instance carries `product` and `engine_version`, which is what tells a Desktop from an Embedded when a network holds both. The box itself is never listed |
 | GET | `/hqplayer/filters` | Available interpolation filters (the active one is in `/hqplayer/status`) |
 | PUT | `/hqplayer/filter` | Select a filter by index |
 | GET | `/hqplayer/shapers` | Available noise shapers |
@@ -464,7 +464,7 @@ only what is running. Same entry shape, different contents.
 | GET | `/hqplayer/modes` | Available output modes |
 | PUT | `/hqplayer/mode` | Select an output mode by index |
 | PUT | `/hqplayer/volume` | Set volume (dB) |
-| DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection |
+| DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection. **503** while the box's own HQPlayer runs: the saved selection is the card's instance's, kept for when it stops |
 | GET | `/hqplayer/status` | Current DSP status — carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
 
 **Seeking through HQPlayer.** The player state reports `can_seek: true` whenever a length
@@ -499,6 +499,17 @@ The same refusal applies **at play time**, not only when the setting is switched
 the setting is persisted, and the pairing can break under it — updating the adapter from
 Audio Software is enough. A play routed to a mismatched pair answers 503 naming both
 versions, exactly as it already does for an adapter that is not running.
+
+**The box's own HQPlayer (HQPlayer Embedded, package `hqplayerd`).** While its unit runs,
+Audiogravi<sup>ty</sup> plays through it, straight to the DAC with no NAA in between:
+`local` is true, `use_as_output` reads true whatever the card says, and every command goes
+to it on the loopback address. Neither the NAA checks nor the pairing apply to it. The
+instance chosen in the card is kept — its address, its own `use_as_output`, its saved DSP —
+and comes back when HQPlayer Embedded stops. Meanwhile `PUT /hqplayer/use-as-output`
+with `enabled: true` changes nothing and answers normally, `enabled: false` answers
+**503**, and so does `DELETE /hqplayer/dsp`. A format HQPlayer cannot decode is refused
+with a message naming a profile that stops HQPlayer Embedded, and a network renderer
+selected at the same time is a **409** naming the renderer as the one to turn off.
 
 ### Streaming subscription state — Qobuz, Tidal, HIGHRESAUDIO
 
@@ -649,7 +660,7 @@ these today**; see `/docs` for their request/response shape (on a core that serv
 - `audio_stack` — the `/audio-stack/status` payload: `outputs`, `selected_output`, per-service `{ service_id, config_path, configured, output, configured_device, pinned_device, device_matches_pin? }`, `library_sources`.
 - `audio_live` — the audio path **as it is now**, not as configured: `cards` (ALSA cards with `usbid`, `usbbus`, `usb_speed_mbps`, `usb_version` — a DAC that came up Full-Speed instead of High-Speed is a silent degradation), `active_streams` `{ stream, direction, format, rate, channels }` (the bit-perfect proof), `cpu_governor`, `cpu_mhz`. An unreadable `/proc/asound` sets `cards_error` rather than reading as "no DAC".
 - `audio_tuning` — per audio unit, `load_state` first: `systemctl show` answers for a unit that does not exist on the box, with the defaults it *would* apply, so anything other than `loaded` means **no tuning fields are returned** for that unit (`ActiveState` cannot tell a stopped unit from an absent one). Only `not-found` means the software is absent — `masked`, `bad-setting`, `error` and `stub` all describe a unit file that **exists**, and a client must not render them as "not installed". For a loaded unit: what systemd is **configured** to apply against what the process **actually** carries: `configured` `{ nice, cpu_affinity, cpu_sched, cpu_sched_priority, io_class, io_priority, io_accounting, ip_accounting, drop_ins }` vs `live` `{ nice, cpu_sched, cpu_sched_priority, cpu_affinity, io }`, plus `restarts` (Restart=always masks crash loops), `started_at`, `memory_bytes`, `cpu_used_seconds`. The difference between the two halves is a drop-in that did not apply.
-- `av_peers` — the audio ecosystem around the box: `upnp_renderers` / `upnp_servers` `{ name, host, is_local? }` (SSDP: same network segment only), `hqplayer` `{ configured_host, port, probe, available?, state?, found_on_network }` and `roon` `{ configured_host, in_use, probe?, found_on_network }`. Both peers report what the **network** holds regardless of configuration. `roon.in_use` reads the pairing token: `roon_core_host` defaults to `127.0.0.1`, so a host alone never means "configured".
+- `av_peers` — the audio ecosystem around the box: `upnp_renderers` / `upnp_servers` `{ name, host, is_local? }` (SSDP: same network segment only), `hqplayer` `{ configured_host, port, local, output, product?, engine_version?, available?, state?, probe?, error?, found_on_network }` — `configured_host`/`port` are the instance chosen in the HQPlayer card (never the settings' seed), `local` whether the box's own HQPlayer is the one played through, `output` whether library playback goes to HQPlayer, `probe` the TCP path to the card's instance (absent while the box's own is played through) and `roon` `{ configured_host, in_use, probe?, found_on_network }`. Both peers report what the **network** holds regardless of configuration. `roon.in_use` reads the pairing token: `roon_core_host` defaults to `127.0.0.1`, so a host alone never means "configured".
 - `configs` — one entry per audio config: `{ service_id, path, exists, size_bytes, modified, mode, lines, dropped_comments, redacted, truncated, backups_total, last_backup }`. See the redaction contract below.
 - `library` — `declared_roots`, `has_local_library`, `roots_detail` `{ path, exists, readable }`, and `mpd_database` `{ path, declared, exists?, size_bytes?, modified? }` where `declared` ∈ `declared | not_declared | config_unreadable` — an unreadable `mpd.conf` is not the same diagnostic as a database that was never built — plus `mpd_stats` `{ songs, albums, artists, db_updated, mpd_error }` asked of MPD itself .
 - `streaming` — per service (`qobuz`, `tidal`, `highresaudio`, `roon`): `true`, `false`, or **`null` when the probe could not run** (module not enabled, or it raised) — with the reason under `probe_errors: { service: reason }`, present only when there is one. `null` must render as *unknown*, never as "not signed in". Never a token. **Every key is a service** except the metadata ones (`probe_errors`, `error`) — a client must exclude those rather than match a hardcoded service list, or a service the core adds later disappears from a section that still looks complete.
@@ -693,7 +704,7 @@ feature, so the gate is about the role, not the edition.
 | POST | `/audio-stack/mounts` | Create + connectivity-test a CIFS mount; admin **password** required |
 | DELETE | `/audio-stack/mounts/{slug}` | Remove a UI-created mount (units, credentials, mountpoint) |
 
-`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, configured, output: { usb_id, card_name, device_id } | null, configured_device, pinned_device, device_matches_pin? }] }`. `configured` is **true only when the file carries the AG marker** (not mere existence — distro packages ship defaults). `services[].output` is the per-service pinned output (null for upmpdcli / unset). `selected_output` is a back-compat single pin derived from the per-service map.
+`GET /audio-stack/status` → `{ outputs: [{ hw, card_name, usb_id, device_id, label, category, is_usb_dac, recommended }], library_sources: [{ kind: "usb"|"mount", label, path, uuid, fstype }], selected_output: { usb_id, card_name, device_id } | null, services: [{ service_id, config_path, regenerable, configured, output: { usb_id, card_name, device_id } | null, configured_device, pinned_device, device_matches_pin? }] }`. `services` lists the services AG generates (mpd, upmpdcli, airplay — `regenerable: true`), then, on a box that declares it, **`hqplayerd`** (HQPlayer Embedded — `regenerable: false`): its file is the vendor's, and AG only ever sets its output there, so it has no first-time setup and no reset. `configured` is **true only when the file carries the AG marker** (not mere existence — distro packages ship defaults); for `hqplayerd`, whose file never carries it, it means an output has been chosen here. `services[].output` is the per-service pinned output (null for upmpdcli / unset). `selected_output` is a back-compat single pin derived from the per-service map.
 
 These three fields were added without bumping `report_version`, so a client must treat an **absent** key and a `null` one as different answers: absent means the core predates them and said nothing; `null` means it looked and found nothing. Rendering the first as the second asserts a fact the payload never carried.
 
@@ -713,7 +724,7 @@ These three fields were added without bumping `report_version`, so a client must
 
 A path that is given must be **absolute, existing, a directory, and readable by the account mpd runs as** — a directory this process can read is not necessarily one mpd can, and that failure is indistinguishable from an empty library once mpd is running. Any of those fails with **400** carrying a message written to be shown as-is. Checked **before** any side effect (output pin, ALSA index pin, USB mount), so a refusal never leaves the box half configured. Ignored entirely when `library_usb_uuid` is set.
 
-`POST /audio-stack/output` body: `{ service_id, card_name, usb_id?, device_id? }` → `{ service_id, device, output }`. Rewrites **only** the ALSA device directive of that service (via steering's device switcher) and pins the new per-service output — the rest of the config is preserved. Admin-only, **no password**. **400** if the service has no ALSA output or the output cannot be resolved.
+`POST /audio-stack/output` body: `{ service_id, card_name, usb_id?, device_id? }` → `{ service_id, device, output }`. `service_id` is `mpd`, `airplay` or `hqplayerd`. Rewrites **only** the ALSA device directive of that service (via steering's device switcher) and pins the new per-service output — the rest of the config is preserved. For `hqplayerd` the output also becomes the sound card (`<output type="alsa">`) and nothing else changes — its rates, DSD included, are set in its own web interface; it is restarted only if it runs, never started. Admin-only, **no password**. **400** if the service has no ALSA output or the output cannot be resolved.
 
 `POST /audio-stack/library` body: `{ music_directory | library_usb_uuid + library_fstype }` → `{ service_id: "mpd", music_directory }`. Sets, **adds or removes** mpd's `music_directory` (mounting a USB drive by UUID if given) — outputs and bit-perfect flags preserved — restarts mpd, and **triggers an MPD database rescan** so the new library is indexed (the minimal config has `auto_update` off; the rescan runs in the background). Both directions are supported: attaching a library to a box that started without one, where there is no directive to rewrite, and **detaching** it again by sending no path — the directive is then removed rather than blanked, and no rescan is triggered since there is nothing to walk. The same path checks as `/provision` apply, with the same **400** and message. Admin-only, **no password**.
 
@@ -898,7 +909,7 @@ surfaces this — it performs no version comparison and downloads nothing on its
 |---|---|---|
 | GET | `/steering/status` | Which service drives which ALSA device |
 | GET | `/steering/outputs` | Outputs a service can be switched to |
-| POST | `/steering/switch-output` | Point a service at another output |
+| POST | `/steering/switch-output` | Point a service at another output. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else the NAA (`naa`) |
 
 ### Service config editor — `/audio_app_config/*`
 Editing a service's own configuration file needs **no licence**.
@@ -918,11 +929,20 @@ across both layouts instead. A service the core does not know has no editable co
 | POST | `/audio_app_config/{service_id}/backups/{filename}/restore` | Restore one of them; optionally restart the service |
 
 `service_id` is the key the box uses in `audio-config.json`: `mpd`, `airplay`, `naa`,
-`upmpdcli`. The adaptor is `naa` — **it was `hqplayer` until 0.9.59**, and the same ids are
+`upmpdcli`, and `hqplayerd` (HQPlayer Embedded) on a box that declares it. The adaptor is `naa` — **it was `hqplayer` until 0.9.59**, and the same ids are
 what `/audio-stack/status`, `/audio-stack/output` and the `service-metrics` SSE events carry.
 
 Every save takes a timestamped backup first; the two `backups` routes list and replay
-them.
+them. Both write routes answer `restart_status`: `success`, `failed`, `not_requested`, or
+**`not_running`** for `hqplayerd`, which is restarted only when it runs — it takes the DAC
+as soon as it starts, so a save never starts it; the new file is read at its next start
+(`restarted` is then false).
+
+`hqplayerd`'s file is the vendor's XML, with commented examples in it: it is read in both
+views, but written **as text only** — a structured save (`data`) is refused with **400**,
+since it would rewrite the whole file and drop the comments. Its structured schema is empty.
+It is written as the account that owns it (`hqplayer`), next to itself then renamed over
+it, so HQPlayer can still save its own settings there.
 
 Three contract details of the structured form (`?type=structured` / POST with `data`):
 values of schema-declared **boolean** fields arrive as JSON booleans (not the file's

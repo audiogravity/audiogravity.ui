@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Minimal stubs for Lit and custom elements used by the component.
 vi.mock('lit', () => ({
-    LitElement: class { connectedCallback() {} },
+    LitElement: class { connectedCallback() {} disconnectedCallback() {} },
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
@@ -433,5 +433,240 @@ describe('AgHqplayerOutput — which HQPlayer this is, and whether it pairs', ()
     it('stays quiet when the pairing is unknown — unknown is not broken', () => {
         const el = makeEl({ available: true, naa_available: true, pairing_ok: null });
         expect(renderToString(el._renderCard())).not.toContain('lib-hqp-pairing');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// This box's own HQPlayer (HQPlayer Embedded)
+// ---------------------------------------------------------------------------
+// While it runs, the core plays through it whatever the card says, and returns
+// to the instance chosen in the card when it stops (decision of 2026-09-22).
+// The card has to show which one plays — and must not offer a switch the core
+// refuses, nor a Disconnect that would blank a card still in use.
+
+import { apiDelete } from '../../api.js';
+import { loadConnection } from '../utils-lit.js';
+
+const LOCAL = {
+    host: '127.0.0.1', port: 4321, local: true,
+    configured_host: null, configured_port: 4321,
+    available: true, naa_available: false, use_as_output: true,
+    product: 'Signalyst HQPlayer Embedded', engine_version: '5.16.2',
+};
+
+describe("AgHqplayerOutput._renderCard — this box's own HQPlayer", () => {
+    it('shows it as this box, by the name it reports', () => {
+        const html = renderToString(makeEl(LOCAL)._renderCard());
+        expect(html).toContain('HQPlayer Embedded 5.16.2');
+        expect(html).toContain('This box');
+        expect(html).not.toContain('127.0.0.1');
+    });
+
+    it('is connected with no NAA — it plays straight to the DAC', () => {
+        const html = renderToString(makeEl(LOCAL)._renderCard());
+        expect(html).toContain('Connected');
+        expect(html).not.toContain('NAA offline');
+    });
+
+    it('says offline when it runs without answering', () => {
+        const html = renderToString(makeEl({ ...LOCAL, available: false })._renderCard());
+        expect(html).toContain('Offline');
+        expect(html).toContain('This box');
+    });
+
+    it('locks the output switch on, and says why', () => {
+        const html = renderToString(makeEl(LOCAL)._renderCard());
+        expect(html).toMatch(/<ag-switch \.checked=true disabled>/);
+        expect(html).not.toContain('@ag-change');
+        expect(html).toContain('HQPlayer is running on this box: the music plays through it until it stops.');
+    });
+
+    it('names the instance chosen in the card, which comes back when it stops', () => {
+        const html = renderToString(makeEl({ ...LOCAL, configured_host: '10.0.4.200' })._renderCard());
+        // Its own output setting comes back with it: the music goes to it only if
+        // that was on — the sentence must not promise more (seen in the real run).
+        expect(html).toContain('The card then returns to HQPlayer at 10.0.4.200:4321, with its own output setting.');
+        expect(html).toContain('Forget 10.0.4.200:4321');
+        expect(html).not.toContain('Disconnect');
+    });
+
+    it('offers nothing to disconnect when no other instance was chosen', () => {
+        const html = renderToString(makeEl(LOCAL)._renderCard());
+        expect(html).not.toContain('Disconnect');
+        expect(html).not.toContain('Forget');
+        expect(html).not.toContain('returns to HQPlayer');
+    });
+
+    it('leaves the card of another HQPlayer as it was', () => {
+        const html = renderToString(makeEl({ available: true, naa_available: true })._renderCard());
+        expect(html).toContain('10.0.4.200:4321');
+        expect(html).toContain('Disconnect');
+        expect(html).not.toContain('This box');
+        expect(html).not.toContain('disabled');
+    });
+});
+
+describe("AgHqplayerOutput._renderDsp — this box's own HQPlayer", () => {
+    // The reset drops the settings Audiogravity keeps, which are those of the
+    // HQPlayer chosen in the card — kept for when this box's own stops, and
+    // refused by the core meanwhile.
+    function el(connection) {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._connection = connection;
+        c._status = null;
+        c._filters = []; c._shapers = []; c._modes = [];
+        return c;
+    }
+
+    it('offers no reset while it runs', () => {
+        const html = renderToString(el(LOCAL)._renderDsp());
+        expect(html).not.toContain('Reset to HQPlayer defaults');
+        expect(html).toContain('Filter');
+    });
+
+    it('keeps the reset for the HQPlayer chosen in the card', () => {
+        const html = renderToString(el({ host: '10.0.4.200', available: true })._renderDsp());
+        expect(html).toContain('Reset to HQPlayer defaults');
+    });
+});
+
+describe('AgHqplayerOutput._disconnect — what forgetting leaves', () => {
+    function el(connection) {
+        const c = makeEl(connection);
+        c._disconnect = AgHqplayerOutput.prototype._disconnect;   // makeEl stubs it
+        c.dispatchEvent = vi.fn();
+        return c;
+    }
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it("keeps showing this box's HQPlayer, which the core still plays through", async () => {
+        apiDelete.mockResolvedValueOnce(LOCAL);
+        const c = el({ ...LOCAL, configured_host: '10.0.4.200' });
+        await c._disconnect();
+        expect(c._connection).toEqual(LOCAL);
+        expect(c._useAsOutput).toBe(true);
+        expect(c.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('clears the card when nothing remains', async () => {
+        apiDelete.mockResolvedValueOnce({ host: null, port: 4321, local: false, use_as_output: false });
+        const c = el({ available: true, naa_available: true });
+        await c._disconnect();
+        expect(c._connection).toBeNull();
+        expect(c._useAsOutput).toBe(false);
+    });
+
+    it('clears the card when the call fails, as before', async () => {
+        apiDelete.mockRejectedValueOnce(new Error('boom'));
+        const c = el({ available: true, naa_available: true });
+        await c._disconnect();
+        expect(c._connection).toBeNull();
+    });
+});
+
+describe("AgHqplayerOutput — following this box's HQPlayer as it starts and stops", () => {
+    function el() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._loadConnection = vi.fn();
+        return c;
+    }
+    const state = (c, serviceId, s) => c._handleLocalHqplayerMetrics({ serviceId, metrics: { state: s } });
+
+    it('reloads the connection when it starts', () => {
+        const c = el();
+        state(c, 'hqplayerd', 'inactive');
+        state(c, 'hqplayerd', 'active');
+        expect(c._loadConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it('reloads the connection when it stops', () => {
+        const c = el();
+        state(c, 'hqplayerd', 'active');
+        state(c, 'hqplayerd', 'inactive');
+        expect(c._loadConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it('with nothing loaded, takes the first event as where it stands', () => {
+        const c = el();
+        state(c, 'hqplayerd', 'active');
+        expect(c._loadConnection).not.toHaveBeenCalled();
+    });
+
+    /** A card whose first load answered `connection`, then watched for reloads. */
+    async function loaded(connection) {
+        loadConnection.mockImplementationOnce(async (host) => { host._connection = connection; });
+        const c = Object.create(AgHqplayerOutput.prototype);
+        await c._loadConnection();
+        c._loadConnection = vi.fn();
+        return c;
+    }
+
+    it('sees a start that comes between its load and the first event', async () => {
+        // The case measured on the dev box: state events come every 10 to 30 s
+        // on a quiet box, and HQPlayer was started 7 s after the page opened.
+        const c = await loaded({ host: '10.0.4.200', local: false });
+        state(c, 'hqplayerd', 'active');
+        expect(c._loadConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it('sees a stop that comes between its load and the first event', async () => {
+        const c = await loaded(LOCAL);
+        state(c, 'hqplayerd', 'inactive');
+        expect(c._loadConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks nothing when the first event says what it loaded', async () => {
+        const c = await loaded(LOCAL);
+        state(c, 'hqplayerd', 'active');
+        expect(c._loadConnection).not.toHaveBeenCalled();
+    });
+
+    it('asks once, not on every event, when the core does not see it running', async () => {
+        // Its unit runs, but the core reads no declaration: every load says
+        // "not local". Through the real load, so a re-seed on each of them —
+        // the loop this guards against — would show as one reload per event.
+        loadConnection.mockReset();
+        loadConnection.mockImplementation(async (host) => { host._connection = { host: '10.0.4.200', local: false }; });
+        try {
+            const c = Object.create(AgHqplayerOutput.prototype);
+            await c._loadConnection();
+            for (let i = 0; i < 5; i++) {
+                state(c, 'hqplayerd', 'active');
+                await new Promise(r => setTimeout(r, 0));   // let a reload land
+            }
+            expect(loadConnection).toHaveBeenCalledTimes(2);   // the load, then one reload
+        } finally {
+            loadConnection.mockReset();
+        }
+    });
+
+    it('asks nothing while its state stays put', () => {
+        // A running HQPlayer that does not answer must not turn every metrics
+        // tick into a request to the core, and from the core to HQPlayer.
+        const c = el();
+        for (let i = 0; i < 5; i++) state(c, 'hqplayerd', 'active');
+        expect(c._loadConnection).not.toHaveBeenCalled();
+    });
+
+    it('ignores the other services', () => {
+        const c = el();
+        state(c, 'naa', 'inactive');
+        state(c, 'naa', 'active');
+        expect(c._loadConnection).not.toHaveBeenCalled();
+    });
+
+    it('listens from the moment it is shown, and stops when it goes', () => {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._loadConnection = vi.fn();
+        window.EventEmitter = { on: vi.fn(), off: vi.fn() };
+        try {
+            c.connectedCallback();
+            expect(window.EventEmitter.on).toHaveBeenCalledWith('service-metrics-sse', c._boundHandleLocalMetrics);
+            c.disconnectedCallback();
+            expect(window.EventEmitter.off).toHaveBeenCalledWith('service-metrics-sse', c._boundHandleLocalMetrics);
+        } finally {
+            delete window.EventEmitter;
+        }
     });
 });

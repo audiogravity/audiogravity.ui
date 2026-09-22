@@ -6,7 +6,7 @@
  *   (regression for the missing lifecycle cleanup fixed in this review)
  * - disconnectedCallback is safe when CodeMirror has not been initialised yet
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // The guided child pulls the API/toast stack (auth-gated at load); this suite only
 // exercises the editor's own mode logic, so stub it out.
@@ -99,9 +99,18 @@ describe('AgConfigEditor — guided/structured/expert mode switching', () => {
     });
 
     it('willUpdate opens a non-provisionable service in form mode', () => {
-        const el = makeEl({ guided: false, currentMode: 'guided', service: { id: 'mpd' } });
+        const el = makeEl({
+            guided: false, currentMode: 'guided', service: { id: 'mpd' },
+            schema: { music_directory: { type: 'string' } },
+        });
         el.willUpdate(new Map([['service', undefined]]));
         expect(el.currentMode).toBe('form');
+    });
+
+    it('willUpdate opens a service with no form in the raw editor', () => {
+        const el = makeEl({ guided: false, currentMode: 'guided', service: { id: 'hqplayerd' }, schema: {} });
+        el.willUpdate(new Map([['service', undefined]]));
+        expect(el.currentMode).toBe('raw');
     });
 
     it('switching to another service returns to the default view', () => {
@@ -164,5 +173,51 @@ describe('AgConfigEditor — originals capture on parent reload (guided-apply sa
         el.formData = { a: 2 };   // user edits the form
         el.willUpdate(new Map([['formData', { a: 1 }]]));   // only formData changed
         expect(el._originalFormData).toEqual({ a: 1 });   // baseline preserved
+    });
+});
+
+describe('AgConfigEditor — a service with no form (HQPlayer Embedded)', () => {
+    // Its file is edited in place, never rewritten from a form: the core declares
+    // no field for it and refuses a structured save. A Structured view would show
+    // an empty page whose Save can only fail.
+    const HQPLAYER = { id: 'hqplayerd', displayName: 'HQPlayer Embedded', path: '/etc/hqplayer/hqplayerd.xml' };
+
+    async function mount(props) {
+        const el = document.createElement('ag-config-editor');
+        Object.assign(el, { service: HQPLAYER, ...props });
+        document.body.appendChild(el);
+        await el.updateComplete;
+        return el;
+    }
+
+    const tabs = (el) => [...el.querySelectorAll('.config-mode-tab')].map(b => b.textContent.trim());
+
+    afterEach(() => document.body.replaceChildren());
+
+    it('offers Guided and Expert, not Structured', async () => {
+        const el = await mount({ guided: true, schema: {} });
+        expect(tabs(el)).toEqual(['Guided', 'Expert']);
+    });
+
+    it('leaves Structured to a service that has a form', async () => {
+        const el = await mount({
+            guided: true, schema: { music_directory: { type: 'string' } },
+            service: { id: 'mpd', displayName: 'MPD', path: '/etc/mpd.conf' },
+        });
+        expect(tabs(el)).toEqual(['Guided', 'Structured', 'Expert']);
+    });
+
+    it('without a guided view, opens in the raw editor with nothing to switch to', async () => {
+        const el = await mount({ guided: false, schema: {} });
+        expect(el.currentMode).toBe('raw');
+        expect(el.querySelector('.config-mode-toggle')).toBeNull();
+    });
+
+    it('tells the guided view whether to offer Reset to default', async () => {
+        const off = await mount({ guided: true, schema: {}, regenerable: false });
+        expect(off.querySelector('ag-guided-config').regenerable).toBe(false);
+        document.body.replaceChildren();
+        const on = await mount({ guided: true, schema: {} });
+        expect(on.querySelector('ag-guided-config').regenerable).toBe(true);
     });
 });

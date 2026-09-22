@@ -154,3 +154,84 @@ describe('the modal template uses the bound handlers', () => {
         expect(page._statusServices).toHaveLength(3);
     });
 });
+
+describe('HQPlayer Embedded: its output alone is set up here', () => {
+    // The core lists it after the services it generates, marked
+    // `regenerable: false`: its configuration belongs to its vendor, so neither
+    // the first-time setup nor Reset to default touch it — only its output is
+    // chosen, in its guided view, as for any player.
+    const WITH_HQPLAYER = {
+        ...STATUS,
+        services: [
+            ...STATUS.services.map(s => ({ ...s, regenerable: true })),
+            { service_id: 'hqplayerd', regenerable: false, configured: false, output: null },
+        ],
+    };
+
+    /** The `.prop=${…}` bindings of a template, nested templates included. */
+    const propsOf = (node, found = {}) => {
+        if (!node || typeof node !== 'object') return found;
+        if (Array.isArray(node)) { node.forEach(n => propsOf(n, found)); return found; }
+        if (node.strings) {
+            node.strings.forEach((s, i) => {
+                const m = /\.([A-Za-z]+)=$/.exec(s.trimEnd());
+                if (m && i < node.values.length) found[m[1]] = node.values[i];
+                propsOf(node.values[i], found);
+            });
+        }
+        return found;
+    };
+
+    it('opens in a guided view, offered no Reset to default', () => {
+        const page = new AgConfigPage();
+        page._storeAudioStatus(WITH_HQPLAYER);
+        page.services = [{ id: 'hqplayerd' }];
+        page.selectedServiceId = 'hqplayerd';
+
+        const props = propsOf(page.render());
+
+        expect(props.guided).toBe(true);
+        expect(props.regenerable).toBe(false);
+    });
+
+    it('leaves Reset to default to the services Audiogravity generates', () => {
+        const page = new AgConfigPage();
+        page._storeAudioStatus(WITH_HQPLAYER);
+        expect(page._serviceRegenerable('mpd')).toBe(true);
+        expect(page._serviceRegenerable('hqplayerd')).toBe(false);
+    });
+
+    it('reads a status that does not say as one that generates what it lists', () => {
+        // A core that predates the field.
+        const page = new AgConfigPage();
+        page._storeAudioStatus(STATUS);
+        expect(page._serviceRegenerable('mpd')).toBe(true);
+    });
+
+    it('does not count toward the first-time setup', () => {
+        // Its output chosen, nothing else set up: the box is still new, and the
+        // banner that sets up MPD, AirPlay and UPnP must stay.
+        const page = new AgConfigPage();
+        page._storeAudioStatus({
+            ...WITH_HQPLAYER,
+            services: WITH_HQPLAYER.services.map(s => ({ ...s, configured: s.service_id === 'hqplayerd' })),
+        });
+        expect(page._boxIsNew).toBe(true);
+    });
+});
+
+describe('after a guided change, the tiles are read again', () => {
+    // A tile shows the file's date, its backups and its output — all moved by an
+    // apply. Reloading only the status left the tile on the old ones until the
+    // tab was reloaded: HQPlayer Embedded's still said "no output" once set.
+    it('reloads the list the tiles are drawn from, with the status', async () => {
+        const page = new AgConfigPage();
+        const tiles = vi.spyOn(page.servicesFetch, 'fetch');
+        const status = vi.spyOn(page, '_loadAudioStatus').mockResolvedValue();
+
+        await page._handleGuidedChanged();
+
+        expect(tiles).toHaveBeenCalledTimes(1);
+        expect(status).toHaveBeenCalledTimes(1);
+    });
+});
