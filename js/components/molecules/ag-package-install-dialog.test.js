@@ -252,6 +252,31 @@ describe('ag-package-install-dialog', () => {
             const offered = [...el.querySelectorAll('.ag-pid-choice input')].map(i => i.value);
             expect(offered).toEqual(['6.0.2-3']);
         });
+
+        it('sits in the version section, under the choices', async () => {
+            // Rendered after the section, the note took the space the section leaves
+            // under itself, and sat flush against the next heading as if it belonged there.
+            serve({
+                versions: [{ major: 6, version: '6.0.2-3', missing: [] }],
+                unavailable: [{ major: 5, version: '5.17.2-48', missing: ['libgmpris'] }],
+            });
+            const el = await open(HQPLAYERD);
+            const section = el.querySelector('.ag-pid-unavailable').closest('.ag-pid-section');
+            expect(section).not.toBeNull();
+            expect(section.querySelector('.ag-pid-choice')).not.toBeNull();
+        });
+
+        it('keeps a section of its own when no line can be installed', async () => {
+            serve({
+                versions: [],
+                unavailable: [{ major: 5, version: '5.17.2-48', missing: ['libgmpris'] }],
+            });
+            const el = await open(HQPLAYERD);
+            const note = el.querySelector('.ag-pid-unavailable');
+            expect(note.closest('.ag-pid-section')).not.toBeNull();
+            // Nothing to pick: no heading asking to pick one.
+            expect(el.textContent).not.toContain('Which version');
+        });
     });
 
     describe('when the version list cannot be fetched', () => {

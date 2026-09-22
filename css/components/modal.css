@@ -96,7 +96,13 @@
     overflow-y: auto;
 }
 
-.modal-body p {
+/* A default for plain paragraphs, not a rule over classed ones: `:where()` gives
+   the container no weight, so any class set on a paragraph wins. Written as
+   `.modal-body p`, class + element outranked a lone class, and every paragraph
+   class used inside a modal lost its margin, colour and line height without a
+   word — measured at 0 px between a note and the block after it, in the three
+   package dialogs. */
+:where(.modal-body) p {
     margin: 0;
     color: var(--text-secondary);
     line-height: 1.6;

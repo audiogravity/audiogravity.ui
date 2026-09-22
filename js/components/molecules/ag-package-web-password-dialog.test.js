@@ -58,6 +58,17 @@ describe('ag-package-web-password-dialog', () => {
             .toContain('restarts to use it');
     });
 
+    it('sets that explanation apart from the field, as a section of its own', async () => {
+        // A bare hint kept only the small space a hint leaves inside a section, and the
+        // field's heading sat right under it.
+        const el = await open();
+        const hint = [...el.querySelectorAll('.ag-pid-hint')]
+            .find(p => p.textContent.includes('restarts to use it'));
+        const section = hint.closest('.ag-pid-section');
+        expect(section).not.toBeNull();
+        expect(section.querySelector('ag-web-password-field')).toBeNull();
+    });
+
     it('sends the password that is in the field', async () => {
         const el = await open();
         await type(el, 'MyOwnPass42');

@@ -90,14 +90,24 @@ export class AgPackageWebPasswordDialog extends LitElement {
         this.dispatchEvent(new CustomEvent('modal-close', { bubbles: true, composed: true }));
     }
 
-    /** @returns {import('lit').TemplateResult} The dialog body. */
+    /**
+     * The dialog body: what setting the password does, then the field.
+     *
+     * The explanation is a section of its own, like every block of the install
+     * dialog: a bare hint keeps only the small space a hint leaves under itself
+     * inside a section, and the field's heading sat right under it.
+     *
+     * @returns {import('lit').TemplateResult}
+     */
     _renderBody() {
         return html`
-            <p class="ag-pid-hint">
-                ${this.pkg.label}'s web interface has no password yet. Once it is set,
-                ${this.pkg.label} restarts to use it: anything playing through it stops
-                for a moment.
-            </p>
+            <div class="ag-pid-section">
+                <p class="ag-pid-hint">
+                    ${this.pkg.label}'s web interface has no password yet. Once it is set,
+                    ${this.pkg.label} restarts to use it: anything playing through it stops
+                    for a moment.
+                </p>
+            </div>
             <ag-web-password-field
                 .credentials=${this.pkg.web_credentials}
                 .label=${this.pkg.label}
