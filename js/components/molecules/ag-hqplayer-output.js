@@ -82,7 +82,10 @@ class AgHqplayerOutput extends LitElement {
      * @param {{ serviceId: string, metrics: { state: string } }} param
      */
     _handleNaaMetrics({ serviceId, metrics }) {
-        if (serviceId !== 'hqplayer' || !this._connection) return;
+        // `naa`, not `hqplayer`: this is the LOCAL adaptor's service id, as
+        // audio-config.json names it. The word `hqplayer` in this file means the
+        // remote player everywhere else — which is why the id was renamed.
+        if (serviceId !== 'naa' || !this._connection) return;
         const naaActive = metrics?.state === 'active';
         if (this._connection.naa_available !== naaActive) {
             this._connection = { ...this._connection, naa_available: naaActive };

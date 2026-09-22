@@ -209,15 +209,15 @@ describe('AgHqplayerOutput._handleNaaMetrics() — SSE real-time update', () => 
         return el;
     }
 
-    it('updates naa_available to false when hqplayer service goes inactive', () => {
+    it('updates naa_available to false when the naa service goes inactive', () => {
         const el = makeEl(true);
-        el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'inactive' } });
+        el._handleNaaMetrics({ serviceId: 'naa', metrics: { state: 'inactive' } });
         expect(el._connection.naa_available).toBe(false);
     });
 
-    it('updates naa_available to true when hqplayer service becomes active', () => {
+    it('updates naa_available to true when the naa service becomes active', () => {
         const el = makeEl(false);
-        el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'active' } });
+        el._handleNaaMetrics({ serviceId: 'naa', metrics: { state: 'active' } });
         expect(el._connection.naa_available).toBe(true);
     });
 
@@ -230,13 +230,13 @@ describe('AgHqplayerOutput._handleNaaMetrics() — SSE real-time update', () => 
     it('does nothing when _connection is null', () => {
         const el = makeEl(true);
         el._connection = null;
-        expect(() => el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'inactive' } })).not.toThrow();
+        expect(() => el._handleNaaMetrics({ serviceId: 'naa', metrics: { state: 'inactive' } })).not.toThrow();
     });
 
     it('does not mutate _connection when state is unchanged', () => {
         const el = makeEl(true);
         const ref = el._connection;
-        el._handleNaaMetrics({ serviceId: 'hqplayer', metrics: { state: 'active' } });
+        el._handleNaaMetrics({ serviceId: 'naa', metrics: { state: 'active' } });
         expect(el._connection).toBe(ref); // same object reference — no spurious re-render
     });
 });
