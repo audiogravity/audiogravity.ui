@@ -13,12 +13,14 @@
  * 
  * @fires package-action - Dispatched when INSTALL, UPDATE, or UNINSTALL is clicked
  * @fires package-check-update - Dispatched when manual update check is requested
+ * @fires package-set-web-password - `{ packageId }` — its web interface has no
+ *   password yet and the operator asked to set one
  */
 
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
-import { iconRepeat, iconDownload, iconTrash, iconCheckCircle, iconCircle, iconClose, iconSpinner, iconDocs, iconCpu } from '../../ag-icons.js';
+import { iconRepeat, iconDownload, iconTrash, iconCheckCircle, iconCircle, iconClose, iconSpinner, iconDocs, iconCpu, iconKey } from '../../ag-icons.js';
 
 export class AgPackageCard extends LitElement {
     static properties = {
@@ -64,6 +66,15 @@ export class AgPackageCard extends LitElement {
         if (!this.pkg?.service_id) return;
         this.dispatchEvent(new CustomEvent('package-restart-service', {
             detail: { packageId: this.pkg.id, serviceId: this.pkg.service_id },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    _handleSetWebPassword() {
+        if (!this.pkg) return;
+        this.dispatchEvent(new CustomEvent('package-set-web-password', {
+            detail: { packageId: this.pkg.id },
             bubbles: true,
             composed: true
         }));
@@ -150,6 +161,22 @@ export class AgPackageCard extends LitElement {
         return this.pkg.status === 'installed'
             && Boolean(this.pkg.service_id)
             && this.configuredByAg === false;
+    }
+
+    /**
+     * Whether the package's web interface still has no password.
+     *
+     * The install sets it; when it could not — or the package came some other
+     * way — the card offers to set it, where the only way back used to be an
+     * uninstall and a reinstall. Never to a guest: setting it is an admin act.
+     * @returns {boolean} True when the card should offer to set it.
+     * @private
+     */
+    _needsWebPassword() {
+        return this.pkg.status === 'installed'
+            && Boolean(this.pkg.web_credentials)
+            && !this.pkg.web_credentials.already_set
+            && !isGuest();
     }
 
     _renderActions() {
@@ -328,6 +355,10 @@ export class AgPackageCard extends LitElement {
                             ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this._needsConfiguring() ? html`
                             <span class="badge warning" title="Installing does not configure: this service is running on the configuration its package ships, not on the output you chose. Set it up in Audio Configuration.">Not configured</span>` : ''}
+                        ${this._needsWebPassword() ? html`
+                            <button class="badge warning web-password-badge" title="Its web interface has no password yet: nobody can sign in to it." @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg> Set web password
+                            </button>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>
                                 <svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg> Restart required

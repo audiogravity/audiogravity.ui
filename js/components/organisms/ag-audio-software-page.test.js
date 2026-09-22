@@ -199,6 +199,14 @@ describe('Playback warning in the confirmation', () => {
         expect(text).not.toContain('<img');
         expect(text).toContain('&lt;img');
     });
+
+    it('gives the uninstall dialog plain text, which Lit escapes itself', () => {
+        // Escaped twice, entities reach the screen — `&gt;=` in the logs did.
+        const text = page()._playbackWarningText(
+            { label: 'A & B', service_id: 'mpd' }, 'uninstall');
+        expect(text).toContain('stops and removes A & B');
+        expect(text).not.toContain('&amp;');
+    });
 });
 
 /**

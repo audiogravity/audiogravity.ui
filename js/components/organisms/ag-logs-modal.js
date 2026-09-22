@@ -22,7 +22,7 @@
 
 import { LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
-import { escapeHtml, showToast } from '../../common.js';
+import { showToast } from '../../common.js';
 import { logger } from '../../utils.js';
 import { copyToClipboard } from '../../ui-helpers.js';
 import { iconCopy } from '../../ag-icons.js';
@@ -146,6 +146,9 @@ export class AgLogsModal extends LitElement {
         }
     }
 
+    // Log messages are interpolated as plain text: Lit escapes them itself.
+    // They used to go through escapeHtml() first, which escaped them a second
+    // time — dpkg's ">=" reached the screen as "&gt;=".
     render() {
         const progressClasses = {
             'premium-progress': true,
@@ -172,7 +175,7 @@ export class AgLogsModal extends LitElement {
                             <div class="log-entry log-level-${log.level}" data-timestamp="${log.timestamp}">
                                 <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
                                 <span class="log-badge log-badge-${log.level}">${log.level.toUpperCase()}</span>
-                                <span class="log-msg">${escapeHtml(log.message)}</span>
+                                <span class="log-msg">${log.message}</span>
                             </div>
                         `) : ''}
                     </div>

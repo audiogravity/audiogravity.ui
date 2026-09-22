@@ -24,7 +24,7 @@
 
 import { LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
-import { apiGet, apiPost, escapeHtml, showToast, AgTimerManager } from '../../common.js';
+import { apiGet, apiPost, showToast, AgTimerManager } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { logger } from '../../utils.js';
 import '../atoms/ag-badge.js';
@@ -237,6 +237,9 @@ export class AgLogViewer extends LitElement {
         }
     }
 
+    // Log messages are interpolated as plain text: Lit escapes them itself.
+    // They used to go through escapeHtml() first, which escaped them a second
+    // time — dpkg's ">=" reached the screen as "&gt;=".
     render() {
         let displayLogs = this.logs.filter(log => this.activeLevels.includes(log.level));
         if (this.reverse) {
@@ -303,7 +306,7 @@ export class AgLogViewer extends LitElement {
                             <div class="log-entry log-level-${log.level}">
                                 <span class="log-time">${time}</span>
                                 <span class="log-badge log-badge-${log.level}">${log.level.toUpperCase()}</span>
-                                <span class="log-msg">${escapeHtml(log.message)}</span>
+                                <span class="log-msg">${log.message}</span>
                             </div>
                         `;
                 })}

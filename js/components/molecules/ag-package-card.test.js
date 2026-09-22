@@ -10,7 +10,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-vi.mock('../../auth.js', () => ({ isGuest: () => false }));
+const session = vi.hoisted(() => ({ guest: false }));
+vi.mock('../../auth.js', () => ({ isGuest: () => session.guest }));
 
 import './ag-package-card.js';
 
@@ -388,5 +389,56 @@ describe('ag-package-card — which way the offered version goes', () => {
         });
         expect(el.textContent).toContain('Update available');
         el.remove();
+    });
+});
+
+describe('ag-package-card — a web interface with no password', () => {
+    // The install sets it; when it could not, the card offers to — the only
+    // way back used to be an uninstall and a reinstall, 144 MB downloaded again.
+    const HQPLAYERD = {
+        ...basePkg,
+        id: 'hqplayerd',
+        label: 'HQPlayer Embedded',
+        service_id: 'hqplayerd',
+        installer_type: 'apt_deb',
+        status: 'installed',
+        installed_version: '6.0.2-3',
+        web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
+    };
+    const button = card => card.querySelector('.web-password-badge');
+
+    beforeEach(() => { document.body.innerHTML = ''; session.guest = false; });
+
+    it('offers to set it', async () => {
+        const card = await mount(HQPLAYERD);
+        expect(button(card).textContent).toContain('Set web password');
+        const asked = vi.fn();
+        card.addEventListener('package-set-web-password', e => asked(e.detail));
+        button(card).click();
+        expect(asked).toHaveBeenCalledWith({ packageId: 'hqplayerd' });
+    });
+
+    it('offers nothing once one is set', async () => {
+        const card = await mount({
+            ...HQPLAYERD, web_credentials: { ...HQPLAYERD.web_credentials, already_set: true },
+        });
+        expect(button(card)).toBeNull();
+    });
+
+    it('offers nothing before the package is installed', async () => {
+        // The install dialog asks for it then.
+        const card = await mount({ ...HQPLAYERD, status: 'not_installed', installed_version: null });
+        expect(button(card)).toBeNull();
+    });
+
+    it('offers nothing for a package without a web interface', async () => {
+        const card = await mount({ ...HQPLAYERD, web_credentials: null });
+        expect(button(card)).toBeNull();
+    });
+
+    it('offers nothing to a guest', async () => {
+        session.guest = true;
+        const card = await mount(HQPLAYERD);
+        expect(button(card)).toBeNull();
     });
 });
