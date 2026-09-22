@@ -235,28 +235,41 @@ export class AgPackageInstallDialog extends LitElement {
         this.dispatchEvent(new CustomEvent('modal-close', { bubbles: true, composed: true }));
     }
 
-    /** @returns {import('lit').TemplateResult|typeof nothing} The version chooser. */
+    /**
+     * The version chooser, with the lines this box cannot install under it.
+     *
+     * One section for both: the lines left out are part of the answer to "which
+     * version", and outside the section they sat after its closing space, flush
+     * against the next section's heading as if they belonged to it. The section
+     * also stands when no line can be installed, so that sentence is never left
+     * without the space every other block of the dialog has.
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
     _renderVersions() {
-        if (!this._versions.length) return nothing;
+        if (!this._versions.length && !this._unavailable.length) return nothing;
         return html`
             <div class="ag-pid-section">
-                <h4 class="ag-pid-heading">Which version</h4>
-                <p class="ag-pid-hint">
-                    Pick the version your licence covers. Signalyst's terms provide for a
-                    time-limited trial.
-                </p>
-                ${this._versions.map(entry => html`
-                    <label class="ag-pid-choice">
-                        <input
-                            type="radio"
-                            name="ag-pid-version"
-                            .value=${entry.version}
-                            .checked=${this._chosen === entry.version}
-                            @change=${() => { this._chosen = entry.version; }}>
-                        <span class="ag-pid-choice-major">Version ${entry.major}</span>
-                        <span class="ag-pid-choice-version">${entry.version}</span>
-                    </label>
-                `)}
+                ${this._versions.length ? html`
+                    <h4 class="ag-pid-heading">Which version</h4>
+                    <p class="ag-pid-hint">
+                        Pick the version your licence covers. Signalyst's terms provide for a
+                        time-limited trial.
+                    </p>
+                    ${this._versions.map(entry => html`
+                        <label class="ag-pid-choice">
+                            <input
+                                type="radio"
+                                name="ag-pid-version"
+                                .value=${entry.version}
+                                .checked=${this._chosen === entry.version}
+                                @change=${() => { this._chosen = entry.version; }}>
+                            <span class="ag-pid-choice-major">Version ${entry.major}</span>
+                            <span class="ag-pid-choice-version">${entry.version}</span>
+                        </label>
+                    `)}
+                ` : nothing}
+                ${this._renderUnavailable()}
             </div>
         `;
     }
@@ -352,7 +365,6 @@ export class AgPackageInstallDialog extends LitElement {
                     be listed right now.
                 </p>` : nothing}
             ${this._renderVersions()}
-            ${this._renderUnavailable()}
             ${this._renderWebCredentials()}
             ${this._renderNotices()}
         `;
