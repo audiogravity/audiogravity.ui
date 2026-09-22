@@ -90,10 +90,12 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]'
       }
     },
-    // Generate source maps — 'hidden' generates .map files but does NOT embed the
-    // sourceMappingURL comment in the bundle. DevTools won't find them automatically,
-    // but they can be uploaded to an error monitoring tool (e.g., Sentry) if needed.
-    // SECURITY: Do NOT use `true` in production — it exposes full original source code.
+    // Generate source maps — 'hidden' writes the .map files but leaves the
+    // sourceMappingURL comment out of the bundle, so DevTools does not find them on
+    // their own. They are kept HERE, for local debugging: this option hides them, it
+    // does not withhold them, and a box that served them would hand out the whole
+    // original source at a guessable URL. What keeps them off a box is
+    // audiogravity.ops/build-ui-package.sh, which deletes them from the package.
     sourcemap: 'hidden',
     // Target modern browsers — prevents esbuild from adding -webkit- vendor prefixes
     // (e.g. -webkit-backdrop-filter) that conflict with Safari's compositing
