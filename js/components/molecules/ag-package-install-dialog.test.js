@@ -16,6 +16,7 @@ const apiGet = vi.fn();
 vi.mock('../../api.js', () => ({ apiGet: (...args) => apiGet(...args) }));
 
 import './ag-package-install-dialog.js';
+import { webPasswordProblem } from './ag-web-password-field.js';
 
 const LICENCE = { title: 'HQPlayer License', body: 'HQPlayer End User License Agreement' };
 
@@ -173,7 +174,7 @@ describe('ag-package-install-dialog', () => {
             await el.updateComplete;
             installButton(el).click();
             expect(chosen).toHaveBeenCalledWith(
-                { packageId: 'hqplayerd', version: '5.17.2-48' });
+                { packageId: 'hqplayerd', version: '5.17.2-48', webPassword: null });
         });
 
         it('sends no version for a package that offers no choice', async () => {
@@ -184,7 +185,7 @@ describe('ag-package-install-dialog', () => {
             const chosen = vi.fn();
             el.addEventListener('install-confirmed', e => chosen(e.detail));
             installButton(el).click();
-            expect(chosen).toHaveBeenCalledWith({ packageId: 'mpd', version: null });
+            expect(chosen).toHaveBeenCalledWith({ packageId: 'mpd', version: null, webPassword: null });
         });
 
         it('names the chosen version on the button', async () => {
@@ -273,5 +274,110 @@ describe('ag-package-install-dialog', () => {
             .find(b => b.textContent.includes('Cancel')).click();
         expect(closed).toHaveBeenCalled();
         expect(installed).not.toHaveBeenCalled();
+    });
+
+    describe('the web interface password', () => {
+        // HQPlayer Embedded's package installs its web interface with no
+        // credentials; the core sets the ones chosen here right after.
+        const WITH_WEB = {
+            ...HQPLAYERD,
+            offers_version_choice: false,
+            web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
+        };
+        const field = el => el.querySelector('ag-web-password-field .ag-pid-password');
+
+        /** Type into the field the way a person does. */
+        async function type(el, value) {
+            field(el).value = value;
+            field(el).dispatchEvent(new Event('input', { bubbles: true }));
+            await el.updateComplete;
+            await el.querySelector('ag-web-password-field').updateComplete;
+        }
+
+        it('comes prefilled with a random password, shown in clear', async () => {
+            serve();
+            const el = await open(WITH_WEB);
+            expect(field(el).type).toBe('text');
+            expect(field(el).value).toHaveLength(16);
+            expect(webPasswordProblem(field(el).value)).toBeNull();
+        });
+
+        it('names the user and where to sign in', async () => {
+            serve();
+            const el = await open(WITH_WEB);
+            const text = el.querySelector('.modal-body').textContent.replace(/\s+/g, ' ');
+            expect(text).toContain('hqplayer');
+            expect(text).toContain(`http://${window.location.hostname}:8088`);
+        });
+
+        it('sends the password that is in the field', async () => {
+            serve();
+            const el = await open(WITH_WEB);
+            await type(el, 'MyOwnPass42');
+            const sent = vi.fn();
+            el.addEventListener('install-confirmed', e => sent(e.detail));
+            installButton(el).click();
+            expect(sent).toHaveBeenCalledWith(
+                { packageId: 'hqplayerd', version: null, webPassword: 'MyOwnPass42' });
+        });
+
+        it('keeps Install out of reach while the password is unusable, and says why', async () => {
+            serve();
+            const el = await open(WITH_WEB);
+            await type(el, 'short');
+            expect(installButton(el).disabled).toBe(true);
+            expect(el.querySelector('.ag-pid-warning').textContent).toContain('at least 8');
+        });
+
+        it('asks for nothing when the box already has credentials', async () => {
+            // A reinstall keeps them; asking would promise a change that does not happen.
+            serve();
+            const el = await open({
+                ...WITH_WEB, web_credentials: { ...WITH_WEB.web_credentials, already_set: true },
+            });
+            expect(field(el)).toBeNull();
+            expect(el.querySelector('.modal-body').textContent).toContain('it is kept');
+            const sent = vi.fn();
+            el.addEventListener('install-confirmed', e => sent(e.detail));
+            installButton(el).click();
+            expect(sent.mock.calls[0][0].webPassword).toBeNull();
+        });
+
+        it('draws a new one each time it opens', async () => {
+            serve();
+            const el = await open(WITH_WEB);
+            const first = field(el).value;
+            el.show = false;
+            await el.updateComplete;
+            expect(el._webPassword).toBe('');
+            // The same waits as open(): the dialog reloads, then the modal renders.
+            el.show = true;
+            await el.updateComplete;
+            await Promise.resolve();
+            await Promise.resolve();
+            await el.updateComplete;
+            // The field is an element of its own, drawn in its own update.
+            await el.querySelector('ag-web-password-field').updateComplete;
+            expect(field(el).value).toHaveLength(16);
+            expect(field(el).value).not.toBe(first);
+        });
+
+        it('is not asked for a package without a web interface', async () => {
+            serve();
+            const el = await open(MPD);
+            expect(field(el)).toBeNull();
+        });
+    });
+
+    it('keeps its buttons in the footer, out of the part that scrolls', async () => {
+        // A licence makes the body taller than a laptop screen, and the body is
+        // what scrolls: buttons at its foot scrolled out of sight with it.
+        serve({ notices: [LICENCE], versions: [{ major: 6, version: '6.0.2-3' }] });
+        const el = await open(HQPLAYERD);
+        const footer = el.querySelector('.modal-footer');
+        expect(footer.contains(installButton(el))).toBe(true);
+        expect([...footer.querySelectorAll('button')].map(b => b.textContent.trim()))
+            .toEqual(['Cancel', 'Install 6.0.2-3']);
+        expect(el.querySelector('.modal-body button')).toBeNull();
     });
 });

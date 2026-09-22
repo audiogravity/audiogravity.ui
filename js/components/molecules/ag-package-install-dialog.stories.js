@@ -14,7 +14,10 @@ export default {
                     'Shown before a package is installed. Carries the vendor licence a '
                     + 'noninteractive install would skip — both Signalyst packages ship '
                     + 'one — and, for a package whose vendor publishes several major lines, '
-                    + 'the choice of which line to install, among those this machine can.',
+                    + 'the choice of which line to install, among those this machine can. '
+                    + 'For a package whose web interface ships without credentials (HQPlayer '
+                    + 'Embedded), a password prefilled at random, which the core sets after '
+                    + 'the install.',
             },
         },
     },
@@ -74,8 +77,8 @@ const Template = (args) => {
 
 /**
  * HQPlayer Embedded on Debian 13, as measured: a licence to accept, the 6 line
- * on offer, and the 5 line named but not offered — it needs libgmpris, which
- * nothing publishes there.
+ * on offer, the 5 line named but not offered — it needs libgmpris, which
+ * nothing publishes there — and a password for its web interface.
  */
 export const LicenceAndVersionChoice = Template.bind({});
 LicenceAndVersionChoice.args = {
@@ -86,6 +89,7 @@ LicenceAndVersionChoice.args = {
         installed_version: null,
         offers_version_choice: true,
         doc_url: 'https://signalyst.com/',
+        web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
     },
     notices: [LICENCE, GROUPS],
     versions: [{ major: 6, version: '6.0.2-3', missing: [] }],
@@ -114,7 +118,10 @@ TermsUnreadable.args = {
     readable: false,
 };
 
-/** The same box already running the 5 line: that line is preselected. */
+/**
+ * The same box already running the 5 line: that line is preselected, and the
+ * web interface password chosen at the first install is kept, not asked again.
+ */
 export const AlreadyOnTheOlderLine = Template.bind({});
 AlreadyOnTheOlderLine.args = {
     ...TwoInstallableLines.args,
@@ -123,6 +130,7 @@ AlreadyOnTheOlderLine.args = {
         label: 'HQPlayer Embedded',
         installed_version: '5.17.2-48',
         offers_version_choice: true,
+        web_credentials: { username: 'hqplayer', port: 8088, already_set: true },
     },
 };
 

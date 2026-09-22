@@ -409,6 +409,8 @@
    ag-package-install-dialog — what a package asks to be read before it installs
    (the vendor's licence, which a noninteractive install would skip) and which
    major line to install, for a package whose vendor publishes several.
+   ag-package-uninstall-dialog (ag-pud-*) shares its hint, warning and checkbox
+   rules below — grouped selectors rather than a second copy of each.
    --------------------------------------------------------------------------- */
 
 .ag-pid-section {
@@ -421,13 +423,15 @@
     color: var(--text-primary);
 }
 
-.ag-pid-hint {
+.ag-pid-hint,
+.ag-pud-hint {
     margin: 0 0 var(--spacing-sm);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
 }
 
-.ag-pid-warning {
+.ag-pid-warning,
+.ag-pud-warning {
     margin: 0 0 var(--spacing-md);
     padding: var(--spacing-sm);
     border: 1px solid var(--color-warning);
@@ -479,18 +483,21 @@
     white-space: pre-wrap;
 }
 
-.ag-pid-agree {
+/* The web interface password and the address it is used at. Monospace because
+   both are copied character by character — a zero has to be told from an O, an
+   l from a 1 — the same reason .form-control--identifier gives. Not that class:
+   it also sets the read-only cursor, and this field is typed into. */
+.ag-pid-mono,
+.ag-pid-password {
+    font-family: var(--font-mono);
+}
+
+.ag-pid-agree,
+.ag-pud-agree {
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-lg);
     font-size: var(--font-size-sm);
     color: var(--text-primary);
     cursor: pointer;
-}
-
-.ag-pid-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
 }

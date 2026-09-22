@@ -15,6 +15,12 @@
  *   covers. Lines this box cannot install — a dependency nothing provides, as
  *   `libgmpris` for HQPlayer Embedded 5 on Debian 13 — are not offered; they are
  *   named, with what they lack, so nobody concludes the box is hiding them.
+ * - **A password for the package's own web interface** (ag-web-password-field).
+ *   HQPlayer Embedded's package installs its web interface with no credentials:
+ *   the settings pages refuse everybody and every sign-in attempt floods its
+ *   log. The field comes prefilled with a random password, shown in clear so it
+ *   can be noted down, and the core sets it right after the install. Nothing is
+ *   asked when the box already has credentials — a reinstall keeps them.
  *
  * The dialog fetches both itself — a molecule owns its data — and stands in for
  * the plain confirmation on EVERY install, not only the packages that have
@@ -23,22 +29,32 @@
  * a licence would be the one nobody thought to re-check. With nothing to show it
  * renders the same question the old confirmation asked.
  *
+ * Host it at the level of `<body>` (ag-audio-software-page appends it there),
+ * never inside a tab:
+ * `.main-content` is `position: fixed`, which makes it a stacking context of
+ * its own, and a modal inside it stays under the top bar, the tabs and the
+ * player bar whatever its z-index. Measured at 1366×768: both buttons sat
+ * under the player bar and every click landed on it.
+ *
  * @element ag-package-install-dialog
  *
  * @attr {Object}  pkg  - The package being installed, as `/packages/` returns it
  * @attr {boolean} show - Whether the dialog is visible
  *
- * @fires install-confirmed - `{ packageId, version }` — version is null when the
- *   package offers no choice, which means "whatever the package's own rule picks"
+ * @fires install-confirmed - `{ packageId, version, webPassword }` — version is
+ *   null when the package offers no choice, which means "whatever the package's
+ *   own rule picks"; webPassword is null when the package asks for none
  * @fires modal-close - The dialog was dismissed without installing
  *
  * @dependency ag-modal
+ * @dependency ag-web-password-field
  * @dependency css/audio-software.css - ag-pid-* styles
  */
 
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import '../organisms/ag-modal.js';
+import { generateWebPassword, webPasswordProblem } from './ag-web-password-field.js';
 
 export class AgPackageInstallDialog extends LitElement {
     static properties = {
@@ -53,6 +69,7 @@ export class AgPackageInstallDialog extends LitElement {
         _failed:   { state: true },
         _unreadable:  { state: true },
         _unavailable: { state: true },
+        _webPassword: { state: true },
     };
 
     constructor() {
@@ -67,6 +84,7 @@ export class AgPackageInstallDialog extends LitElement {
         this._failed   = false;
         this._unreadable  = false;
         this._unavailable = [];
+        this._webPassword = '';
     }
 
     createRenderRoot() {
@@ -94,6 +112,8 @@ export class AgPackageInstallDialog extends LitElement {
             this._failed = false;
             this._unreadable = false;
             this._unavailable = [];
+            // Never kept past a close: the next dialog draws its own.
+            this._webPassword = '';
         }
     }
 
@@ -110,6 +130,7 @@ export class AgPackageInstallDialog extends LitElement {
         if (!this.pkg) return;
         this._loading = true;
         this._failed = false;
+        if (this._asksWebPassword) this._webPassword = generateWebPassword();
         const id = encodeURIComponent(this.pkg.id);
         try {
             const [notices, versions] = await Promise.all([
@@ -165,19 +186,33 @@ export class AgPackageInstallDialog extends LitElement {
         return this._notices.length > 0 || this._unreadable;
     }
 
+    /**
+     * Whether this install sets a web interface password.
+     *
+     * Not when the box already has credentials: the core keeps them, so asking
+     * for a new one would promise a change that does not happen.
+     *
+     * @returns {boolean}
+     */
+    get _asksWebPassword() {
+        const credentials = this.pkg?.web_credentials;
+        return Boolean(credentials) && !credentials.already_set;
+    }
+
     /** @returns {boolean} Whether Install may be pressed. */
     get _canInstall() {
         if (this._loading) return false;
         if (this._needsAgreement && !this._accepted) return false;
         if (this._versions.length && !this._chosen) return false;
+        if (this._asksWebPassword && webPasswordProblem(this._webPassword)) return false;
         return true;
     }
 
     /**
      * Emit the confirmation.
      *
-     * Reached through an arrow function in the template, deliberately: this
-     * body is handed to `ag-modal` as a `bodyTemplate`, and Lit binds a bare
+     * Reached through an arrow function in the template, deliberately: the
+     * buttons are handed to `ag-modal` as its `footerTemplate`, and Lit binds a bare
      * `@click=${this._method}` to the element that RENDERS the template — the
      * modal — not to the one that built it. Bound that way, every `this` in
      * here pointed at ag-modal, `_canInstall` was undefined, and the button did
@@ -188,7 +223,11 @@ export class AgPackageInstallDialog extends LitElement {
         this.dispatchEvent(new CustomEvent('install-confirmed', {
             bubbles: true,
             composed: true,
-            detail: { packageId: this.pkg?.id, version: this._chosen },
+            detail: {
+                packageId: this.pkg?.id,
+                version: this._chosen,
+                webPassword: this._asksWebPassword ? this._webPassword : null,
+            },
         }));
     }
 
@@ -240,6 +279,30 @@ export class AgPackageInstallDialog extends LitElement {
         `;
     }
 
+    /**
+     * The password for the package's own web interface (ag-web-password-field).
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderWebCredentials() {
+        const credentials = this.pkg?.web_credentials;
+        if (!credentials) return nothing;
+        if (credentials.already_set) {
+            return html`
+                <p class="ag-pid-hint">
+                    ${this.pkg.label}'s web interface already has a password on this system; it is kept.
+                </p>`;
+        }
+        return html`
+            <ag-web-password-field
+                .credentials=${credentials}
+                .label=${this.pkg.label}
+                .value=${this._webPassword}
+                @password-input=${e => { this._webPassword = e.detail.value; }}>
+            </ag-web-password-field>
+        `;
+    }
+
     /** @returns {import('lit').TemplateResult|typeof nothing} The vendor's notices. */
     _renderNotices() {
         if (!this._needsAgreement) return nothing;
@@ -275,7 +338,8 @@ export class AgPackageInstallDialog extends LitElement {
         if (this._loading) {
             return html`<p class="ag-pid-hint">Reading what ${this.pkg?.label} asks…</p>`;
         }
-        const nothingToShow = !this._versions.length && !this._needsAgreement;
+        const nothingToShow = !this._versions.length && !this._needsAgreement
+            && !this.pkg?.web_credentials;
         return html`
             ${nothingToShow ? html`
                 <p class="ag-pid-hint">
@@ -289,16 +353,29 @@ export class AgPackageInstallDialog extends LitElement {
                 </p>` : nothing}
             ${this._renderVersions()}
             ${this._renderUnavailable()}
+            ${this._renderWebCredentials()}
             ${this._renderNotices()}
-            <div class="ag-pid-actions">
-                <button class="action-btn secondary" @click=${() => this._close()}>Cancel</button>
-                <button
-                    class="action-btn primary"
-                    ?disabled=${!this._canInstall}
-                    @click=${() => this._confirm()}>
-                    Install${this._chosen ? ` ${this._chosen}` : ''}
-                </button>
-            </div>
+        `;
+    }
+
+    /**
+     * The dialog's buttons, for the modal's footer.
+     *
+     * Not the end of the body: the body is what scrolls once a licence makes it
+     * taller than the screen, and buttons at its foot scrolled away with it.
+     * The footer stays put under it.
+     *
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderActions() {
+        return html`
+            <button class="action-btn secondary" @click=${() => this._close()}>Cancel</button>
+            <button
+                class="action-btn primary"
+                ?disabled=${!this._canInstall}
+                @click=${() => this._confirm()}>
+                Install${this._chosen ? ` ${this._chosen}` : ''}
+            </button>
         `;
     }
 
@@ -310,6 +387,7 @@ export class AgPackageInstallDialog extends LitElement {
                 ?show=${this.show}
                 size="large"
                 .bodyTemplate=${this._renderBody()}
+                .footerTemplate=${this._renderActions()}
                 @modal-close=${() => this._close()}>
             </ag-modal>
         `;

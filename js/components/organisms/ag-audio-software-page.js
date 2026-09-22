@@ -37,6 +37,8 @@ import { appContext } from '../../core/app-context.js';
 import './ag-card-grid.js';
 import '../molecules/ag-package-card.js';
 import '../molecules/ag-package-install-dialog.js';
+import '../molecules/ag-package-uninstall-dialog.js';
+import '../molecules/ag-package-web-password-dialog.js';
 
 export class AgAudioSoftwarePage extends LitElement {
     static properties = {
@@ -48,7 +50,9 @@ export class AgAudioSoftwarePage extends LitElement {
         // The package whose install dialog is open, or null. Holds the whole
         // package rather than its id so the dialog can read its label and
         // installed version without looking it up again.
-        _installDialogFor: { type: Object, state: true }
+        _installDialogFor: { type: Object, state: true },
+        _uninstallDialogFor: { type: Object, state: true },
+        _webPasswordDialogFor: { type: Object, state: true }
     };
 
     constructor() {
@@ -59,6 +63,8 @@ export class AgAudioSoftwarePage extends LitElement {
         this._filter = 'all';
         this._isRefreshing = false;
         this._installDialogFor = null;
+        this._uninstallDialogFor = null;
+        this._webPasswordDialogFor = null;
         this._pollInterval = null;
         this._loaded = false;
         this._restartNeeded = new Set(MemoryCache.get('softwareRestartNeeded', []));
@@ -174,6 +180,30 @@ export class AgAudioSoftwarePage extends LitElement {
             logsModal.addEventListener('cancel-request', this._handleLogsCancel);
         }
 
+        // On <body>, not in this page's template: .main-content is position:fixed,
+        // hence a stacking context of its own, and a modal rendered inside it stays
+        // under the top bar, the tabs and the player bar whatever its z-index —
+        // measured at 1366×768, the install buttons sat under the player bar and
+        // every click landed on it. Same escape as the licence modal of ag-admin-page.
+        if (!this._installDialog) {
+            this._installDialog = document.createElement('ag-package-install-dialog');
+            this._installDialog.addEventListener('install-confirmed', (e) => this._handleInstallConfirmed(e));
+            this._installDialog.addEventListener('modal-close', () => { this._installDialogFor = null; });
+            document.body.appendChild(this._installDialog);
+        }
+        if (!this._uninstallDialog) {
+            this._uninstallDialog = document.createElement('ag-package-uninstall-dialog');
+            this._uninstallDialog.addEventListener('uninstall-confirmed', (e) => this._handleUninstallConfirmed(e));
+            this._uninstallDialog.addEventListener('modal-close', () => { this._uninstallDialogFor = null; });
+            document.body.appendChild(this._uninstallDialog);
+        }
+        if (!this._webPasswordDialog) {
+            this._webPasswordDialog = document.createElement('ag-package-web-password-dialog');
+            this._webPasswordDialog.addEventListener('web-password-confirmed', (e) => this._handleWebPasswordConfirmed(e));
+            this._webPasswordDialog.addEventListener('modal-close', () => { this._webPasswordDialogFor = null; });
+            document.body.appendChild(this._webPasswordDialog);
+        }
+
         // Load packages once on startup to show update badges, regardless of active tab
         setTimeout(() => {
             this._loadPackages();
@@ -195,7 +225,46 @@ export class AgAudioSoftwarePage extends LitElement {
             if (this._handleLogsCancel) logsModal.removeEventListener('cancel-request', this._handleLogsCancel);
         }
 
+        if (this._installDialog) {
+            this._installDialog.remove();
+            this._installDialog = null;
+        }
+        if (this._uninstallDialog) {
+            this._uninstallDialog.remove();
+            this._uninstallDialog = null;
+        }
+        if (this._webPasswordDialog) {
+            this._webPasswordDialog.remove();
+            this._webPasswordDialog = null;
+        }
+
         this._stopPolling();
+    }
+
+    /**
+     * Carry the open install dialog over to the element on <body>.
+     *
+     * `pkg` before `show`: the dialog starts loading when `show` turns true,
+     * and loads nothing without a package. Both land in the same update anyway.
+     *
+     * @param {Map} changed - Properties Lit reports as changed.
+     */
+    updated(changed) {
+        super.updated(changed);
+        if (changed.has('_installDialogFor') && this._installDialog) {
+            this._installDialog.pkg = this._installDialogFor;
+            this._installDialog.show = Boolean(this._installDialogFor);
+        }
+        if (changed.has('_uninstallDialogFor') && this._uninstallDialog) {
+            const pkg = this._uninstallDialogFor;
+            this._uninstallDialog.pkg = pkg;
+            this._uninstallDialog.note = pkg ? this._playbackWarningText(pkg, 'uninstall') : '';
+            this._uninstallDialog.show = Boolean(pkg);
+        }
+        if (changed.has('_webPasswordDialogFor') && this._webPasswordDialog) {
+            this._webPasswordDialog.pkg = this._webPasswordDialogFor;
+            this._webPasswordDialog.show = Boolean(this._webPasswordDialogFor);
+        }
     }
 
     _handleTabChanged(data) {
@@ -232,9 +301,13 @@ export class AgAudioSoftwarePage extends LitElement {
         if (pkgIndex !== -1) {
             const prevStatus = this.packages[pkgIndex].status;
             const justInstalled = ['installing', 'updating'].includes(prevStatus) && pkg.status === 'installed';
-            if (justInstalled && pkg.service_id) {
-                this._restartNeeded.add(pkg.id);
-                MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
+            // Not for a package the core itself starts or restarts once it is
+            // installed (`restarts_after_install`): the badge said "Restart
+            // required" about HQPlayer Embedded seconds after the core had
+            // restarted it, and a click cut the music for nothing. When that
+            // restart fails, the action's result says so (`restart_needed`).
+            if (justInstalled && pkg.service_id && !pkg.restarts_after_install) {
+                this._markRestartNeeded(pkg.id);
             } else if (pkg.status === 'not_installed') {
                 this._restartNeeded.delete(pkg.id);
                 MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
@@ -427,11 +500,23 @@ export class AgAudioSoftwarePage extends LitElement {
      * @returns {string} A sentence to append, or '' when nothing is at stake.
      */
     _playbackWarning(pkg, action) {
+        // Escaped: showConfirm renders through unsafeHTML.
+        return this._playbackWarningText(pkg, action, escapeHtml(pkg.label));
+    }
+
+    /**
+     * The playback warning as plain text, for a Lit template — which escapes it
+     * itself. Escaping here too put entities on screen (`&gt;=` in the logs).
+     *
+     * @param {Object} pkg - Package the action targets.
+     * @param {string} action - install | update | uninstall.
+     * @param {string} [label] - The label to name it by; the package's own by default.
+     * @returns {string} A sentence to append, or '' when nothing is at stake.
+     */
+    _playbackWarningText(pkg, action, label = pkg.label) {
         // No service_id: nothing AG starts or stops (Roon Server), so nothing to
         // warn about. Installing something that is not running yet is harmless.
         if (!pkg.service_id || action === 'install') return '';
-
-        const label = escapeHtml(pkg.label);
         return action === 'uninstall'
             ? ` This stops and removes ${label} — anything playing through it will stop.`
             : ` This restarts ${label} — anything playing through it will stop.`;
@@ -450,6 +535,12 @@ export class AgAudioSoftwarePage extends LitElement {
         // Before the update checks below, which have nothing to say about it.
         if (action === 'install') {
             this._installDialogFor = pkg;
+            return;
+        }
+        // Its own dialog too: it offers to delete the package's settings as well,
+        // which a yes/no box cannot carry.
+        if (action === 'uninstall') {
+            this._uninstallDialogFor = pkg;
             return;
         }
 
@@ -534,9 +625,15 @@ export class AgAudioSoftwarePage extends LitElement {
      * @param {boolean} [acceptNotices] - The operator accepted, in the install
      *   dialog, the terms the package shows. The core refuses an install of a
      *   package with terms without it — the dialog is not the only way in.
+     * @param {string|null} [webPassword] - The password for the package's web
+     *   interface, for a package that asks for one. Sent in the request body,
+     *   never in the URL: a URL ends up in access logs.
+     * @param {boolean} [purge] - Uninstall only: delete the package's settings
+     *   and data as well, as ticked in the uninstall dialog.
      * @returns {Promise<void>}
      */
-    async _runPackageAction(pkg, action, version = null, acceptNotices = false) {
+    async _runPackageAction(pkg, action, version = null, acceptNotices = false, webPassword = null,
+        purge = false) {
         const packageId = pkg.id;
         const currentPkg = pkg;
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
@@ -547,12 +644,25 @@ export class AgAudioSoftwarePage extends LitElement {
         try {
             const versionParam = version ? `&version=${encodeURIComponent(version)}` : '';
             const acceptParam = acceptNotices ? '&accept_notices=true' : '';
+            const purgeParam = purge ? '&purge=true' : '';
             const result = await apiPost(
-                `/packages/${packageId}/${action}?dry_run=${this.dryRun}${versionParam}${acceptParam}`);
+                `/packages/${packageId}/${action}?dry_run=${this.dryRun}${versionParam}${acceptParam}${purgeParam}`,
+                webPassword ? { web_password: webPassword } : {});
 
-            if (result.success) {
+            if (result.restart_needed) this._markRestartNeeded(packageId);
+            if (result.success && result.warning) {
+                // Installed (or updated), but a step after it was not done —
+                // its web password, its log space, its restart. The core's
+                // message says what is left; "Install Failed" used to say it
+                // about a package that was installed.
                 addToHistory('software', `${actionLabel} ${currentPkg.label}`, true);
-                showToast('success', `${actionLabel} Successful`, `${currentPkg.label} ${action}ed successfully`);
+                showToast('warning', `${actionLabel} Incomplete`, result.message);
+            } else if (result.success) {
+                addToHistory('software', `${actionLabel} ${currentPkg.label}`, true);
+                // Spelled out: `${action}ed` said "updateed".
+                const done = { install: 'installed', update: 'updated', uninstall: 'uninstalled' }[action]
+                    || `${action}ed`;
+                showToast('success', `${actionLabel} Successful`, `${currentPkg.label} ${done} successfully`);
             } else {
                 addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
                 // The core's message says WHY — "needs libgmpris, which no
@@ -571,17 +681,31 @@ export class AgAudioSoftwarePage extends LitElement {
     /**
      * The install dialog was confirmed: close it and run the install.
      *
-     * @param {CustomEvent} e - `{ packageId, version }`.
+     * @param {CustomEvent} e - `{ packageId, version, webPassword }`.
      * @returns {Promise<void>}
      */
     async _handleInstallConfirmed(e) {
-        const { packageId, version } = e.detail;
+        const { packageId, version, webPassword = null } = e.detail;
         const pkg = this.packages.find(p => p.id === packageId);
         this._installDialogFor = null;
         if (!pkg) return;
         // Confirming the dialog IS the acceptance: its Install button stays
         // disabled until the terms are accepted, or when there were none.
-        await this._runPackageAction(pkg, 'install', version, true);
+        await this._runPackageAction(pkg, 'install', version, true, webPassword);
+    }
+
+    /**
+     * The uninstall dialog was confirmed: close it and run the uninstall.
+     *
+     * @param {CustomEvent} e - `{ packageId, purge }`.
+     * @returns {Promise<void>}
+     */
+    async _handleUninstallConfirmed(e) {
+        const { packageId, purge = false } = e.detail;
+        const pkg = this.packages.find(p => p.id === packageId);
+        this._uninstallDialogFor = null;
+        if (!pkg) return;
+        await this._runPackageAction(pkg, 'uninstall', null, false, null, purge);
     }
 
     async _handleCheckUpdate(e) {
@@ -610,13 +734,71 @@ export class AgAudioSoftwarePage extends LitElement {
     async _handleRestartService(e) {
         const { packageId, serviceId } = e.detail;
         try {
-            await apiPost(`/services/${serviceId}/restart`);
+            const result = await apiPost(`/services/${serviceId}/restart`);
+            // The route answers 200 with `success: false` when the restart was
+            // refused or failed: "restarted successfully" was shown anyway.
+            if (result && result.success === false) {
+                showToast('error', 'Service Restart Failed',
+                    result.message || `${serviceId} could not be restarted`);
+                return;
+            }
             this._restartNeeded.delete(packageId);
             MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
             this.requestUpdate();
             showToast('success', 'Service Restarted', `${serviceId} restarted successfully`);
         } catch (error) {
             handleError(error, 'Service restart failed');
+        }
+    }
+
+    /**
+     * Show the restart badge on a package's card, and remember it across reloads.
+     *
+     * @param {string} packageId - The package whose service needs a restart.
+     */
+    _markRestartNeeded(packageId) {
+        this._restartNeeded.add(packageId);
+        MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
+        this.requestUpdate();
+    }
+
+    /**
+     * The card asked to set its web interface password: open the dialog on it.
+     *
+     * @param {CustomEvent} e - `package-set-web-password` with `{ packageId }`.
+     */
+    _handleSetWebPassword(e) {
+        const pkg = this.packages.find(p => p.id === e.detail.packageId);
+        if (pkg) this._webPasswordDialogFor = pkg;
+    }
+
+    /**
+     * The dialog was confirmed: close it and have the core set the password.
+     *
+     * In the request body, never in the URL: a URL ends up in access logs.
+     *
+     * @param {CustomEvent} e - `{ packageId, webPassword }`.
+     * @returns {Promise<void>}
+     */
+    async _handleWebPasswordConfirmed(e) {
+        const { packageId, webPassword } = e.detail;
+        const pkg = this.packages.find(p => p.id === packageId);
+        this._webPasswordDialogFor = null;
+        if (!pkg) return;
+        try {
+            const result = await apiPost(`/packages/${packageId}/web_password`,
+                { web_password: webPassword });
+            if (result.restart_needed) this._markRestartNeeded(packageId);
+            if (result.success && result.warning) {
+                showToast('warning', 'Password Set, Restart Left', result.message);
+            } else if (result.success) {
+                showToast('success', 'Web Password Set', result.message);
+            } else {
+                showToast('error', 'Web Password Not Set', result.message);
+            }
+            await this._loadPackages();
+        } catch (error) {
+            handleError(error, 'Setting the web password failed');
         }
     }
 
@@ -683,12 +865,19 @@ export class AgAudioSoftwarePage extends LitElement {
 
         try {
             const results = await apiPost(`/packages/update_all?dry_run=${this.dryRun}`, pkgIds);
-            
+
+            results.filter(r => r.restart_needed).forEach(r => this._markRestartNeeded(r.package_id));
+            const incomplete = results.filter(r => r.success && r.warning);
             const successCount = results.filter(r => r.success).length;
             const failCount = results.length - successCount;
 
-            if (failCount === 0) {
+            if (failCount === 0 && incomplete.length === 0) {
                 showToast('success', 'All Updates Complete', `Successfully updated ${successCount} packages`);
+            } else if (failCount === 0) {
+                // Updated, but a step after it was left — the core's message says
+                // what. Only a single update used to show it; this said
+                // "All Updates Complete" and the message was lost.
+                showToast('warning', 'Updates Incomplete', incomplete.map(r => r.message).join(' — '));
             } else {
                 showToast('warning', 'Updates Completed with Errors', `${successCount} updated, ${failCount} failed`);
             }
@@ -812,7 +1001,8 @@ export class AgAudioSoftwarePage extends LitElement {
                 { title: 'Not Available', text: 'A greyed-out INSTALL always says why, and the reasons differ: no build for this architecture (nothing to be done), the publisher\'s site could not be reached when the list was resolved (worth retrying — the refresh icon in the header rebuilds it), or another installed package rules it out. Roon Server and Roon Bridge cannot share a box.' },
                 { title: 'Installed, Not Configured', text: 'Installing a service does not configure it — that is a separate step. A card says so while the service still runs on the settings its own package shipped, since it can then play to the wrong output while looking ready.' },
                 { title: 'Playback', text: 'Updating a service restarts it and uninstalling stops it, so the confirmation names the service about to be interrupted before you commit to it.' },
-                { title: 'Restart Required', text: 'After an install or update, a pulsing badge appears on cards whose associated service needs a restart. Click it to restart the service immediately.' },
+                { title: 'Restart Required', text: 'After an install or update, a pulsing badge appears on cards whose associated service needs a restart. Click it to restart the service immediately. A package Audiogravi<sup>ty</sup> restarts by itself once installed, such as HQPlayer Embedded, only shows it when that restart failed.' },
+                { title: 'Web Password', text: 'A package with its own web interface, such as HQPlayer Embedded, gets its password in the install dialog. When the install could not set it, its card offers SET WEB PASSWORD: no need to uninstall and reinstall.' },
                 { title: 'Documentation', text: 'The book icon in the footer of each card opens the official documentation in a new tab.' },
                 { title: 'DRY-RUN Mode', text: 'Simulates operations without executing them — safe for testing before making real changes.' },
                 { title: 'Architecture Support', text: 'The CPU badge shows which architectures are supported (amd64, arm64, armhf, all).' }
@@ -921,15 +1111,9 @@ export class AgAudioSoftwarePage extends LitElement {
                     `}
                     @package-action=${this._handleAction}
                     @package-check-update=${this._handleCheckUpdate}
-                    @package-restart-service=${this._handleRestartService}>
+                    @package-restart-service=${this._handleRestartService}
+                    @package-set-web-password=${this._handleSetWebPassword}>
                 </ag-card-grid>
-
-                <ag-package-install-dialog
-                    .pkg=${this._installDialogFor}
-                    ?show=${Boolean(this._installDialogFor)}
-                    @install-confirmed=${this._handleInstallConfirmed}
-                    @modal-close=${() => { this._installDialogFor = null; }}>
-                </ag-package-install-dialog>
             </div>
         `;
     }
