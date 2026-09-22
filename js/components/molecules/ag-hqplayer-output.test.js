@@ -670,3 +670,40 @@ describe("AgHqplayerOutput — following this box's HQPlayer as it starts and st
         }
     });
 });
+
+// ---------------------------------------------------------------------------
+// _setMode — the filter and shaper lists belong to the mode
+// ---------------------------------------------------------------------------
+
+describe('AgHqplayerOutput._setMode — the lists follow the mode', () => {
+    /** A card with the DSP calls stubbed, as the panel uses them. */
+    function card() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._applying = false;
+        c._status = { active_mode: 'SDM (DSD)' };
+        c._loadStatus = vi.fn(async () => {});
+        c._loadDspOptions = vi.fn(async () => {});
+        c._flashField = vi.fn();
+        return c;
+    }
+
+    beforeEach(() => { apiPut.mockReset(); apiPut.mockResolvedValue({ success: true }); });
+
+    it('re-reads the filters and shapers after the mode changed', async () => {
+        // HQPlayer takes a POSITION in a list that is not the same in PCM and in
+        // SDM: kept from the previous mode, a pick applied another filter.
+        const c = card();
+        await c._setMode({ target: { value: '1' } });
+        expect(apiPut).toHaveBeenCalledWith('/hqplayer/mode', { value: 1 });
+        expect(c._loadDspOptions).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not re-read them for a filter, a shaper or the volume', async () => {
+        const c = card();
+        await c._setFilter({ target: { value: '9' } });
+        await c._setShaper({ target: { value: '3' } });
+        await c._setVolume({ target: { value: '-30' } });
+        expect(apiPut).toHaveBeenCalledTimes(3);
+        expect(c._loadDspOptions).not.toHaveBeenCalled();
+    });
+});

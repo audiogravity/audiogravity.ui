@@ -500,6 +500,14 @@ the setting is persisted, and the pairing can break under it — updating the ad
 Audio Software is enough. A play routed to a mismatched pair answers 503 naming both
 versions, exactly as it already does for an adapter that is not running.
 
+**The filter and shaper lists belong to the mode.** `GET /hqplayer/filters` and
+`GET /hqplayer/shapers` describe what HQPlayer offers **in the mode it is in**, and the
+`value` each entry carries is its **position in that list**, not a stable identifier: the
+same name sits at another position in PCM and in SDM (measured on Embedded 6.0.4: 77
+filters in SDM, 67 in PCM). A client that changes the mode must re-read both lists before
+sending a filter or a shaper — sent from the previous mode's list, a position selects
+another filter, and HQPlayer accepts it.
+
 **The box's own HQPlayer (HQPlayer Embedded, package `hqplayerd`).** While its unit runs,
 Audiogravi<sup>ty</sup> plays through it, straight to the DAC with no NAA in between:
 `local` is true, `use_as_output` reads true whatever the card says, and every command goes

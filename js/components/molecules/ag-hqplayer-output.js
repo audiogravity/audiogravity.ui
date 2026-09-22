@@ -257,6 +257,11 @@ class AgHqplayerOutput extends LitElement {
     /** @param {Event} e */
     async _setMode(e) {
         await this._applyDsp('mode', '/hqplayer/mode', { value: parseInt(e.target.value) });
+        // The filters and shapers HQPlayer offers depend on the mode, and what it
+        // takes is a POSITION in that list. Kept from the previous mode, picking a
+        // filter applied a different one, silently — measured on HQPlayer Embedded
+        // 6.0.4: 77 filters in SDM, 67 in PCM, with the same names at other places.
+        await this._loadDspOptions();
     }
 
     /** @param {Event} e */
