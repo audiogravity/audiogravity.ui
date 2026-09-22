@@ -56,6 +56,51 @@ describe('descriptor', () => {
     });
 });
 
+/** The text of a template as the mocked `html` returns it, nested templates included. */
+const textOf = (node) => {
+    if (typeof node === 'string') return node;
+    if (!node || typeof node !== 'object') return '';
+    if (Array.isArray(node)) return node.map(textOf).join('');
+    if (node.strings) {
+        return node.strings.map((s, i) => s + (i < node.values.length ? textOf(node.values[i]) : '')).join('');
+    }
+    return '';
+};
+
+describe('HQPlayer Embedded — its output alone', () => {
+    // Its configuration belongs to its vendor: Audiogravity sets its output there
+    // like any player's, and never regenerates the file (decision of 2026-09-22).
+
+    it('has the output as its only guided field', () => {
+        expect(GUIDED_FIELDS.hqplayerd).toEqual(['output']);
+    });
+
+    it("has its output changed like any player's", async () => {
+        const el = makeEl({ serviceId: 'hqplayerd', serviceOutput: null, _selectedOutputId: 'hw:0,0' });
+        await el._apply();
+        expect(apiPost).toHaveBeenCalledTimes(1);
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/output', {
+            service_id: 'hqplayerd', card_name: 'Abacus', usb_id: 'dac-a', device_id: 0,
+        });
+    });
+
+    it('is offered no Reset to default', () => {
+        const text = textOf(makeEl({ serviceId: 'hqplayerd', regenerable: false }).render());
+        expect(text).toContain('Audio output');
+        expect(text).toContain('Apply changes');
+        expect(text).not.toContain('Reset to default');
+    });
+
+    it('leaves Reset to default to the services Audiogravity generates', () => {
+        expect(textOf(makeEl({ regenerable: true }).render())).toContain('Reset to default');
+    });
+
+    it('keeps Reset to default when nothing says otherwise', () => {
+        // A core that predates the field generates every service it lists.
+        expect(new AgGuidedConfig().regenerable).toBe(true);
+    });
+});
+
 describe('_initialOutputId', () => {
     it('matches the pinned output', () => {
         expect(makeEl()._initialOutputId()).toBe('hw:0,0');

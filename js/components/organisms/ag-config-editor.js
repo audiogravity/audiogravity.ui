@@ -11,6 +11,12 @@
  * @prop {String} configFormat - Format: 'conf', 'ini', 'libconfig', 'xml'
  * @prop {Array} backups - List of available backups
  * @prop {Boolean} isGuest - Whether the user is a guest (cannot save)
+ * @prop {Boolean} guided - Whether the service has a guided view (opens in it)
+ * @prop {Boolean} regenerable - Whether its guided view offers "Reset to default"
+ *
+ * A service whose schema declares no field (HQPlayer Embedded: its file is edited
+ * in place, never rewritten from a form) has no structured view — it opens in the
+ * raw editor when it has no guided view either.
  *
  * @fires back - Request to return to selection
  * @fires save - Request to save configuration: detail = { mode: 'form'|'raw', data: Object|String, rawContent: String }
@@ -39,6 +45,7 @@ export class AgConfigEditor extends LitElement {
         outputs: { type: Array },
         librarySources: { type: Array },
         serviceOutput: { type: Object },
+        regenerable: { type: Boolean },
 
         currentMode: { state: true },
         isDirty: { state: true },
@@ -62,6 +69,7 @@ export class AgConfigEditor extends LitElement {
         this.outputs = [];
         this.librarySources = [];
         this.serviceOutput = null;
+        this.regenerable = true;
 
         this.currentMode = 'form';
         this.isDirty = false;
@@ -107,9 +115,14 @@ export class AgConfigEditor extends LitElement {
         if (changedProperties.has('service')) {
             const previousId = changedProperties.get('service')?.id;
             if (this.service?.id !== previousId) {
-                this.currentMode = this.guided ? 'guided' : 'form';
+                this.currentMode = this.guided ? 'guided' : (this._hasForm ? 'form' : 'raw');
             }
         }
+    }
+
+    /** Whether the schema declares any field to show as a form. */
+    get _hasForm() {
+        return Object.keys(this.schema || {}).length > 0;
     }
 
     updated(changedProperties) {
@@ -430,17 +443,18 @@ export class AgConfigEditor extends LitElement {
                         ${this.guided ? html`
                             <div class="config-mode-tabs" role="tablist">
                                 <button class="config-mode-tab ${this.currentMode === 'guided' ? 'active' : ''}" @click=${() => this._setMode('guided')}>Guided</button>
-                                <button class="config-mode-tab ${this.currentMode === 'form' ? 'active' : ''}" @click=${() => this._setMode('form')}>Structured</button>
+                                ${this._hasForm ? html`
+                                    <button class="config-mode-tab ${this.currentMode === 'form' ? 'active' : ''}" @click=${() => this._setMode('form')}>Structured</button>` : ''}
                                 <button class="config-mode-tab ${this.currentMode === 'raw' ? 'active' : ''}" @click=${() => this._setMode('raw')}>Expert</button>
                             </div>
-                        ` : html`
+                        ` : this._hasForm ? html`
                         <div class="has-tooltip">
                             <button class="btn-action compact config-mode-toggle" @click=${this._handleToggleMode}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCode}</svg> ${this.currentMode === 'form' ? 'Expert Mode' : 'Form Mode'}
                             </button>
                             <div class="tooltip tooltip-bottom-right">Switch between Form view and Raw file editor</div>
                         </div>
-                        `}
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -468,7 +482,8 @@ export class AgConfigEditor extends LitElement {
                 ${this.currentMode === 'guided' ? html`
                     <div class="config-guided-editor active">
                         <ag-guided-config .serviceId=${this.service?.id} .outputs=${this.outputs}
-                            .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}></ag-guided-config>
+                            .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}
+                            .regenerable=${this.regenerable}></ag-guided-config>
                     </div>
                 ` : html`
                 <div class="config-actions">

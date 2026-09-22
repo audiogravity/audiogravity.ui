@@ -8,6 +8,13 @@
  * Self-contained: fetches its own state from the /hqplayer/* endpoints.
  * The parent organism only needs to render `<ag-hqplayer-output>`.
  *
+ * While this box's own HQPlayer runs (HQPlayer Embedded, `connection.local`),
+ * the core plays through it whatever the card says: the card shows it as
+ * "This box", with its output switch locked on, and names the instance chosen
+ * here, which the core returns to when it stops — with that instance's own
+ * "use as output" setting, so the music goes to it only if that was on. The card
+ * follows it starting and stopping from the service-state events.
+ *
  * @element ag-hqplayer-output
  *
  * @fires sources-changed - Bubbles when the HQPlayer connection is created or removed.
@@ -64,8 +71,10 @@ class AgHqplayerOutput extends LitElement {
         super.connectedCallback();
         this._loadConnection();
         this._boundHandleNaaMetrics = this._handleNaaMetrics.bind(this);
+        this._boundHandleLocalMetrics = this._handleLocalHqplayerMetrics.bind(this);
         if (window.EventEmitter) {
             window.EventEmitter.on('service-metrics-sse', this._boundHandleNaaMetrics);
+            window.EventEmitter.on('service-metrics-sse', this._boundHandleLocalMetrics);
         }
     }
 
@@ -73,6 +82,7 @@ class AgHqplayerOutput extends LitElement {
         super.disconnectedCallback();
         if (window.EventEmitter && this._boundHandleNaaMetrics) {
             window.EventEmitter.off('service-metrics-sse', this._boundHandleNaaMetrics);
+            window.EventEmitter.off('service-metrics-sse', this._boundHandleLocalMetrics);
         }
     }
 
@@ -92,6 +102,27 @@ class AgHqplayerOutput extends LitElement {
         }
     }
 
+    /**
+     * Reload the connection when this box's own HQPlayer starts or stops.
+     *
+     * While it runs the core plays through it, and when it stops the core
+     * returns to the instance chosen in this card — so either change moves what
+     * the card must show. Only a CHANGE reloads, judged against where the card
+     * last knew it stood: first what it loaded (see _loadConnection), then each
+     * event. State events come every 10 to 30 s on a quiet box, so a start
+     * between the load and the first of them, taken for the starting point,
+     * left the card on the other instance (measured on the dev box, 2026-09-22).
+     * A state that stays put must not turn every tick into a request.
+     * @param {{ serviceId: string, metrics: { state: string } }} param
+     */
+    _handleLocalHqplayerMetrics({ serviceId, metrics }) {
+        if (serviceId !== 'hqplayerd') return;
+        const running = metrics?.state === 'active';
+        const changed = this._localRunning !== undefined && running !== this._localRunning;
+        this._localRunning = running;
+        if (changed) this._loadConnection();
+    }
+
     // ── Data fetching ──────────────────────────────────────────────────────
 
     /** Fetch current connection state. DSP options loaded lazily on panel open. */
@@ -100,6 +131,12 @@ class AgHqplayerOutput extends LitElement {
         // The "use as output" choice is server-side: adopt whatever it says, so
         // every client shows the same state (it used to be per-browser).
         this._useAsOutput = !!this._connection?.use_as_output;
+        // Where the box's own HQPlayer stands, from the first answer only. Seeded
+        // on every load, a core that does not see it running while its unit runs
+        // (no declaration) would have the next event reload again, for ever.
+        if (this._localRunning === undefined && this._connection) {
+            this._localRunning = !!this._connection.local;
+        }
     }
 
     /** Scan the local subnet for HQPlayer instances. */
@@ -154,10 +191,19 @@ class AgHqplayerOutput extends LitElement {
         // clearing the host, because the invariant belongs to it — its NAA holds
         // the exclusive sound card until then, and any other client (an older
         // build, a script) would otherwise leave the card stuck.
+        let remaining = null;
         try {
-            await apiDelete('/hqplayer/connection');
+            remaining = await apiDelete('/hqplayer/connection');
         } catch (e) {
             console.warn('[hqplayer] Disconnect failed:', e.message);
+        }
+        // What forgetting the chosen instance leaves: this box's own HQPlayer,
+        // while it runs, is still the one the core plays through.
+        if (remaining?.local) {
+            this._connection  = remaining;
+            this._useAsOutput = !!remaining.use_as_output;
+            this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
+            return;
         }
         this._connection   = null;
         this._discovered   = null;
@@ -428,9 +474,13 @@ class AgHqplayerOutput extends LitElement {
 
     /** Render the connected/offline HQPlayer card with optional DSP panel. */
     _renderCard() {
+        const local         = !!this._connection.local;
         const available     = this._connection.available;
         const naaAvailable  = this._connection.naa_available;
-        const fullyConnected = available && naaAvailable;
+        // This box's own HQPlayer plays straight to the DAC: no NAA to wait for.
+        const fullyConnected = available && (local || naaAvailable);
+        const chosen = this._connection.configured_host
+            ? `${this._connection.configured_host}:${this._connection.configured_port}` : null;
 
         return html`
             <div class="lib-hqp-card ${fullyConnected ? 'connected' : ''}">
@@ -440,11 +490,14 @@ class AgHqplayerOutput extends LitElement {
                     </div>
                     <div class="lib-hqp-col">
                         <div class="lib-hqp-name">
-                            HQPlayer${this._connection.engine_version
-                                ? ` ${this._connection.engine_version}` : ''}
+                            ${local
+                                ? ['HQPlayer', this._identity(this._connection.product, this._connection.engine_version)]
+                                    .filter(Boolean).join(' ')
+                                : html`HQPlayer${this._connection.engine_version
+                                    ? ` ${this._connection.engine_version}` : ''}`}
                         </div>
                         <div class="lib-hqp-desc">
-                            ${this._connection.host}:${this._connection.port}
+                            ${local ? 'This box' : `${this._connection.host}:${this._connection.port}`}
                             ${this._status?.active_mode ? ` · ${this._status.active_mode}` : ''}
                             ${this._status?.active_rate ? ` · ${this._formatRate(this._status.active_rate)}` : ''}
                         </div>
@@ -478,7 +531,16 @@ class AgHqplayerOutput extends LitElement {
                     </div>
                 ` : nothing}
 
-                ${fullyConnected || this._useAsOutput ? html`
+                ${local ? html`
+                    <div class="lib-hqp-output-toggle">
+                        <span class="lib-hqp-output-label">Use as output</span>
+                        <ag-switch .checked=${true} disabled></ag-switch>
+                    </div>
+                    <p class="lib-hqp-note">
+                        HQPlayer is running on this box: the music plays through it until it stops.
+                        ${chosen ? `The card then returns to HQPlayer at ${chosen}, with its own output setting.` : ''}
+                    </p>
+                ` : fullyConnected || this._useAsOutput ? html`
                     <div class="lib-hqp-output-toggle">
                         <span class="lib-hqp-output-label">Use as output</span>
                         <ag-switch .checked=${this._useAsOutput} @ag-change=${this._toggleOutput}></ag-switch>
@@ -494,9 +556,15 @@ class AgHqplayerOutput extends LitElement {
                                  class="lib-hqp-chevron ${this._dspExpanded ? 'open' : ''}">${iconChevronDown}</svg>
                         </button>
                     ` : nothing}
-                    <button class="action-btn compact secondary" @click=${this._disconnect}>
-                        Disconnect
-                    </button>
+                    ${!local ? html`
+                        <button class="action-btn compact secondary" @click=${this._disconnect}>
+                            Disconnect
+                        </button>
+                    ` : chosen ? html`
+                        <button class="action-btn compact secondary" @click=${this._disconnect}>
+                            Forget ${chosen}
+                        </button>
+                    ` : nothing}
                 </div>
 
                 ${this._dspExpanded && available ? this._renderDsp() : nothing}
@@ -554,11 +622,15 @@ class AgHqplayerOutput extends LitElement {
                            @change=${this._setVolume}
                     />
                 </div>
-                <div class="lib-hqp-reset">
-                    <button class="action-btn compact secondary" @click=${this._resetDsp}>
-                        Reset to HQPlayer defaults
-                    </button>
-                </div>
+                ${this._connection?.local ? nothing : html`
+                    <!-- It drops the settings Audiogravity keeps, which belong to the
+                         HQPlayer chosen in the card — none are kept for this box's own. -->
+                    <div class="lib-hqp-reset">
+                        <button class="action-btn compact secondary" @click=${this._resetDsp}>
+                            Reset to HQPlayer defaults
+                        </button>
+                    </div>
+                `}
             </div>
         `;
     }

@@ -682,15 +682,29 @@ export function formatSupportReport(report) {
             : hqFound === undefined ? ''
                 : hqFound.length ? ` · found on network: ${hqFound.map(h => h.host + (h.active_filter ? ` (filter ${h.active_filter})` : '')).join(', ')}`
                     : ' · none found on the local /24';
-        if (!hqp.configured_host) {
+        // Which HQPlayer plays, as its service knows it: this box's own while it
+        // runs, the card's choice kept alongside; else the card's. `output` says
+        // whether library playback goes to HQPlayer at all. A core that predates
+        // these fields sends neither, and the line reads as it always did.
+        const engine = hqp.available === undefined ? ''
+            : hqp.available ? ` · engine answering (${hqp.state})` : ' · engine NOT answering';
+        const output = hqp.output === undefined ? ''
+            : hqp.output ? ' · used as output' : ' · not used as output';
+        const identity = [hqp.product, hqp.engine_version].filter(Boolean).join(' ');
+        if (hqp.error) {
+            out.push(line('HQPlayer', `state unreadable (${hqp.error})${hqNetwork}`));
+        } else if (hqp.local) {
+            const card = hqp.configured_host ? `${hqp.configured_host}:${hqp.port}` : 'none';
+            out.push(line('HQPlayer',
+                `this box${identity ? ` (${identity})` : ''}${engine}${output} · card: ${card}${hqNetwork}`));
+        } else if (!hqp.configured_host) {
             out.push(line('HQPlayer', `not configured${hqNetwork}`));
         } else {
             const probe = hqp.probe || {};
-            const engine = hqp.available === undefined ? ''
-                : hqp.available ? ` · engine answering (${hqp.state})` : ' · engine NOT answering';
+            const where = `${hqp.configured_host}:${hqp.port}${identity ? ` (${identity})` : ''}`;
             out.push(line('HQPlayer', probe.reachable
-                ? `${hqp.configured_host}:${hqp.port} reachable · ${probe.latency_ms} ms${engine}${hqNetwork}`
-                : `${hqp.configured_host}:${hqp.port} UNREACHABLE (${probe.error || '?'})${hqNetwork}`));
+                ? `${where} reachable · ${probe.latency_ms} ms${engine}${output}${hqNetwork}`
+                : `${where} UNREACHABLE (${probe.error || '?'})${output}${hqNetwork}`));
         }
         const roon = peers.roon || {};
         const roonFound = roon.found_on_network;

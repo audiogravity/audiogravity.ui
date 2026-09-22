@@ -18,6 +18,9 @@
  * @prop {boolean} [service.fileExists] - False when the config file is not on disk.
  *   Undefined is likewise treated as present: the editor can create a missing file.
  * @prop {Number} delayIndex - Animation delay index for staggered appearance
+ * @prop {boolean} provisionable - Whether Audiogravity sets this service up — its whole
+ *   config, or its output alone for HQPlayer Embedded: shows the CONFIGURED badge.
+ * @prop {boolean} configured - Whether Audiogravity has set it up.
  *
  * @fires edit-config - Dispatched when edit button clicked, detail: { serviceId }
  *
