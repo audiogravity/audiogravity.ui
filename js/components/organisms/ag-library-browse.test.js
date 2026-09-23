@@ -22,7 +22,11 @@ vi.mock('../utils-lit.js', () => ({
     loadWithState: vi.fn(),
     svgIcon: (icon) => ({ strings: ['<svg>'], values: [icon] }),
 }));
-vi.mock('../../library-api.js', () => ({ queueItem: vi.fn(), queueWithFeedback: vi.fn() }));
+vi.mock('../../library-api.js', () => ({
+    PLAYLISTS_CHANGED_EVENT: 'ag-playlists-changed',
+    queueItem: vi.fn(),
+    queueWithFeedback: vi.fn(),
+}));
 const getHraCategoriesMock = vi.fn();
 const getHraGenresMock = vi.fn();
 const getHraConnectionMock = vi.fn();
@@ -61,6 +65,8 @@ vi.mock('../atoms/ag-library-add-btn.js', () => ({}));
 vi.mock('../atoms/ag-library-fav-btn.js', () => ({}));
 vi.mock('../atoms/ag-library-playlist-btn.js', () => ({}));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
+vi.mock('../molecules/ag-playlist-details.js', () => ({}));
+vi.mock('../molecules/ag-playlist-page.js', () => ({}));
 const requestPlaylistAddMock = vi.fn();
 vi.mock('../molecules/ag-playlist-picker.js', () => ({
     requestPlaylistAdd: (...args) => requestPlaylistAddMock(...args),
@@ -1697,7 +1703,8 @@ describe('ag-library-browse — "Add to playlist" on an album', () => {
 
     it('is not offered on a playlist card — a playlist is not an album', () => {
         const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists', _fav: { has: () => false } });
-        expect(card(el, { id: 'editorial:1', title: 'Montreux' })).not.toContain('<ag-library-playlist-btn');
+        // The card carries the "open" button instead, the one playlist button it has.
+        expect(card(el, { id: 'editorial:1', title: 'Montreux' })).not.toContain('@playlist-add');
     });
 
     it('is not offered on a purchase, which HIGHRESAUDIO files elsewhere', () => {
@@ -1725,5 +1732,133 @@ describe('ag-library-browse — "Add to playlist" on an album', () => {
         const row = (el, album) => text(el._renderListRow(album));
         expect(row(albums, { id: 'alb1', title: 'Ritornare' })).toContain('?playlistable=true');
         expect(row(playlists, { id: 'editorial:1', title: 'Montreux' })).toContain('?playlistable=false');
+    });
+});
+
+describe('ag-library-browse — a playlist\'s page', () => {
+    const card = (el, album) => text(el._renderAlbumCard(album));
+    const row = (el, album) => text(el._renderListRow(album));
+    const hra = (overrides = {}) => makeEl({
+        sourceId: 'src_highresaudio', _filter: 'playlists', _playlistKind: 'mine',
+        _fav: { has: () => false }, ...overrides,
+    });
+
+    it('offers "open" on a HIGHRESAUDIO playlist card, the account\'s and the service\'s', () => {
+        expect(card(hra(), { id: 'mine:5549', title: 'Audiogravity test' }))
+            .toContain('@playlist-open');
+        expect(card(hra({ _playlistKind: 'editorial' }), { id: 'editorial:791', title: 'Songs' }))
+            .toContain('@playlist-open');
+    });
+
+    it('keeps the tap on the card itself for playing it', () => {
+        const el = hra();
+        el._playAlbum = vi.fn();
+        const tpl = el._renderAlbumCard({ id: 'mine:5549', title: 'Audiogravity test' });
+        // The card's own click handler is the first value of its template.
+        tpl.values[0]();
+        expect(el._playAlbum).toHaveBeenCalledWith({ id: 'mine:5549', title: 'Audiogravity test' });
+    });
+
+    it('offers no "open" on an album, nor on a source AG cannot open playlists of', () => {
+        expect(card(hra({ _filter: 'favorites' }), { id: 'alb1', title: 'Ritornare' }))
+            .not.toContain('@playlist-open');
+        expect(card(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _fav: { has: () => false } }),
+            { id: '123', title: 'Qobuz picks' })).not.toContain('@playlist-open');
+    });
+
+    it('marks a playlist\'s list row as openable, and an album\'s not', () => {
+        expect(row(hra(), { id: 'mine:5549', title: 'Audiogravity test' })).toContain('?openable=true');
+        expect(row(hra({ _filter: 'favorites' }), { id: 'alb1', title: 'Ritornare' }))
+            .toContain('?openable=false');
+    });
+
+    it('opens the page with the grid\'s heading as its way back', () => {
+        const el = hra();
+        el.updateComplete = Promise.resolve();
+        el.querySelectorAll = () => [];
+        const playlist = { id: 'mine:5549', title: 'Audiogravity test' };
+        el._openPlaylist(playlist);
+        expect(el._openedPlaylist).toEqual({ playlist, wide: false, backLabel: 'My playlists' });
+    });
+
+    it('opens an editorial selection with its banner artwork', () => {
+        const el = hra({ _playlistKind: 'editorial', _playlistCategory: 'Recommended' });
+        el.updateComplete = Promise.resolve();
+        el.querySelectorAll = () => [];
+        el._openPlaylist({ id: 'editorial:791', title: 'Songs for Audiophiles' });
+        expect(el._openedPlaylist.wide).toBe(true);
+        expect(el._openedPlaylist.backLabel).toBe('Recommended');
+    });
+
+    it('goes back to the grid where the reader left it — its scroll and its strips', async () => {
+        const scroller = { scrollTop: 640 };
+        const strip = { dataset: { strip: 'filters' }, scrollLeft: 212 };
+        const el = hra();
+        el.updateComplete = Promise.resolve();
+        el.querySelectorAll = () => [strip];
+        // The container that scrolls, found once when the page opens (.main-content in
+        // the app) — and aimed at again on the way back, whatever the page did to it.
+        Object.defineProperty(el, '_scroller', { get: () => scroller });
+        el._openPlaylist({ id: 'mine:5549', title: 'Audiogravity test' });
+        await el.updateComplete;
+        expect(scroller.scrollTop).toBe(0);         // the page starts at its top
+        strip.scrollLeft = 0;                       // what a browser may do meanwhile
+        el._closePlaylist();
+        await el.updateComplete;
+        expect(el._openedPlaylist).toBe(null);
+        expect(scroller.scrollTop).toBe(640);
+        expect(strip.scrollLeft).toBe(212);
+    });
+
+    it('rereads the account\'s playlists on the way back when they changed meanwhile', () => {
+        const el = hra({ _openedPlaylist: { playlist: { id: 'mine:5549' } }, _gridScroll: { top: 5, strips: {} } });
+        el._load = vi.fn();
+        el._onPlaylistsChanged({ detail: { sourceId: 'src_highresaudio', playlistId: 'mine:5549' } });
+        expect(el._load).not.toHaveBeenCalled();    // nobody sees the grid yet
+        el._closePlaylist();
+        expect(el._load).toHaveBeenCalledTimes(1);
+        expect(el._ownPlaylistsStale).toBe(false);
+    });
+
+    it('rereads the account\'s playlists at once when their grid is on screen', () => {
+        const el = hra({ _openedPlaylist: null });
+        el._load = vi.fn();
+        el._onPlaylistsChanged({ detail: { sourceId: 'src_highresaudio', playlistId: 'mine:1' } });
+        expect(el._load).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a change on another source, or while another grid is on screen', () => {
+        const other = hra({ _openedPlaylist: null });
+        other._load = vi.fn();
+        other._onPlaylistsChanged({ detail: { sourceId: 'src_qobuz', playlistId: 'x' } });
+        const editorial = hra({ _openedPlaylist: null, _playlistKind: 'editorial' });
+        editorial._load = vi.fn();
+        editorial._onPlaylistsChanged({ detail: { sourceId: 'src_highresaudio', playlistId: 'mine:1' } });
+        expect(other._load).not.toHaveBeenCalled();
+        expect(editorial._load).not.toHaveBeenCalled();
+    });
+
+    it('leads the account\'s own playlists with a "New playlist" tile that opens the dialog', () => {
+        const el = hra({ _creatingPlaylist: false });
+        const tpl = el._renderNewPlaylistTile();
+        expect(text(tpl)).toContain('New playlist');
+        tpl.values[0]();                            // the tile's click handler
+        expect(el._creatingPlaylist).toBe(true);
+        el._onPlaylistCreated();
+        expect(el._creatingPlaylist).toBe(false);
+    });
+
+    it('keeps the "New playlist" dialog for the account\'s own playlists', () => {
+        expect(text(hra()._renderCreateDialog())).toContain('<ag-playlist-details');
+        expect(hra({ _playlistKind: 'editorial' })._renderCreateDialog()).toBe(null);
+        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _playlistKind: 'mine' })
+            ._renderCreateDialog()).toBe(null);
+    });
+
+    it('shows the tile only over the account\'s own playlists, on a source that can make one', () => {
+        expect(hra()._showsOwnPlaylists).toBe(true);
+        expect(hra({ _playlistKind: 'editorial' })._showsOwnPlaylists).toBe(false);
+        expect(hra({ _filter: 'favorites' })._showsOwnPlaylists).toBe(false);
+        expect(hra({ artistId: 'Miles Davis' })._showsOwnPlaylists).toBe(false);
     });
 });

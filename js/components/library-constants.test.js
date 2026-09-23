@@ -2,7 +2,8 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, originBadgeName, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS, PLAYLIST_EDIT_SOURCES, canAddToPlaylist } from './library-constants.js';
+import { originBadge, originBadgeName, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS, PLAYLIST_EDIT_SOURCES, canAddToPlaylist, canOpenPlaylist, canEditPlaylist,
+    canCreatePlaylist } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -421,5 +422,36 @@ describe('canAddToPlaylist — where "Add to playlist" may be offered', () => {
 
     it('lists the sources in one place, HIGHRESAUDIO alone today', () => {
         expect([...PLAYLIST_EDIT_SOURCES]).toEqual(['src_highresaudio']);
+    });
+});
+
+describe('canOpenPlaylist / canEditPlaylist / canCreatePlaylist — a playlist\'s page', () => {
+    it('opens the account\'s playlists and the service\'s alike', () => {
+        expect(canOpenPlaylist('src_highresaudio', 'mine:5549')).toBe(true);
+        expect(canOpenPlaylist('src_highresaudio', 'editorial:791')).toBe(true);
+    });
+
+    it('edits only the account\'s own — the service\'s selections are read-only', () => {
+        expect(canEditPlaylist('src_highresaudio', 'mine:5549')).toBe(true);
+        expect(canEditPlaylist('src_highresaudio', 'editorial:791')).toBe(false);
+    });
+
+    it('does neither on a source whose playlists the core cannot open yet', () => {
+        for (const source of ['src_qobuz', 'src_tidal', 'src_mpd']) {
+            expect(canOpenPlaylist(source, 'mine:1')).toBe(false);
+            expect(canEditPlaylist(source, 'mine:1')).toBe(false);
+            expect(canCreatePlaylist(source)).toBe(false);
+        }
+    });
+
+    it('does neither without an id', () => {
+        for (const id of ['', null, undefined]) {
+            expect(canOpenPlaylist('src_highresaudio', id)).toBe(false);
+            expect(canEditPlaylist('src_highresaudio', id)).toBe(false);
+        }
+    });
+
+    it('creates on the sources it writes', () => {
+        expect(canCreatePlaylist('src_highresaudio')).toBe(true);
     });
 });

@@ -146,6 +146,29 @@ describe('ag-playlist-picker — adding', () => {
             'Tukuman is already in Audiogravity test. Nothing was added.');
     });
 
+    it('announces an add that changed the playlist, and only that one', async () => {
+        const heard = [];
+        const listener = (e) => heard.push(e.detail);
+        window.addEventListener('ag-playlists-changed', listener);
+        try {
+            apiGet.mockResolvedValue([TEST_PLAYLIST]);
+            apiPost.mockResolvedValueOnce({ added: 1, already: 0 });
+            apiPost.mockResolvedValueOnce({ added: 0, already: 1 });
+            const el = await mount();
+            requestPlaylistAdd(TRACK);
+            await settle(el);
+            rows(el)[1].click();
+            await settle(el);
+            requestPlaylistAdd(TRACK);
+            await settle(el);
+            rows(el)[1].click();
+            await settle(el);
+            expect(heard).toEqual([{ sourceId: 'src_highresaudio', playlistId: 'mine:5549' }]);
+        } finally {
+            window.removeEventListener('ag-playlists-changed', listener);
+        }
+    });
+
     it('keeps the dialog open on a failure, with the core\'s reason', async () => {
         apiGet.mockResolvedValue([TEST_PLAYLIST]);
         apiPost.mockRejectedValue(Object.assign(new Error('HTTP 503'), {
@@ -211,7 +234,9 @@ describe('ag-playlist-picker — a new playlist', () => {
         footerButton(el, 'Create and add').click();
         await settle(el);
         expect(apiPost.mock.calls).toEqual([
-            ['/library/playlists', { source_id: 'src_highresaudio', title: 'Late evening' }, false],
+            ['/library/playlists', {
+                source_id: 'src_highresaudio', title: 'Late evening', description: '',
+            }, false],
             ['/library/playlists/add', {
                 source_id: 'src_highresaudio', playlist_id: 'mine:5650',
                 item_id: 't1_a1', item_type: 'track',

@@ -1,8 +1,9 @@
 /**
  * @module PlaylistPicker
  * @description The "Add to playlist" dialog (ag-playlist-picker): the item being added,
- * the account's playlists as rows, and the name field of a new playlist. The frame —
- * overlay, border, header, footer — is ag-modal's own (modal.css).
+ * the account's playlists as rows, and the name field of a new playlist; and the dialog
+ * that names a playlist (ag-playlist-details). The frame — overlay, border, header,
+ * footer — is ag-modal's own (modal.css).
  */
 
 /* The item being added, above everything else: what the dialog is about. */
@@ -121,4 +122,24 @@
 
 .ag-plp-form {
     margin-top: var(--spacing-md);
+}
+
+/* ── ag-playlist-details — "New playlist" / "Rename playlist" ──
+   The same family of dialog, so the same file: a name, an optional description, and
+   the help line of a new playlist (.ag-plp-help, above). */
+.ag-pld-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.ag-pld-form .ag-plp-help {
+    margin: 0;
+}
+
+/* "(optional)" reads as an aside to the label, not as part of it. */
+.ag-pld-optional {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
 }

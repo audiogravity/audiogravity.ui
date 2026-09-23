@@ -129,3 +129,68 @@ describe('ag-library-list-row — "Add to playlist"', () => {
         expect(played).toBe(0);
     });
 });
+
+describe('ag-library-list-row — a playlist\'s buttons', () => {
+    const buttons = (el) => [...el.querySelectorAll('.lib-lr-actions button')].map((b) => b.getAttribute('aria-label'));
+
+    it('opens a playlist from its row, ahead of the "+ add"', async () => {
+        const el = await mount({ openable: true, actionable: true });
+        expect(buttons(el)).toEqual(['Open the playlist', 'Add to queue']);
+    });
+
+    it("reports playlist-open to the row's owner, and never plays the row", async () => {
+        const el = await mount({ openable: true });
+        const seen = [];
+        el.addEventListener('playlist-open', () => seen.push('open'));
+        el.addEventListener('row-click', () => seen.push('play'));
+        el.querySelector('button').click();
+        expect(seen).toEqual(['open']);
+    });
+
+    it('takes a track out of a playlist, without playing it', async () => {
+        const el = await mount({ removable: true });
+        const seen = [];
+        el.addEventListener('playlist-remove', () => seen.push('remove'));
+        el.addEventListener('row-click', () => seen.push('play'));
+        el.querySelector('button').click();
+        expect(seen).toEqual(['remove']);
+        expect(buttons(el)).toEqual(['Remove from the playlist']);
+    });
+
+    it('offers neither unless asked for', async () => {
+        const el = await mount({ actionable: true });
+        expect(buttons(el)).toEqual(['Add to queue']);
+    });
+});
+
+describe('ag-library-list-row — a track of a playlist page', () => {
+    it('shows its position ahead of the cover, and its duration ahead of the controls', async () => {
+        const el = await mount({ title: 'Tukuman', position: 4, note: '6:37', removable: true });
+        const row = el.querySelector('.lib-list-row');
+        expect(row.classList.contains('lib-list-row--numbered')).toBe(true);
+        expect(row.children[0].textContent).toBe('4');
+        expect(row.children[1].tagName).toBe('AG-LIBRARY-COVER');
+        expect(el.querySelector('.lib-lr-actions').firstElementChild.textContent).toBe('6:37');
+    });
+
+    it('opens the trailing cell for a duration alone', async () => {
+        const el = await mount({ title: 'Tukuman', note: '6:37' });
+        expect(el.querySelector('.lib-lr-actions .lib-lr-note').textContent).toBe('6:37');
+    });
+
+    it('shows neither on an ordinary row', async () => {
+        const el = await mount({ title: 'Kind of Blue' });
+        expect(el.querySelector('.lib-lr-n')).toBeNull();
+        expect(el.querySelector('.lib-lr-note')).toBeNull();
+        expect(el.querySelector('.lib-list-row').classList.contains('lib-list-row--numbered')).toBe(false);
+    });
+
+    it('gives the numbered row one column per item, the position\'s ahead of the cover\'s', () => {
+        // Four items — position, cover, words, controls — in the numbered grid: a
+        // missing column would wrap the controls onto a second line, the defect the
+        // three-column guard above exists for.
+        const rule = CSS.match(/\.lib-list-row--numbered\s*{[^}]*grid-template-columns:\s*([^;]+);/);
+        expect(rule).not.toBeNull();
+        expect(rule[1].trim().split(/\s+/)).toEqual(['auto', 'auto', '1fr', 'auto']);
+    });
+});

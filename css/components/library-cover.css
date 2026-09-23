@@ -115,8 +115,11 @@ ag-library-add-btn {
 /* "Add to playlist" — the third control of a cover, next to the ★ in the bottom-left
    corner, so the star and the "+ queue" keep the corners they always had. Same
    scrim, same reveal as its two neighbours (guidelines, rule 6 exception, above).
-   34 px = the star's 6 px inset + its 24 px + a 4 px gap. */
-.lib-ac-pl {
+   34 px = the star's 6 px inset + its 24 px + a 4 px gap.
+   "Open the playlist" (.lib-ac-open) is the same control on a playlist card, which has
+   no ★: it takes the corner itself. */
+.lib-ac-pl,
+.lib-ac-open {
     position: absolute;
     bottom: 6px;
     left: 34px;
@@ -134,8 +137,11 @@ ag-library-add-btn {
     transition: opacity var(--transition-fast);
 }
 
+.lib-ac-open { left: 6px; }
+
 .lib-ac-add svg,
-.lib-ac-pl svg {
+.lib-ac-pl svg,
+.lib-ac-open svg {
     width: 12px;
     height: 12px;
     flex-shrink: 0;
@@ -144,9 +150,11 @@ ag-library-add-btn {
 .lib-ac-wrap:hover .lib-ac-add,
 .lib-ac-wrap:focus-within .lib-ac-add,
 .lib-ac-wrap:hover .lib-ac-pl,
-.lib-ac-wrap:focus-within .lib-ac-pl { opacity: 1; }
+.lib-ac-wrap:focus-within .lib-ac-pl,
+.lib-ac-wrap:hover .lib-ac-open,
+.lib-ac-wrap:focus-within .lib-ac-open { opacity: 1; }
 
-@media (hover: none) { .lib-ac-add, .lib-ac-pl { opacity: 1; } }
+@media (hover: none) { .lib-ac-add, .lib-ac-pl, .lib-ac-open { opacity: 1; } }
 
 /* Favorite (★) toggle — mirrors the add button but anchored bottom-LEFT so it
    never overlaps the bottom-right "+ queue" button. A favorited album shows a

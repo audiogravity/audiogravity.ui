@@ -11,7 +11,7 @@
  * styles feed getComputedStyle, and rects/scroll sizes are defined directly.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { keepInView } from './keep-in-view.js';
+import { keepInView, scrollParent } from './keep-in-view.js';
 
 /** Give an element a fixed rect and scroll geometry. */
 function geom(el, { rect, scrollWidth = 0, clientWidth = 0, scrollHeight = 0, clientHeight = 0 }) {
@@ -127,5 +127,47 @@ describe('keepInView', () => {
         });
         document.body.appendChild(lone);
         expect(() => keepInView(lone)).not.toThrow();
+    });
+});
+
+describe('scrollParent — the container that really scrolls', () => {
+    beforeEach(() => { document.body.innerHTML = ''; });
+
+    /**
+     * The library's shape at 390×844: `.main-content` scrolls (overflow-y auto) several
+     * levels above a `.lib-scroll` wrapper that only grows with its content.
+     */
+    function library() {
+        const main = geom(document.createElement('main'), {
+            rect: { left: 0, top: 0, width: 390, height: 844 }, scrollHeight: 2400, clientHeight: 844,
+        });
+        main.style.overflowY = 'auto';
+        const wrapper = geom(document.createElement('div'), {
+            rect: { left: 0, top: 105, width: 390, height: 1675 }, scrollHeight: 1675, clientHeight: 1675,
+        });
+        const view = document.createElement('section');
+        const browse = document.createElement('div');
+        wrapper.appendChild(browse);
+        view.appendChild(wrapper);
+        main.appendChild(view);
+        document.body.appendChild(main);
+        return { main, wrapper, browse };
+    }
+
+    it('skips a wrapper that grows with its content, and finds the one that scrolls', () => {
+        const { main, browse } = library();
+        expect(scrollParent(browse, 'y')).toBe(main);
+    });
+
+    it('answers null while nothing overflows', () => {
+        const { main, browse } = library();
+        Object.defineProperty(main, 'scrollHeight', { value: 844, configurable: true });
+        expect(scrollParent(browse, 'y')).toBe(null);
+    });
+
+    it('never answers a clipping container', () => {
+        const { main, browse } = library();
+        main.style.overflowY = 'hidden';
+        expect(scrollParent(browse, 'y')).toBe(null);
     });
 });

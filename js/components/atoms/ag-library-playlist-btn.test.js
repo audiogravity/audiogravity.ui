@@ -67,3 +67,49 @@ describe('ag-library-playlist-btn', () => {
         expect(el.querySelector('button').getAttribute('aria-label')).toBe('Add the album to a playlist');
     });
 });
+
+describe('ag-library-playlist-btn — its three modes', () => {
+    it.each([
+        ['add', 'playlist-add', 'Add to playlist'],
+        ['remove', 'playlist-remove', 'Remove from the playlist'],
+        ['open', 'playlist-open', 'Open the playlist'],
+    ])('the %s mode fires %s and is named "%s"', async (mode, type, label) => {
+        const el = await mount({ mode });
+        const seen = [];
+        document.body.addEventListener(type, (e) => seen.push(e.type));
+        el.querySelector('button').click();
+        expect(seen).toEqual([type]);
+        expect(el.querySelector('button').getAttribute('aria-label')).toBe(label);
+    });
+
+    it('takes the bottom-left corner of a cover to open a playlist, which has no ★ there', async () => {
+        const open = await mount({ mode: 'open', variant: 'card' });
+        const add = await mount({ mode: 'add', variant: 'card' });
+        expect(open.querySelector('button').className).toBe('lib-ac-open');
+        expect(add.querySelector('button').className).toBe('lib-ac-pl');
+    });
+
+    it('keeps the row look in every mode, beside the other row controls', async () => {
+        const remove = await mount({ mode: 'remove' });
+        expect(remove.querySelector('button').className).toBe('lib-lr-pl');
+    });
+
+    it('falls back to "add" for an unknown mode', async () => {
+        const el = await mount({ mode: 'shuffle' });
+        let added = 0;
+        document.body.addEventListener('playlist-add', () => { added += 1; });
+        el.querySelector('button').click();
+        expect(added).toBe(1);
+        expect(el.querySelector('button').getAttribute('aria-label')).toBe('Add to playlist');
+    });
+
+    it('never lets an "open" reach the card that plays the playlist', async () => {
+        const card = document.createElement('div');
+        let played = 0;
+        card.addEventListener('click', () => { played += 1; });
+        document.body.appendChild(card);
+        const el = await mount({ mode: 'open', variant: 'card' }, card);
+        el.querySelector('button').click();
+        expect(played).toBe(0);
+    });
+});

@@ -11,9 +11,11 @@
  * and later removes every copy at once. This dialog reports what it answered —
  * `added` and `already` — in words.
  *
- * Neither write is retried automatically (`apiPost(…, false)`): a creation whose
- * answer was lost on the way back would otherwise create a second playlist. The
- * error names the reason and the person tries again; an add is safe to repeat.
+ * Neither write is retried automatically (see the playlist helpers of library-api.js):
+ * a creation whose answer was lost on the way back would otherwise create a second
+ * playlist. The error names the reason and the person tries again; an add is safe to
+ * repeat. The helpers also announce the change, so a grid of the account's playlists
+ * on screen reads itself again.
  *
  * A playlist created a moment ago is listed by the core until the service lists it
  * itself (HIGHRESAUDIO shows a newcomer only seconds later): the dialog shows what
@@ -31,7 +33,8 @@
  *     itemId: 't1_a1', title: 'Tukuman', subtitle: 'Enzo Favata', coverToken: 'url:…' });
  */
 import { LitElement, html, nothing } from 'lit';
-import { apiGet, apiPost } from '../../api.js';
+import { apiGet } from '../../api.js';
+import { addToPlaylist, createPlaylist, failureReason } from '../../library-api.js';
 import { showToast } from '../../ui-helpers.js';
 import { iconPlus } from '../../ag-icons.js';
 import { coverUrl } from '../utils-lit.js';
@@ -88,13 +91,6 @@ export function describeAdd(itemType, title, playlist, { added, already }) {
         : '';
     return { type: 'success', title: 'Added', message: lead + rest };
 }
-
-/**
- * The reason to show for a failed request: the core's own words when it gave some.
- * @param {Error & {detail?: string}} err
- * @returns {string}
- */
-const reasonOf = (err) => err?.detail || err?.message || 'The request failed.';
 
 export class AgPlaylistPicker extends LitElement {
     static properties = {
@@ -169,7 +165,7 @@ export class AgPlaylistPicker extends LitElement {
             this._playlists = Array.isArray(listed) ? listed : [];
         } catch (err) {
             if (request !== this._request) return;
-            this._loadError = reasonOf(err);
+            this._loadError = failureReason(err);
             this._playlists = [];
         }
     }
@@ -183,19 +179,19 @@ export class AgPlaylistPicker extends LitElement {
         const item = this._item;
         this._busy = true;
         try {
-            const result = await apiPost('/library/playlists/add', {
-                source_id: item.sourceId,
-                playlist_id: playlist.id,
-                item_id: item.itemId,
-                item_type: item.itemType,
-            }, false);
+            const result = await addToPlaylist({
+                sourceId: item.sourceId,
+                playlistId: playlist.id,
+                itemId: item.itemId,
+                itemType: item.itemType,
+            });
             const toast = describeAdd(item.itemType, item.title, playlist.title, result ?? {});
             showToast(toast.type, toast.title, toast.message);
             this._busy = false;
             this._close();
             return true;
         } catch (err) {
-            showToast('error', 'Not added', reasonOf(err));
+            showToast('error', 'Not added', failureReason(err));
             this._busy = false;
             return false;
         }
@@ -209,11 +205,9 @@ export class AgPlaylistPicker extends LitElement {
         this._busy = true;
         let created;
         try {
-            created = await apiPost('/library/playlists', {
-                source_id: item.sourceId, title: name,
-            }, false);
+            created = await createPlaylist({ sourceId: item.sourceId, title: name });
         } catch (err) {
-            showToast('error', 'Not created', reasonOf(err));
+            showToast('error', 'Not created', failureReason(err));
             this._busy = false;
             return;
         }

@@ -1,0 +1,183 @@
+/**
+ * @module PlaylistPage
+ * @description The page of one streaming playlist (ag-playlist-page): a way back, the
+ * playlist's cover and words, Play / Queue (and Rename / Delete on the account's own),
+ * then its tracks as library list rows (library-list-row.css). The dialogs are
+ * ag-modal's own frame (modal.css).
+ */
+
+/* The page sits in the browse's scroll, where the list rows run edge to edge with a
+   20px gutter of their own (.lib-list-row): the head and the actions share it. There
+   is no 20px spacing token — the rows' figure is matched, as the queue does. */
+.ag-pp {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-sm);
+}
+
+.ag-pp-back,
+.ag-pp-head,
+.ag-pp-actions,
+.ag-pp-note {
+    margin-inline: 20px;
+}
+
+/* 44 px high: a finger's target, like every control of the player. */
+.ag-pp-back {
+    align-self: flex-start;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0;
+    background: none;
+    border: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.ag-pp-back:hover {
+    color: var(--text-primary);
+}
+
+.ag-pp-head {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-lg);
+}
+
+/* A banner is laid out horizontally: it takes the width, the words go under it. */
+.ag-pp-head--wide {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.ag-pp-head--wide .ag-pp-cover {
+    display: block;
+    width: 100%;
+}
+
+/* The atom sizes its cell inline from `size`; a banner is the page's width instead. */
+.ag-pp-head--wide .ag-pp-cover .ag-libcv {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 1;
+}
+
+.ag-pp-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 0;
+}
+
+/* Worded and coloured as the "Playlist" tag of a card (.lib-ac-fmt). */
+.ag-pp-kicker {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xxs);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--color-success-text);
+}
+
+.ag-pp-title {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.ag-pp-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.ag-pp-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.ag-pp-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.ag-pp-actions .action-btn {
+    min-height: 44px;
+}
+
+.ag-pp-spacer {
+    flex-grow: 1;
+}
+
+/* Rename and Delete: bordered squares, the size of the buttons beside them. */
+.ag-pp-icon-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ag-pp-icon-btn:hover,
+.ag-pp-icon-btn:active {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.ag-pp-icon-btn:focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 2px;
+}
+
+.ag-pp-tracks {
+    border-top: 1px solid var(--border-color);
+}
+
+/* A track on its way out: shown until the service has answered, and not tappable. */
+.ag-pp-pending {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.ag-pp-note {
+    margin-block: 0;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.ag-pp-error {
+    color: var(--color-error-text);
+}
+
+.ag-pp-delete-q {
+    margin: 0 0 var(--spacing-sm);
+    font-size: var(--font-size-md);
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.ag-pp-delete-note {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    color: var(--text-secondary);
+}

@@ -5,13 +5,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock api.js before importing library-api
 vi.mock('./api.js', () => ({
+    apiGet: vi.fn().mockResolvedValue([]),
     apiPost: vi.fn().mockResolvedValue({}),
+    apiPut: vi.fn().mockResolvedValue({}),
     apiDelete: vi.fn().mockResolvedValue({}),
 }));
 vi.mock('./ui-helpers.js', () => ({ showToast: vi.fn() }));
 
-import { queueItem, upnpPlay, playWithFeedback } from './library-api.js';
-import { apiPost } from './api.js';
+import {
+    queueItem, upnpPlay, playWithFeedback,
+    PLAYLISTS_CHANGED_EVENT, failureReason, fetchPlaylistTracks, createPlaylist,
+    addToPlaylist, removeFromPlaylist, renamePlaylist, deletePlaylist,
+} from './library-api.js';
+import { apiGet, apiPost, apiPut, apiDelete } from './api.js';
 import { showToast } from './ui-helpers.js';
 
 describe('queueItem', () => {
@@ -39,6 +45,30 @@ describe('queueItem', () => {
         // The core exposes no direct-push route; this guards against a UI
         // regression that would reintroduce one.
         expect(apiPost).not.toHaveBeenCalledWith('/hqplayer/play-library', expect.anything());
+    });
+
+    it('carries the position a playlist is played from', async () => {
+        await queueItem({ sourceId: 'src_highresaudio', itemId: 'mine:5549', itemType: 'playlist',
+            action: 'play', startIndex: 2 });
+        expect(apiPost.mock.calls[0][1]).toMatchObject({ item_type: 'playlist', start_index: 2 });
+    });
+
+    it('sends the first position too — 0 is a position, not an absence', async () => {
+        await queueItem({ sourceId: 'src_highresaudio', itemId: 'mine:5549', itemType: 'playlist',
+            action: 'play', startIndex: 0 });
+        expect(apiPost.mock.calls[0][1].start_index).toBe(0);
+    });
+
+    it('names the track the position points at, so the core can find it if it moved', async () => {
+        await queueItem({ sourceId: 'src_highresaudio', itemId: 'mine:5549', itemType: 'playlist',
+            action: 'play', startIndex: 2, startItemId: 't3_a3' });
+        expect(apiPost.mock.calls[0][1]).toMatchObject({ start_index: 2, start_item_id: 't3_a3' });
+    });
+
+    it('leaves the field out when no position is given', async () => {
+        await queueItem({ sourceId: 'src_mpd', itemId: '1', itemType: 'album', action: 'play' });
+        expect(apiPost.mock.calls[0][1].start_index).toBeUndefined();
+        expect(apiPost.mock.calls[0][1].start_item_id).toBeUndefined();
     });
 });
 
@@ -256,5 +286,105 @@ describe('playWithFeedback', () => {
         await expect(playWithFeedback(vi.fn().mockRejectedValue(undefined)))
             .resolves.toBe(false);
         expect(showToast.mock.calls[0][2]).toBe('Could not start playback');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// The account's playlists — no write retried, every change announced
+// ---------------------------------------------------------------------------
+
+describe('playlist helpers', () => {
+    let heard;
+    const listener = (e) => heard.push(e.detail);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        heard = [];
+        window.addEventListener(PLAYLISTS_CHANGED_EVENT, listener);
+    });
+
+    afterEach(() => window.removeEventListener(PLAYLISTS_CHANGED_EVENT, listener));
+
+    it('reads a playlist\'s tracks, and an answer that is not a list as none', async () => {
+        apiGet.mockResolvedValueOnce([{ id: 't1_a1' }]);
+        await expect(fetchPlaylistTracks('src_highresaudio', 'mine:5549'))
+            .resolves.toEqual([{ id: 't1_a1' }]);
+        expect(apiGet).toHaveBeenCalledWith(
+            '/library/playlist-tracks?source_id=src_highresaudio&playlist_id=mine%3A5549');
+        apiGet.mockResolvedValueOnce(null);
+        await expect(fetchPlaylistTracks('src_highresaudio', 'mine:5549')).resolves.toEqual([]);
+        expect(heard).toEqual([]);                  // a read changes nothing
+    });
+
+    it('creates without retrying, and announces the playlist made', async () => {
+        apiPost.mockResolvedValueOnce({ id: 'mine:5660', title: 'Late evening' });
+        await createPlaylist({ sourceId: 'src_highresaudio', title: 'Late evening', description: 'Quiet' });
+        expect(apiPost).toHaveBeenCalledWith('/library/playlists', {
+            source_id: 'src_highresaudio', title: 'Late evening', description: 'Quiet',
+        }, false);
+        expect(heard).toEqual([{ sourceId: 'src_highresaudio', playlistId: 'mine:5660' }]);
+    });
+
+    it('announces an add only when something went in', async () => {
+        apiPost.mockResolvedValueOnce({ added: 0, already: 1 });
+        await addToPlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', itemId: 't1_a1', itemType: 'track' });
+        expect(heard).toEqual([]);
+        apiPost.mockResolvedValueOnce({ added: 8, already: 0 });
+        await addToPlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', itemId: 'a1', itemType: 'album' });
+        expect(apiPost).toHaveBeenLastCalledWith('/library/playlists/add', {
+            source_id: 'src_highresaudio', playlist_id: 'mine:5549', item_id: 'a1', item_type: 'album',
+        }, false);
+        expect(heard).toEqual([{ sourceId: 'src_highresaudio', playlistId: 'mine:5549' }]);
+    });
+
+    it('announces a removal only when the track was there', async () => {
+        apiPost.mockResolvedValueOnce({ removed: 0 });
+        await removeFromPlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', itemId: 't1_a1' });
+        expect(heard).toEqual([]);
+        apiPost.mockResolvedValueOnce({ removed: 1 });
+        await removeFromPlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', itemId: 't1_a1' });
+        expect(apiPost).toHaveBeenLastCalledWith('/library/playlists/remove', {
+            source_id: 'src_highresaudio', playlist_id: 'mine:5549', item_id: 't1_a1',
+        }, false);
+        expect(heard).toHaveLength(1);
+    });
+
+    it('renames with both fields, without retrying', async () => {
+        apiPut.mockResolvedValueOnce({ id: 'mine:5549', title: 'Late evening' });
+        await renamePlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549',
+            title: 'Late evening', description: '' });
+        expect(apiPut).toHaveBeenCalledWith('/library/playlists', {
+            source_id: 'src_highresaudio', playlist_id: 'mine:5549', title: 'Late evening', description: '',
+        }, false);
+        expect(heard).toEqual([{ sourceId: 'src_highresaudio', playlistId: 'mine:5549' }]);
+    });
+
+    it('sends no description when none is given — the core then keeps the current one', async () => {
+        apiPut.mockResolvedValueOnce({ id: 'mine:5549', title: 'Late evening' });
+        await renamePlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', title: 'Late evening' });
+        // An empty string would CLEAR it: the core replaces both fields with what it gets.
+        expect(JSON.stringify(apiPut.mock.calls[0][1])).not.toContain('description');
+    });
+
+    it('deletes without retrying — a retried deletion would answer "no longer exists"', async () => {
+        apiDelete.mockResolvedValueOnce({ deleted: true });
+        await deletePlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549' });
+        expect(apiDelete).toHaveBeenCalledWith(
+            '/library/playlists?source_id=src_highresaudio&playlist_id=mine%3A5549', false);
+        expect(heard).toHaveLength(1);
+    });
+
+    it('announces nothing when a write fails', async () => {
+        apiPut.mockRejectedValueOnce(new Error('HTTP 504'));
+        await expect(renamePlaylist({ sourceId: 'src_highresaudio', playlistId: 'mine:5549', title: 'x' }))
+            .rejects.toThrow('HTTP 504');
+        expect(heard).toEqual([]);
+    });
+
+    it('shows the core\'s own words for a failure, and a sentence when there are none', () => {
+        expect(failureReason(Object.assign(new Error('HTTP 400'), { detail: 'This playlist no longer exists' })))
+            .toBe('This playlist no longer exists');
+        expect(failureReason(new Error('Network down'))).toBe('Network down');
+        expect(failureReason(undefined)).toBe('The request failed.');
     });
 });

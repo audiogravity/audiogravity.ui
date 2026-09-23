@@ -5,7 +5,7 @@
  * and the conditional-undefined dance on every callsite.
  */
 
-import { apiGet, apiPost, apiDelete } from './api.js';
+import { apiGet, apiPost, apiPut, apiDelete } from './api.js';
 import { showToast } from './ui-helpers.js';
 
 /**
@@ -23,6 +23,12 @@ import { showToast } from './ui-helpers.js';
  * @param {string} [opts.hierarchy]   - 'browse' | 'search' | …
  * @param {string} [opts.searchQuery] - Original search query (search hierarchy).
  * @param {string} [opts.itemTitle]   - Display title; helps Roon refresh stale item_keys.
+ * @param {number} [opts.startIndex]  - Queue an album or a playlist from this position on
+ *   (0 = its first track); the tracks before it are left out. v1: HIGHRESAUDIO albums and
+ *   playlists — the core refuses it elsewhere.
+ * @param {string} [opts.startItemId] - The id of the track at `startIndex`. The core reads
+ *   the list again when it plays: if the track moved meanwhile it starts where the track now
+ *   is, and if it left, the play is refused rather than started on another track.
  */
 export function queueItem({
     sourceId,
@@ -34,6 +40,8 @@ export function queueItem({
     hierarchy,
     searchQuery,
     itemTitle,
+    startIndex,
+    startItemId,
 }) {
     // Routing to HQPlayer, when it is the selected output, is decided by the
     // BACKEND (it owns that setting) — every client behaves identically.
@@ -47,6 +55,8 @@ export function queueItem({
         hierarchy,
         search_query: searchQuery || undefined,
         item_title:   itemTitle || undefined,
+        start_index:  startIndex ?? undefined,
+        start_item_id: startItemId || undefined,
     });
 }
 
@@ -90,6 +100,130 @@ export function addFavorite(sourceId, itemId, itemType = 'album') {
  */
 export function removeFavorite(sourceId, itemId, itemType = 'album') {
     return apiDelete(`/library/favorite?source_id=${encodeURIComponent(sourceId)}&item_id=${encodeURIComponent(itemId)}&item_type=${itemType}`);
+}
+
+// ---------------------------------------------------------------------------
+// The account's playlists (v1: HIGHRESAUDIO — PLAYLIST_EDIT_SOURCES)
+// ---------------------------------------------------------------------------
+// No write below is retried automatically (`false`): a request whose answer was lost
+// on the way back would be sent twice — a second playlist for a creation, an error
+// for a deletion that had in fact gone through. The reason is shown and the person
+// tries again.
+
+/**
+ * Window event announced after a write that changed a streaming account's playlists.
+ * The grid of the account's playlists and an open playlist page read theirs again on
+ * it, whichever screen made the change. detail: `{ sourceId, playlistId }`.
+ */
+export const PLAYLISTS_CHANGED_EVENT = 'ag-playlists-changed';
+
+/**
+ * @param {string} sourceId
+ * @param {string} [playlistId] - '' when the write names none.
+ */
+function announcePlaylistChange(sourceId, playlistId) {
+    window.dispatchEvent(new CustomEvent(PLAYLISTS_CHANGED_EVENT, {
+        detail: { sourceId, playlistId: playlistId ?? '' },
+    }));
+}
+
+/**
+ * The reason to show for a failed request: the core's own words when it gave some.
+ * Not getUserFriendlyError: that one answers a 400 with a generic sentence, and the
+ * core's refusals here are precise ("This playlist no longer exists").
+ *
+ * @param {Error & {detail?: string}} err
+ * @returns {string}
+ */
+export const failureReason = (err) => err?.detail || err?.message || 'The request failed.';
+
+/**
+ * The tracks of a playlist, the account's own or the service's.
+ *
+ * @param {string} sourceId
+ * @param {string} playlistId - As the browse lists it (`mine:5549`, `editorial:791`).
+ * @returns {Promise<Array<object>>} LibraryTrack entries. A track's position in this
+ *   list is the `startIndex` queueItem takes to play the playlist from it.
+ */
+export async function fetchPlaylistTracks(sourceId, playlistId) {
+    const params = new URLSearchParams({ source_id: sourceId, playlist_id: playlistId });
+    const tracks = await apiGet(`/library/playlist-tracks?${params}`);
+    return Array.isArray(tracks) ? tracks : [];
+}
+
+/**
+ * Create a playlist in the account behind a streaming source.
+ *
+ * @param {{sourceId: string, title: string, description?: string}} opts
+ * @returns {Promise<{id: string, title: string}>} Its id as the browse lists it.
+ */
+export async function createPlaylist({ sourceId, title, description = '' }) {
+    const created = await apiPost('/library/playlists', {
+        source_id: sourceId, title, description,
+    }, false);
+    announcePlaylistChange(sourceId, created?.id);
+    return created;
+}
+
+/**
+ * Add a track or a whole album to one of the account's playlists. The core writes
+ * only what the playlist lacks.
+ *
+ * @param {{sourceId: string, playlistId: string, itemId: string,
+ *          itemType: 'track'|'album'}} opts
+ * @returns {Promise<{added: number, already: number}>}
+ */
+export async function addToPlaylist({ sourceId, playlistId, itemId, itemType }) {
+    const result = await apiPost('/library/playlists/add', {
+        source_id: sourceId, playlist_id: playlistId, item_id: itemId, item_type: itemType,
+    }, false);
+    if (result?.added) announcePlaylistChange(sourceId, playlistId);
+    return result;
+}
+
+/**
+ * Take a track out of one of the account's playlists — every copy of it, which is
+ * what the service does.
+ *
+ * @param {{sourceId: string, playlistId: string, itemId: string}} opts
+ * @returns {Promise<{removed: number}>} 1 when it was taken out, 0 when the playlist
+ *   no longer held it.
+ */
+export async function removeFromPlaylist({ sourceId, playlistId, itemId }) {
+    const result = await apiPost('/library/playlists/remove', {
+        source_id: sourceId, playlist_id: playlistId, item_id: itemId,
+    }, false);
+    if (result?.removed) announcePlaylistChange(sourceId, playlistId);
+    return result;
+}
+
+/**
+ * Save the name, and the description, of one of the account's playlists. The service
+ * replaces both together; a description left out is read back and kept by the core,
+ * and an empty one clears it.
+ *
+ * @param {{sourceId: string, playlistId: string, title: string, description?: string}} opts
+ * @returns {Promise<{id: string, title: string}>}
+ */
+export async function renamePlaylist({ sourceId, playlistId, title, description }) {
+    const saved = await apiPut('/library/playlists', {
+        source_id: sourceId, playlist_id: playlistId, title, description,
+    }, false);
+    announcePlaylistChange(sourceId, playlistId);
+    return saved;
+}
+
+/**
+ * Delete one of the account's playlists.
+ *
+ * @param {{sourceId: string, playlistId: string}} opts
+ * @returns {Promise<{deleted: boolean}>}
+ */
+export async function deletePlaylist({ sourceId, playlistId }) {
+    const params = new URLSearchParams({ source_id: sourceId, playlist_id: playlistId });
+    const result = await apiDelete(`/library/playlists?${params}`, false);
+    announcePlaylistChange(sourceId, playlistId);
+    return result;
 }
 
 /**

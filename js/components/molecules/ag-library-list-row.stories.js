@@ -70,3 +70,35 @@ BannerRow.args = {
     actionable: true,
     wide: true,
 };
+
+/** A playlist's row in the browse: "open" its page, "+" to queue it; a tap plays it. */
+export const PlaylistRow = () => html`
+  <div style="max-width:480px">
+    <ag-library-list-row
+        fallback="list"
+        title="Audiogravity test"
+        subtitle="Playlist · For the integration"
+        openable
+        actionable
+        @playlist-open=${() => console.log('playlist-open')}>
+    </ag-library-list-row>
+  </div>
+`;
+
+/**
+ * The tracks of a playlist page: position, duration, and the button of the page —
+ * "remove" on the account's own playlist, "add to playlist" on the service's.
+ */
+export const PlaylistPageTracks = () => html`
+  <div style="max-width:480px">
+    <ag-library-list-row fallback="track" title="Stars (Live – Montreux Jazz Festival 1976)"
+        subtitle="Nina Simone · The Montreux Years" position="1" note="6:37" removable
+        @playlist-remove=${() => console.log('playlist-remove')}></ag-library-list-row>
+    <ag-library-list-row fallback="track" title="Pressure Down (Remastered)"
+        subtitle="John Farnham · Whispering Jack" position="10" note="3:50" removable>
+    </ag-library-list-row>
+    <ag-library-list-row fallback="track" title="Grace"
+        subtitle="Jeff Buckley" position="3" note="5:22" playlistable
+        @playlist-add=${() => console.log('playlist-add')}></ag-library-list-row>
+  </div>
+`;

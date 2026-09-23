@@ -60,6 +60,21 @@ export const iconListPlus = svg`
     <path d="M18 9v6"/>
     <path d="M21 12h-6"/>`;
 
+/** Lines with a minus — take a track out of a playlist. (Lucide: list-minus) */
+export const iconListMinus = svg`
+    <path d="M16 5H3"/>
+    <path d="M11 12H3"/>
+    <path d="M16 19H3"/>
+    <path d="M21 12h-6"/>`;
+
+/** Lines with a note — open a playlist, to see its tracks. (Lucide: list-music) */
+export const iconListMusic = svg`
+    <path d="M16 5H3"/>
+    <path d="M11 12H3"/>
+    <path d="M11 19H3"/>
+    <path d="M21 16V5"/>
+    <circle cx="18" cy="16" r="3"/>`;
+
 /** Padlock — DSD-native volume-lock indicator. (Lucide: lock) */
 export const iconDsdLock = svg`
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
