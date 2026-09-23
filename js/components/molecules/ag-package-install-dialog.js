@@ -351,6 +351,9 @@ export class AgPackageInstallDialog extends LitElement {
         if (this._loading) {
             return html`<p class="ag-pid-hint">Reading what ${this.pkg?.label} asks…</p>`;
         }
+        // A trial notice is not a configuration step, so it does not answer the
+        // hint below — a package that only declares one still configures nothing
+        // by being installed, and that is worth saying.
         const nothingToShow = !this._versions.length && !this._needsAgreement
             && !this.pkg?.web_credentials;
         return html`
@@ -365,9 +368,29 @@ export class AgPackageInstallDialog extends LitElement {
                     be listed right now.
                 </p>` : nothing}
             ${this._renderVersions()}
+            ${this._renderTrialNotice()}
             ${this._renderWebCredentials()}
             ${this._renderNotices()}
         `;
+    }
+
+    /**
+     * What the vendor limits until a licence key is entered, when they limit
+     * anything.
+     *
+     * Read from the package's own declaration (`trial_notice`), so this dialog
+     * knows nothing about any particular package. Shown before the install
+     * because the limit is one Audiogravity cannot explain afterwards:
+     * HQPlayer Embedded stops taking commands 30 minutes after it starts
+     * without a licence, and writes that in no log of its own, so all the box
+     * ever reads is a player gone unreachable.
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderTrialNotice() {
+        const notice = this.pkg?.trial_notice;
+        if (!notice) return nothing;
+        return html`<p class="ag-pid-warning">${notice}</p>`;
     }
 
     /**

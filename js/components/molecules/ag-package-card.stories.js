@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import './ag-package-card.js';
+import { HQPLAYERD_TRIAL_NOTICE } from './package-fixtures.js';
 
 export default {
     title: 'Molecules/PackageCard',
@@ -169,6 +170,33 @@ FailedInstall.args = {
         installed_version: null,
         available_version: null
     },
+    isChecking: false,
+    isGuest: false
+};
+
+/**
+ * Installed, and running on the vendor's trial until a licence key is entered.
+ *
+ * The limit is one the box cannot observe: HQPlayer Embedded stops taking
+ * commands 30 minutes after it starts without a licence and writes that in no
+ * log of its own, so the player simply reads as unavailable. The card carries
+ * the notice the package declares, which is the only warning there can be.
+ */
+export const InstalledOnAVendorTrial = Template.bind({});
+InstalledOnAVendorTrial.args = {
+    pkg: {
+        ...pkgMock,
+        id: 'hqplayerd',
+        label: 'HQPlayer Embedded',
+        description: 'Signalyst HQPlayer Embedded — upsampling player and DSP engine',
+        service_id: 'hqplayerd',
+        installer_type: 'apt_deb',
+        status: 'installed',
+        installed_version: '6.0.2-3',
+        available_version: '6.0.2-3',
+        trial_notice: HQPLAYERD_TRIAL_NOTICE
+    },
+    configuredByAg: true,
     isChecking: false,
     isGuest: false
 };

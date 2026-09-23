@@ -308,6 +308,31 @@ export class AgPackageCard extends LitElement {
         `;
     }
 
+    /**
+     * What the vendor limits until a licence key is entered.
+     *
+     * Read from the package's own declaration (`trial_notice`), so this card
+     * knows nothing about any particular package. Shown on anything that is on
+     * the box — installed, updating, or in error while installed — since the
+     * limit applies throughout; only a package that is not installed at all is
+     * left to the install dialog.
+     *
+     * It has to be on the card because Audiogravity never learns whether a
+     * licence was entered: HQPlayer Embedded takes its key on its own web page
+     * and writes no marker the box can read. Which is also why the notice is
+     * worded as a condition and carries **no badge asserting a trial** — a
+     * badge would tell an operator who has paid that they are on one, every
+     * time they open the page, with no way to correct it.
+     *
+     * @returns {import('lit').TemplateResult|string}
+     */
+    _renderTrialNotice() {
+        if (!this.pkg.trial_notice || this.pkg.status === 'not_installed') return '';
+        return html`
+            <p class="software-trial-notice">${this.pkg.trial_notice}</p>
+        `;
+    }
+
     render() {
         if (!this.pkg) return html``;
 
@@ -337,6 +362,8 @@ export class AgPackageCard extends LitElement {
                 <div class="software-description">${this.pkg.description}</div>
 
                 ${this._renderAvailability()}
+
+                ${this._renderTrialNotice()}
 
                 ${this._renderVersions()}
 

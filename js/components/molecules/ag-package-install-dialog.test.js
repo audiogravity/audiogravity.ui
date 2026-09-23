@@ -406,3 +406,39 @@ describe('ag-package-install-dialog', () => {
         expect(el.querySelector('.modal-body button')).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// What the vendor limits until a licence is entered. Shown BEFORE the install,
+// because it is a limit Audiogravity cannot observe and so cannot explain
+// afterwards: HQPlayer Embedded stops taking commands 30 minutes after it
+// starts without a licence, and writes that in no log of its own.
+
+describe('ag-package-install-dialog — a vendor trial limit', () => {
+    const TRIAL = 'Vendor trial: this player stops after 10 minutes unless a key is entered.'
+        // Deliberately NOT the sentence the registry ships: a component must show
+        // whatever notice it is handed, so this test would still pass if the real
+        // wording changed. The stories carry the real one (package-fixtures.js).;
+
+    beforeEach(() => { document.body.innerHTML = ''; apiGet.mockReset(); });
+
+    it('says it before anything is installed', async () => {
+        serve();
+        const el = await open({ ...HQPLAYERD, trial_notice: TRIAL });
+        expect(el.textContent).toContain(TRIAL);
+    });
+
+    it('says nothing for a package the vendor does not limit', async () => {
+        serve();
+        const el = await open(MPD);
+        expect(el.textContent).not.toContain('30 minutes at a time');
+    });
+
+    it('still says nothing is configured by installing it', async () => {
+        // A trial limit is not a configuration step: the two say different things,
+        // and a package that only declares a limit still configures nothing.
+        serve();
+        const el = await open({ ...MPD, trial_notice: TRIAL });
+        expect(el.textContent).toContain(TRIAL);
+        expect(el.textContent).toContain('Nothing is configured by installing it');
+    });
+});

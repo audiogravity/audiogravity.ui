@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import './ag-package-install-dialog.js';
+import { HQPLAYERD_TRIAL_NOTICE } from './package-fixtures.js';
 
 export default {
     title: 'Molecules/PackageInstallDialog',
@@ -78,7 +79,8 @@ const Template = (args) => {
 /**
  * HQPlayer Embedded on Debian 13, as measured: a licence to accept, the 6 line
  * on offer, the 5 line named but not offered — it needs libgmpris, which
- * nothing publishes there — and a password for its web interface.
+ * nothing publishes there — a password for its web interface, and what the
+ * vendor limits until a licence key is entered.
  */
 export const LicenceAndVersionChoice = Template.bind({});
 LicenceAndVersionChoice.args = {
@@ -90,6 +92,7 @@ LicenceAndVersionChoice.args = {
         offers_version_choice: true,
         doc_url: 'https://signalyst.com/',
         web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
+        trial_notice: HQPLAYERD_TRIAL_NOTICE,
     },
     notices: [LICENCE, GROUPS],
     versions: [{ major: 6, version: '6.0.2-3', missing: [] }],

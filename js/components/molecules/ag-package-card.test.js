@@ -442,3 +442,64 @@ describe('ag-package-card — a web interface with no password', () => {
         expect(button(card)).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// What the vendor limits until a licence is entered. The box cannot observe it:
+// HQPlayer Embedded stops taking commands 30 minutes after it starts without a
+// licence and writes that in no log, so the player just reads as unavailable
+// with nothing to act on. The card has to say it beforehand.
+
+describe('ag-package-card — a vendor trial limit', () => {
+    const TRIAL = 'Vendor trial: this player stops after 10 minutes unless a key is entered.'
+        // Deliberately NOT the sentence the registry ships: a component must show
+        // whatever notice it is handed, so this test would still pass if the real
+        // wording changed. The stories carry the real one (package-fixtures.js).;
+    const notice = card => [...card.querySelectorAll('.software-trial-notice')]
+        .map(n => n.textContent.trim()).find(t => t === TRIAL);
+
+    beforeEach(() => { document.body.innerHTML = ''; session.guest = false; });
+
+    it('says what the vendor limits, once it is installed', async () => {
+        const card = await mount({
+            ...basePkg, id: 'hqplayerd', label: 'HQPlayer Embedded',
+            status: 'installed', installed_version: '6.0.2-3', trial_notice: TRIAL,
+        });
+        expect(notice(card)).toBe(TRIAL);
+    });
+
+    it('carries no badge asserting a trial', async () => {
+        // The box never learns whether a licence was entered — HQPlayer takes its
+        // key on its own web page and writes no marker. A badge would tell an
+        // operator who has paid that they are on a trial, for ever.
+        const card = await mount({
+            ...basePkg, id: 'hqplayerd', label: 'HQPlayer Embedded',
+            status: 'installed', installed_version: '6.0.2-3', trial_notice: TRIAL,
+        });
+        expect(card.querySelector('.badge.warning')).toBeNull();
+    });
+
+    it('keeps saying it while the package is updating', async () => {
+        // The limit applies throughout, and the card is looked at most just then.
+        const card = await mount({
+            ...basePkg, id: 'hqplayerd', label: 'HQPlayer Embedded',
+            status: 'updating', installed_version: '6.0.2-3', trial_notice: TRIAL,
+        });
+        expect(notice(card)).toBe(TRIAL);
+    });
+
+    it('leaves it to the install dialog before then', async () => {
+        const card = await mount({
+            ...basePkg, id: 'hqplayerd', label: 'HQPlayer Embedded',
+            status: 'not_installed', installed_version: null, trial_notice: TRIAL,
+        });
+        expect(notice(card)).toBeUndefined();
+    });
+
+    it('says nothing for a package the vendor does not limit', async () => {
+        const card = await mount({
+            ...basePkg, id: 'mpd', label: 'MPD',
+            status: 'installed', installed_version: '0.23.5', trial_notice: null,
+        });
+        expect(notice(card)).toBeUndefined();
+    });
+});
