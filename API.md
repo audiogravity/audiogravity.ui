@@ -98,6 +98,8 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
 | GET | `/library/signed/{sig}/{path}` | **HQPlayer-facing** (public, HMAC-signed): the same files, with the signature as a path segment so the URL ends with the file's extension — HQPlayer picks its decoder from it. An MP3 is sent without a size and from its first audio frame (HQPlayer keeps neither a sized MP3 nor one opening with its tag). Not called by the UI. |
+| GET | `/library/flac/{sig}/{path}.flac` | **HQPlayer-facing** (public, HMAC-signed, HTTP Range/206): a local-library file in a format HQPlayer cannot decode — ALAC or AAC in an M4A, Ogg, WMA, APE… — converted to FLAC on demand and kept in a bounded on-disk cache. The conversion is a **complete** file, served with its size and byte ranges, so HQPlayer can seek inside it. The signature covers the library path; the URL ends in `.flac` because HQPlayer picks its decoder from there. Answers **415** for a format served as it is (DSD is never converted), **502** when the conversion fails. Not called by the UI. |
+| GET | `/library/remote-flac/{sig}/{res}.flac` | **HQPlayer-facing** (public, HMAC-signed, HTTP Range/206): the same conversion for a track AG does not hold — a media server's own address, quoted whole into one path segment and signed as such. ffmpeg fetches it. Same 415 / 502. Not called by the UI. |
 | POST | `/library/upnp-play` | Play or enqueue a UPnP item — body `{ source_id, res, title?, art_uri?, server_name?, duration?, action }`. ⚠️ `source_id` names the **media server being browsed** (`upnp:<udn>`), not an MPD source: it is registered with the stream so the player state can say which server the audio came from. Anything else still plays — the MPD output is chosen on its own — but the stream then lights no source card, and two servers sharing a friendly name become indistinguishable |
 | GET | `/library/upnp-browse?location=<device_url>&object_id=…` | Browse ContentDirectory — takes a `location` device URL. Items now carry **`duration`** (seconds, from DIDL `res@duration`, `null` when the server publishes none); it was parsed and then silently dropped, so clients received nothing to size a progress bar with |
 | GET | `/library/search?location=<device_url>` | Search UPnP ContentDirectory — takes a `location` device URL. On a local (MPD) source, same **503** as `/library/albums` for a stopped daemon or a box with no library — rather than "no results", which reads as "your music does not contain that" |
@@ -255,6 +257,19 @@ catalogue is unreachable or is rate-limiting the box — the detail carries the 
 (malformed URL, MPD saturated). A **404** means the catalogue answered and does not know
 that UUID. A station already saved on the box, or added by hand, resolves without the
 network and is unaffected.
+
+> **What HQPlayer no longer refuses.** A format it cannot decode is now CONVERTED to FLAC on
+> the way out rather than refused, on three paths: a local-library file, a track a media
+> server publishes, and an internet radio station. So an ALAC library, an M4A album on a
+> NAS and an AAC-only station all play through HQPlayer, and a converted track is seekable
+> like any other. The **501** above still exists for what AG does not convert — DSD is
+> never turned into PCM — and for an address AG only forwards.
+>
+> ⚠️ **A staged album.** When a play carries several tracks AG must convert, the first one
+> is pushed alone so the music starts, and the rest are appended behind it (HQPlayer probes
+> each entry before answering, and that probe is what triggers the conversion). The response
+> then reports `tracks` as **the whole album** — what will play — and cannot say how many
+> HQPlayer kept: only the first track has a verdict when the answer is sent.
 
 > **When MPD is stopped.** Every route that talks to it answers **503** with
 > `MPD is not running. Start it from the Services tab.` — show that detail verbatim.
@@ -996,7 +1011,7 @@ service can have no file yet — writing one creates it.
 
 ### Routes absent from `/docs`
 
-Four real routes are deliberately kept out of the OpenAPI schema — a different thing from
+Seven real routes are deliberately kept out of the OpenAPI schema — a different thing from
 the schema being unmounted altogether, which is what `API_DOCS_ENABLED=false` does. They are not for the
 UI — they are called by a renderer or by the browser's `<img>`/`<audio>` tag — but they
 exist, so hunting for them in Swagger is a dead end.
@@ -1006,6 +1021,9 @@ exist, so hunting for them in Swagger is a dead end.
 | GET | `/library/stream/{path}?sig=` | A network renderer fetching a local file (HMAC-signed, Range) |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | A renderer fetching the cover of that file |
 | GET | `/library/signed/{sig}/{path}` | HQPlayer fetching a local file (HMAC-signed, the extension last) |
+| GET | `/library/flac/{sig}/{path}.flac` | HQPlayer fetching a local file AG converts to FLAC for it |
+| GET | `/library/remote-flac/{sig}/{res}.flac` | HQPlayer fetching a media server's track AG converts to FLAC for it |
+| GET | `/radio/relay/{sig}/{uuid}.flac` | HQPlayer fetching a station AG transcodes to FLAC for it |
 | POST | `/upnp-renderer/{udn}/notify` | The renderer's own GENA callback |
 
 ---
