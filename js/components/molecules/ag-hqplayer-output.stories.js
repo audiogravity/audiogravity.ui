@@ -93,6 +93,9 @@ const LOCAL = {
     host: '127.0.0.1',
     port: 4321,
     local: true,
+    // Where its own settings page listens — the card offers to open it, on the
+    // host the browser reached the box with. Only the box's own HQPlayer has one.
+    web_port: 8088,
     configured_host: null,
     configured_port: 4321,
     available: true,

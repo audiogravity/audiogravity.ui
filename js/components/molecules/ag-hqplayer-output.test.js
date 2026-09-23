@@ -18,7 +18,9 @@ vi.mock('lit', () => ({
 }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPut: vi.fn(), apiPost: vi.fn(), apiDelete: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ loadConnection: vi.fn() }));
-vi.mock('../../ag-icons.js', () => ({ iconSliders: '', iconChevronDown: '', iconWifi: '' }));
+vi.mock('../../ag-icons.js', () => ({
+    iconSliders: '', iconChevronDown: '', iconWifi: '', iconExternalLink: '',
+}));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
 // Import after mocks are in place.
@@ -705,5 +707,50 @@ describe('AgHqplayerOutput._setMode — the lists follow the mode', () => {
         await c._setVolume({ target: { value: '-30' } });
         expect(apiPut).toHaveBeenCalledTimes(3);
         expect(c._loadDspOptions).not.toHaveBeenCalled();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// The link to HQPlayer's own settings page. What this card does not do — the
+// DSD rate, the licence key — is done there, and the manual already sends the
+// reader to it.
+
+describe('AgHqplayerOutput._webInterfaceUrl — the box\'s own settings page', () => {
+    it('builds it on the host the browser reached this box with', () => {
+        // Not an address the core composed: it cannot know whether the browser
+        // came by a name, a LAN address or a tunnel.
+        const el = makeEl({ ...LOCAL, web_port: 8088 });
+        expect(el._webInterfaceUrl()).toBe(`http://${window.location.hostname}:8088`);
+    });
+
+    it('offers it on the card', () => {
+        const html = renderToString(makeEl({ ...LOCAL, web_port: 8088 })._renderCard());
+        expect(html).toContain(`href="http://${window.location.hostname}:8088"`);
+        expect(html).toContain('Web interface');
+        expect(html).toContain('target="_blank"');
+        expect(html).toContain('rel="noopener noreferrer"');
+    });
+
+    it('offers nothing for an HQPlayer on the network', () => {
+        // HQPlayer Desktop serves no web interface, and nothing of ours listens
+        // on that port there — the core sends no port for it either.
+        const el = makeEl({ available: true, naa_available: true, web_port: null });
+        expect(el._webInterfaceUrl()).toBeNull();
+        expect(renderToString(el._renderCard())).not.toContain('Web interface');
+    });
+
+    it('offers nothing when the instance declares no web interface', () => {
+        const el = makeEl({ ...LOCAL, web_port: null });
+        expect(el._webInterfaceUrl()).toBeNull();
+        expect(renderToString(el._renderCard())).not.toContain('Web interface');
+    });
+
+    it('still offers it while HQPlayer does not answer', () => {
+        // Its web port keeps answering while its control port refuses — measured
+        // on an expired trial — and that page is where a licence key is entered.
+        const html = renderToString(
+            makeEl({ ...LOCAL, available: false, web_port: 8088 })._renderCard());
+        expect(html).toContain('Offline');
+        expect(html).toContain('Web interface');
     });
 });

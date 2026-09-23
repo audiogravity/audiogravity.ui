@@ -188,6 +188,15 @@
     color: var(--bg-primary);
 }
 
+/* The class is worn by links too, where the action is to open an address
+   elsewhere — HQPlayer's own settings page, say. base.css underlines any link
+   whose href starts with http on hover, at the same specificity as the rule
+   above, and this file is imported after it: a button shape must not sprout an
+   underline. */
+a.action-btn:hover {
+    text-decoration: none;
+}
+
 .action-btn.primary {
     background: var(--btn-primary, var(--text-primary));
     color: var(--bg-primary);

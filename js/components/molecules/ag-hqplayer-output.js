@@ -27,7 +27,7 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPut, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
 import { showToast } from '../../ui-helpers.js';
-import { iconSliders, iconChevronDown, iconWifi } from '../../ag-icons.js';
+import { iconSliders, iconChevronDown, iconWifi, iconExternalLink } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-switch.js';
 
@@ -477,6 +477,34 @@ class AgHqplayerOutput extends LitElement {
         return [kind, engineVersion].filter(Boolean).join(' ');
     }
 
+    /**
+     * Where this box's own HQPlayer serves its settings page, or null.
+     *
+     * What this card does not do — the DSD rate, the licence key, the fine
+     * settings — is done there, and the manual already sends the reader to it.
+     *
+     * Built here rather than by the core, which cannot know how the browser
+     * reached this box: the host in the address bar is the one that works,
+     * whether that is a name, a LAN address or a tunnel. Only the port comes
+     * from the core (`connection.web_port`), and only for the instance running
+     * on this box — an HQPlayer on the network serves no page of ours.
+     *
+     * Offered even when HQPlayer does not answer: its web port keeps answering
+     * while its control port refuses (measured on an expired trial), and that
+     * page is exactly where a licence key is entered to end the refusal.
+     *
+     * It is http:// while the app may be https://. That is a navigation, not
+     * mixed content, so the browser opens it — and says "not secure" about
+     * HQPlayer's page, which serves no https of its own.
+     *
+     * @returns {string|null} The page's address, or null when there is none.
+     */
+    _webInterfaceUrl() {
+        const port = this._connection?.local ? this._connection.web_port : null;
+        const host = window.location.hostname;
+        return port && host ? `http://${host}:${port}` : null;
+    }
+
     /** Render the connected/offline HQPlayer card with optional DSP panel. */
     _renderCard() {
         const local         = !!this._connection.local;
@@ -560,6 +588,13 @@ class AgHqplayerOutput extends LitElement {
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"
                                  class="lib-hqp-chevron ${this._dspExpanded ? 'open' : ''}">${iconChevronDown}</svg>
                         </button>
+                    ` : nothing}
+                    ${this._webInterfaceUrl() ? html`
+                        <a class="action-btn compact secondary" href="${this._webInterfaceUrl()}"
+                           target="_blank" rel="noopener noreferrer">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">${iconExternalLink}</svg>
+                            Web interface
+                        </a>
                     ` : nothing}
                     ${!local ? html`
                         <button class="action-btn compact secondary" @click=${this._disconnect}>
