@@ -97,7 +97,10 @@ export class AgPullTab extends LitElement {
      * and it stops reading as a tab growing out of the screen — it becomes an orphaned
      * rectangle floating over the page.
      *
-     * 44 px is the Apple/Google minimum for a touch target; the tab used to offer 18.
+     * 44 px is the Apple/Google minimum for a touch target; the tab used to offer 18. It
+     * is read from --pull-tab-height (themes.css), which is also what content running to
+     * the bottom of the screen keeps free once the bar is folded (--bottom-clearance):
+     * one number, so the reserved room and the touch area cannot drift apart.
      */
     render() {
         if (!this._hasItems) return nothing;
@@ -109,7 +112,7 @@ export class AgPullTab extends LitElement {
                 role="button"
                 aria-label="Restore Now Playing"
                 title="Restore Now Playing"
-                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:44px;display:flex;align-items:flex-end;justify-content:center;z-index:103;background:none;border:none;padding:0;-webkit-tap-highlight-color:transparent"
+                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:var(--pull-tab-height);display:flex;align-items:flex-end;justify-content:center;z-index:103;background:none;border:none;padding:0;-webkit-tap-highlight-color:transparent"
                 @click="${this._restore}"
                 @touchstart="${this._handleTouchStart}"
                 @touchend="${this._handleTouchEnd}"
