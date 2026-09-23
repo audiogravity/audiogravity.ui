@@ -20,7 +20,9 @@ import { coverUrl, loadWithState } from '../utils-lit.js';
 import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { iconSearch } from '../../ag-icons.js';
+import { canAddToPlaylist } from '../library-constants.js';
 import '../molecules/ag-library-list-row.js';
+import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import '../molecules/ag-hra-search-filters.js';
 
 /**
@@ -332,7 +334,12 @@ export class AgLibrarySearch extends LitElement {
                 actionable
                 ?favoritable=${type === 'album' && this._isStreaming}
                 ?favorite=${type === 'album' && this._fav.has(item.id)}
+                ?playlistable=${type === 'album' && canAddToPlaylist(this.sourceId, item.id)}
                 @fav-toggle=${(e) => this._fav.toggle(this.sourceId, item.id, e.detail.favorite)}
+                @playlist-add=${() => requestPlaylistAdd({
+                    sourceId: this.sourceId, itemType: 'album', itemId: item.id,
+                    title: label, subtitle: item.artist ?? '', coverToken: item.cover_token,
+                })}
                 @row-click=${() => this._play(item.id, type, item.artist, label)}
                 @row-action=${() => this._addToQueue(item.id, type, item.artist, label)}
             ></ag-library-list-row>

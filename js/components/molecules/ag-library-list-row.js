@@ -20,6 +20,9 @@
  * @attr {string}  action-label - aria/tooltip for the action button (default: "Add to queue")
  * @attr {boolean} favoritable  - When true, render the trailing ★ Favorites toggle
  * @attr {boolean} favorite     - Filled star (item already in Favorites)
+ * @attr {boolean} playlistable - When true, render the "Add to playlist" button, between
+ *                                the ★ and the "+ add" (the consumer decides with
+ *                                `canAddToPlaylist` from library-constants.js)
  * @attr {boolean} wide         - The cover is a 2:1 banner (see ag-library-cover's `wide`).
  *                                The row keeps the height it always had and the thumbnail
  *                                takes twice the width, so the rhythm of a list mixing both
@@ -28,6 +31,7 @@
  * @fires row-click   - Bubbles. Row body clicked.
  * @fires row-action  - Bubbles. Action button clicked (stopPropagation handled internally).
  * @fires fav-toggle  - Bubbles (from ag-library-fav-btn). detail: { favorite: boolean } — desired state.
+ * @fires playlist-add - Bubbles (from ag-library-playlist-btn). No detail.
  */
 
 import { LitElement, html, nothing } from 'lit';
@@ -35,6 +39,7 @@ import { emit } from '../utils-lit.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
 import '../atoms/ag-library-fav-btn.js';
+import '../atoms/ag-library-playlist-btn.js';
 
 export class AgLibraryListRow extends LitElement {
     static properties = {
@@ -46,6 +51,7 @@ export class AgLibraryListRow extends LitElement {
         actionLabel: { type: String, attribute: 'action-label' },
         favoritable: { type: Boolean },
         favorite:    { type: Boolean },
+        playlistable: { type: Boolean },
         wide:        { type: Boolean },
     };
 
@@ -64,6 +70,7 @@ export class AgLibraryListRow extends LitElement {
         this.actionLabel = 'Add to queue';
         this.favoritable = false;
         this.favorite    = false;
+        this.playlistable = false;
         this.wide        = false;
     }
 
@@ -87,10 +94,13 @@ export class AgLibraryListRow extends LitElement {
                     <span class="lib-lr-t">${this.title}</span>
                     ${this.subtitle ? html`<span class="lib-lr-a">${this.subtitle}</span>` : nothing}
                 </div>
-                ${this.favoritable || this.actionable ? html`
+                ${this.favoritable || this.playlistable || this.actionable ? html`
                     <div class="lib-lr-actions">
                         ${this.favoritable ? html`
                             <ag-library-fav-btn variant="row" ?favorite=${this.favorite}></ag-library-fav-btn>
+                        ` : nothing}
+                        ${this.playlistable ? html`
+                            <ag-library-playlist-btn variant="row"></ag-library-playlist-btn>
                         ` : nothing}
                         ${this.actionable ? html`
                             <ag-library-add-btn

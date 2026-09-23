@@ -24,6 +24,31 @@ export const SOURCE_LABELS = {
     src_upmpdcli: 'UPnP Bridge',
 };
 
+/**
+ * The streaming sources whose account playlists AG can add to — the core answers 400
+ * for any other (`GET|POST /library/playlists`, `POST /library/playlists/add`). A
+ * service joins by being listed here once its branch exists in the core; nothing
+ * else in the interface names it. BACKLOG: Qobuz and Tidal — audiogravity.ops/BACKLOG.md,
+ * HIGHRESAUDIO entry.
+ */
+export const PLAYLIST_EDIT_SOURCES = new Set(['src_highresaudio']);
+
+/**
+ * Whether an item can be offered "Add to playlist".
+ *
+ * A purchased HIGHRESAUDIO item (`vault:` id) cannot: HRA files purchases in a tree
+ * of their own, with playlists of their own. That rule also covers an account
+ * without a subscription — it browses and plays its purchases alone.
+ *
+ * @param {string} sourceId - The item's source.
+ * @param {string|null|undefined} itemId - The item's id on that source.
+ * @returns {boolean}
+ */
+export function canAddToPlaylist(sourceId, itemId) {
+    return PLAYLIST_EDIT_SOURCES.has(sourceId)
+        && typeof itemId === 'string' && itemId !== '' && !itemId.startsWith('vault:');
+}
+
 export const SOURCE_ICONS = {
     'src_mono-sgen': html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
     src_roon: html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,

@@ -57,8 +57,11 @@ ag-library-add-btn {
     flex-shrink: 0;
 }
 
-/* Row variant: 30×30 bordered button next to a list row */
-.lib-lr-add {
+/* Row variant: 30×30 bordered button next to a list row. The "Add to playlist"
+   button of the same row (.lib-lr-pl) is drawn by the same rules: three controls
+   side by side must read as one set. */
+.lib-lr-add,
+.lib-lr-pl {
     width: 30px;
     height: 30px;
     flex-shrink: 0;
@@ -73,12 +76,14 @@ ag-library-add-btn {
     transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.lib-lr-add:active {
+.lib-lr-add:active,
+.lib-lr-pl:active {
     border-color: var(--text-primary);
     color: var(--text-primary);
 }
 
-.lib-lr-add svg {
+.lib-lr-add svg,
+.lib-lr-pl svg {
     width: 14px;
     height: 14px;
     flex-shrink: 0;
@@ -107,16 +112,41 @@ ag-library-add-btn {
     transition: opacity var(--transition-fast);
 }
 
-.lib-ac-add svg {
+/* "Add to playlist" — the third control of a cover, next to the ★ in the bottom-left
+   corner, so the star and the "+ queue" keep the corners they always had. Same
+   scrim, same reveal as its two neighbours (guidelines, rule 6 exception, above).
+   34 px = the star's 6 px inset + its 24 px + a 4 px gap. */
+.lib-ac-pl {
+    position: absolute;
+    bottom: 6px;
+    left: 34px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgb(0 0 0 / 0.6);
+    border: 0;
+    color: #ffffff;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+.lib-ac-add svg,
+.lib-ac-pl svg {
     width: 12px;
     height: 12px;
     flex-shrink: 0;
 }
 
 .lib-ac-wrap:hover .lib-ac-add,
-.lib-ac-wrap:focus-within .lib-ac-add { opacity: 1; }
+.lib-ac-wrap:focus-within .lib-ac-add,
+.lib-ac-wrap:hover .lib-ac-pl,
+.lib-ac-wrap:focus-within .lib-ac-pl { opacity: 1; }
 
-@media (hover: none) { .lib-ac-add { opacity: 1; } }
+@media (hover: none) { .lib-ac-add, .lib-ac-pl { opacity: 1; } }
 
 /* Favorite (★) toggle — mirrors the add button but anchored bottom-LEFT so it
    never overlaps the bottom-right "+ queue" button. A favorited album shows a

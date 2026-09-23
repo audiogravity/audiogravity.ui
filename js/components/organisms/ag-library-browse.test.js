@@ -59,7 +59,12 @@ vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
 vi.mock('../atoms/ag-library-add-btn.js', () => ({}));
 vi.mock('../atoms/ag-library-fav-btn.js', () => ({}));
+vi.mock('../atoms/ag-library-playlist-btn.js', () => ({}));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
+const requestPlaylistAddMock = vi.fn();
+vi.mock('../molecules/ag-playlist-picker.js', () => ({
+    requestPlaylistAdd: (...args) => requestPlaylistAddMock(...args),
+}));
 
 import { AgLibraryBrowse } from './ag-library-browse.js';
 
@@ -644,7 +649,9 @@ describe('ag-library-browse — a playlist is told from an album', () => {
         const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites', _fav: { has: () => false } });
         const card = text(el._renderAlbumCard({ id: 'alb1', title: 'Kind of Blue', year: 1959 }));
         expect(card).toContain('1959');
-        expect(card).not.toContain('Playlist');
+        // The tag slot, not the whole card: an album card now carries an "Add to
+        // playlist" control, whose handler's source is part of this flattened text.
+        expect(card).not.toContain('<div class="lib-ac-fmt">Playlist');
     });
 
     it('says it on a list row too, ahead of the byline', () => {
@@ -1675,5 +1682,48 @@ describe('ag-library-browse — every source with a Genres pill renders its stri
                             _genreEdges: edges() });
         expect(el._hasGenreShelf).toBe(false);
         expect(el._renderGenres()).toBe(null);
+    });
+});
+
+describe('ag-library-browse — "Add to playlist" on an album', () => {
+    beforeEach(() => requestPlaylistAddMock.mockReset());
+
+    const card = (el, album) => text(el._renderAlbumCard(album));
+
+    it('is offered on a HIGHRESAUDIO album card', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites', _fav: { has: () => false } });
+        expect(card(el, { id: 'alb1', title: 'Ritornare' })).toContain('<ag-library-playlist-btn');
+    });
+
+    it('is not offered on a playlist card — a playlist is not an album', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists', _fav: { has: () => false } });
+        expect(card(el, { id: 'editorial:1', title: 'Montreux' })).not.toContain('<ag-library-playlist-btn');
+    });
+
+    it('is not offered on a purchase, which HIGHRESAUDIO files elsewhere', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'vault', _fav: { has: () => false } });
+        expect(card(el, { id: 'vault:alb1_tx', title: 'Sampler' })).not.toContain('<ag-library-playlist-btn');
+    });
+
+    it('is not offered on a source whose playlists the core cannot write', () => {
+        const el = makeEl({ sourceId: 'src_qobuz', _filter: 'favorites', _fav: { has: () => false } });
+        expect(card(el, { id: '123', title: 'Kind of Blue' })).not.toContain('<ag-library-playlist-btn');
+    });
+
+    it('asks the picker for the album, with what it shows', () => {
+        const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' });
+        el._albumToPlaylist({ id: 'alb1', title: 'Ritornare', artist: 'Enzo Favata', cover_token: 'url:x' });
+        expect(requestPlaylistAddMock).toHaveBeenCalledWith({
+            sourceId: 'src_highresaudio', itemType: 'album', itemId: 'alb1',
+            title: 'Ritornare', subtitle: 'Enzo Favata', coverToken: 'url:x',
+        });
+    });
+
+    it('marks the list row of an album, and not of a playlist', () => {
+        const albums = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites' });
+        const playlists = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' });
+        const row = (el, album) => text(el._renderListRow(album));
+        expect(row(albums, { id: 'alb1', title: 'Ritornare' })).toContain('?playlistable=true');
+        expect(row(playlists, { id: 'editorial:1', title: 'Montreux' })).toContain('?playlistable=false');
     });
 });

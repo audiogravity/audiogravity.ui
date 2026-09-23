@@ -52,6 +52,14 @@ export const iconRefresh = svg`
 /** Plus — add to queue / create. (Lucide: plus) */
 export const iconPlus = svg`<path d="M5 12h14"/><path d="M12 5v14"/>`;
 
+/** Lines with a plus — add to a playlist of the streaming account. (Lucide: list-plus) */
+export const iconListPlus = svg`
+    <path d="M16 5H3"/>
+    <path d="M11 12H3"/>
+    <path d="M16 19H3"/>
+    <path d="M18 9v6"/>
+    <path d="M21 12h-6"/>`;
+
 /** Padlock — DSD-native volume-lock indicator. (Lucide: lock) */
 export const iconDsdLock = svg`
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>

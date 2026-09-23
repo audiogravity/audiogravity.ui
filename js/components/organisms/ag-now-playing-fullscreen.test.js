@@ -751,7 +751,76 @@ describe('the badge agrees with the mini player it is opened from', () => {
     });
 
     it('uses the shared resolver, so both screens answer from one rule', () => {
-        expect(SOURCE).toMatch(/import \{ originBadge, originBadgeName \} from '\.\.\/library-constants\.js'/);
+        // Other names may share the import (canAddToPlaylist does): what matters is
+        // that the badge helpers come from the shared module, not a copy.
+        expect(SOURCE).toMatch(/import \{[^}]*\boriginBadge, originBadgeName\b[^}]*\} from '\.\.\/library-constants\.js'/);
         expect(SOURCE).toMatch(/originBadge\(s\.origin, originBadgeName\(s\)\)/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// "Add to playlist" — offered for the track playing now, when the box can name it
+// ---------------------------------------------------------------------------
+
+import { render as litRender } from 'lit';
+import { PLAYLIST_ADD_EVENT } from '../molecules/ag-playlist-picker.js';
+
+describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now', () => {
+    const HRA = {
+        title: 'Tukuman', artist: 'Enzo Favata', album: 'Ritornare', cover_token: 'url:x',
+        content_source_id: 'src_highresaudio', content_item_id: 't1_a1',
+    };
+
+    /** Render the title block of a state into a detached host. */
+    function titleBlock(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        // A getter on the prototype: shadowed, as `_state` is above.
+        Object.defineProperty(el, '_rendererActive', { value: false });
+        const host = document.createElement('div');
+        litRender(el._renderMeta(state), host);
+        return { el, host };
+    }
+
+    it('is offered for a HIGHRESAUDIO track the box can name', () => {
+        const { host } = titleBlock(HRA);
+        expect(host.querySelector('ag-library-playlist-btn[variant="player"]')).not.toBeNull();
+    });
+
+    it.each([
+        ['a purchase', { content_item_id: 'vault:t1_a1_tx' }],
+        ['a track the box cannot name', { content_item_id: null }],
+        ['another service', { content_source_id: 'src_qobuz', content_item_id: '555' }],
+        ['the music on the box', { content_source_id: 'src_mpd', content_item_id: null }],
+    ])('is not offered for %s', (_, over) => {
+        const { host } = titleBlock({ ...HRA, ...over });
+        expect(host.querySelector('ag-library-playlist-btn')).toBeNull();
+    });
+
+    it('keeps the title lines stacked beside the button', () => {
+        // Seen on screen on 2026-09-23, not in a test: ag-track-meta is
+        // `display: contents`, so put straight into the row its title, artist and
+        // album became three columns side by side. jsdom lays nothing out — hence the
+        // markup contract here, and the layout contract read out of the stylesheet.
+        const { host } = titleBlock(HRA);
+        expect(host.querySelector('.npfs-title-row > ag-track-meta')).toBeNull();
+        expect(host.querySelector('.npfs-title-row > .npfs-title-col > ag-track-meta')).not.toBeNull();
+        const css = readFileSync(
+            path.join(process.cwd(), 'css', 'components', 'now-playing-fullscreen.css'), 'utf8');
+        const col = css.match(/\.npfs-title-col\s*\{([^}]*)\}/)?.[1] ?? '';
+        expect(col).toMatch(/display:\s*flex/);
+        expect(col).toMatch(/flex-direction:\s*column/);
+    });
+
+    it('hands the picker the track on screen, id included', () => {
+        const { el } = titleBlock(HRA);
+        let detail = null;
+        const listen = (e) => { detail = e.detail; };
+        window.addEventListener(PLAYLIST_ADD_EVENT, listen);
+        el._addPlayingToPlaylist(HRA);
+        window.removeEventListener(PLAYLIST_ADD_EVENT, listen);
+        expect(detail).toEqual({
+            sourceId: 'src_highresaudio', itemType: 'track', itemId: 't1_a1',
+            title: 'Tukuman', subtitle: 'Enzo Favata · Ritornare', coverToken: 'url:x',
+        });
     });
 });

@@ -25,12 +25,14 @@ import '../molecules/ag-volume-popover.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-track-meta.js';
+import '../atoms/ag-library-playlist-btn.js';
+import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
-import { originBadge, originBadgeName } from '../library-constants.js';
+import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
@@ -890,15 +892,43 @@ export class AgNowPlayingFullscreen extends LitElement {
                         ` : nothing}
                     </div>
                 ` : nothing}
-                <ag-track-meta show-album
-                    .title=${s?.title ?? ''}
-                    .artist=${s?.artist ?? ''}
-                    .album=${s?.album ?? ''}
-                    .year=${s?.year ?? null}
-                    placeholder-title="Nothing playing"
-                ></ag-track-meta>
+                <div class="npfs-title-row">
+                    <!-- ag-track-meta is display: contents, so its three lines would
+                         become items of this row; the column keeps them stacked. -->
+                    <div class="npfs-title-col">
+                        <ag-track-meta show-album
+                            .title=${s?.title ?? ''}
+                            .artist=${s?.artist ?? ''}
+                            .album=${s?.album ?? ''}
+                            .year=${s?.year ?? null}
+                            placeholder-title="Nothing playing"
+                        ></ag-track-meta>
+                    </div>
+                    ${canAddToPlaylist(s?.content_source_id, s?.content_item_id) ? html`
+                        <ag-library-playlist-btn variant="player"
+                            @playlist-add=${() => this._addPlayingToPlaylist(s)}
+                        ></ag-library-playlist-btn>
+                    ` : nothing}
+                </div>
             </div>
         `;
+    }
+
+    /**
+     * Open the playlist picker for the track playing now. The id travels with the
+     * state (`content_item_id`), so what is added is the track on screen when the
+     * button was pressed, even if the next one starts meanwhile.
+     * @param {object} s - The player state rendered.
+     */
+    _addPlayingToPlaylist(s) {
+        requestPlaylistAdd({
+            sourceId: s.content_source_id,
+            itemType: 'track',
+            itemId: s.content_item_id,
+            title: s.title || 'This track',
+            subtitle: [s.artist, s.album].filter(Boolean).join(' · '),
+            coverToken: s.cover_token,
+        });
     }
 
     /**

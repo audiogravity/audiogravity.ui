@@ -19,8 +19,9 @@
  *   @fav-toggle=${(e) => this._toggleFav(album, e.detail.favorite)}></ag-library-fav-btn>
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement } from 'lit';
 import { iconStar, iconStarFilled } from '../../ag-icons.js';
+import { libIconButton } from '../utils-lit.js';
 
 export class AgLibraryFavBtn extends LitElement {
     static properties = {
@@ -48,15 +49,13 @@ export class AgLibraryFavBtn extends LitElement {
     render() {
         const cls   = this.variant === 'card' ? 'lib-ac-fav' : 'lib-lr-fav';
         const label = this.favorite ? 'Remove from Favorites' : 'Add to Favorites';
-        return html`
-            <button class="${cls}${this.favorite ? ' on' : ''}" title=${label} aria-label=${label}
-                    @click=${this._onTap}>
-                <svg viewBox="0 0 24 24" fill=${this.favorite ? 'currentColor' : 'none'}
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    ${this.favorite ? iconStarFilled : iconStar}
-                </svg>
-            </button>
-        `;
+        return libIconButton({
+            cls: `${cls}${this.favorite ? ' on' : ''}`,
+            label,
+            icon: this.favorite ? iconStarFilled : iconStar,
+            onClick: this._onTap,
+            fill: this.favorite ? 'currentColor' : 'none',
+        });
     }
 }
 

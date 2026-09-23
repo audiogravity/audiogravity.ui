@@ -2,7 +2,7 @@
  * Unit tests for library-constants.js — stream-origin badge + searchable sources.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { originBadge, originBadgeName, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS } from './library-constants.js';
+import { originBadge, originBadgeName, ORIGIN_LABELS, initOriginLabels, normalizeSearchSources, resolvePlayingSource, SOURCE_META, queueSourceLabel, SOURCE_MARKS, SOURCE_ICONS, ROON_IDS, PLAYLIST_EDIT_SOURCES, canAddToPlaylist } from './library-constants.js';
 
 vi.mock('../api.js', () => ({ apiGet: vi.fn() }));
 const { apiGet } = await import('../api.js');
@@ -393,5 +393,33 @@ describe('SOURCE_MARKS — a source shown by its mark instead of its name', () =
         // would, and because a UPnP server's name is its own, not a brand's.
         expect(Object.keys(SOURCE_MARKS).sort())
             .toEqual(['src_highresaudio', 'src_mono-sgen', 'src_qobuz', 'src_roon', 'src_tidal']);
+    });
+});
+
+describe('canAddToPlaylist — where "Add to playlist" may be offered', () => {
+    it('offers it on a HIGHRESAUDIO catalogue item', () => {
+        expect(canAddToPlaylist('src_highresaudio', 't1_a1')).toBe(true);
+        expect(canAddToPlaylist('src_highresaudio', 'cfe9636e-8d3b')).toBe(true);
+    });
+
+    it('never on a purchase: HIGHRESAUDIO files those in a tree of their own', () => {
+        expect(canAddToPlaylist('src_highresaudio', 'vault:t1_a1_tx')).toBe(false);
+        expect(canAddToPlaylist('src_highresaudio', 'vault:a1_tx')).toBe(false);
+    });
+
+    it('not on a source whose playlists the core cannot write yet', () => {
+        for (const source of ['src_qobuz', 'src_tidal', 'src_mpd', 'src_radio', 'upnp:uuid:x']) {
+            expect(canAddToPlaylist(source, '123')).toBe(false);
+        }
+    });
+
+    it('not without an id', () => {
+        expect(canAddToPlaylist('src_highresaudio', '')).toBe(false);
+        expect(canAddToPlaylist('src_highresaudio', null)).toBe(false);
+        expect(canAddToPlaylist('src_highresaudio', undefined)).toBe(false);
+    });
+
+    it('lists the sources in one place, HIGHRESAUDIO alone today', () => {
+        expect([...PLAYLIST_EDIT_SOURCES]).toEqual(['src_highresaudio']);
     });
 });

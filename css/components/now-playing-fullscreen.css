@@ -334,6 +334,58 @@ body:not(.npfs-open) .topbar {
     color: var(--text-tertiary);
 }
 
+/* The title block and, beside it, what can be done with the track playing now —
+   today "Add to playlist". The block keeps every pixel of width it can; the button
+   keeps its size and sits level with the title's first line. */
+.npfs-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+}
+
+/* ag-track-meta is `display: contents` (track-meta.css): it forms no box, so its
+   title, artist and album lines would become items of the row above and sit side by
+   side. This column holds them stacked, with the gap .npfs-meta gave them. */
+.npfs-title-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.npfs-title-row ag-library-playlist-btn {
+    flex-shrink: 0;
+}
+
+/* 44 px: a touch target, on the screen that is used one-handed. */
+.npfs-pl-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.npfs-pl-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media (hover: hover) {
+    .npfs-pl-btn:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+    }
+}
+
 /* ── Signal path ── */
 .npfs-signal-path {
     display: flex;

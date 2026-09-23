@@ -96,6 +96,9 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
+| GET | `/library/playlists?source_id=` | The account's own playlists on a streaming source — the ones an item can be added to (v1: HIGHRESAUDIO) → `LibraryAlbum[]`, ids `mine:<n>`, description in `artist`. A playlist just created is listed at once, even before the service lists it. **400** for a source whose playlists cannot be edited |
+| POST | `/library/playlists` | Create a playlist in that account — body `{ source_id, title (1–100 chars), description? (≤ 500) }` → `{ id, title }`. **Do not retry it automatically**: an answer lost on the way back would create a second playlist |
+| POST | `/library/playlists/add` | Add a track or a whole album to one of those playlists — body `{ source_id, playlist_id, item_id, item_type: "track"\|"album" }` → `{ added, already }`: tracks written, and tracks the playlist already held — nothing is ever added twice. `item_id` is a track's id as the library lists it (the player's `content_item_id` for the track playing now) or an album id. **400** refused, with the reason: a playlist that is not the account's own or no longer exists, a purchased (`vault:`) item. **503** / **504** the service failed or was too slow |
 | GET | `/library/stream/{path}?sig=` | **Renderer-facing** (public, HMAC-signed, HTTP Range/206): serves a local-library file for a remote renderer to pull. Not called by the UI. |
 | GET | `/library/signed/{sig}/{path}` | **HQPlayer-facing** (public, HMAC-signed): the same files, with the signature as a path segment so the URL ends with the file's extension — HQPlayer picks its decoder from it. An MP3 is sent without a size and from its first audio frame (HQPlayer keeps neither a sized MP3 nor one opening with its tag). Not called by the UI. |
 | GET | `/library/flac/{sig}/{path}.flac` | **HQPlayer-facing** (public, HMAC-signed, HTTP Range/206): a local-library file in a format HQPlayer cannot decode — ALAC or AAC in an M4A, Ogg, WMA, APE… — converted to FLAC on demand and kept in a bounded on-disk cache. The conversion is a **complete** file, served with its size and byte ranges, so HQPlayer can seek inside it. The signature covers the library path; the URL ends in `.flac` because HQPlayer picks its decoder from there. Answers **415** for a format served as it is (DSD is never converted), **502** when the conversion fails. Not called by the UI. |
@@ -337,13 +340,14 @@ decided after the response and surfaces on `PlayerState.outputs[].error`.
 
 > **Artist drill-down:** `GET /library/albums?source_id=…&artist_id=…` lists a single artist's albums for **every** source. `artist_id` is source-specific — it is the value returned as an artist's `id` by `GET /library/search`: the artist **name** for MPD and HIGHRESAUDIO, the **item_key** for Roon, and the numeric **artist id** for Qobuz and Tidal. (Artists are navigational only — they are not queueable via `POST /library/queue`, which accepts `track` / `album` / `playlist`.)
 
-**Item identity — display vs routing.** Every now-playing item carries four separate
+**Item identity — display vs routing.** Every now-playing item carries five separate
 fields:
 
 | Field | Use it for | Never use it for |
 |---|---|---|
 | `origin` (+ `origin_name`) | the badge: `qobuz`, `library`, `radio`, `upnp` + server name, `external` | routing |
 | `content_source_id` | naming the SOURCE the content comes from | routing |
+| `content_item_id` | naming the TRACK of that source that plays — to act on "the track playing now" | routing |
 | `played_on` | naming the output: `"local"` or a renderer UDN | routing |
 | `control_id` | routing a transport command | display |
 
@@ -356,6 +360,12 @@ playing UPnP stream whose server could not be identified when it was queued. Mat
 card on this, never on `origin_name`: two media servers may share a friendly name, and
 matching on it lights both of their cards. It appears on the player state and on the
 `sources[]` entries that are playing, beside `origin`.
+
+`content_item_id` is the playing track's id on its streaming service — for HIGHRESAUDIO,
+the id `POST /library/playlists/add` takes. It is set only for a track the box streams
+from Qobuz, Tidal or HIGHRESAUDIO, whatever plays it (MPD, HQPlayer, a network renderer),
+and `null` otherwise: a local file, a station, a media server, a playback started outside
+Audiogravi<sup>ty</sup>. Same places as `content_source_id`.
 
 A cast is badged with what it **is** — a Qobuz album cast to a speaker reads `origin:
 "qobuz"`, `played_on: "<udn>"` — while `control_id` stays `"upnp_renderer"`, the handle

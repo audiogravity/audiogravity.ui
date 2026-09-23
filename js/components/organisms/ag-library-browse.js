@@ -35,8 +35,10 @@ import { iconBack, iconChevronRight } from '../../ag-icons.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
 import '../atoms/ag-library-fav-btn.js';
+import '../atoms/ag-library-playlist-btn.js';
 import '../molecules/ag-library-list-row.js';
-import { ROON_IDS } from '../library-constants.js';
+import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
+import { ROON_IDS, canAddToPlaylist } from '../library-constants.js';
 
 const PAGE_SIZE = 50;
 
@@ -361,6 +363,31 @@ export class AgLibraryBrowse extends LitElement {
      */
     get _showsFavorites() {
         return this._isStreaming && !this._isVault && !this._showsPlaylists;
+    }
+
+    /**
+     * @param {{id: string}} album - A grid entry.
+     * @returns {boolean} Whether the entry is offered "Add to playlist". An album only:
+     * a playlist card is not one, for the reason the ★ gives above. Which sources,
+     * and which ids (never a purchase), is decided once in `canAddToPlaylist`.
+     */
+    _offersPlaylistAdd(album) {
+        return !this._showsPlaylists && canAddToPlaylist(this.sourceId, album.id);
+    }
+
+    /**
+     * Open the playlist picker for an album of the grid.
+     * @param {{id: string, title: string, artist?: string, cover_token?: string}} album
+     */
+    _albumToPlaylist(album) {
+        requestPlaylistAdd({
+            sourceId: this.sourceId,
+            itemType: 'album',
+            itemId: album.id,
+            title: album.title,
+            subtitle: album.artist ?? '',
+            coverToken: album.cover_token,
+        });
     }
 
     updated(changed) {
@@ -1072,6 +1099,12 @@ export class AgLibraryBrowse extends LitElement {
                             @fav-toggle=${(e) => this._fav.toggle(this.sourceId, album.id, e.detail.favorite)}
                         ></ag-library-fav-btn>
                     ` : nothing}
+                    ${this._offersPlaylistAdd(album) ? html`
+                        <ag-library-playlist-btn
+                            variant="card"
+                            @playlist-add=${() => this._albumToPlaylist(album)}
+                        ></ag-library-playlist-btn>
+                    ` : nothing}
                 </div>
                 <div class="lib-ac-t">${album.title}</div>
                 <div class="lib-ac-a">${album.artist ?? ''}</div>
@@ -1097,8 +1130,10 @@ export class AgLibraryBrowse extends LitElement {
                     ? (byline ? `${PLAYLIST_TAG} · ${byline}` : PLAYLIST_TAG)
                     : byline}
                 actionable
+                ?playlistable=${this._offersPlaylistAdd(album)}
                 @row-click=${() => this._playAlbum(album)}
                 @row-action=${() => this._addAlbumToQueue(album)}
+                @playlist-add=${() => this._albumToPlaylist(album)}
             ></ag-library-list-row>
         `;
     }

@@ -99,3 +99,33 @@ describe('ag-library-list-row — the trailing controls', () => {
         expect(grid[1].trim().split(/\s+/)).toHaveLength(3);
     });
 });
+
+describe('ag-library-list-row — "Add to playlist"', () => {
+    const buttons = (el) => [...el.querySelectorAll('.lib-lr-actions button')].map((b) => b.className);
+
+    it('sits between the ★ and the "+ add" when asked for', async () => {
+        const el = await mount({ favoritable: true, playlistable: true, actionable: true });
+        expect(buttons(el)).toEqual(['lib-lr-fav', 'lib-lr-pl', 'lib-lr-add']);
+    });
+
+    it('is absent unless asked for', async () => {
+        const el = await mount({ favoritable: true, actionable: true });
+        expect(el.querySelector('.lib-lr-pl')).toBeNull();
+    });
+
+    it('opens the action cell on its own, for a row with nothing else to offer', async () => {
+        const el = await mount({ playlistable: true });
+        expect(buttons(el)).toEqual(['lib-lr-pl']);
+    });
+
+    it("reports playlist-add to the row's owner, and never plays the row", async () => {
+        const el = await mount({ playlistable: true });
+        let added = 0;
+        let played = 0;
+        el.addEventListener('playlist-add', () => { added += 1; });
+        el.addEventListener('row-click', () => { played += 1; });
+        el.querySelector('.lib-lr-pl').click();
+        expect(added).toBe(1);
+        expect(played).toBe(0);
+    });
+});

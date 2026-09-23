@@ -1,0 +1,124 @@
+/**
+ * @module PlaylistPicker
+ * @description The "Add to playlist" dialog (ag-playlist-picker): the item being added,
+ * the account's playlists as rows, and the name field of a new playlist. The frame —
+ * overlay, border, header, footer — is ag-modal's own (modal.css).
+ */
+
+/* The item being added, above everything else: what the dialog is about. */
+.ag-plp-subject {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Title over subtitle, as in a library list row (.lib-lr-col). */
+.ag-plp-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ag-plp-t {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ag-plp-s {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ag-plp-label {
+    margin: var(--spacing-md) 0 var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.ag-plp-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ag-plp-list li + li {
+    border-top: 1px solid var(--border-color);
+}
+
+/* One playlist, or "New playlist": the whole row is the button. */
+.ag-plp-row {
+    width: 100%;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    background: none;
+    border: 0;
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    text-align: left;
+    cursor: pointer;
+}
+
+.ag-plp-row:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.ag-plp-row:focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: -2px;
+}
+
+@media (hover: hover) {
+    .ag-plp-row:hover:not(:disabled) {
+        background: var(--bg-hover);
+    }
+}
+
+/* "New playlist" wears a bordered + where the playlists wear a cover. */
+.ag-plp-new-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--text-primary);
+    border-radius: var(--radius-sm);
+}
+
+.ag-plp-new-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.ag-plp-note,
+.ag-plp-help {
+    margin: var(--spacing-md) 0 0;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.ag-plp-error {
+    color: var(--color-error-text);
+}
+
+.ag-plp-form {
+    margin-top: var(--spacing-md);
+}

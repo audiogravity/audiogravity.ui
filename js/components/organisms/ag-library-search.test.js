@@ -35,8 +35,13 @@ vi.mock('../../library-store.js', () => ({
 }));
 vi.mock('../molecules/ag-library-list-row.js', () => ({}));
 vi.mock('../molecules/ag-hra-search-filters.js', () => ({}));
+const requestPlaylistAddMock = vi.fn();
+vi.mock('../molecules/ag-playlist-picker.js', () => ({
+    requestPlaylistAdd: (...args) => requestPlaylistAddMock(...args),
+}));
 
 const { AgLibrarySearch } = await import('./ag-library-search.js');
+const { flat } = await import('../../test-utils.js');
 
 /** The HRA advanced criteria, unset unless named. */
 const filters = (over = {}) => ({
@@ -245,5 +250,40 @@ describe('ag-library-search — an account without a subscription', () => {
         await host._loadHraConnection();
         expect(getHraConnectionMock).toHaveBeenCalledTimes(1);
         expect(host._hraSubscribed).toBe(false);
+    });
+});
+
+describe('ag-library-search — "Add to playlist" on an album result', () => {
+    // flat() renders `false` as nothing: assert on the true form (test-utils.js).
+    const text = flat;
+    const fav = { load() {}, has: () => false, toggle() {} };
+    const ALBUM = { id: 'alb1', title: 'Ritornare', artist: 'Enzo Favata', cover_token: 'url:x' };
+
+    beforeEach(() => requestPlaylistAddMock.mockReset());
+
+    it('marks a HIGHRESAUDIO album row', () => {
+        expect(text(el({ _fav: fav })._renderRow(ALBUM, 'album'))).toContain('?playlistable=true');
+    });
+
+    it('not a track row: for a track, the full-screen player offers it', () => {
+        const row = text(el({ _fav: fav })._renderRow({ id: 't1_a1', title: 'Tukuman' }, 'track'));
+        expect(row).toContain('?playlistable=');
+        expect(row).not.toContain('?playlistable=true');
+    });
+
+    it('not on a source whose playlists the core cannot write', () => {
+        const row = text(el({ sourceId: 'src_qobuz', _fav: fav })._renderRow(ALBUM, 'album'));
+        expect(row).toContain('?playlistable=');
+        expect(row).not.toContain('?playlistable=true');
+    });
+
+    it('asks the picker for the album, with what the row shows', () => {
+        const tpl = el({ _fav: fav })._renderRow(ALBUM, 'album');
+        const at = tpl.strings.findIndex((s) => s.includes('@playlist-add='));
+        tpl.values[at]();
+        expect(requestPlaylistAddMock).toHaveBeenCalledWith({
+            sourceId: 'src_highresaudio', itemType: 'album', itemId: 'alb1',
+            title: 'Ritornare', subtitle: 'Enzo Favata', coverToken: 'url:x',
+        });
     });
 });
