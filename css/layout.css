@@ -775,9 +775,12 @@ body.dark-mode .logo-dark {
 
 @media (width <=768px) {
     :root {
-        /* BACKLOG: a unitless 0 voids every calc() that adds these two — see BACKLOG.md. */
-        --footer-height: 0;
-        --title-bar-height: 0;
+        /* 0px, never a bare 0: both are added to lengths in calc(), where `44px + 0` is
+           invalid and drops the whole declaration without a word — the tab bar of a low
+           window sat under the top bar, the library kept no room for the mini-player.
+           Guarded by js/layout-units.test.js. */
+        --footer-height: 0px;
+        --title-bar-height: 0px;
         --topbar-height: 44px;
         --tabs-height: 42px;
     }
@@ -870,11 +873,15 @@ body.dark-mode .logo-dark {
     }
 
     /* The banner sits right under the topbar and the tab bar under the banner (see .tabs
-       above), so the content gives back both heights. */
+       above), so the content gives back both heights. At the bottom, the content runs
+       under the mini-player (.main-content reaches the screen's edge here): it keeps
+       --bottom-clearance free, or its last 67px stayed under the bar — measured at
+       390×844, where only the landscape block below reserved it. */
     .content-grid,
     .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
+        padding-bottom: calc(var(--bottom-clearance) + var(--spacing-md));
     }
 
     /* .content-grid separates its children with the gap above; the mobile
@@ -892,14 +899,16 @@ body.dark-mode .logo-dark {
     body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
+        padding-bottom: calc(var(--bottom-clearance) + var(--spacing-md));
     }
 }
 
 /* Mobile landscape: phones have height ≤ 500px when rotated, tablets do not */
 @media (orientation: landscape) and (height <= 500px) {
     :root {
-        --footer-height: 0;
-        --title-bar-height: 0;
+        /* 0px, never a bare 0 — see the portrait block above. */
+        --footer-height: 0px;
+        --title-bar-height: 0px;
         --topbar-height: 44px;
     }
 
@@ -929,18 +938,21 @@ body.dark-mode .logo-dark {
         padding: 0;
     }
 
+    /* A tab BAR gives its height back too. This block was written for phones, whose tabs
+       are always a column (ag-tabs.js), and left it out: in a low desktop window with the
+       tabs as a bar, the top of every tab sat under that bar. The column case follows. */
     .content-grid,
     .amp-mobile-view {
         padding: var(--spacing-md);
-        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
-        padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
+        padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
+        padding-bottom: calc(var(--bottom-clearance) + var(--spacing-md));
     }
 
     body:has(.tabs--vertical) .content-grid,
     body:has(.tabs--vertical) .amp-mobile-view {
         padding: var(--spacing-md);
         padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--spacing-md) + var(--offline-banner-offset));
-        padding-bottom: calc(var(--now-playing-height, 0px) + var(--spacing-md));
+        padding-bottom: calc(var(--bottom-clearance) + var(--spacing-md));
     }
 }
 

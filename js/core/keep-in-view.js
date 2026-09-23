@@ -30,11 +30,15 @@
  * not scroll" — they are exactly the containers a programmatic scroll must
  * leave alone, since the reader has no way to scroll them back.
  *
+ * Also what a view reads to keep its reader's place: in the library, the element that
+ * scrolls is `.main-content`, several levels up, not the `.lib-scroll` wrapper its
+ * name suggests — that one grows with its content (measured 2026-09-23 at 390×844).
+ *
  * @param {Element} el - Starting element (the strip item).
  * @param {'x' | 'y'} axis - Which axis to look for.
  * @returns {Element | null} the scroll container, or null when none exists
  */
-function scrollParent(el, axis) {
+export function scrollParent(el, axis) {
     const overflow = axis === 'x' ? 'overflowX' : 'overflowY';
     const scrollSize = axis === 'x' ? 'scrollWidth' : 'scrollHeight';
     const clientSize = axis === 'x' ? 'clientWidth' : 'clientHeight';

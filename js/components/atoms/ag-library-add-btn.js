@@ -16,8 +16,9 @@
  * <ag-library-add-btn @click=${(e) => { e.stopPropagation(); add(); }}></ag-library-add-btn>
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement } from 'lit';
 import { iconPlus } from '../../ag-icons.js';
+import { libIconButton } from '../utils-lit.js';
 
 export class AgLibraryAddBtn extends LitElement {
     static properties = {
@@ -35,14 +36,7 @@ export class AgLibraryAddBtn extends LitElement {
 
     render() {
         const cls = this.variant === 'card' ? 'lib-ac-add' : 'lib-lr-add';
-        return html`
-            <button class=${cls} title=${this.label} aria-label=${this.label}>
-                <svg viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    ${iconPlus}
-                </svg>
-            </button>
-        `;
+        return libIconButton({ cls, label: this.label, icon: iconPlus });
     }
 }
 

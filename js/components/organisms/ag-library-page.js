@@ -269,14 +269,24 @@ ag-lib-tabbar {
     padding: 0;
 }
 
-/* Mobile: main-content starts at top:0 (covers full viewport), so we need padding-top
-   to push library content below the AG topbar, same pattern as .content-grid. */
-@media (max-width: 768px) {
+/* Wherever main-content spans the whole screen — a phone either way up, a low window —
+   the library gives back what covers it, the same pattern as .content-grid in layout.css:
+   the AG topbar at the top (and the tab bar, when the tabs are a bar rather than a
+   column), and --bottom-clearance at the bottom, for the mini-player or its pull tab.
+   The landscape query was missing: a phone on its side had the library's own tabs under
+   the topbar and its last row under the mini-player (measured at 844×390, 2026-09-23). */
+@media (max-width: 768px), (orientation: landscape) and (height <= 500px) {
     #library.tab-content.active {
-        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
-        padding-bottom: calc(var(--footer-height, 0px) + var(--now-playing-height, 0px));
+        padding-top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(var(--footer-height, 0px) + var(--bottom-clearance));
     }
     #library.tab-content.active .lib-topbar {
+        top: calc(var(--topbar-height) + var(--tabs-height) + env(safe-area-inset-top, 0px));
+    }
+    body:has(.tabs--vertical) #library.tab-content.active {
+        padding-top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
+    }
+    body:has(.tabs--vertical) #library.tab-content.active .lib-topbar {
         top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
     }
 }

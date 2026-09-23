@@ -32,6 +32,30 @@
     gap: var(--spacing-sm);
 }
 
+/* A row that shows its position (the tracks of a playlist page): one more column, ahead
+   of the cover. */
+.lib-list-row--numbered {
+    grid-template-columns: auto auto 1fr auto;
+}
+
+/* Two digits wide whatever the number, so the covers of rows 9 and 10 line up — each
+   row is a grid of its own, and an `auto` column would size to its own digits. */
+.lib-lr-n {
+    min-width: 2ch;
+    text-align: end;
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-tertiary);
+}
+
+/* A track's duration, at the head of the controls. */
+.lib-lr-note {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+}
+
 .lib-lr-col {
     display: flex;
     flex-direction: column;

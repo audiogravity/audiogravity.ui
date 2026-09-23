@@ -192,6 +192,20 @@
       existed. */
    --offline-banner-height: 32px;
 
+   /* @var --pull-tab-height @description Touch height of the tab that brings a folded
+      mini-player back (ag-pull-tab): the Apple/Google minimum for a touch target. A
+      dimension because a folded bar still leaves this much of the screen taken, the
+      tab's touch area rising above its visible 18px. */
+   --pull-tab-height: 44px;
+
+   /* @var --bottom-clearance @description What content running to the bottom of the
+      screen (phones, low windows: .main-content spans the whole height there) keeps free
+      under itself: the mini-player's height while it shows — ag-now-playing publishes it
+      as --now-playing-height, 0 when folded — and the pull tab's touch area once it is
+      folded. Measured on 2026-09-23 at 390×844: with the bar alone counted, the pull tab
+      of a folded bar covered the lower half of the last library row. */
+   --bottom-clearance: max(var(--now-playing-height, 0px), var(--pull-tab-height));
+
    /**
     * @group Z-Index Layers
     */

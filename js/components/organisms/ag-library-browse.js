@@ -14,6 +14,12 @@
  * @attr {string} source-id  - Active library source ID (e.g. 'src_mpd', 'src_roon')
  * @attr {string} zone-id    - Roon zone ID (required for Roon sources)
  *
+ * A playlist that can be opened (`canOpenPlaylist`) carries an "open" button: its page
+ * (ag-playlist-page) is then drawn in the grid's place, the grid kept underneath as it
+ * was, so going back finds the same shelf at the same scroll. A tap on the card itself
+ * still plays it. The grid of the account's own playlists leads with a "New playlist"
+ * tile, and reads itself again after any change to them (PLAYLISTS_CHANGED_EVENT).
+ *
  * @fires lib-open-album  - Bubbles. detail: { album } — user tapped an album
  * @fires lib-queue-album - Bubbles. detail: { albumId, artistId, action } — play or add
  * @fires lib-open-np     - Bubbles. No detail — navigate to Now Playing after play
@@ -27,16 +33,25 @@ import {
     getQobuzShelves, getQobuzGenres,
     getTidalShelves, getTidalGenres, getTidalMoods, getTidalExplore, getTidalPage,
 } from '../../library-store.js';
-import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-api.js';
+import {
+    PLAYLISTS_CHANGED_EVENT, queueItem, queueWithFeedback, playWithFeedback,
+} from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { ScrollEdgesController } from '../../core/ScrollEdgesController.js';
-import { keepInView } from '../../core/keep-in-view.js';
-import { iconBack, iconChevronRight } from '../../ag-icons.js';
+import { keepInView, scrollParent } from '../../core/keep-in-view.js';
+import { BodyPortalController } from '../../core/BodyPortalController.js';
+import { iconBack, iconChevronRight, iconPlus } from '../../ag-icons.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-library-add-btn.js';
 import '../atoms/ag-library-fav-btn.js';
+import '../atoms/ag-library-playlist-btn.js';
 import '../molecules/ag-library-list-row.js';
-import { ROON_IDS } from '../library-constants.js';
+import '../molecules/ag-playlist-details.js';
+import '../molecules/ag-playlist-page.js';
+import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
+import {
+    ROON_IDS, canAddToPlaylist, canCreatePlaylist, canOpenPlaylist,
+} from '../library-constants.js';
 
 const PAGE_SIZE = 50;
 
@@ -239,6 +254,8 @@ export class AgLibraryBrowse extends LitElement {
         _loadingMore: { state: true },
         _hasMore:     { state: true },
         _error:       { state: true },
+        _openedPlaylist:   { state: true },
+        _creatingPlaylist: { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -331,6 +348,27 @@ export class AgLibraryBrowse extends LitElement {
         /** Generation counter: a page that resolves under an older token is dropped. */
         this._loadToken   = 0;
         this._observer    = null;
+        /**
+         * @type {{playlist: object, wide: boolean, backLabel: string}|null} The playlist
+         * whose page is on screen, in the grid's place; null while the grid is.
+         */
+        this._openedPlaylist = null;
+        /** @type {boolean} Whether the "New playlist" dialog is open. */
+        this._creatingPlaylist = false;
+        /**
+         * Where the reader was when the page opened — the container that scrolls the
+         * browse, its offset, and each strip's — so going back puts them there again.
+         * The page is taller or shorter than the grid, and scrolls the same container.
+         * @type {{scroller: Element|null, top: number, strips: Record<string, number>}|null}
+         */
+        this._gridScroll = null;
+        /** The account's playlists changed while their page hid the grid: reread on return. */
+        this._ownPlaylistsStale = false;
+        /** One reference for the window listener, so it can be taken off again. */
+        this._playlistsListener = (e) => this._onPlaylistsChanged(e);
+        // The "New playlist" dialog lives on <body>: inside the library tab it would stay
+        // under the top bar and the player bar (see BodyPortalController).
+        this._dialogs = new BodyPortalController(this, () => this._renderCreateDialog());
     }
 
     /** @returns {boolean} Whether the active source is Qobuz. */
@@ -363,6 +401,127 @@ export class AgLibraryBrowse extends LitElement {
         return this._isStreaming && !this._isVault && !this._showsPlaylists;
     }
 
+    /**
+     * @param {{id: string}} album - A grid entry.
+     * @returns {boolean} Whether the entry is offered "Add to playlist". An album only:
+     * a playlist card is not one, for the reason the ★ gives above. Which sources,
+     * and which ids (never a purchase), is decided once in `canAddToPlaylist`.
+     */
+    _offersPlaylistAdd(album) {
+        return !this._showsPlaylists && canAddToPlaylist(this.sourceId, album.id);
+    }
+
+    /**
+     * Open the playlist picker for an album of the grid.
+     * @param {{id: string, title: string, artist?: string, cover_token?: string}} album
+     */
+    _albumToPlaylist(album) {
+        requestPlaylistAdd({
+            sourceId: this.sourceId,
+            itemType: 'album',
+            itemId: album.id,
+            title: album.title,
+            subtitle: album.artist ?? '',
+            coverToken: album.cover_token,
+        });
+    }
+
+    /**
+     * @param {{id: string}} entry - A grid entry.
+     * @returns {boolean} Whether the entry is a playlist that has a page to open.
+     */
+    _offersPlaylistOpen(entry) {
+        return this._showsPlaylists && canOpenPlaylist(this.sourceId, entry.id);
+    }
+
+    /**
+     * @returns {boolean} Whether the grid on screen is the account's own playlists — the
+     * one to lead with "New playlist" and to read again after a change. The same filter
+     * value and the same kind on every streaming source.
+     */
+    get _showsOwnPlaylists() {
+        return this._isStreaming && !this.artistId
+            && this._filter === PLAYLISTS_FILTER && this._playlistKind === 'mine';
+    }
+
+    /**
+     * @private The container that scrolls the browse — `.main-content`, several levels
+     * up; the library's `.lib-scroll` only wraps it and grows with its content. Null
+     * while nothing overflows.
+     * @returns {Element|null}
+     */
+    get _scroller() { return scrollParent(this, 'y'); }
+
+    /**
+     * Open a playlist's page in the grid's place. The grid stays in the DOM, hidden, so
+     * nothing of it is fetched or drawn again on the way back.
+     * @param {{id: string, title: string, artist?: string, cover_token?: string}} playlist
+     */
+    _openPlaylist(playlist) {
+        const strips = {};
+        this.querySelectorAll('[data-strip]').forEach((el) => {
+            strips[el.dataset.strip] = el.scrollLeft;
+        });
+        const scroller = this._scroller;
+        this._gridScroll = { scroller, top: scroller?.scrollTop ?? 0, strips };
+        this._openedPlaylist = {
+            playlist,
+            wide: this._bannerCovers,
+            backLabel: this._sectionLabel,
+        };
+        this.updateComplete.then(() => { if (scroller) scroller.scrollTop = 0; });
+    }
+
+    /** Back from a playlist's page to the grid, where the reader left it. */
+    _closePlaylist() {
+        if (!this._openedPlaylist) return;
+        this._openedPlaylist = null;
+        if (this._ownPlaylistsStale) {
+            // The list itself changed — a playlist renamed, deleted — so the old scroll
+            // position points into a list that is being replaced.
+            this._ownPlaylistsStale = false;
+            this._gridScroll = null;
+            this._load();
+            return;
+        }
+        const saved = this._gridScroll;
+        this._gridScroll = null;
+        this.updateComplete.then(() => {
+            if (!saved) return;
+            this.querySelectorAll('[data-strip]').forEach((el) => {
+                const left = saved.strips[el.dataset.strip];
+                if (left !== undefined) el.scrollLeft = left;
+            });
+            if (saved.scroller) saved.scroller.scrollTop = saved.top;
+        });
+    }
+
+    /**
+     * @private Read the account's playlists again after a change to them, made here or
+     * on another screen. While a page hides the grid, the read waits for the way back:
+     * nobody sees the grid until then, and a page can make several changes in a row.
+     * @param {CustomEvent<{sourceId: string}>} e
+     */
+    _onPlaylistsChanged(e) {
+        if (e.detail?.sourceId !== this.sourceId || !this._showsOwnPlaylists) return;
+        if (this._openedPlaylist) {
+            this._ownPlaylistsStale = true;
+            return;
+        }
+        this._load();
+    }
+
+    /**
+     * @private The "New playlist" dialog created one: the grid is read again through the
+     * change it announced; only the dialog is left to close.
+     */
+    _onPlaylistCreated() { this._creatingPlaylist = false; }
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener(PLAYLISTS_CHANGED_EVENT, this._playlistsListener);
+    }
+
     updated(changed) {
         // Reload on a source switch or when entering/leaving/changing artist mode.
         if ((changed.has('sourceId') || changed.has('artistId')) && this.sourceId) {
@@ -391,6 +550,11 @@ export class AgLibraryBrowse extends LitElement {
             this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
             this._playlistCategory = HRA_PLAYLIST_ALL;
             this._playlistGroup = '';
+            // A playlist's page belongs to the source it was opened on.
+            this._openedPlaylist = null;
+            this._creatingPlaylist = false;
+            this._gridScroll = null;
+            this._ownPlaylistsStale = false;
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
@@ -600,6 +764,7 @@ export class AgLibraryBrowse extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this._detachObserver();
+        window.removeEventListener(PLAYLISTS_CHANGED_EVENT, this._playlistsListener);
     }
 
     // ------------------------------------------------------------------
@@ -1072,6 +1237,19 @@ export class AgLibraryBrowse extends LitElement {
                             @fav-toggle=${(e) => this._fav.toggle(this.sourceId, album.id, e.detail.favorite)}
                         ></ag-library-fav-btn>
                     ` : nothing}
+                    ${this._offersPlaylistAdd(album) ? html`
+                        <ag-library-playlist-btn
+                            variant="card"
+                            @playlist-add=${() => this._albumToPlaylist(album)}
+                        ></ag-library-playlist-btn>
+                    ` : nothing}
+                    ${this._offersPlaylistOpen(album) ? html`
+                        <ag-library-playlist-btn
+                            mode="open"
+                            variant="card"
+                            @playlist-open=${() => this._openPlaylist(album)}
+                        ></ag-library-playlist-btn>
+                    ` : nothing}
                 </div>
                 <div class="lib-ac-t">${album.title}</div>
                 <div class="lib-ac-a">${album.artist ?? ''}</div>
@@ -1097,9 +1275,44 @@ export class AgLibraryBrowse extends LitElement {
                     ? (byline ? `${PLAYLIST_TAG} · ${byline}` : PLAYLIST_TAG)
                     : byline}
                 actionable
+                ?playlistable=${this._offersPlaylistAdd(album)}
+                ?openable=${this._offersPlaylistOpen(album)}
                 @row-click=${() => this._playAlbum(album)}
                 @row-action=${() => this._addAlbumToQueue(album)}
+                @playlist-add=${() => this._albumToPlaylist(album)}
+                @playlist-open=${() => this._openPlaylist(album)}
             ></ag-library-list-row>
+        `;
+    }
+
+    /**
+     * @private The "New playlist" dialog, while the account's own playlists are on
+     * screen; rendered on <body> by `_dialogs`.
+     */
+    _renderCreateDialog() {
+        if (!this._showsOwnPlaylists || !canCreatePlaylist(this.sourceId)) return nothing;
+        return html`
+            <ag-playlist-details
+                source-id=${this.sourceId}
+                .playlist=${null}
+                ?show=${this._creatingPlaylist}
+                @details-close=${() => { this._creatingPlaylist = false; }}
+                @playlist-saved=${this._onPlaylistCreated}
+            ></ag-playlist-details>
+        `;
+    }
+
+    /**
+     * @private The first tile of the account's own playlists: a new, empty one. A
+     * button, where the cards are not, because it does one thing and nothing inside it
+     * competes for the tap.
+     */
+    _renderNewPlaylistTile() {
+        return html`
+            <button class="lib-album-card lib-ac-new" @click=${() => { this._creatingPlaylist = true; }}>
+                <span class="lib-ac-new-cell" aria-hidden="true">${svgIcon(iconPlus, { size: '28px' })}</span>
+                <span class="lib-ac-t">New playlist</span>
+            </button>
         `;
     }
 
@@ -1785,8 +1998,27 @@ export class AgLibraryBrowse extends LitElement {
             || (this._filter === TIDAL_MOODS_PILL[0] && !this._mood);
         // An Explore page of links has no grid of its own: it leads somewhere.
         const awaitingPage = this._filter === TIDAL_EXPLORE_PILL[0] && !this._section;
+        // The account's own playlists lead with a way to make one — even when there is
+        // none yet, which is precisely when it is needed.
+        const createTile = this._showsOwnPlaylists && canCreatePlaylist(this.sourceId);
+        const opened = this._openedPlaylist;
 
+        // An open playlist's page is drawn above the grid, and the grid is hidden rather
+        // than dropped: the way back then finds its strips, its cards and their covers
+        // where they were, with nothing fetched or drawn again.
         return html`
+            ${opened ? html`
+                <ag-playlist-page
+                    source-id=${this.sourceId}
+                    zone-id=${this.zoneId}
+                    back-label=${opened.backLabel}
+                    ?wide=${opened.wide}
+                    .playlist=${opened.playlist}
+                    @playlist-back=${this._closePlaylist}
+                    @playlist-deleted=${this._closePlaylist}
+                ></ag-playlist-page>
+            ` : nothing}
+            <div class="lib-browse-grid" ?hidden=${Boolean(opened)}>
             ${this._renderFilters()}
             ${this._renderCategories()}
             ${this._renderLabels()}
@@ -1811,8 +2043,9 @@ export class AgLibraryBrowse extends LitElement {
                     <span class="lib-sh-t">${this._sectionLabel}</span>
                     <span class="lib-sh-more" @click=${() => this._load({ refresh: true })}>Refresh</span>
                 </div>
-                ${recent.length > 0 ? html`
+                ${recent.length > 0 || createTile ? html`
                     <div class="lib-album-row">
+                        ${createTile ? this._renderNewPlaylistTile() : nothing}
                         ${recent.map(a => this._renderAlbumCard(a))}
                     </div>
                 ` : html`
@@ -1831,6 +2064,7 @@ export class AgLibraryBrowse extends LitElement {
 
                 <div style="height:12px"></div>
               `}
+            </div>
         `;
     }
 }

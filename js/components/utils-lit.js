@@ -2,7 +2,7 @@
  * @module LitUtils
  * @description Shared utility functions for Lit components to avoid duplication.
  */
-import { html } from 'lit';
+import { html, nothing } from 'lit';
 import { API_BASE_URL, API_KEY } from '../core/config.js';
 import { hasCoreCredentials } from '../core/credentials.js';
 
@@ -41,6 +41,30 @@ export async function loadWithState(host, fn) {
 export function svgIcon(icon, { size = '1em' } = {}) {
     return html`<svg viewBox="0 0 24 24" width=${size} height=${size} fill="none"
         stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`;
+}
+
+/**
+ * The one markup of the library's small icon buttons — the ★ Favorites toggle, the
+ * "+ queue" and "Add to playlist" — so the three read as one set and change as one.
+ * Their look (row, cover overlay, player) is the class; the icon is the only other
+ * difference.
+ *
+ * @param {object} o
+ * @param {string} o.cls - Button class: its look and its place.
+ * @param {string} o.label - aria-label and tooltip.
+ * @param {*} o.icon - The icon's svg`` paths, from ag-icons.js.
+ * @param {(e: Event) => void} [o.onClick] - Click handler. Omitted, the click is left
+ *   to a listener on the host element (the "+ queue" is used that way).
+ * @param {string} [o.fill='none'] - Fill of the drawing: the ★ fills itself when on.
+ * @returns {import('lit').TemplateResult}
+ */
+export function libIconButton({ cls, label, icon, onClick, fill = 'none' }) {
+    return html`
+        <button class=${cls} title=${label} aria-label=${label} @click=${onClick ?? nothing}>
+            <svg viewBox="0 0 24 24" fill=${fill} stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+        </button>
+    `;
 }
 
 /**

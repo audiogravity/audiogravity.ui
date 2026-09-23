@@ -24,6 +24,66 @@ export const SOURCE_LABELS = {
     src_upmpdcli: 'UPnP Bridge',
 };
 
+/**
+ * The streaming sources whose playlists AG can open and whose account playlists it can
+ * write — the core answers 400 for any other (`/library/playlists*`,
+ * `/library/playlist-tracks`). A service joins by being listed here once its branch
+ * exists in the core; nothing else in the interface names it. BACKLOG: Qobuz and
+ * Tidal — audiogravity.ops/BACKLOG.md, HIGHRESAUDIO entry.
+ */
+export const PLAYLIST_EDIT_SOURCES = new Set(['src_highresaudio']);
+
+/**
+ * Whether an item can be offered "Add to playlist".
+ *
+ * A purchased HIGHRESAUDIO item (`vault:` id) cannot: HRA files purchases in a tree
+ * of their own, with playlists of their own. That rule also covers an account
+ * without a subscription — it browses and plays its purchases alone.
+ *
+ * @param {string} sourceId - The item's source.
+ * @param {string|null|undefined} itemId - The item's id on that source.
+ * @returns {boolean}
+ */
+export function canAddToPlaylist(sourceId, itemId) {
+    return PLAYLIST_EDIT_SOURCES.has(sourceId)
+        && typeof itemId === 'string' && itemId !== '' && !itemId.startsWith('vault:');
+}
+
+/**
+ * Whether a playlist can be opened on a page of its own — to see its tracks and play
+ * it from one of them. The account's playlists and the service's alike.
+ *
+ * @param {string} sourceId - The playlist's source.
+ * @param {string|null|undefined} playlistId - Its id, as the browse lists it.
+ * @returns {boolean}
+ */
+export function canOpenPlaylist(sourceId, playlistId) {
+    return PLAYLIST_EDIT_SOURCES.has(sourceId) && typeof playlistId === 'string' && playlistId !== '';
+}
+
+/**
+ * Whether a playlist can be edited — renamed, deleted, its tracks removed. Only the
+ * account's own (HIGHRESAUDIO: `mine:<id>`); the service's selections are read-only.
+ *
+ * @param {string} sourceId - The playlist's source.
+ * @param {string|null|undefined} playlistId - Its id, as the browse lists it.
+ * @returns {boolean}
+ */
+export function canEditPlaylist(sourceId, playlistId) {
+    return canOpenPlaylist(sourceId, playlistId) && playlistId.startsWith('mine:');
+}
+
+/**
+ * Whether a playlist can be created, empty, in the account behind a source — the
+ * "New playlist" tile of the account's playlists.
+ *
+ * @param {string} sourceId
+ * @returns {boolean}
+ */
+export function canCreatePlaylist(sourceId) {
+    return PLAYLIST_EDIT_SOURCES.has(sourceId);
+}
+
 export const SOURCE_ICONS = {
     'src_mono-sgen': html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
     src_roon: html`<span class="lib-src-logo-roon" role="img" aria-label="Roon"></span>`,
