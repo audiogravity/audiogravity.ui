@@ -38,7 +38,9 @@ export class AgSystemActions extends LitElement {
 
     /**
      * Restart the ag-core-server systemd service.
-     * The endpoint returns immediately; the service restarts ~0.5 s later.
+     * The endpoint returns immediately; the service restarts ~0.5 s later. It refuses
+     * with a 409 while the core is installing software — restarting then would leave
+     * the box's package manager interrupted — and the toast shows the core's reason.
      * @returns {Promise<void>}
      */
     async _handleRestartBackend() {
