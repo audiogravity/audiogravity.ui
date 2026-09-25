@@ -786,10 +786,15 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
         expect(host.querySelector('ag-library-playlist-btn[variant="player"]')).not.toBeNull();
     });
 
+    it('is offered for a Qobuz track the box can name', () => {
+        const { host } = titleBlock({ ...HRA, content_source_id: 'src_qobuz', content_item_id: '55635245' });
+        expect(host.querySelector('ag-library-playlist-btn[variant="player"]')).not.toBeNull();
+    });
+
     it.each([
         ['a purchase', { content_item_id: 'vault:t1_a1_tx' }],
         ['a track the box cannot name', { content_item_id: null }],
-        ['another service', { content_source_id: 'src_qobuz', content_item_id: '555' }],
+        ['another service', { content_source_id: 'src_tidal', content_item_id: '555' }],
         ['the music on the box', { content_source_id: 'src_mpd', content_item_id: null }],
     ])('is not offered for %s', (_, over) => {
         const { host } = titleBlock({ ...HRA, ...over });

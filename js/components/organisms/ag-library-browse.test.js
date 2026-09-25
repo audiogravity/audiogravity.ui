@@ -1713,8 +1713,13 @@ describe('ag-library-browse — "Add to playlist" on an album', () => {
     });
 
     it('is not offered on a source whose playlists the core cannot write', () => {
-        const el = makeEl({ sourceId: 'src_qobuz', _filter: 'favorites', _fav: { has: () => false } });
+        const el = makeEl({ sourceId: 'src_tidal', _filter: 'favorites', _fav: { has: () => false } });
         expect(card(el, { id: '123', title: 'Kind of Blue' })).not.toContain('<ag-library-playlist-btn');
+    });
+
+    it('is offered on a Qobuz album', () => {
+        const el = makeEl({ sourceId: 'src_qobuz', _filter: 'favorites', _fav: { has: () => false } });
+        expect(card(el, { id: 'a6w83poc2ia4a', title: 'Kind of Blue' })).toContain('<ag-library-playlist-btn');
     });
 
     it('asks the picker for the album, with what it shows', () => {
@@ -1762,8 +1767,14 @@ describe('ag-library-browse — a playlist\'s page', () => {
     it('offers no "open" on an album, nor on a source AG cannot open playlists of', () => {
         expect(card(hra({ _filter: 'favorites' }), { id: 'alb1', title: 'Ritornare' }))
             .not.toContain('@playlist-open');
-        expect(card(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _fav: { has: () => false } }),
-            { id: '123', title: 'Qobuz picks' })).not.toContain('@playlist-open');
+        expect(card(makeEl({ sourceId: 'src_tidal', _filter: 'playlists', _fav: { has: () => false } }),
+            { id: 'uuid-1', title: 'Tidal picks' })).not.toContain('@playlist-open');
+    });
+
+    it('offers "open" on a Qobuz playlist, the account\'s or Qobuz\'s', () => {
+        const qobuz = makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _fav: { has: () => false } });
+        expect(card(qobuz, { id: '123', title: 'Qobuz picks' })).toContain('@playlist-open');
+        expect(card(qobuz, { id: 'mine:37381361', title: 'Paris' })).toContain('@playlist-open');
     });
 
     it('marks a playlist\'s list row as openable, and an album\'s not', () => {
@@ -1851,7 +1862,9 @@ describe('ag-library-browse — a playlist\'s page', () => {
     it('keeps the "New playlist" dialog for the account\'s own playlists', () => {
         expect(text(hra()._renderCreateDialog())).toContain('<ag-playlist-details');
         expect(hra({ _playlistKind: 'editorial' })._renderCreateDialog()).toBe(null);
-        expect(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _playlistKind: 'mine' })
+        expect(text(makeEl({ sourceId: 'src_qobuz', _filter: 'playlists', _playlistKind: 'mine' })
+            ._renderCreateDialog())).toContain('<ag-playlist-details');
+        expect(makeEl({ sourceId: 'src_tidal', _filter: 'playlists', _playlistKind: 'mine' })
             ._renderCreateDialog()).toBe(null);
     });
 

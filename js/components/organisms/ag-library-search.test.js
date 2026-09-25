@@ -271,8 +271,13 @@ describe('ag-library-search — "Add to playlist" on an album result', () => {
         expect(row).not.toContain('?playlistable=true');
     });
 
+    it('marks a Qobuz album row too', () => {
+        expect(text(el({ sourceId: 'src_qobuz', _fav: fav })._renderRow(ALBUM, 'album')))
+            .toContain('?playlistable=true');
+    });
+
     it('not on a source whose playlists the core cannot write', () => {
-        const row = text(el({ sourceId: 'src_qobuz', _fav: fav })._renderRow(ALBUM, 'album'));
+        const row = text(el({ sourceId: 'src_tidal', _fav: fav })._renderRow(ALBUM, 'album'));
         expect(row).toContain('?playlistable=');
         expect(row).not.toContain('?playlistable=true');
     });
