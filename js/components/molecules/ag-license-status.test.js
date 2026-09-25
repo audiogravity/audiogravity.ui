@@ -13,8 +13,10 @@
  * 3. the purchase sentence: price is text-interpolated, not raw HTML
  * 4. rendered: the sentence survives a missing price, and states it only once
  * 5. rendered: the trial tile states the day count once, not three times
+ * 6. rendered: "About Licensing" sends an OS reinstall to the contact address, not the portal
  */
 import { describe, it, expect, vi } from 'vitest';
+import { render } from 'lit';
 
 // --- Pure logic extracted from ag-license-status.js for isolated testing ---
 
@@ -216,5 +218,48 @@ describe('the trial tile says the day count once', () => {
             message: 'Trial expired. Audiogravity is running in Starter Edition.',
         });
         expect(text).toContain('Trial expired. Audiogravity is running in Starter Edition.');
+    });
+});
+
+/**
+ * The portal only serves a licence back to the Device ID it was activated on, and an OS
+ * reinstall changes that ID. The modal used to send exactly that case to the portal.
+ */
+describe('"About Licensing" on reinstalling', () => {
+    /**
+     * Open the modal and return the element its content renders into.
+     * @param {Object} config Public config the licence server would return.
+     */
+    async function infoModal(config) {
+        const show = vi.fn();
+        window.UIComponents = { InfoModal: { show } };
+        api.status = { status: 'trial', days_remaining: 2, trial_days_total: 30, device_id: 'abc' };
+        api.config = config;
+        const el = document.createElement('ag-license-status');
+        document.body.appendChild(el);
+        await new Promise(r => setTimeout(r, 0));
+        await el.updateComplete;
+        el._showInfo();
+        el.remove();
+        delete window.UIComponents;
+        const box = document.createElement('div');
+        render(show.mock.calls[0][1], box);
+        return box;
+    }
+
+    it('keeps the portal for a reinstall of the app, and sends an OS reinstall to the contact address', async () => {
+        const box = await infoModal({ portal_url: 'https://lic.example/portal', contact_email: 'support@audiogravity.app' });
+        const text = box.textContent.replace(/\s+/g, ' ');
+        expect(text).toContain('(e.g. after reinstalling Audiogravity), use the self-service portal');
+        expect(text).toContain('If you reinstalled the operating system or moved to another machine, write to support@audiogravity.app instead.');
+        expect(text).not.toContain('OS reinstall');
+        expect(box.querySelector('a[href="mailto:support@audiogravity.app"]')).not.toBe(null);
+    });
+
+    it('drops the OS-reinstall line rather than leave "write to  instead" without an address', async () => {
+        const box = await infoModal({ portal_url: 'https://lic.example/portal' });
+        const text = box.textContent.replace(/\s+/g, ' ');
+        expect(text).toContain('use the self-service portal');
+        expect(text).not.toContain('operating system');
     });
 });

@@ -327,7 +327,10 @@ export class AgLicenseStatus extends LitElement {
             ${this._renderAcquisitionSteps()}
             ${safePortalUrl ? html`
                 <h4 style="margin:1em 0 .4em">Lost or re-installing?</h4>
-                <p style="margin:0">If you already purchased a license and need to download your <code>.lic</code> file (e.g. after an OS reinstall), use the self-service portal — no account required, just your purchase email and this Device ID: <a href=${safePortalUrl} target="_blank" rel="noopener noreferrer">Download .lic →</a></p>
+                <p style="margin:0">If you already purchased a license and need to download your <code>.lic</code> file (e.g. after reinstalling Audiogravi<sup>ty</sup>), use the self-service portal — no account required, just your purchase email and this Device ID: <a href=${safePortalUrl} target="_blank" rel="noopener noreferrer">Download .lic →</a></p>
+                ${this._contactEmail ? html`
+                    <p style="margin:.4em 0 0">If you reinstalled the operating system or moved to another machine, write to <a href="mailto:${this._contactEmail}">${this._contactEmail}</a> instead.</p>
+                ` : nothing}
             ` : nothing}
             <h4 style="margin:1em 0 .4em">About the Device ID</h4>
             <p style="margin:0">A SHA-256 fingerprint of this device's hardware, used to bind the license to this specific machine. Displayed for reference — you do not need it to activate.</p>
