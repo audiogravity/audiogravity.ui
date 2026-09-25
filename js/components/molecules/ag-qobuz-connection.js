@@ -16,6 +16,8 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
+import { failureReason } from '../../library-api.js';
+import { showToast } from '../../ui-helpers.js';
 import { loadConnection } from '../utils-lit.js';
 import { hasSubscription } from '../../library-store.js';
 import '../atoms/ag-status-indicator.js';
@@ -65,38 +67,58 @@ export class AgQobuzConnection extends LitElement {
     }
 
     /**
-     * Start the OAuth flow: get the URL and open it in a popup window.
-     * A popup (not a new tab) keeps the AG UI alive underneath; the backend
+     * Start the OAuth flow: open a popup window, then point it at the URL the core
+     * returns. A popup (not a new tab) keeps the AG UI alive underneath; the backend
      * callback auto-closes it on success and polling picks up the connection,
      * so the user lands back in AG without manually closing anything.
      * (Qobuz's signin page sends X-Frame-Options: deny, so it cannot be embedded
      * in an in-app iframe/modal — a popup is the closest in-app experience.)
+     *
+     * The window opens on the click itself, empty, and is pointed at Qobuz once the
+     * address arrives. The core first downloads Qobuz's 9 MB web player — under 2 s
+     * on the x86 box, a minute on a slow line — and a browser lets a click open a
+     * window for a few seconds only: Chromium blocked it, and the new-tab fallback
+     * with it, 6 s after the click, while one opened on the click and pointed 30 s
+     * later went through (measured on 2026-09-25; Safari not measured).
+     *
+     * A failure is said on screen, in the core's words: it went to the console only,
+     * and the button simply read "Connect" again.
      */
     async _connect() {
         this._connecting = true;
+        const popup = this._openOAuthPopup('about:blank');
         try {
             const data = await apiPost('/qobuz/connection', {
                 redirect_base_url: `${window.location.origin}/api`,
             });
-            if (data?.oauth_url) {
-                this._oauthPopup = this._openOAuthPopup(data.oauth_url);
-                this._startPolling();
+            if (!data?.oauth_url) throw new Error('The box gave no Qobuz sign-in address.');
+            if (popup?.closed) {                 // closed while the box was answering
+                this._connecting = false;
+                return;
             }
+            if (popup) popup.location.href = data.oauth_url;
+            else window.open(data.oauth_url, '_blank'); // blocked even on the click → try a tab
+            this._oauthPopup = popup;
+            this._startPolling();
         } catch (e) {
+            try { popup?.close(); } catch { /* already closed */ }
             console.warn('[qobuz] Start OAuth failed:', e.message);
+            showToast('error', 'Qobuz sign-in failed', failureReason(e));
             this._connecting = false;
         }
     }
 
-    /** Open the OAuth URL as a centered popup; fall back to a new tab if blocked. */
+    /**
+     * Open a centered popup for the OAuth flow.
+     * @param {string} url - What it shows first (`about:blank` until the address arrives).
+     * @returns {Window|null} The popup, or null when the browser blocked it.
+     */
     _openOAuthPopup(url) {
         const w = 520, h = 720;
         const left = Math.max(0, window.screenX + (window.outerWidth  - w) / 2);
         const top  = Math.max(0, window.screenY + (window.outerHeight - h) / 2);
-        const popup = window.open(url, 'qobuz-oauth',
+        return window.open(url, 'qobuz-oauth',
             `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
-        if (!popup) window.open(url, '_blank'); // popup blocked → new tab fallback
-        return popup;
     }
 
     /** Disconnect from Qobuz. */
