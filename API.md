@@ -615,14 +615,23 @@ ends. Never present it as what will be heard.
 | POST | `/services/{name}/stop` | Stop |
 | POST | `/services/{name}/restart` | Restart |
 | POST | `/services/{name}/reload` | Reload the unit's config |
-| POST | `/services/{name}/properties/validate` | Dry-run an override before applying it |
-| POST | `/services/{name}/properties/restore` | Undo the previous override |
+| POST | `/services/{name}/properties/validate` | Check an override without applying it → `{ valid, errors, warnings, properties_preview }`; `errors` names the values a service cannot start with (see **Saving settings**) |
+| POST | `/services/{name}/properties/restore` | Put back the override that the last change which stayed replaced (`has_backup` in `GET /services/{name}/properties`) |
 | DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults |
 | POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravi<sup>ty</sup>-managed units** (audio engines + core AG services); a non-managed unit is rejected |
 | GET | `/services/{name}/properties` | systemd unit properties. `nice` and `cpu_scheduling_policy` are `null` when the unit keeps systemd's default (nice 0, policy `other`) — render as "default"; an unlimited limit reads `infinity`. The `properties` block of `/services/{name}` follows the same rules |
 | POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
 On the core's own unit (`ag-core-server`), `stop`, `restart` and `reload` — as routes, through `/action`, or through `POST /services/{name}/properties` with `apply_immediately` — answer **409** while the core is installing software, and nothing is stopped. `detail` names what is being installed and is meant to be shown as is.
+
+**States** — a service's `state` is systemd's `ActiveState`, except a unit systemd keeps restarting after a failure (`activating` / `auto-restart`), which reads `failed`. `sub_state` also takes systemd's `auto-restart-queued`, `failed-before-auto-restart` and `dead-before-auto-restart`.
+
+**Saving settings** — `POST /services/{name}/properties` answers **400**, `detail` saying why and meant to be shown as is, when:
+- **refused before anything is written** — values a service cannot start with: `cpu_scheduling_priority` above 0 without `fifo` / `rr`, or 0 with one; a `cpu_affinity` naming a CPU the box does not have; `memory_max` or `memory_high` under `16M`; `limit_nofile` under `1024`. `/properties/validate` lists the same in `errors`;
+- **undone** (`apply_immediately`) — a running service that does not stay up for 3 s after its restart, or that systemd refuses to start, gets its previous settings back and is restarted; `detail` says whether it runs again;
+- **kept, service stopped** — a service already restarting in a loop keeps the new settings, and is stopped.
+
+A service not running when the save arrives — stopped, or dead after a failure — is not started: **200** with `service_restarted: false`, the settings apply at its next start. The answer comes once the service is restarted and watched: seconds, up to the time systemd allows its stop and start. The backup `/properties/restore` puts back is only replaced by a change that stays — a refused or undone save leaves it as it was.
 
 ### Profiles — `/profiles/*`
 | Method | Path | Description |
@@ -633,6 +642,8 @@ On the core's own unit (`ag-core-server`), `stop`, `restart` and `reload` — as
 | GET | `/profiles/configuration` | Current configuration snapshot |
 | GET | `/profiles/configuration/export-file` | Download the configuration |
 | POST | `/profiles/configuration/import-file` | Restore a configuration |
+
+**Profile `state`** — `active` when the box is exactly as the profile describes: every service it starts runs, every one it stops is stopped. `error` only for the profile **in effect**: a service it starts has failed, or one it stops keeps being restarted, and everything else is as it describes. For any other profile, a failed service counts as not running (`partial`, `inactive`); it shows only in the `services_failed` count of `profile_metrics`.
 
 `GET /profiles/configuration` → `{ services, profiles, topology_link, added_by_upgrade }`. **`added_by_upgrade`** lists the services an upgrade has already offered this configuration (`hqplayerd`, HQPlayer Embedded, today). A service listed there but absent from `services` was taken out by the operator, and is **not** put back — neither by an upgrade nor by an import.
 

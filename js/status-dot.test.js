@@ -56,6 +56,22 @@ describe('no status dot glows', () => {
         }
     });
 
+    it('is red, steady and flat when failed', () => {
+        // Added 2026-09-25 for the profile tile reading FAILED; the profile detail
+        // already gave a failed service this class, which had no rule and showed nothing.
+        const css = read('css', 'components', 'status-indicator.css');
+        for (const selector of ['.service-state-dot.error', '.profile-status-dot.error']) {
+            const body = ruleBody(css, selector);
+            expect(body, `no rule for ${selector}`).toBeTruthy();
+            expect(body).toMatch(/background:\s*var\(--color-error\)/);
+            expect(body, `${selector} glows`).not.toMatch(/box-shadow/);
+            expect(body, `${selector} blinks`).not.toMatch(/animation/);
+        }
+        for (const selector of ['.service-state-text.error', '.profile-status-text.error']) {
+            expect(ruleBody(css, selector)).toMatch(/color:\s*var\(--color-error-text\)/);
+        }
+    });
+
     it('blinks by opacity alone', () => {
         const css = read('css', 'components', 'status-indicator.css');
         const frames = css.match(/@keyframes blinkSlow\s*\{([\s\S]*?\n)\}/);

@@ -22,9 +22,10 @@ const profileMock = {
 
 const Template = (args) => html`
   <div style="padding: 20px; max-width: 350px;">
-    <ag-profile-card 
+    <ag-profile-card
         .profile="${args.profile}"
         ?isActive="${args.isActive}"
+        .profileMetrics="${args.profileMetrics ?? null}"
         @toggle-profile="${(e) => console.log('Profile toggle:', e.detail)}">
     </ag-profile-card>
   </div>
@@ -40,4 +41,12 @@ export const Inactive = Template.bind({});
 Inactive.args = {
     profile: { ...profileMock, name: 'Background FM', id: 'radio' },
     isActive: false
+};
+
+/** One of the profile's services fails — e.g. restarting in a loop: FAILED, in red. */
+export const Failed = Template.bind({});
+Failed.args = {
+    profile: { ...profileMock, name: 'HQPlayer', id: 'hqplayer', state: 'error' },
+    isActive: false,
+    profileMetrics: { services_active: 1, services_inactive: 0, services_failed: 1, total_services: 2 }
 };

@@ -25,6 +25,15 @@ import './ag-card-grid.js';
 import '../molecules/ag-profile-card.js';
 
 /**
+ * How long a profile switch is waited for before the page asks the core where the
+ * profile really stands. The core gives a switch up to 30 s to stop its services and
+ * 30 s to start the others (modules/profiles/service.py), so a wait past this is a
+ * switch whose end was never announced — an event lost, the core restarted meanwhile —
+ * and the tile would otherwise stay PENDING until the page is reloaded.
+ */
+export const PROFILE_PENDING_TIMEOUT_MS = 75000;
+
+/**
  * AgProfilesPage
  * Orchestrates the Profiles tab: Loading, activating and deactivating profiles.
  */
@@ -141,27 +150,20 @@ export class AgProfilesPage extends LitElement {
         }
 
         // Track profiles awaiting async activation/deactivation
-        this._pendingProfiles = new Map(); // profileId → { name, action }
+        this._pendingProfiles = new Map(); // profileId → { name, action, timer }
+        // A final state that arrived while its request was still unanswered: the core
+        // starts the switch before it answers, so the end can beat the answer.
+        this._settledEarly = new Map(); // profileId → SSE detail
 
         // PERFORMANCE OPTIMIZATION (Phase 2):
         // Memory leak prevention: use bound handler for SSE event
         this._onProfileUpdate = (e) => {
-            const { profile_id, new_state, success, failed_services, message } = e.detail;
-            const pending = this._pendingProfiles.get(profile_id);
+            const { profile_id, new_state } = e.detail;
             this._updateProfileState(profile_id, new_state);
-            if (pending && new_state !== 'activating' && new_state !== 'deactivating') {
-                this._pendingProfiles.delete(profile_id);
-                const actionLabel = pending.action === 'activate' ? 'Activated' : 'Deactivated';
-                if (success === false) {
-                    if (showToast) showToast('warning', 'Some Services Failed', (failed_services || []).join(', ') || message, 6000);
-                } else {
-                    if (showToast) showToast('success', `Profile ${actionLabel}`, pending.name);
-                }
-                if (EventEmitter) {
-                    EventEmitter.emit('profile-changed', { profileId: profile_id, action: pending.action === 'activate' ? 'activated' : 'deactivated' });
-                }
-                if (addToHistory) addToHistory('profile', `${actionLabel}: ${pending.name}`, success !== false);
-            }
+            if (new_state === 'activating' || new_state === 'deactivating') return;
+            const pending = this._pendingProfiles.get(profile_id);
+            if (pending) this._settle(profile_id, pending, e.detail);
+            else this._settledEarly.set(profile_id, e.detail);
         };
         window.addEventListener('profile-state-update', this._onProfileUpdate);
         window.addEventListener('audio-pipeline-update', this._bindPipelineUpdate);
@@ -174,6 +176,9 @@ export class AgProfilesPage extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        for (const pending of this._pendingProfiles?.values() ?? []) clearTimeout(pending.timer);
+        this._pendingProfiles?.clear();
+        this._settledEarly?.clear();
         window.removeEventListener('profile-state-update', this._onProfileUpdate);
         window.removeEventListener('audio-pipeline-update', this._bindPipelineUpdate);
         if (EventEmitter) {
@@ -272,13 +277,30 @@ export class AgProfilesPage extends LitElement {
         // Immediate visual feedback before HTTP response
         const pendingState = isActive ? 'deactivating' : 'activating';
         this._updateProfileState(profileId, pendingState);
+        // Only an end announced after this request was sent can be this request's.
+        this._settledEarly.delete(profileId);
 
         try {
             const result = await apiPost(`/profiles/${profileId}/${action}`);
 
             if (result.pending) {
-                // Fire-and-forget: SSE event will deliver the final state and toast
-                this._pendingProfiles.set(profileId, { name: profile.name, action });
+                // Fire-and-forget: SSE event will deliver the final state and toast —
+                // unless it came first, or, if it never comes, the timer stops the wait.
+                const early = this._settledEarly.get(profileId);
+                this._settledEarly.delete(profileId);
+                if (early) {
+                    this._settle(profileId, { name: profile.name, action }, early);
+                } else {
+                    // One wait per profile: a refresh can re-enable the tile while a
+                    // switch is pending, and a first wait left armed fired 75 s later
+                    // against the second request (code review, 2026-09-25).
+                    clearTimeout(this._pendingProfiles.get(profileId)?.timer);
+                    this._pendingProfiles.set(profileId, {
+                        name: profile.name,
+                        action,
+                        timer: setTimeout(() => this._pendingTimedOut(profileId), PROFILE_PENDING_TIMEOUT_MS),
+                    });
+                }
             } else {
                 // Synchronous response (legacy fallback)
                 if (addToHistory) addToHistory('profile', `${actionLabel}d: ${profile.name}`, result.success);
@@ -308,6 +330,44 @@ export class AgProfilesPage extends LitElement {
             if (addToHistory) addToHistory('profile', `Failed: ${profile.name} - ${error.message}`, false);
             handleError(error, 'Profile operation failed');
         }
+    }
+
+    /**
+     * @private A switch has ended: stop waiting for it, and say how it went.
+     * @param {string} profileId
+     * @param {{name: string, action: string, timer?: number}} pending - The request.
+     * @param {{success?: boolean, failed_services?: string[], message?: string}} detail -
+     *   The core's announcement of its end.
+     */
+    _settle(profileId, pending, detail) {
+        clearTimeout(pending.timer);
+        this._pendingProfiles.delete(profileId);
+        const { success, failed_services, message } = detail;
+        const actionLabel = pending.action === 'activate' ? 'Activated' : 'Deactivated';
+        if (success === false) {
+            if (showToast) showToast('warning', 'Some Services Failed', (failed_services || []).join(', ') || message, 6000);
+        } else {
+            if (showToast) showToast('success', `Profile ${actionLabel}`, pending.name);
+        }
+        if (EventEmitter) {
+            EventEmitter.emit('profile-changed', { profileId, action: pending.action === 'activate' ? 'activated' : 'deactivated' });
+        }
+        if (addToHistory) addToHistory('profile', `${actionLabel}: ${pending.name}`, success !== false);
+    }
+
+    /**
+     * @private A switch whose end never arrived: stop waiting for it, say so, and show
+     * the profile as the core now sees it rather than PENDING for good.
+     * @param {string} profileId
+     */
+    _pendingTimedOut(profileId) {
+        const pending = this._pendingProfiles?.get(profileId);
+        if (!pending) return;
+        this._pendingProfiles.delete(profileId);
+        if (showToast) showToast('warning', 'No answer from the profile',
+            `${pending.name} did not report back; showing its current state.`, 6000);
+        if (addToHistory) addToHistory('profile', `No answer: ${pending.name}`, false);
+        this._loadProfiles();
     }
 
     /**

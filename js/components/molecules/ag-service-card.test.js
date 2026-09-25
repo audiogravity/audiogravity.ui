@@ -45,7 +45,7 @@ vi.mock('../atoms/ag-sparkline.js', () => ({}));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 vi.mock('../atoms/ag-metric-detail.js', () => ({}));
 
-import { AgServiceCard } from './ag-service-card.js';
+import { AgServiceCard, serviceStatus } from './ag-service-card.js';
 import { flat } from '../../test-utils.js';
 
 
@@ -129,5 +129,22 @@ describe('a figure that was measured', () => {
         const idle = { ...ALL_MEASURED, io_read_rate: 0, io_write_rate: 0 };
         const out = flat(card(idle).render());
         expect(out).toContain('0.0 MB/s');
+    });
+});
+
+describe('a failed service', () => {
+    it('reads FAILED in red, as a failed profile does', () => {
+        expect(serviceStatus('failed', false)).toEqual({ statusClass: 'error', statusText: 'FAILED' });
+        const el = card(ALL_MEASURED);
+        el.service = { ...el.service, state: 'failed' };
+        const out = flat(el.render());
+        expect(out).toContain('state=error');
+        expect(out).toContain('label=FAILED');
+    });
+
+    it('keeps the readings it had', () => {
+        expect(serviceStatus('active', false)).toEqual({ statusClass: 'up', statusText: 'UP' });
+        expect(serviceStatus('inactive', false)).toEqual({ statusClass: 'down', statusText: 'IDLE' });
+        expect(serviceStatus('failed', true)).toEqual({ statusClass: 'pending', statusText: 'PENDING' });
     });
 });

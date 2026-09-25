@@ -10,7 +10,7 @@ import { classMap } from 'lit/directives/class-map.js';
  * Status Indicator Web Component
  * @element ag-status-indicator
  *
- * @attr {string} state - The status state: 'up', 'down', 'active', 'inactive' (default: 'down')
+ * @attr {string} state - The status state: 'up', 'down', 'pending', 'error' (red, failed), 'active', 'inactive' (default: 'down')
  * @attr {string} label - Optional text label to display next to the dot
  * @attr {string} type - Context type: 'service' or 'profile' (affects CSS classes, default: 'service')
  *

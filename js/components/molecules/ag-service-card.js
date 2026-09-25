@@ -29,6 +29,25 @@ import '../atoms/ag-sparkline.js';
 import { SERVICE_METRICS_WINDOW } from '../../core/metrics-window.js';
 import '../atoms/ag-status-indicator.js';
 
+/**
+ * How a service's state reads on its tile: the dot's state and the word beside it.
+ *
+ * A failed service read FAILED in grey, the colour of a stopped one — red since
+ * 2026-09-25, as a failed profile reads (`profileStatus` in ag-profile-card.js). A
+ * unit systemd keeps restarting after a failure reaches the page as `failed` too.
+ *
+ * @param {string} state - The service's state as the core sends it.
+ * @param {boolean} pending - An action on it awaits its outcome.
+ * @returns {{statusClass: string, statusText: string}}
+ */
+export function serviceStatus(state, pending) {
+    if (pending) return { statusClass: 'pending', statusText: 'PENDING' };
+    if (state === 'failed') return { statusClass: 'error', statusText: 'FAILED' };
+    return state === 'active'
+        ? { statusClass: 'up', statusText: 'UP' }
+        : { statusClass: 'down', statusText: 'IDLE' };
+}
+
 export class AgServiceCard extends LitElement {
     static properties = {
         service: { type: Object },
@@ -229,6 +248,7 @@ export class AgServiceCard extends LitElement {
         if (!this.service || !this.service.id) return html``;
 
         const isRunning = this.service.state === 'active';
+        const status = serviceStatus(this.service.state, this._pending);
         const isInstalled = this.service.is_installed !== false;
 
         // Metrics processing
@@ -276,8 +296,8 @@ export class AgServiceCard extends LitElement {
                         </div>
                     </div>
                     <ag-status-indicator
-                        state=${this._pending ? 'pending' : this.service.state === 'failed' ? 'down' : isRunning ? 'up' : 'down'}
-                        label=${this._pending ? 'PENDING' : this.service.state === 'failed' ? 'FAILED' : isRunning ? 'UP' : 'IDLE'}>
+                        state=${status.statusClass}
+                        label=${status.statusText}>
                     </ag-status-indicator>
                 </div>
 

@@ -26,6 +26,24 @@ import { isGuest } from '../../auth.js';
 import { formatTimestamp } from '../utils-lit.js';
 import '../atoms/ag-status-indicator.js';
 
+/**
+ * How a profile's state reads on its tile: the dot's state and the word beside it.
+ *
+ * `error` is a profile one of whose services fails — a service systemd keeps
+ * restarting counts as failing since 2026-09-25. The tile read IDLE for it, like a
+ * stopped profile, with a small "N failed" badge as the only sign.
+ *
+ * @param {string} state - The profile's state as the core sends it.
+ * @returns {{statusClass: string, statusText: string, isPending: boolean}}
+ */
+export function profileStatus(state) {
+    const isPending = state === 'activating' || state === 'deactivating';
+    if (state === 'active') return { statusClass: 'up', statusText: 'UP', isPending };
+    if (isPending) return { statusClass: 'pending', statusText: 'PENDING', isPending };
+    if (state === 'error') return { statusClass: 'error', statusText: 'FAILED', isPending };
+    return { statusClass: 'down', statusText: 'IDLE', isPending };
+}
+
 export class AgProfileCard extends LitElement {
     static properties = {
         profile: { type: Object },
@@ -198,10 +216,8 @@ export class AgProfileCard extends LitElement {
     render() {
         if (!this.profile) return html``;
 
-        const isPending = this.profile.state === 'activating' || this.profile.state === 'deactivating';
+        const { statusClass, statusText, isPending } = profileStatus(this.profile.state);
         const isAvailable = this.profile.is_available !== false;
-        const statusClass = this.profile.state === 'active' ? 'up' : isPending ? 'pending' : 'down';
-        const statusText = this.profile.state === 'active' ? 'UP' : isPending ? 'PENDING' : 'IDLE';
 
         const tileClasses = {
             'profile-tile': true,
