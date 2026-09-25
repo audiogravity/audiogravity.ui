@@ -91,6 +91,8 @@ logger = logging.getLogger(__name__)
 class AudiogravityHandler(SimpleHTTPRequestHandler):
     core_url = None
 
+    # BACKLOG: the request line carries the session token of the SSE and WebSocket URLs into the
+    # journal — see audiogravity.ops/BACKLOG.md, "Le jeton de session voyage dans l'adresse".
     def log_message(self, format, *args):
         logger.info("%s - %s" % (self.address_string(), format%args))
 
@@ -512,6 +514,9 @@ def run(port, core, use_ssl, cert_file, key_file, ca_port=None, ca_file=None):
     if use_ssl:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        # BACKLOG: this makes accept() run the TLS handshake, so one silent client stalls every
+        # other, and a refused handshake is dropped unlogged — see audiogravity.ops/BACKLOG.md,
+        # "Le serveur de l'interface négocie le TLS en acceptant".
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
         logger.info(f"Serving HTTPS on 0.0.0.0:{port}, proxying /api to {core}")
         # Only in TLS mode: in plain-HTTP mode there is no CA to hand out, and
