@@ -63,6 +63,14 @@ StoppedService.args = {
     history: historyMock
 };
 
+/** Failed — e.g. restarting in a loop: FAILED, in red. */
+export const FailedService = Template.bind({});
+FailedService.args = {
+    service: { ...serviceMock, state: 'failed', name: 'HQPlayer Embedded', critical: false },
+    metrics: { cpu_percent: 0, memory_mb: 0, tasks: 0 },
+    history: historyMock
+};
+
 export const NothingMeasured = Template.bind({});
 NothingMeasured.args = {
     // What a running service looks like when the counters behind its figures are

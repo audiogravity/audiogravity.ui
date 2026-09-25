@@ -80,6 +80,14 @@
     50% { opacity: 0.3; }
 }
 
+/* FAILED State (Red, steady — no blink, no glow): a profile one of whose services
+   fails, and a failed service in the profile detail, whose dot had no rule at all
+   under this name and did not show. */
+.service-state-dot.error,
+.profile-status-dot.error {
+    background: var(--color-error);
+}
+
 /* Status Text */
 .service-state-text,
 .profile-status-text {
@@ -104,4 +112,10 @@
 .service-state-text.pending,
 .profile-status-text.pending {
     color: var(--color-warning-text);
+}
+
+/* FAILED Text (Red) */
+.service-state-text.error,
+.profile-status-text.error {
+    color: var(--color-error-text);
 }

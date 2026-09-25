@@ -161,6 +161,9 @@ export class AgSystemdOverrideEditor extends LitElement {
         if (!form) return;
         const formData = new FormData(form);
 
+        // BACKLOG: every filled field is sent, factory values included, not only what the
+        // user changed — see "La surcharge systemd recopie toutes les valeurs en vigueur" in
+        // audiogravity.ops/BACKLOG.md.
         const properties = {};
         const addProperty = (name, value, converter = null) => {
             if (value !== '' && value !== null) {

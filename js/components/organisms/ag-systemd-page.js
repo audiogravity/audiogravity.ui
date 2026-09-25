@@ -201,6 +201,10 @@ export class AgSystemdPage extends LitElement {
         } catch (error) {
             console.error('Failed to apply properties:', error);
             handleError(error, 'Failed to update properties');
+            // A refused save may have been applied and undone meanwhile: the core puts
+            // the previous settings back when the service does not start on the new
+            // ones, so the listed settings are read again.
+            await this._loadServices();
             return false;
         } finally {
             if (editor) editor.isSaving = false;
