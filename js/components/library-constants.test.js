@@ -403,13 +403,19 @@ describe('canAddToPlaylist — where "Add to playlist" may be offered', () => {
         expect(canAddToPlaylist('src_highresaudio', 'cfe9636e-8d3b')).toBe(true);
     });
 
+    it('offers it on a Qobuz track or album, purchased or not', () => {
+        // Qobuz's purchases carry ordinary catalogue ids: nothing marks them apart.
+        expect(canAddToPlaylist('src_qobuz', '55635245')).toBe(true);
+        expect(canAddToPlaylist('src_qobuz', 'a6w83poc2ia4a')).toBe(true);
+    });
+
     it('never on a purchase: HIGHRESAUDIO files those in a tree of their own', () => {
         expect(canAddToPlaylist('src_highresaudio', 'vault:t1_a1_tx')).toBe(false);
         expect(canAddToPlaylist('src_highresaudio', 'vault:a1_tx')).toBe(false);
     });
 
     it('not on a source whose playlists the core cannot write yet', () => {
-        for (const source of ['src_qobuz', 'src_tidal', 'src_mpd', 'src_radio', 'upnp:uuid:x']) {
+        for (const source of ['src_tidal', 'src_mpd', 'src_radio', 'upnp:uuid:x']) {
             expect(canAddToPlaylist(source, '123')).toBe(false);
         }
     });
@@ -420,8 +426,8 @@ describe('canAddToPlaylist — where "Add to playlist" may be offered', () => {
         expect(canAddToPlaylist('src_highresaudio', undefined)).toBe(false);
     });
 
-    it('lists the sources in one place, HIGHRESAUDIO alone today', () => {
-        expect([...PLAYLIST_EDIT_SOURCES]).toEqual(['src_highresaudio']);
+    it('lists the sources in one place: HIGHRESAUDIO and Qobuz today', () => {
+        expect([...PLAYLIST_EDIT_SOURCES]).toEqual(['src_highresaudio', 'src_qobuz']);
     });
 });
 
@@ -436,8 +442,16 @@ describe('canOpenPlaylist / canEditPlaylist / canCreatePlaylist — a playlist\'
         expect(canEditPlaylist('src_highresaudio', 'editorial:791')).toBe(false);
     });
 
+    it('opens every Qobuz playlist, and edits only those the core lists as the account\'s', () => {
+        // Qobuz ids share one space; the core marks the ones the account owns.
+        expect(canOpenPlaylist('src_qobuz', '37381361')).toBe(true);
+        expect(canEditPlaylist('src_qobuz', 'mine:37381361')).toBe(true);
+        expect(canEditPlaylist('src_qobuz', '37381361')).toBe(false);
+        expect(canCreatePlaylist('src_qobuz')).toBe(true);
+    });
+
     it('does neither on a source whose playlists the core cannot open yet', () => {
-        for (const source of ['src_qobuz', 'src_tidal', 'src_mpd']) {
+        for (const source of ['src_tidal', 'src_mpd']) {
             expect(canOpenPlaylist(source, 'mine:1')).toBe(false);
             expect(canEditPlaylist(source, 'mine:1')).toBe(false);
             expect(canCreatePlaylist(source)).toBe(false);

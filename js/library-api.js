@@ -24,8 +24,8 @@ import { showToast } from './ui-helpers.js';
  * @param {string} [opts.searchQuery] - Original search query (search hierarchy).
  * @param {string} [opts.itemTitle]   - Display title; helps Roon refresh stale item_keys.
  * @param {number} [opts.startIndex]  - Queue an album or a playlist from this position on
- *   (0 = its first track); the tracks before it are left out. v1: HIGHRESAUDIO albums and
- *   playlists — the core refuses it elsewhere.
+ *   (0 = its first track); the tracks before it are left out. HIGHRESAUDIO and Qobuz albums
+ *   and playlists — the core refuses it elsewhere.
  * @param {string} [opts.startItemId] - The id of the track at `startIndex`. The core reads
  *   the list again when it plays: if the track moved meanwhile it starts where the track now
  *   is, and if it left, the play is refused rather than started on another track.
@@ -103,7 +103,7 @@ export function removeFavorite(sourceId, itemId, itemType = 'album') {
 }
 
 // ---------------------------------------------------------------------------
-// The account's playlists (v1: HIGHRESAUDIO — PLAYLIST_EDIT_SOURCES)
+// The account's playlists (HIGHRESAUDIO and Qobuz — PLAYLIST_EDIT_SOURCES)
 // ---------------------------------------------------------------------------
 // No write below is retried automatically (`false`): a request whose answer was lost
 // on the way back would be sent twice — a second playlist for a creation, an error
@@ -141,7 +141,8 @@ export const failureReason = (err) => err?.detail || err?.message || 'The reques
  * The tracks of a playlist, the account's own or the service's.
  *
  * @param {string} sourceId
- * @param {string} playlistId - As the browse lists it (`mine:5549`, `editorial:791`).
+ * @param {string} playlistId - As the browse lists it (HIGHRESAUDIO: `mine:5549`,
+ *   `editorial:791`; Qobuz: `mine:37381361` for the account's own, a bare id otherwise).
  * @returns {Promise<Array<object>>} LibraryTrack entries. A track's position in this
  *   list is the `startIndex` queueItem takes to play the playlist from it.
  */

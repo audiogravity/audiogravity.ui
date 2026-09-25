@@ -28,10 +28,10 @@ export const SOURCE_LABELS = {
  * The streaming sources whose playlists AG can open and whose account playlists it can
  * write — the core answers 400 for any other (`/library/playlists*`,
  * `/library/playlist-tracks`). A service joins by being listed here once its branch
- * exists in the core; nothing else in the interface names it. BACKLOG: Qobuz and
- * Tidal — audiogravity.ops/BACKLOG.md, HIGHRESAUDIO entry.
+ * exists in the core; nothing else in the interface names it. BACKLOG: Tidal —
+ * audiogravity.ops/BACKLOG.md, HIGHRESAUDIO entry.
  */
-export const PLAYLIST_EDIT_SOURCES = new Set(['src_highresaudio']);
+export const PLAYLIST_EDIT_SOURCES = new Set(['src_highresaudio', 'src_qobuz']);
 
 /**
  * Whether an item can be offered "Add to playlist".
@@ -63,7 +63,8 @@ export function canOpenPlaylist(sourceId, playlistId) {
 
 /**
  * Whether a playlist can be edited — renamed, deleted, its tracks removed. Only the
- * account's own (HIGHRESAUDIO: `mine:<id>`); the service's selections are read-only.
+ * account's own, which the core lists as `mine:<id>`; the service's selections, and on
+ * Qobuz a playlist the account merely follows, are read-only.
  *
  * @param {string} sourceId - The playlist's source.
  * @param {string|null|undefined} playlistId - Its id, as the browse lists it.
