@@ -792,21 +792,24 @@ A path that is given must be **absolute, existing, a directory, and readable by 
 ### Config Validation — `/config_validation/*`
 Structural + semantic validation of the editable audio config files.
 
-`/validate` needs **no licence**: it guards the configuration import, which is itself
-ungated, and the caller imports anyway when validation fails — gating it removed a
-safety check instead of protecting a feature. `/validate-topology` **is** licence-gated
-(**403** on Starter): it serves the Pipeline view.
+`/validate` needs **no licence**. `/validate-topology` **is** licence-gated (**403** on
+Starter): it serves the Pipeline view.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/config_validation/validate` | Validate `audio-config.json` data (structure + systemd/file checks) |
+| POST | `/config_validation/validate` | Check `audio-config.json` with the rules the core loads it with |
 | POST | `/config_validation/validate-topology` | Validate `audio-topology.json` data (structure errors + link/connector warnings) |
 
 Both return `{ valid: bool, errors: [{ location, message, type }], warnings: [string], summary? }`.
-For `validate`, a service whose systemd unit is **not installed** on the box is a **warning**,
-not an error — declaring a service before installing it is an ordinary state (its profiles read
-as unavailable until then), and every box declares HQPlayer Embedded — and its configuration
-file is then not looked for. A missing configuration file of an installed service stays an error.
+For `validate`, the body is the file's content, read as the core reads the file: a body it
+cannot read (`NaN`, `Infinity`, a lone surrogate) or that is not an object answers **200** with
+`valid: false` and one `json_invalid` error. `errors` are what the core would refuse to load: a
+missing or mistyped field, an unknown key (`appconfigfile`, `depends_on`, `topology_file`,
+`added_by_upgrade` and `_comment` excepted), a profile naming a service the file does not declare,
+a service twice in one list or both started and stopped by one profile, a `systemd_unit` that is
+not a `.service`. `warnings` are the box's state — a service whose systemd unit is **not
+installed** (its configuration file is then not looked for), an installed service whose
+configuration file is missing — and a profile with nothing to start or stop.
 For `validate-topology`, structural problems (unknown device type, malformed shape) are blocking
 `errors`; broken references (`target_device_id`/`target_input_id`) and unmappable streamer
 connectors are non-blocking `warnings` (the topology only feeds the signal-path view). The UI
