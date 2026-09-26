@@ -275,8 +275,13 @@ export function showPasswordConfirm(title, message) {
 /**
  * Copy text to the clipboard, with execCommand fallback for HTTP contexts.
  * navigator.clipboard requires HTTPS; execCommand works on plain HTTP.
+ *
+ * Rejects when nothing was copied. The fallback reports failure by RETURNING false, not
+ * by throwing, and that value used to be ignored: every caller — which all show "Copied"
+ * unless this throws — told the reader their text was on the clipboard when it was not.
  * @param {string} text
  * @returns {Promise<void>}
+ * @throws {Error} when neither the Clipboard API nor the fallback copied the text
  */
 export async function copyToClipboard(text) {
     if (navigator.clipboard) {
@@ -288,9 +293,14 @@ export async function copyToClipboard(text) {
     });
     Object.assign(ta.style, { position: 'fixed', top: '-9999px', left: '-9999px', opacity: '0' });
     document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    let copied = false;
+    try {
+        ta.select();
+        copied = document.execCommand('copy');
+    } finally {
+        document.body.removeChild(ta);
+    }
+    if (!copied) throw new Error('The browser refused to copy to the clipboard');
 }
 
 /**
