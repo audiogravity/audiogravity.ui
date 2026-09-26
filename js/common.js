@@ -3,7 +3,7 @@
 // =====================
 
 import { initAuth, logout, applyRoleClass, requireAuth } from './auth.js';
-import { apiCall, apiCallWithRetry, apiGet, apiPost, apiDownload, apiUpload } from './api.js';
+import { apiCall, apiCallWithRetry, apiGet, apiPost, apiUpload } from './api.js';
 import { connectSSE, updateConnectionStatus, updateSystemMetrics, loadInitialMetrics, initVisibilityManager, startUptimeUpdates, sseStats } from './sse.js';
 import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-helpers.js';
 import { addToHistory, clearHistory, renderHistory } from './history.js';
@@ -840,7 +840,6 @@ export {
     apiCallWithRetry,
     apiGet,
     apiPost,
-    apiDownload,
     apiUpload,
 
     // History Management

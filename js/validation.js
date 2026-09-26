@@ -1,6 +1,8 @@
 /**
  * Validation Module
- * Handles audio-config.json validation using the backend validation API
+ * Handles audio-topology.json validation using the backend validation API.
+ * audio-config.json has no counterpart here: Audiogravity ships and replaces it,
+ * the interface never uploads one.
  */
 
 // =====================
@@ -14,21 +16,6 @@ import { showConfirm } from './ui-helpers.js';
 // =====================
 // API CALLS
 // =====================
-
-/**
- * Validate audio configuration data
- * @param {Object} config - Configuration object to validate
- * @returns {Promise<Object>} Validation result with errors/warnings
- */
-export async function validateAudioConfig(config) {
-    try {
-        const response = await apiPost('/config_validation/validate', config);
-        return response;
-    } catch (error) {
-        console.error('Validation API error:', error);
-        throw error;
-    }
-}
 
 /**
  * Validate audio topology data (audio-topology.json)

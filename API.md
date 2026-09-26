@@ -640,14 +640,10 @@ A service not running when the save arrives — stopped, or dead after a failure
 | POST | `/profiles/{profile_id}/activate` | Activate a profile |
 | POST | `/profiles/{profile_id}/deactivate` | Deactivate a profile |
 | GET | `/profiles/configuration` | Current configuration snapshot |
-| GET | `/profiles/configuration/export-file` | Download the configuration |
-| POST | `/profiles/configuration/import-file` | Restore a configuration |
 
 **Profile `state`** — `active` when the box is exactly as the profile describes: every service it starts runs, every one it stops is stopped. `error` only for the profile **in effect**: a service it starts has failed, or one it stops keeps being restarted, and everything else is as it describes. For any other profile, a failed service counts as not running (`partial`, `inactive`); it shows only in the `services_failed` count of `profile_metrics`.
 
-`GET /profiles/configuration` → `{ services, profiles, topology_link, added_by_upgrade }`. **`added_by_upgrade`** lists the services an upgrade has already offered this configuration (`hqplayerd`, HQPlayer Embedded, today). A service listed there but absent from `services` was taken out by the operator, and is **not** put back — neither by an upgrade nor by an import.
-
-`POST /profiles/configuration/import-file` migrates the file on the way in exactly as an upgrade migrates the box's own: the NAA's former id `hqplayer` becomes `naa`, then each service added to the stack since the file was written is declared — unless `added_by_upgrade` lists it, or its systemd unit is already declared under any id — added to the `stop` list of every profile that starts or stops the NAA, and given a profile of its own. An export therefore round-trips on any box, and an export taken before an upgrade lands on the current stack.
+`GET /profiles/configuration` → `{ services, profiles, topology_link, added_by_upgrade }`. **`added_by_upgrade`** lists the services an upgrade has already offered this configuration (`hqplayerd`, HQPlayer Embedded, today). A service listed there but absent from `services` was taken out by the operator, and is **not** put back by an upgrade.
 
 ### Performance — `/performance/*`
 | Method | Path | Description |

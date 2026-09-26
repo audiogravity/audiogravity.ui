@@ -41,7 +41,6 @@ const AG_COMPAT_GLOBALS = {
     addToHistory: 'readonly',
     apiCall: 'readonly',
     apiCallWithRetry: 'readonly',
-    apiDownload: 'readonly',
     apiGet: 'readonly',
     apiPost: 'readonly',
     apiUpload: 'readonly',
