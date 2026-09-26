@@ -135,16 +135,16 @@
     --syntax-key: #1D4ED8;
 
     /* blue-700 — keys */
-    --syntax-string: #15803D;
+    --syntax-string: #166534;
 
-    /* green-700 — strings */
-    --syntax-number: #B45309;
+    /* green-800 — strings (700 fell to 4.4:1 on --bg-tertiary) */
+    --syntax-number: #92400E;
 
-    /* amber-700 — numbers */
+    /* amber-800 — numbers (700 fell to 4.4:1 on --bg-tertiary) */
     --syntax-boolean: #7E22CE;
 
     /* purple-700 — booleans */
-    --syntax-null: #888888;
+    --syntax-null: #6B6B6B;
 
     /* grey — null */
     --syntax-selection: rgb(29 78 216 / 0.15);
@@ -319,7 +319,7 @@
     --syntax-boolean: #D8B4FE;
 
     /* purple-300 */
-    --syntax-null: #777777;
+    --syntax-null: #8A8A8A;
 
     /* grey */
     --syntax-selection: rgb(147 197 253 / 0.2);

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render } from 'lit';
-import { getUserFriendlyError, showPasswordConfirm, downloadBlob, downloadTextFile, showToast } from './ui-helpers.js';
+import { getUserFriendlyError, showPasswordConfirm, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
 import { asNetworkError } from './net-errors.js';
 
 describe('getUserFriendlyError', () => {
@@ -226,5 +226,47 @@ describe('downloadBlob — the two details that decide whether a file is written
         expect(seen.inDocumentAtClick).toBe(true);
         expect(seen.revokedAtReturn).toBe(false);
         expect(seen.blob.type).toBe('application/json');
+    });
+});
+
+describe('copyToClipboard — a failure is reported, never passed off as a copy', () => {
+    /** Run fn with document.execCommand replaced by impl, restoring what was there. */
+    const withExec = async (impl, fn) => {
+        const had = 'execCommand' in document;
+        const saved = document.execCommand;
+        document.execCommand = impl;
+        try { await fn(); } finally {
+            if (had) document.execCommand = saved; else delete document.execCommand;
+        }
+    };
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('uses the Clipboard API when it accepts', async () => {
+        const writeText = vi.fn().mockResolvedValue();
+        vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+        await withExec(vi.fn(() => false), async () => {
+            await copyToClipboard('abc');
+            expect(writeText).toHaveBeenCalledWith('abc');
+            expect(document.execCommand).not.toHaveBeenCalled();
+        });
+    });
+
+    it('falls back to execCommand on plain HTTP, and resolves when it copies', async () => {
+        vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+        await withExec(vi.fn(() => true), async () => {
+            await expect(copyToClipboard('abc')).resolves.toBeUndefined();
+            expect(document.execCommand).toHaveBeenCalledWith('copy');
+        });
+    });
+
+    it('rejects when the fallback copies nothing — it returns false, it does not throw', async () => {
+        vi.stubGlobal('navigator', {
+            ...navigator, clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+        });
+        await withExec(vi.fn(() => false), async () => {
+            await expect(copyToClipboard('abc')).rejects.toThrow(/refused/);
+            expect(document.querySelector('textarea')).toBeNull(); // no field left behind
+        });
     });
 });

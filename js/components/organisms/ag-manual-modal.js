@@ -14,6 +14,10 @@
  * execute — that CSP, not sanitisation, is the guard. If the manual ever sources
  * non-first-party content, add DOMPurify here.
  *
+ * Code blocks are coloured as they are rendered (core/code-highlight.js, which the
+ * site's generator mirrors) and get a copy button once on screen — except a block
+ * the Markdown flags `nocopy`: it holds values the reader must replace first.
+ *
  * @element ag-manual-modal
  *
  * @attr {boolean} is-open - Modal visibility state
@@ -22,8 +26,11 @@
  *
  * @fires manual-close - Dispatched when the modal is closed
  */
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html, nothing, render } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { iconCheck, iconCopy } from '../../ag-icons.js';
+import { renderCodeBlock } from '../../core/code-highlight.js';
+import { copyToClipboard, showToast } from '../../ui-helpers.js';
 
 /**
  * Base URL of the published manual. Single-sourced in audiogravity.site and
@@ -58,6 +65,30 @@ export const MANUAL_CHAPTERS = [
 
 /** Match an intra-manual link "NN-name.md" with an optional "#anchor". */
 const CHAPTER_HREF = /^(?:\.\/)?(\d{2}-[a-z0-9-]+)\.md(?:#(.+))?$/i;
+
+/** How long a copy button shows its check mark before offering to copy again. */
+const COPY_CONFIRM_MS = 1500;
+
+/** @type {?Promise<import('marked').Marked>} the manual's renderer, built on first use */
+let manualMarked = null;
+
+/**
+ * The Markdown renderer the manual is read with: `marked`, lazy-loaded on first use and
+ * given its own instance, so the code-block renderer below never reaches another caller.
+ * That renderer colours shell and JSON, and keeps the `nocopy` flag of a fence's info
+ * string, which `marked`'s own drops (it keeps the first word only).
+ * @returns {Promise<import('marked').Marked>}
+ */
+function getManualMarked() {
+    manualMarked ??= import('marked').then(({ Marked }) => new Marked({
+        gfm: true,
+        renderer: { code: ({ text, lang }) => renderCodeBlock(text, lang) },
+    })).catch((e) => {
+        manualMarked = null; // a chunk that failed to load is retried by the next chapter
+        throw e;
+    });
+    return manualMarked;
+}
 
 /**
  * Parse the manual README's "Contents" list into chapter descriptors.
@@ -147,6 +178,70 @@ export class AgManualModal extends LitElement {
                 this._loadChapter(this._activeId);
             }
         }
+        this._mountCopyButtons();
+    }
+
+    /**
+     * Put a copy button on every code frame of the displayed chapter that lacks one.
+     * Done here rather than in the cached HTML because the icons are Lit templates, and
+     * run on every update because a chapter is re-rendered whole — a new chapter, or the
+     * same one after a load — and its frames come back without buttons. Cheap: a chapter
+     * holds a handful of blocks, and a frame that has its button is skipped.
+     */
+    _mountCopyButtons() {
+        this.querySelectorAll('.manual-md .manual-code').forEach((frame) => {
+            if (frame.querySelector(':scope > .manual-copy')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'icon-btn manual-copy';
+            this._labelCopyButton(btn, 'Copy');
+            render(html`
+                <svg class="manual-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">${iconCopy}</svg>
+                <svg class="manual-copy-done" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">${iconCheck}</svg>
+            `, btn);
+            frame.appendChild(btn);
+        });
+    }
+
+    /**
+     * Name a copy button — for the tooltip and for assistive technology alike.
+     * @param {HTMLButtonElement} btn
+     * @param {string} text
+     */
+    _labelCopyButton(btn, text) {
+        btn.setAttribute('aria-label', text);
+        btn.title = text;
+    }
+
+    /**
+     * Copy the block a button sits on, then show a check mark for a moment. The text
+     * leaves without its trailing newline, so its last line waits for Enter. A terminal
+     * with bracketed paste (bash's default since 5.1) holds the whole paste until then; one
+     * without runs the lines before the last as they land — which is why the manual gives
+     * a step to check before going on (a reboot, say) a block of its own.
+     * @param {HTMLButtonElement} btn - a `.manual-copy` button
+     * @returns {Promise<void>}
+     */
+    async _copyBlock(btn) {
+        const pre = btn.closest('.manual-code')?.querySelector('pre');
+        if (!pre) return;
+        try {
+            await copyToClipboard(pre.textContent.replace(/\n+$/, ''));
+        } catch {
+            showToast('error', 'Copy failed', 'Could not access the clipboard.');
+            return;
+        }
+        btn.classList.add('is-copied');
+        this._labelCopyButton(btn, 'Copied');
+        clearTimeout(btn.resetTimer);
+        btn.resetTimer = setTimeout(() => {
+            btn.classList.remove('is-copied');
+            this._labelCopyButton(btn, 'Copy');
+        }, COPY_CONFIRM_MS);
     }
 
     /**
@@ -223,7 +318,8 @@ export class AgManualModal extends LitElement {
     /**
      * Fetch a chapter's Markdown and render it into the cache, de-duplicating
      * concurrent loads of the same chapter (a repeat click reuses the pending
-     * promise instead of firing a second fetch). `marked` is imported lazily.
+     * promise instead of firing a second fetch). `marked` is imported lazily
+     * (see getManualMarked).
      * @param {string} id - chapter slug
      * @returns {Promise<boolean>} true on success, false on error (sets _error)
      */
@@ -236,8 +332,8 @@ export class AgManualModal extends LitElement {
                 const res = await fetch(`${MANUAL_BASE}/${id}.md`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const md = await res.text();
-                const { marked } = await import('marked');
-                this._cache.set(id, this._enhanceHtml(marked.parse(md, { gfm: true })));
+                const marked = await getManualMarked();
+                this._cache.set(id, this._enhanceHtml(marked.parse(md)));
                 return true;
             } catch (e) {
                 console.error('[manual] chapter load failed', id, e);
@@ -280,7 +376,26 @@ export class AgManualModal extends LitElement {
         root.querySelectorAll('a[href]').forEach((a) => this._rewriteLink(a));
         root.querySelectorAll('img[src]').forEach((img) => this._rewriteImage(img));
         root.querySelectorAll('table').forEach((t) => this._wrapTable(t));
+        root.querySelectorAll('pre').forEach((pre) => this._frameCode(pre));
         return tpl.innerHTML;
+    }
+
+    /**
+     * Give a code block the frame its copy button will sit on (see _mountCopyButtons).
+     * The button goes on the frame, not in the <pre>: the <pre> scrolls sideways on a long
+     * line and would carry the button off with it. A block flagged `nocopy` in the Markdown
+     * (`data-copy="no"`) gets no frame, hence no button — it holds values the reader must
+     * replace before running it. Idempotent, like _wrapTable.
+     * @param {HTMLPreElement} pre - a rendered <pre>
+     */
+    _frameCode(pre) {
+        const parent = pre.parentNode;
+        if (!parent || pre.dataset.copy === 'no') return;
+        if (parent.classList && parent.classList.contains('manual-code')) return;
+        const frame = pre.ownerDocument.createElement('div');
+        frame.className = 'manual-code';
+        parent.insertBefore(frame, pre);
+        frame.appendChild(pre);
     }
 
     /**
@@ -378,9 +493,15 @@ export class AgManualModal extends LitElement {
      * (which would close the modal). Chapter links (tagged during render) switch
      * chapters in place, in-page anchors scroll, and rewritten external links are
      * left to the browser (they already carry an absolute href + target=_blank).
+     * A click on a code block's copy button copies that block.
      * @param {MouseEvent} e - click event within the reading pane
      */
     _onContentClick(e) {
+        const copy = e.target.closest?.('.manual-copy');
+        if (copy) {
+            this._copyBlock(copy);
+            return;
+        }
         const a = e.target.closest?.('a');
         if (!a) return;
         const href = a.getAttribute('href') || '';

@@ -136,18 +136,18 @@
     --syntax-key: #2563EB;
 
     /* blue-600 — object keys */
-    --syntax-string: #16A34A;
+    --syntax-string: #15803D;
 
-    /* green-600 — string values */
-    --syntax-number: #D97706;
+    /* green-700 — string values */
+    --syntax-number: #B45309;
 
-    /* amber-600 — numbers */
+    /* amber-700 — numbers */
     --syntax-boolean: #9333EA;
 
     /* purple-600 — true / false */
-    --syntax-null: #94A3B8;
+    --syntax-null: #475569;
 
-    /* slate-400 — null (muted) */
+    /* slate-600 — null (muted) */
     --syntax-selection: rgb(99 102 241 / 0.15);
 
     /* indigo with alpha — CodeMirror selection */
@@ -288,21 +288,21 @@
     /* Indigo-300 */
 
     /* Syntax Highlighting — Dark Mode */
-    --syntax-key: #60A5FA;
+    --syntax-key: #93C5FD;
 
-    /* blue-400 */
+    /* blue-300 */
     --syntax-string: #4ADE80;
 
     /* green-400 */
     --syntax-number: #FBBF24;
 
     /* amber-400 */
-    --syntax-boolean: #C084FC;
+    --syntax-boolean: #D8B4FE;
 
-    /* purple-400 */
-    --syntax-null: #64748B;
+    /* purple-300 */
+    --syntax-null: #CBD5E1;
 
-    /* slate-500 */
+    /* slate-300 */
     --syntax-selection: rgb(129 140 248 / 0.2);
 
     /* indigo-400 with alpha — CodeMirror selection (dark mode) */

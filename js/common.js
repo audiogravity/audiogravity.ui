@@ -9,6 +9,7 @@ import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-
 import { addToHistory, clearHistory, renderHistory } from './history.js';
 import { AgTimerManager } from './timer.js';
 import { applyOrientationLock } from './orientation-lock.js';
+import { escapeHtml } from './core/escape-html.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
@@ -162,17 +163,9 @@ const EventEmitter = {
     }
 };
 
-/**
- * Escape HTML special characters to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped HTML
- */
-export function escapeHtml(text) {
-    if (typeof text !== 'string') return text;
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml lives in core/escape-html.js, free of this file's side effects; it is
+// re-exported here and kept global for the pages that call it without importing it.
+export { escapeHtml };
 
 // Make globally available
 window.EventEmitter = EventEmitter;

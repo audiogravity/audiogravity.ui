@@ -87,11 +87,11 @@
     --focus-color-dark: #818cf8;
 
     /* Syntax Highlighting */
-    --syntax-key: #2563eb;
-    --syntax-string: #059669;
-    --syntax-number: #d97706;
+    --syntax-key: #1d4ed8;
+    --syntax-string: #065f46;
+    --syntax-number: #92400e;
     --syntax-boolean: #7c3aed;
-    --syntax-null: #64748b;
+    --syntax-null: #475569;
     --syntax-selection: rgb(99 102 241 / 0.15);
 
     /* Misc */
@@ -208,8 +208,8 @@
     --syntax-key: #00f2fe;
     --syntax-string: #00f5d4;
     --syntax-number: #ffb703;
-    --syntax-boolean: #a855f7;
-    --syntax-null: #475569;
+    --syntax-boolean: #c084fc;
+    --syntax-null: #94a3b8;
     --syntax-selection: rgb(0 242 254 / 0.2);
     --bg-hover: #1a1d28;
     --color-debug: #475569;
