@@ -2,17 +2,12 @@
  * Unit tests for common.js utilities.
  *
  * common.js runs auth at module-level so helpers are tested by replicating
- * their logic directly in jsdom — avoids the module-load side-effects.
+ * their logic directly in jsdom — avoids the module-load side-effects. escapeHtml
+ * is the exception: it now lives in core/escape-html.js, free of those side
+ * effects, so the shipped function is the one tested here.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-
-/** Replicate escapeHtml from common.js without the auth side effects. */
-function escapeHtml(text) {
-    if (typeof text !== 'string') return text;
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+import { escapeHtml } from './core/escape-html.js';
 
 describe('escapeHtml (P1 — XSS prevention)', () => {
     it('escapes < and > as entities', () => {
