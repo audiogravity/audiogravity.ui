@@ -27,10 +27,20 @@ const THEMES = ['minimal', 'slate', 'gravity'];
 /** Semantic roles that exist in both a base and a text-safe form. */
 const SEMANTIC = ['success', 'error', 'warning', 'info'];
 
+/**
+ * The syntax colours are text as much as a paragraph is — the configuration editor, the
+ * JSON viewer and the manual's code blocks all write with them. They were outside this list,
+ * and nothing noticed that every one of the six theme modes had some between 2.2:1 and 4.4:1
+ * (raised 2026-09-26; the old values fail this check in all six).
+ * `--syntax-selection` is a background and stays out.
+ */
+const SYNTAX_TOKENS = ['--syntax-key', '--syntax-string', '--syntax-number', '--syntax-boolean', '--syntax-null'];
+
 /** Every token a `color:` declaration is allowed to resolve to. */
 const TEXT_TOKENS = [
     '--text-primary', '--text-secondary', '--text-tertiary',
     ...SEMANTIC.map(n => `--color-${n}-text`),
+    ...SYNTAX_TOKENS,
 ];
 
 /**
