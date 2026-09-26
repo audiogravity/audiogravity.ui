@@ -643,7 +643,7 @@ A service not running when the save arrives — stopped, or dead after a failure
 
 **Profile `state`** — `active` when the box is exactly as the profile describes: every service it starts runs, every one it stops is stopped. `error` only for the profile **in effect**: a service it starts has failed, or one it stops keeps being restarted, and everything else is as it describes. For any other profile, a failed service counts as not running (`partial`, `inactive`); it shows only in the `services_failed` count of `profile_metrics`.
 
-`GET /profiles/configuration` → `{ services, profiles, topology_link, added_by_upgrade }`. **`added_by_upgrade`** lists the services an upgrade has already offered this configuration (`hqplayerd`, HQPlayer Embedded, today). A service listed there but absent from `services` was taken out by the operator, and is **not** put back by an upgrade.
+`GET /profiles/configuration` → `{ services, profiles, topology_link }`.
 
 ### Performance — `/performance/*`
 | Method | Path | Description |
