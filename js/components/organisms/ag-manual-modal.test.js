@@ -376,4 +376,89 @@ describe('ag-manual-modal', () => {
             expect(cached).toContain('loading="lazy"');
         });
     });
+
+    describe('code blocks (colour, frame, copy button)', () => {
+        // One block to copy, one the reader must adapt first — the manual's two cases.
+        const MD = [
+            '# T', '',
+            '```bash', 'sudo reboot', '```', '',
+            '```bash nocopy', 'echo "192.168.1.20" | sudo tee -a /etc/fstab', '```', '',
+        ].join('\n');
+
+        /** Show the test chapter and wait for it to be on screen. */
+        const show = async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(MD) }));
+            el.isOpen = true;
+            await el._loadChapter('09-troubleshooting');
+            await el.updateComplete;
+        };
+
+        it('colours a block and frames it for its button', async () => {
+            await show();
+            expect(el._html).toContain('<div class="manual-code"><pre><code class="language-bash">'
+                + '<span class="hl-cmd">sudo</span> <span class="hl-cmd">reboot</span>');
+        });
+
+        it('leaves a nocopy block coloured but unframed, so it never gets a button', async () => {
+            await show();
+            expect(el._html).toContain('<pre data-copy="no"><code class="language-bash"><span class="hl-cmd">echo</span>');
+            expect(el._html.match(/class="manual-code"/g)).toHaveLength(1);
+        });
+
+        it('is idempotent — re-enhancing does not nest a second frame', () => {
+            const once = el._enhanceHtml('<pre><code>x</code></pre>');
+            expect(el._enhanceHtml(once)).toBe(once);
+        });
+
+        it('puts one named button with both icons on each framed block, once', async () => {
+            await show();
+            const buttons = el.querySelectorAll('.manual-md .manual-copy');
+            expect(buttons).toHaveLength(1);
+            expect(buttons[0].getAttribute('aria-label')).toBe('Copy');
+            expect(buttons[0].querySelectorAll('svg')).toHaveLength(2);
+            el.requestUpdate();
+            await el.updateComplete;
+            expect(el.querySelectorAll('.manual-md .manual-copy')).toHaveLength(1);
+        });
+
+        it('routes a click anywhere on the button to the copy', async () => {
+            await show();
+            const copy = vi.spyOn(el, '_copyBlock').mockResolvedValue();
+            const btn = el.querySelector('.manual-copy');
+            el._onContentClick({ target: btn.querySelector('svg'), preventDefault: vi.fn() });
+            expect(copy).toHaveBeenCalledWith(btn);
+        });
+
+        it('copies the block without its trailing newline, then confirms', async () => {
+            const writeText = vi.fn().mockResolvedValue();
+            vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+            await show();
+            const btn = el.querySelector('.manual-copy');
+            await el._copyBlock(btn);
+            expect(writeText).toHaveBeenCalledWith('sudo reboot'); // a paste waits for Enter
+            expect(btn.classList.contains('is-copied')).toBe(true);
+            expect(btn.getAttribute('aria-label')).toBe('Copied');
+        });
+
+        it('says so when the clipboard refuses, instead of confirming', async () => {
+            vi.stubGlobal('navigator', {
+                ...navigator, clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+            });
+            const hadExec = 'execCommand' in document;
+            const exec = document.execCommand;
+            document.execCommand = vi.fn(() => false); // the HTTP fallback fails too — by returning false
+            const toasts = Object.assign(document.createElement('div'), { id: 'toastContainer' });
+            document.body.appendChild(toasts);
+            try {
+                await show();
+                const btn = el.querySelector('.manual-copy');
+                await el._copyBlock(btn);
+                expect(btn.classList.contains('is-copied')).toBe(false);
+                expect(toasts.querySelector('ag-toast-notification')?.title).toBe('Copy failed');
+            } finally {
+                toasts.remove();
+                if (hadExec) document.execCommand = exec; else delete document.execCommand;
+            }
+        });
+    });
 });

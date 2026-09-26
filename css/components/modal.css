@@ -311,6 +311,10 @@
 }
 
 .manual-md pre {
+    /* The base reset leaves a <pre> no margin at all, so two blocks in a row read as one box.
+       The same breathing room as a blockquote or a table; inside a frame (.manual-code, below)
+       it collapses through the frame, which then hugs the block and its button with it. */
+    margin: var(--spacing-md) 0;
     padding: var(--spacing-md);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
@@ -321,6 +325,95 @@
 .manual-md pre code {
     padding: 0;
     background: none;
+}
+
+/* A code block's frame and its copy button: the frame is added when the chapter is rendered
+   (_frameCode), the button once it is on screen (_mountCopyButtons). The button sits on the
+   frame rather than in the <pre>, which scrolls sideways on a long line and would carry it
+   off. A block the manual flags `nocopy` is never framed and keeps the plain rules above. */
+.manual-md .manual-code {
+    position: relative;
+}
+
+.manual-md .manual-code > pre {
+    /* Room for the button, so the end of a short first line is never drawn under it. */
+    padding-right: calc(var(--size-lg) + 2 * var(--spacing-sm));
+}
+
+/* The standard .icon-btn, brought down to fit a one-line block and pinned to its corner. */
+.manual-md .manual-copy {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    width: var(--size-lg);
+    height: var(--size-lg);
+    color: var(--text-secondary);
+
+    /* A coat of the block's own ground over the gap to the button's right, up to the block's
+       1px border: a long line scrolled under the button otherwise shows through that gap as
+       stray fragments of letters. */
+    box-shadow: calc(var(--spacing-sm) - 1px) 0 0 var(--bg-tertiary);
+}
+
+.manual-md .manual-copy:hover,
+.manual-md .manual-copy.is-copied {
+    color: var(--text-primary);
+}
+
+.manual-md .manual-copy svg {
+    width: var(--size-sm);
+    height: var(--size-sm);
+}
+
+.manual-md .manual-copy-done,
+.manual-md .manual-copy.is-copied .manual-copy-icon {
+    display: none;
+}
+
+.manual-md .manual-copy.is-copied .manual-copy-done {
+    display: block;
+}
+
+/* On a phone the touch rule of components/button.css makes every .icon-btn at least 44px,
+   deliberately. The block grows to hold the button — a one-line block would otherwise have
+   it hang over its bottom edge — rather than the button shrinking below a finger. The 44px
+   is that rule's own value. */
+@media (width <= 768px) {
+    .manual-md .manual-code > pre {
+        min-height: calc(44px + 2 * var(--spacing-sm));
+        padding-right: calc(44px + 2 * var(--spacing-sm));
+    }
+}
+
+/* Syntax colours: the tokens every theme declares for the configuration editor
+   (css/config.css), mapped as the site's manual maps them — commands with JSON keys,
+   options with numbers, expansions with literals. Comments take --text-tertiary, a text
+   token held to 4.5:1 on every ground by js/colors.test.js. */
+.manual-md .hl-cmd,
+.manual-md .hl-key {
+    color: var(--syntax-key);
+}
+
+.manual-md .hl-opt,
+.manual-md .hl-num {
+    color: var(--syntax-number);
+}
+
+.manual-md .hl-string {
+    color: var(--syntax-string);
+}
+
+.manual-md .hl-var,
+.manual-md .hl-lit {
+    color: var(--syntax-boolean);
+}
+
+.manual-md .hl-null {
+    color: var(--syntax-null);
+}
+
+.manual-md .hl-comment {
+    color: var(--text-tertiary);
 }
 
 .manual-md blockquote {
