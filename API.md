@@ -643,6 +643,8 @@ A service not running when the save arrives — stopped, or dead after a failure
 
 **Profile `state`** — `active` when the box is exactly as the profile describes: every service it starts runs, every one it stops is stopped. `error` only for the profile **in effect**: a service it starts has failed, or one it stops keeps being restarted, and everything else is as it describes. For any other profile, a failed service counts as not running (`partial`, `inactive`); it shows only in the `services_failed` count of `profile_metrics`.
 
+**Profile `critical`** — `true` when the profile starts a service flagged `critical` (the NAA and HQPlayer Embedded). The core derives it from the services; a `critical` written for a profile in `audio-config.json` is ignored.
+
 `GET /profiles/configuration` → `{ services, profiles, topology_link }`.
 
 ### Performance — `/performance/*`
