@@ -280,24 +280,25 @@
     border: 1px solid var(--border-color);
 }
 
-/* JSON Syntax Highlighting */
-.json-viewer .json-key {
+/* JSON Syntax Highlighting — the token classes of core/code-highlight.js, which colours this
+   viewer and the manual's code blocks alike. */
+.json-viewer .hl-key {
     color: var(--syntax-key);
 }
 
-.json-viewer .json-string {
+.json-viewer .hl-string {
     color: var(--syntax-string);
 }
 
-.json-viewer .json-number {
+.json-viewer .hl-num {
     color: var(--syntax-number);
 }
 
-.json-viewer .json-boolean {
+.json-viewer .hl-lit {
     color: var(--syntax-boolean);
 }
 
-.json-viewer .json-null {
+.json-viewer .hl-null {
     color: var(--syntax-null);
     font-style: italic;
 }

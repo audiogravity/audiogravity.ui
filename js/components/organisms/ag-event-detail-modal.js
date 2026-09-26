@@ -6,6 +6,7 @@
 import { LitElement, html } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import './ag-modal.js';
+import { highlightJson } from '../../core/code-highlight.js';
 
 /**
  * Event Detail Modal Web Component
@@ -17,7 +18,7 @@ import './ag-modal.js';
  * @fires close-request - Dispatched when the modal requests to close
  * 
  * @dependency ag-modal
- * @dependency css/system.css - Defines .json-viewer, .json-key, .json-string classes
+ * @dependency css/system.css - Defines .json-viewer and the colours of its .hl-* tokens
  */
 export class AgEventDetailModal extends LitElement {
     static properties = {
@@ -50,33 +51,17 @@ export class AgEventDetailModal extends LitElement {
     }
 
     /**
-     * Syntax-highlight a JSON object into HTML spans.
-     * SECURITY NOTE: unsafeHTML is safe here because _highlightJson() systematically escapes
-     * &, <, > via .replace() BEFORE injecting any <span> tags. The only HTML inserted
-     * are hardcoded CSS class span wrappers — no user/API data reaches the HTML unescaped.
+     * Syntax-highlight a JSON object into HTML spans, with the colourer the manual's code
+     * blocks use (core/code-highlight.js).
+     * SECURITY NOTE: unsafeHTML is safe here because highlightJson() escapes every character
+     * of the text it is given (&, <, >) and inserts nothing but its own token <span>s — no
+     * user/API data reaches the HTML unescaped.
+     * @param {?Object} obj - the event payload
+     * @returns {string} the highlighted HTML, empty when there is no payload
      */
     _highlightJson(obj) {
         if (!obj) return '';
-        const json = JSON.stringify(obj, null, 2);
-        const highlighted = json
-            .replace(/&/g, '&amp;')   // Must be first
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(
-                /(\"(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*\"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-                (match) => {
-                    let cls = 'json-number';
-                    if (/^"/.test(match)) {
-                        cls = /:$/.test(match) ? 'json-key' : 'json-string';
-                    } else if (/true|false/.test(match)) {
-                        cls = 'json-boolean';
-                    } else if (/null/.test(match)) {
-                        cls = 'json-null';
-                    }
-                    return `<span class="${cls}">${match}</span>`;
-                }
-            );
-        return highlighted;
+        return highlightJson(JSON.stringify(obj, null, 2));
     }
 
     render() {
