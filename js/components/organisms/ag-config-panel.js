@@ -21,21 +21,18 @@ import { LitElement, html } from 'lit';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
-import { apiGet, apiDelete, apiDownload, apiUpload } from '../../api.js';
+import { apiGet, apiDelete } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
 import { setDarkMode } from '../../appearance.js';
 import { docsUrlFrom, openApiDocs } from '../../api-docs.js';
-import { showToast, handleError, getUserFriendlyError } from '../../ui-helpers.js';
-import { addToHistory } from '../../history.js';
-import { validateAudioConfig, showValidationModal } from '../../validation.js';
+import { showToast, getUserFriendlyError } from '../../ui-helpers.js';
 import { FetchController } from '../../core/FetchController.js';
-import { logger } from '../../utils.js';
 import { toggleSubscription, getPushStatus } from '../../push-manager.js';
 import { getCurrentUser } from '../../auth.js';
 import { isWebAuthnAvailable, registerPasskey } from '../../webauthn.js';
 import '../atoms/ag-switch.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { iconSettings, iconClose, iconDownload, iconUpload, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
+import { iconSettings, iconClose, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
 
 export class AgConfigPanel extends LitElement {
     static properties = {
@@ -445,79 +442,6 @@ export class AgConfigPanel extends LitElement {
     }
 
     // Handlers
-    async _exportConfig() {
-        if (typeof apiDownload === 'function') {
-            await apiDownload('/profiles/configuration/export-file', 'audio-config.json');
-        }
-    }
-
-    _triggerImport() {
-        const fileInput = this.querySelector('#importFile');
-        if (fileInput) fileInput.click();
-    }
-
-    async _handleImportFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        try {
-            const fileContent = await file.text();
-            let config;
-            try {
-                config = JSON.parse(fileContent);
-            } catch (err) {
-                if (showToast) showToast('error', 'Invalid JSON', 'The configuration file is not valid JSON');
-                e.target.value = '';
-                return;
-            }
-
-            if (showToast) showToast('info', 'Validating...', 'Checking configuration validity');
-
-            let validation = { valid: true, warnings: [], errors: [] };
-            try {
-                validation = await validateAudioConfig(config);
-            } catch (err) {
-                logger.warn('Validation API failed, proceeding without it', err);
-            }
-
-            if (!validation.valid) {
-                showValidationModal(validation);
-                if (addToHistory) addToHistory('import', `Import cancelled: ${validation.errors.length} validation error(s)`, false);
-                e.target.value = '';
-                return;
-            }
-
-            const performImport = async () => {
-                try {
-                    await apiUpload('/profiles/configuration/import-file', file);
-                    const summary = validation.summary || {};
-                    if (showToast) showToast('success', 'Import Successful', `Configuration imported: ${summary.services_count || '?'} services, ${summary.profiles_count || '?'} profiles`);
-                    if (addToHistory) addToHistory('import', 'Configuration imported successfully', true);
-
-                    if (EventEmitter) {
-                        EventEmitter.emit('service-changed', { action: 'import' });
-                        EventEmitter.emit('profile-changed', { action: 'import' });
-                    }
-                    e.target.value = '';
-                } catch (err) {
-                    if (handleError) handleError(err, 'Import failed');
-                    if (addToHistory) addToHistory('import', `Import failed: ${err.message}`, false);
-                    e.target.value = '';
-                }
-            };
-
-            if (validation.warnings.length > 0) {
-                showValidationModal(validation, performImport);
-            } else {
-                performImport();
-            }
-
-        } catch (error) {
-            console.error('Import failed', error);
-            e.target.value = '';
-        }
-    }
-
     _handleDarkMode(e) {
         // The sequence lives in appearance.js, which the login page's <ag-theme-toggle>
         // calls too — the same storage key, the same two elements, the same event.
@@ -671,17 +595,6 @@ export class AgConfigPanel extends LitElement {
                 </div>
 
                 <div class="config-content">
-                    <div class="config-item">
-                        <label>Export Configuration</label>
-                        <button class="config-btn" @click=${this._exportConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> Download JSON</button>
-                    </div>
-
-                    <div class="config-item">
-                        <label>Import Configuration</label>
-                        <input type="file" id="importFile" accept=".json" style="display: none;" @change=${this._handleImportFile}>
-                        <button class="config-btn" @click=${this._triggerImport}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg> Upload JSON</button>
-                    </div>
-                    
                     <div class="config-item">
                         <label>Theme</label>
                         <select class="theme-select" .value=${this.theme} @change=${this._handleThemeChange}>

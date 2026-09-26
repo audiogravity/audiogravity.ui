@@ -9,8 +9,8 @@ export { hasCoreCredentials };
 // API UTILITIES
 // =====================
 
-import { getUserFriendlyError, downloadBlob, showToast } from './ui-helpers.js';
-import { fetchOrNetworkError, throwForStatus, fetchOrThrow, fetchJson, readJson, isRetryableFailure } from './net-errors.js';
+import { getUserFriendlyError } from './ui-helpers.js';
+import { fetchOrNetworkError, throwForStatus, fetchJson, readJson, isRetryableFailure } from './net-errors.js';
 
 /**
  * Retry API call with exponential backoff
@@ -231,24 +231,6 @@ export async function apiDelete(endpoint, retry = true) {
     return apiCall(endpoint, options);
 }
 
-export async function apiDownload(endpoint, filename) {
-    try {
-        const headers = {
-            [API_KEY_HEADER]: API_KEY
-        };
-        const token = getAuthToken();
-        if (token && !endpoint.startsWith('/auth/login')) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetchOrThrow(`${API_BASE_URL}${endpoint}`, { headers });
-        downloadBlob(await response.blob(), filename);
-    } catch (error) {
-        console.error('Download error:', error);
-        showToast('error', 'Download failed', getUserFriendlyError(error));
-    }
-}
-
 export async function apiUpload(endpoint, file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -282,6 +264,5 @@ if (typeof window !== 'undefined') {
     window.apiCallWithRetry = apiCallWithRetry;
     window.apiGet = apiGet;
     window.apiPost = apiPost;
-    window.apiDownload = apiDownload;
     window.apiUpload = apiUpload;
 }

@@ -640,14 +640,12 @@ A service not running when the save arrives — stopped, or dead after a failure
 | POST | `/profiles/{profile_id}/activate` | Activate a profile |
 | POST | `/profiles/{profile_id}/deactivate` | Deactivate a profile |
 | GET | `/profiles/configuration` | Current configuration snapshot |
-| GET | `/profiles/configuration/export-file` | Download the configuration |
-| POST | `/profiles/configuration/import-file` | Restore a configuration |
 
 **Profile `state`** — `active` when the box is exactly as the profile describes: every service it starts runs, every one it stops is stopped. `error` only for the profile **in effect**: a service it starts has failed, or one it stops keeps being restarted, and everything else is as it describes. For any other profile, a failed service counts as not running (`partial`, `inactive`); it shows only in the `services_failed` count of `profile_metrics`.
 
-`GET /profiles/configuration` → `{ services, profiles, topology_link, added_by_upgrade }`. **`added_by_upgrade`** lists the services an upgrade has already offered this configuration (`hqplayerd`, HQPlayer Embedded, today). A service listed there but absent from `services` was taken out by the operator, and is **not** put back — neither by an upgrade nor by an import.
+**Profile `critical`** — `true` when the profile starts a service flagged `critical` (the NAA and HQPlayer Embedded). The core derives it from the services; a `critical` written for a profile in `audio-config.json` is ignored.
 
-`POST /profiles/configuration/import-file` migrates the file on the way in exactly as an upgrade migrates the box's own: the NAA's former id `hqplayer` becomes `naa`, then each service added to the stack since the file was written is declared — unless `added_by_upgrade` lists it, or its systemd unit is already declared under any id — added to the `stop` list of every profile that starts or stops the NAA, and given a profile of its own. An export therefore round-trips on any box, and an export taken before an upgrade lands on the current stack.
+`GET /profiles/configuration` → `{ services, profiles, topology_link }`.
 
 ### Performance — `/performance/*`
 | Method | Path | Description |
@@ -794,21 +792,24 @@ A path that is given must be **absolute, existing, a directory, and readable by 
 ### Config Validation — `/config_validation/*`
 Structural + semantic validation of the editable audio config files.
 
-`/validate` needs **no licence**: it guards the configuration import, which is itself
-ungated, and the caller imports anyway when validation fails — gating it removed a
-safety check instead of protecting a feature. `/validate-topology` **is** licence-gated
-(**403** on Starter): it serves the Pipeline view.
+`/validate` needs **no licence**. `/validate-topology` **is** licence-gated (**403** on
+Starter): it serves the Pipeline view.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/config_validation/validate` | Validate `audio-config.json` data (structure + systemd/file checks) |
+| POST | `/config_validation/validate` | Check `audio-config.json` with the rules the core loads it with |
 | POST | `/config_validation/validate-topology` | Validate `audio-topology.json` data (structure errors + link/connector warnings) |
 
 Both return `{ valid: bool, errors: [{ location, message, type }], warnings: [string], summary? }`.
-For `validate`, a service whose systemd unit is **not installed** on the box is a **warning**,
-not an error — declaring a service before installing it is an ordinary state (its profiles read
-as unavailable until then), and every box declares HQPlayer Embedded — and its configuration
-file is then not looked for. A missing configuration file of an installed service stays an error.
+For `validate`, the body is the file's content, read as the core reads the file: a body it
+cannot read (`NaN`, `Infinity`, a lone surrogate) or that is not an object answers **200** with
+`valid: false` and one `json_invalid` error. `errors` are what the core would refuse to load: a
+missing or mistyped field, an unknown key (`appconfigfile`, `depends_on`, `topology_file`,
+`added_by_upgrade` and `_comment` excepted), a profile naming a service the file does not declare,
+a service twice in one list or both started and stopped by one profile, a `systemd_unit` that is
+not a `.service`. `warnings` are the box's state — a service whose systemd unit is **not
+installed** (its configuration file is then not looked for), an installed service whose
+configuration file is missing — and a profile with nothing to start or stop.
 For `validate-topology`, structural problems (unknown device type, malformed shape) are blocking
 `errors`; broken references (`target_device_id`/`target_input_id`) and unmappable streamer
 connectors are non-blocking `warnings` (the topology only feeds the signal-path view). The UI

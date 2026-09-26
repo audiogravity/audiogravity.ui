@@ -2,7 +2,6 @@
  * Unit tests for validation.js.
  *
  * Covers:
- * - validateAudioConfig(): posts to /config_validation/validate
  * - validateTopologyConfig(): posts to /config_validation/validate-topology,
  *   returns the API response, and rethrows on failure
  */
@@ -13,22 +12,11 @@ vi.mock('./api.js', () => ({ apiPost: vi.fn() }));
 vi.mock('./components/ui-helpers.js', () => ({ showConfirm: vi.fn() }));
 
 import { apiPost } from './api.js';
-import { validateAudioConfig, validateTopologyConfig } from './validation.js';
+import { validateTopologyConfig } from './validation.js';
 
 describe('validation.js', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-    });
-
-    describe('validateAudioConfig', () => {
-        it('posts the config to the audio-config validation route', async () => {
-            const result = { valid: true, errors: [], warnings: [] };
-            apiPost.mockResolvedValue(result);
-
-            const config = { services: {} };
-            await expect(validateAudioConfig(config)).resolves.toBe(result);
-            expect(apiPost).toHaveBeenCalledWith('/config_validation/validate', config);
-        });
     });
 
     describe('validateTopologyConfig', () => {

@@ -34,6 +34,24 @@ describe('Settings panel — the API key is not editable from here', () => {
     });
 });
 
+describe('Settings panel — audio-config.json is neither exported nor imported', () => {
+    /*
+     * Audiogravity ships that file and replaces it at every install and update: an
+     * import would overwrite the file it delivers, and the export only existed to be
+     * imported again (decision of 2026-09-26). The core no longer has either route.
+     */
+    it('offers no export', () => {
+        expect(SOURCE).not.toMatch(/Export Configuration/i);
+        expect(SOURCE).not.toMatch(/configuration\/export-file/);
+    });
+
+    it('offers no import', () => {
+        expect(SOURCE).not.toMatch(/Import Configuration/i);
+        expect(SOURCE).not.toMatch(/configuration\/import-file/);
+        expect(SOURCE).not.toMatch(/type="file"/);
+    });
+});
+
 describe('Settings panel — every toast names its type first', () => {
     /*
      * showToast(type, title, message). Six calls in the passkey section had it as
