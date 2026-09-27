@@ -40,6 +40,18 @@ export const DEFAULT_SOURCE = path.resolve(UI_ROOT, '..', 'audiogravity.site', '
 /** Where Vite serves it from in development, and copies it from into the build. */
 export const DEFAULT_TARGET = path.join(UI_ROOT, 'public', 'docs', 'manual');
 
+/**
+ * Where the manual is read from: AG_MANUAL_SRC when set, the site repository otherwise.
+ * One rule for every reader — this copy, and tools/manual-shots/, which compares its
+ * captures with the figures of the same manual.
+ *
+ * @param {Record<string, string|undefined>} [env=process.env] - Environment to read.
+ * @returns {string} Absolute path of the manual's folder.
+ */
+export function manualSource(env = process.env) {
+    return env.AG_MANUAL_SRC ? path.resolve(env.AG_MANUAL_SRC) : DEFAULT_SOURCE;
+}
+
 const FIGURES = 'images';
 
 /**
@@ -153,7 +165,7 @@ function isMain() {
 
 if (isMain()) {
     const required = process.argv.includes('--required');
-    const source = process.env.AG_MANUAL_SRC ? path.resolve(process.env.AG_MANUAL_SRC) : DEFAULT_SOURCE;
+    const source = manualSource();
     const fail = (message) => {
         if (required) {
             console.error(`sync-manual: ${message} — a build must carry the manual`);

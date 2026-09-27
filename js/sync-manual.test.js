@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { carriesNotice, syncManual, DEFAULT_SOURCE } from '../scripts/sync-manual.js';
+import { carriesNotice, manualSource, syncManual, DEFAULT_SOURCE } from '../scripts/sync-manual.js';
 
 const SCRIPT = path.join(process.cwd(), 'scripts', 'sync-manual.js');
 
@@ -103,6 +103,11 @@ describe('syncManual', () => {
 
     it('looks for the manual in the site repository beside this one', () => {
         expect(DEFAULT_SOURCE).toBe(path.resolve(process.cwd(), '..', 'audiogravity.site', 'docs', 'manual'));
+        expect(manualSource({})).toBe(DEFAULT_SOURCE);
+    });
+
+    it('reads the manual from AG_MANUAL_SRC when it is set, as an absolute path', () => {
+        expect(manualSource({ AG_MANUAL_SRC: 'elsewhere/manual' })).toBe(path.resolve('elsewhere/manual'));
     });
 });
 
