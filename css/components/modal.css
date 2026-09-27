@@ -297,6 +297,23 @@
     height: auto;
 }
 
+/* Paragraphs and the rule had no space of their own: base.css resets every margin (`*`) and
+   nothing here gave it back, so two paragraphs read as one and a rule sat on the text above
+   it. The website restates the same spacing (site, assets/manual.css). */
+.manual-md p {
+    margin: 0 0 var(--spacing-md);
+}
+
+.manual-md p:last-child {
+    margin-bottom: 0;
+}
+
+.manual-md hr {
+    margin: var(--spacing-xl) 0;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+}
+
 /* The trademark notice, once under each chapter — read from the manual's README, which is
    the one Markdown file that carries it. */
 .manual-notice {
