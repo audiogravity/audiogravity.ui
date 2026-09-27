@@ -7,8 +7,10 @@ export default {
 };
 
 /**
- * The manual opens full-screen over the app and fetches its chapters live from
- * audiogravity.app. Click the button to trigger the fetch + Markdown render.
+ * The manual opens full-screen over the app and reads its chapters from the copy the box
+ * serves under /docs/manual — `npm run storybook` copies it in from audiogravity.site, as
+ * `npm run dev` and `npm run build` do. Click the button to trigger the fetch + Markdown
+ * render; the trademark notice shows once, under the chapter.
  */
 export const Default = () => html`
     <div style="height: 500px; padding: 20px;">

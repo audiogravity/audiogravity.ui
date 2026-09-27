@@ -224,7 +224,9 @@ describe('unhashed static files ride on the cache rename, not on revalidation', 
     // stale-while-revalidate strategy that fired a fetch on EVERY request, cache hit
     // included — one round trip and one disk write per image per page load, to re-store
     // identical bytes, on a box whose spare CPU belongs to the audio.
-    const STABLE = ['/pics/qobuz.webp', '/pics/splash/apple-splash-1125-2436.png', '/theme-boot.js'];
+    // The manual too: each build carries its own copy (scripts/sync-manual.js).
+    const STABLE = ['/pics/qobuz.webp', '/pics/splash/apple-splash-1125-2436.png', '/theme-boot.js',
+        '/docs/manual/README.md', '/docs/manual/04-listening.md', '/docs/manual/images/ios-fullscreen.webp'];
 
     it.each(STABLE)('asks the network once for %s, then never again', async (url) => {
         const sw = loadSw();

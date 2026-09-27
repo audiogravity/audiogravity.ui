@@ -36,7 +36,8 @@ html/
 *storybook.log
 storybook-static
 
-# Docs files
+# The user manual: copied from audiogravity.site by scripts/sync-manual.js at each
+# `npm run dev` / `npm run build` — its source is the site repository, not this one
 public/docs/*
 
 public/sw.js

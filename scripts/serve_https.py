@@ -11,13 +11,19 @@ import select
 import logging
 import shutil
 import gzip
+import mimetypes
 import re
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+
+# The user manual ships with the ui (docs/manual/*.md) and the box serves it. Declared
+# here so every Python the box may run names it the same: an older mimetypes table can
+# answer application/octet-stream for .md, which is then sent uncompressed.
+mimetypes.add_type('text/markdown', '.md')
 
 # Types MIME compressibles avec gzip
 _GZIP_TYPES = {
     'application/javascript', 'text/javascript',
-    'text/css', 'text/html', 'text/plain',
+    'text/css', 'text/html', 'text/plain', 'text/markdown',
     'application/json', 'image/svg+xml',
 }
 
