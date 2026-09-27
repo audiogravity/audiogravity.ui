@@ -761,7 +761,7 @@ describe('AgHqplayerOutput._webInterfaceUrl — the box\'s own settings page', (
     it('offers it on the card', () => {
         const html = renderToString(makeEl({ ...LOCAL, web_port: 8088 })._renderCard());
         expect(html).toContain(`href="http://${window.location.hostname}:8088"`);
-        expect(html).toContain('Web interface');
+        expect(html).toContain('Web UI');
         expect(html).toContain('target="_blank"');
         expect(html).toContain('rel="noopener noreferrer"');
     });
@@ -771,13 +771,13 @@ describe('AgHqplayerOutput._webInterfaceUrl — the box\'s own settings page', (
         // on that port there — the core sends no port for it either.
         const el = makeEl({ available: true, naa_available: true, web_port: null });
         expect(el._webInterfaceUrl()).toBeNull();
-        expect(renderToString(el._renderCard())).not.toContain('Web interface');
+        expect(renderToString(el._renderCard())).not.toContain('Web UI');
     });
 
     it('offers nothing when the instance declares no web interface', () => {
         const el = makeEl({ ...LOCAL, web_port: null });
         expect(el._webInterfaceUrl()).toBeNull();
-        expect(renderToString(el._renderCard())).not.toContain('Web interface');
+        expect(renderToString(el._renderCard())).not.toContain('Web UI');
     });
 
     it('still offers it while HQPlayer does not answer', () => {
@@ -786,14 +786,14 @@ describe('AgHqplayerOutput._webInterfaceUrl — the box\'s own settings page', (
         const html = renderToString(
             makeEl({ ...LOCAL, available: false, web_port: 8088 })._renderCard());
         expect(html).toContain('Offline');
-        expect(html).toContain('Web interface');
+        expect(html).toContain('Web UI');
     });
 });
 
 // ---------------------------------------------------------------------------
 // The action row on a phone
 // ---------------------------------------------------------------------------
-// The card clips what overflows it. With DSP, Web interface and Forget, the row
+// The card clips what overflows it. With DSP, Web UI and Forget, the row
 // is wider than a phone's card: without wrapping, the last button was cut off
 // (measured 2026-09-27 at 320 px, still true after the label was shortened).
 

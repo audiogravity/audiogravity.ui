@@ -604,7 +604,7 @@ class AgHqplayerOutput extends LitElement {
                         <a class="action-btn compact secondary" href="${this._webInterfaceUrl()}"
                            target="_blank" rel="noopener noreferrer">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">${iconExternalLink}</svg>
-                            Web interface
+                            Web UI
                         </a>
                     ` : nothing}
                     ${!local ? html`
