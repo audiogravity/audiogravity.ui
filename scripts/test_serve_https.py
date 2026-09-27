@@ -257,6 +257,17 @@ def _write_html(tmp_path, content):
     return str(p)
 
 
+class TestUserManual:
+    """The user manual ships with the ui and the box serves it (docs/manual/*.md)."""
+
+    def test_a_chapter_is_named_markdown_whatever_the_python(self):
+        """Declared by the server itself, not left to the Python's own table."""
+        assert serve_https.mimetypes.guess_type("docs/manual/04-listening.md")[0] == "text/markdown"
+
+    def test_a_chapter_is_sent_compressed(self):
+        assert "text/markdown" in serve_https._GZIP_TYPES
+
+
 class TestExtractPreloadLinks:
     """Unit tests for _extract_preload_links().
 

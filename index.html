@@ -19,16 +19,17 @@
     <meta name="apple-mobile-web-app-title" content="Audiogravity">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#12141c">
-    <!-- CSP: enforced via HTTP headers in production (Nginx/Lighttpd via install.sh).
-         This meta tag covers the Vite dev server only. 'unsafe-eval' is needed for Vite HMR.
-         In production, the Nginx CSP is applied instead (no unsafe-eval).
-         img-src allows audiogravity.app for the in-app manual's illustrations
-         (a box repointing AG_CONFIG.manualBase must allow its origin too). -->
+    <!-- CSP: this meta tag is the policy in production too — the box's server.py sends
+         no CSP header, and no Nginx serves the UI (checked on 2026-09-27; the comment
+         here used to say otherwise). 'unsafe-eval' is needed for Vite HMR, so it ships:
+         BACKLOG — audiogravity.ops/BACKLOG.md, "La CSP de production…".
+         img-src is 'self': the in-app manual's figures come from the box's own copy
+         (a box repointing AG_CONFIG.manualBase must allow that origin). -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
         style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
-        img-src 'self' data: blob: https://audiogravity.app;
+        img-src 'self' data: blob:;
         font-src 'self' data:;
         connect-src 'self' ws: wss: * http://*:* https://*:*;
         frame-src 'self' * http://*:* https://*:*;

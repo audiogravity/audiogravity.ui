@@ -3,7 +3,7 @@
  * open/close, the table of contents, link rewriting and in-modal navigation.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MANUAL_CHAPTERS, MANUAL_BASE, parseToc } from './ag-manual-modal.js';
+import { MANUAL_CHAPTERS, MANUAL_BASE, MANUAL_SITE, parseToc } from './ag-manual-modal.js';
 
 // The component lazy-imports the real `marked` (installed dep); tests assert on its
 // actual output rather than a mock, so they exercise the true render integration.
@@ -54,6 +54,45 @@ describe('ag-manual-modal', () => {
 
         it('returns empty for markdown with no contents list', () => {
             expect(parseToc('# X\n\nJust prose.')).toEqual([]);
+        });
+    });
+
+    describe('the trademark notice, once under each chapter', () => {
+        // The chapters no longer carry it: README.md does, and the window shows it once.
+        const README = [
+            '0. [Quick start](00-quick-start.md)',
+            '',
+            '---',
+            '',
+            '*Roon, HQPlayer, AirPlay, Qobuz, Tidal and HIGHRESAUDIO, and their respective logos, are',
+            'trademarks of their respective owners. Audiogravi<sup>ty</sup> is not affiliated with,',
+            'endorsed by, or sponsored by any of them.*',
+        ].join('\n');
+
+        it('shows it under the chapter on screen', async () => {
+            vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+                ok: true, text: () => Promise.resolve(url.endsWith('README.md') ? README : '# Listening'),
+            })));
+            el.isOpen = true;
+            await el._loadToc();
+            await el._loadChapter('04-listening');
+            await el.updateComplete;
+            const notice = el.querySelector('.manual-content > .manual-notice');
+            expect(notice.innerHTML).toContain('trademarks of their respective owners');
+            expect(notice.querySelector('sup').textContent).toBe('ty');
+            // After the chapter, not inside it.
+            expect(notice.previousElementSibling.matches('article.manual-md')).toBe(true);
+        });
+
+        it('shows nothing when a chapter could not load', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve(url.endsWith('README.md')
+                ? { ok: true, text: () => Promise.resolve(README) } : { ok: false, status: 404 })));
+            el.isOpen = true;
+            await el._loadToc();
+            await el._loadChapter('04-listening');
+            await el.updateComplete;
+            expect(el.querySelector('.manual-notice')).toBeNull();
         });
     });
 
@@ -158,6 +197,52 @@ describe('ag-manual-modal', () => {
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
         await el._loadChapter('04-listening');
         expect(el._error).toBe(true);
+    });
+
+    describe('the manual comes from the box, not from the internet', () => {
+        it('reads its chapters from the copy the box serves', () => {
+            // Absolute on the page's own origin: links and figures are resolved with
+            // new URL(…, base), which refuses a bare path.
+            expect(MANUAL_BASE).toBe(new URL('/docs/manual', window.location.href).href);
+            expect(MANUAL_BASE).not.toContain('audiogravity.app');
+        });
+
+        it('fetches a chapter and its figures from the box', async () => {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true, text: () => Promise.resolve('![Queue](images/04-queue.png)'),
+            });
+            vi.stubGlobal('fetch', fetchMock);
+            await el._loadChapter('04-listening');
+            expect(fetchMock.mock.calls.every(([url]) => url.startsWith(`${window.location.origin}/docs/manual/`)))
+                .toBe(true);
+            expect(el._html).toContain(`src="${window.location.origin}/docs/manual/images/04-queue.png"`);
+        });
+
+        it('takes a page of the app served instead of a chapter for what it is', async () => {
+            // A development server answers a missing file with index.html and a 200.
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+                text: () => Promise.resolve('<!doctype html><title>Audiogravity</title>'),
+            }));
+            await el._loadChapter('04-listening');
+            expect(el._error).toBe(true);
+            expect(el._html).toBe('');
+        });
+
+        it('offers the chapter on the website when the box cannot serve it', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+            el.isOpen = true;
+            await el._loadChapter('06-outputs-engines');
+            await el.updateComplete;
+            const status = el.querySelector('.manual-status');
+            expect(status.textContent).toContain("Couldn't load this chapter from the box.");
+            expect(status.textContent).not.toMatch(/internet/i);
+            // The website serves the chapter as a page, without the .md.
+            expect(status.querySelector('a').getAttribute('href')).toBe(`${MANUAL_SITE}/06-outputs-engines`);
+        });
     });
 
     it('close() hides the modal and emits manual-close', () => {

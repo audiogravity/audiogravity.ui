@@ -1,14 +1,17 @@
 /**
  * @module AgManualModal
  * @description Full-screen modal that renders the Audiogravity user manual.
- * The manual is authored as Markdown in the audiogravity.site repo and published
- * at audiogravity.app/docs/manual/. Chapters are fetched on demand (one per
- * click, then cached) and rendered client-side with `marked`, which is
- * lazy-loaded on first open so it costs nothing until the manual is used.
+ * The manual is authored as Markdown in the audiogravity.site repo, which also
+ * publishes it at audiogravity.app/docs/manual/. Each build of the app carries a copy
+ * (scripts/sync-manual.js), served by the box itself under /docs/manual/: the window
+ * reads that copy, so a box without internet access has its manual, and it matches
+ * the version installed. Chapters are fetched on demand (one per click, then cached)
+ * and rendered client-side with `marked`, which is lazy-loaded on first open so it
+ * costs nothing until the manual is used.
  * Layout: a chapter sidebar (table of contents) plus a reading pane.
  *
- * Trust boundary: the rendered HTML comes from our own first-party manual over
- * HTTPS and is injected with `unsafeHTML` (intentional inline HTML like `<sup>`
+ * Trust boundary: the rendered HTML comes from the copy of our own manual the box
+ * serves, and is injected with `unsafeHTML` (intentional inline HTML like `<sup>`
  * must survive). The app ships a CSP whose `script-src` omits `'unsafe-inline'`,
  * so injected inline event handlers (`<img onerror>`) and `<script>` do not
  * execute — that CSP, not sanitisation, is the guard. If the manual ever sources
@@ -30,23 +33,34 @@ import { LitElement, html, nothing, render } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { iconCheck, iconCopy } from '../../ag-icons.js';
 import { renderCodeBlock } from '../../core/code-highlight.js';
+import { parseNotice } from '../../core/manual-notice.js';
 import { copyToClipboard, showToast } from '../../ui-helpers.js';
 
 /**
- * Base URL of the published manual. Single-sourced in audiogravity.site and
- * overridable per box via the runtime-config channel (window.AG_CONFIG, the same
- * mechanism used for apiUrl) so an install can repoint it without a UI rebuild.
+ * Base URL of the manual the window reads: the copy the box serves under
+ * /docs/manual. Absolute, built from the page's own address, because links and
+ * figures are resolved against it with `new URL(…, base)`, which refuses a bare path.
+ * Still overridable per box via the runtime-config channel (window.AG_CONFIG, the
+ * same mechanism used for apiUrl) — the figures then need that origin in the img-src of
+ * index.html's CSP, which allows the box alone.
  */
 export const MANUAL_BASE =
     (typeof window !== 'undefined' && window.AG_CONFIG && window.AG_CONFIG.manualBase)
-    || 'https://audiogravity.app/docs/manual';
+    || (typeof window !== 'undefined' ? new URL('/docs/manual', window.location.href).href : '/docs/manual');
 
 /**
- * Fallback chapter list, used only until (or unless) the live TOC loads: in
- * normal operation the sidebar is derived from the published
- * docs/manual/README.md "Contents" list (see _loadToc/parseToc), so the site
- * repo stays the single source of truth. Keep this snapshot roughly in sync so
- * an offline box still shows a sensible sidebar.
+ * The manual as the website publishes it, for the one link that leaves the box: the
+ * way out offered when a chapter does not load. A page the reader chooses to open —
+ * the window never fetches anything from it.
+ */
+export const MANUAL_SITE = 'https://audiogravity.app/docs/manual';
+
+/**
+ * Fallback chapter list, used only until (or unless) the TOC loads: in normal
+ * operation the sidebar is derived from the manual's docs/manual/README.md
+ * "Contents" list (see _loadToc/parseToc), so the site repo stays the single source
+ * of truth. Keep this snapshot roughly in sync so a README that fails to load still
+ * leaves a sensible sidebar.
  */
 export const MANUAL_CHAPTERS = [
     { id: '00-quick-start',       label: 'Quick start' },
@@ -62,6 +76,17 @@ export const MANUAL_CHAPTERS = [
     { id: '10-glossary',          label: 'Glossary' },
     { id: '11-faq',               label: 'FAQ' },
 ];
+
+/**
+ * Whether a response is one of the manual's files. A development server (Vite, Storybook)
+ * answers a missing file with the app's index.html and a 200: rendered as Markdown, that
+ * page would show up as a chapter. The box's own server answers 404.
+ * @param {Response} res - A fetch response with `ok` set.
+ * @returns {boolean}
+ */
+function isManualFile(res) {
+    return !/text\/html/i.test(res.headers?.get?.('content-type') || '');
+}
 
 /** Match an intra-manual link "NN-name.md" with an optional "#anchor". */
 const CHAPTER_HREF = /^(?:\.\/)?(\d{2}-[a-z0-9-]+)\.md(?:#(.+))?$/i;
@@ -131,6 +156,7 @@ export class AgManualModal extends LitElement {
         _loading:  { state: true },
         _error:    { state: true },
         _chapters: { state: true },
+        _notice:   { state: true },
     };
 
     createRenderRoot() {
@@ -146,6 +172,8 @@ export class AgManualModal extends LitElement {
         this._html = '';
         this._loading = false;
         this._error = false;
+        /** @type {?string} the trademark notice, read from README.md with the TOC */
+        this._notice = null;
         /** @type {Map<string, string>} rendered-HTML cache keyed by chapter id */
         this._cache = new Map();
         /** @type {Map<string, Promise<boolean>>} in-flight loads, de-duped by id */
@@ -245,9 +273,9 @@ export class AgManualModal extends LitElement {
     }
 
     /**
-     * Refresh the sidebar from the published manual's canonical TOC
-     * (docs/manual/README.md "Contents" list), so a chapter added or renamed in
-     * the site repo appears here without a UI change. Fire-and-forget and
+     * Refresh the sidebar from the manual's canonical TOC (docs/manual/README.md
+     * "Contents" list), so a chapter added or renamed in the site repo appears here
+     * with the next build, without a change to this component. Fire-and-forget and
      * single-flight; on any failure the hardcoded fallback list simply stays.
      * @returns {Promise<void>}
      */
@@ -257,8 +285,11 @@ export class AgManualModal extends LitElement {
             try {
                 const res = await fetch(`${MANUAL_BASE}/README.md`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const parsed = parseToc(await res.text());
+                if (!isManualFile(res)) throw new Error('not a manual file');
+                const md = await res.text();
+                const parsed = parseToc(md);
                 if (parsed.length) this._chapters = parsed;
+                this._notice = parseNotice(md);
             } catch {
                 this._tocPromise = null; // failed — allow a retry on the next open
             }
@@ -331,6 +362,7 @@ export class AgManualModal extends LitElement {
             try {
                 const res = await fetch(`${MANUAL_BASE}/${id}.md`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!isManualFile(res)) throw new Error('not a manual file');
                 const md = await res.text();
                 const marked = await getManualMarked();
                 this._cache.set(id, this._enhanceHtml(marked.parse(md)));
@@ -351,7 +383,7 @@ export class AgManualModal extends LitElement {
     /**
      * Enhance a rendered chapter BEFORE it reaches the live DOM: stamp slug ids
      * on headings (marked emits none), absolutise links so non-left-click
-     * interactions (middle-click, "copy link address") resolve to published URLs,
+     * interactions (middle-click, "copy link address") resolve to real URLs on the box,
      * and absolutise + lazy-load images. Runs inside an inert <template> — its
      * content lives in a separate document, so setting an image src cannot
      * trigger a fetch. Enhancing at cache time means the browser never sees a
@@ -439,7 +471,7 @@ export class AgManualModal extends LitElement {
     /**
      * Rewrite one rendered link. Intra-manual chapter links are tagged with
      * `data-chapter`/`data-anchor` (consumed by the click handler for in-modal
-     * navigation) and pointed at the published chapter URL so a middle-click still
+     * navigation) and pointed at the chapter's file on the box so a middle-click still
      * opens something real; every other non-anchor link is absolutised against the
      * manual base and set to open in a new tab.
      * @param {HTMLAnchorElement} a - a rendered <a href>
@@ -539,13 +571,14 @@ export class AgManualModal extends LitElement {
                     ${this._loading ? html`<div class="manual-status">Loading…</div>` : nothing}
                     ${this._error ? html`
                         <div class="manual-status">
-                            <p>Couldn't load the manual — check the box's internet connection.</p>
-                            <a href="${MANUAL_BASE}/${this._activeId}.md" target="_blank" rel="noopener">
-                                Open this chapter on audiogravity.app
+                            <p>Couldn't load this chapter from the box.</p>
+                            <a href="${MANUAL_SITE}/${this._activeId}" target="_blank" rel="noopener">
+                                Read it on audiogravity.app
                             </a>
                         </div>` : nothing}
                     ${!this._loading && !this._error
-                        ? html`<article class="manual-md">${unsafeHTML(this._html)}</article>`
+                        ? html`<article class="manual-md">${unsafeHTML(this._html)}</article>
+                            ${this._notice ? html`<p class="manual-notice">${unsafeHTML(this._notice)}</p>` : nothing}`
                         : nothing}
                 </div>
             </div>

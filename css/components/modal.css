@@ -233,9 +233,14 @@
     color: var(--accent-primary);
 }
 
-/* Rendered Markdown — theme tokens only, width-constrained for readability */
-.manual-md {
+/* Rendered Markdown — theme tokens only, width-constrained for readability. The reading
+   width is shared by the chapter and the trademark notice under it. */
+.manual-md,
+.manual-notice {
     max-width: 780px;
+}
+
+.manual-md {
     color: var(--text-secondary);
     font-size: var(--font-size-md);
     line-height: 1.6;
@@ -290,6 +295,35 @@
 .manual-md img {
     max-width: 100%;
     height: auto;
+}
+
+/* Paragraphs and the rule had no space of their own: base.css resets every margin (`*`) and
+   nothing here gave it back, so two paragraphs read as one and a rule sat on the text above
+   it. The website restates the same spacing (site, assets/manual.css). */
+.manual-md p {
+    margin: 0 0 var(--spacing-md);
+}
+
+.manual-md p:last-child {
+    margin-bottom: 0;
+}
+
+.manual-md hr {
+    margin: var(--spacing-xl) 0;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+}
+
+/* The trademark notice, once under each chapter — read from the manual's README, which is
+   the one Markdown file that carries it. */
+.manual-notice {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+    line-height: 1.6;
 }
 
 .manual-md code {

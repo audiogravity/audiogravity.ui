@@ -221,8 +221,13 @@ self.addEventListener('fetch', (event) => {
     // /fonts/ was in that list too and matched nothing: the .woff2 files are pulled
     // in by css/fonts.css, so Vite hashes them into /assets/. What /fonts/ actually
     // serves is the two OFL licence texts, which no page requests.
+    //
+    // /docs/manual/ is the user manual the build copies in (scripts/sync-manual.js):
+    // it changes with a release and never within one, so a chapter read once opens
+    // at once afterwards, and without the box.
     const isStableStatic = isSameOrigin &&
-        (url.pathname.startsWith('/pics/') || url.pathname === '/theme-boot.js');
+        (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/docs/manual/')
+            || url.pathname === '/theme-boot.js');
 
     const isHashedAsset  = isSameOrigin && url.pathname.startsWith(ASSETS_PREFIX);
     const isCDNImmutable = CDN_IMMUTABLE.has(url.hostname);
