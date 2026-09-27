@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readStylesheet, cssRuleBody } from '../../test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Simulate the _applyState auto-follow logic from ag-now-playing-fullscreen.js
@@ -809,9 +810,8 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
         const { host } = titleBlock(HRA);
         expect(host.querySelector('.npfs-title-row > ag-track-meta')).toBeNull();
         expect(host.querySelector('.npfs-title-row > .npfs-title-col > ag-track-meta')).not.toBeNull();
-        const css = readFileSync(
-            path.join(process.cwd(), 'css', 'components', 'now-playing-fullscreen.css'), 'utf8');
-        const col = css.match(/\.npfs-title-col\s*\{([^}]*)\}/)?.[1] ?? '';
+        const css = readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+        const col = cssRuleBody(css, '.npfs-title-col') ?? '';
         expect(col).toMatch(/display:\s*flex/);
         expect(col).toMatch(/flex-direction:\s*column/);
     });

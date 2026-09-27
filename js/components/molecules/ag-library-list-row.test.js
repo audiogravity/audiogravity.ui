@@ -12,16 +12,10 @@
  * follows the cell rather than naming a width) is read out of the stylesheet.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readStylesheet } from '../../test-utils.js';
 import './ag-library-list-row.js';
 
-// Same resolution as js/anti-zoom.test.js: the module URL is not a file: URL under the
-// jsdom transform, so the stylesheet is reached from the working directory.
-const CSS = readFileSync(
-    path.join(process.cwd(), 'css', 'components', 'library-list-row.css'),
-    'utf8',
-);
+const CSS = readStylesheet('css', 'components', 'library-list-row.css');
 
 /**
  * Mount the row with the given properties and wait for its first render.
