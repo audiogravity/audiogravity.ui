@@ -25,6 +25,7 @@ vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
 // Import after mocks are in place.
 import { AgHqplayerOutput } from './ag-hqplayer-output.js';
+import { readStylesheet, cssRuleBody } from '../../test-utils.js';
 
 /** Build a minimal AgHqplayerOutput instance without mounting. */
 function makeEl(connectionOverrides = {}) {
@@ -416,6 +417,31 @@ describe('AgHqplayerOutput — which HQPlayer this is, and whether it pairs', ()
         expect(renderToString(el._renderCard())).toContain('5.28.1');
     });
 
+    it('names a network HQPlayer Desktop or Embedded, as the card of this box does', () => {
+        const desktop = makeEl({
+            available: true, naa_available: true,
+            product: 'Signalyst HQPlayer Desktop', engine_version: '5.28.1',
+        });
+        expect(renderToString(desktop._renderCard())).toContain('HQPlayer Desktop 5.28.1');
+        const embedded = makeEl({
+            available: true, naa_available: true,
+            product: 'Signalyst HQPlayer Embedded', engine_version: '6.2.3',
+        });
+        expect(renderToString(embedded._renderCard())).toContain('HQPlayer Embedded 6.2.3');
+    });
+
+    it('keeps the plain name when the instance has not said what it is', () => {
+        const el = makeEl({ available: true, naa_available: true, engine_version: '5.28.1' });
+        expect(renderToString(el._renderCard())).toContain('HQPlayer 5.28.1');
+    });
+
+    it('does not name HQPlayer twice when the product already says it', () => {
+        // Shown whole when the vendor prefix is missing — and it may start with HQPlayer.
+        const el = makeEl({ available: true, product: 'HQPlayer 4 Desktop', engine_version: '4.22.0' });
+        expect(el._cardName()).toBe('HQPlayer 4 Desktop 4.22.0');
+        expect(renderToString(el._renderCard())).not.toContain('HQPlayer HQPlayer');
+    });
+
     it('warns when the two major lines do not match, naming both', () => {
         const el = makeEl({
             available: true, naa_available: true,
@@ -488,8 +514,17 @@ describe("AgHqplayerOutput._renderCard — this box's own HQPlayer", () => {
         // Its own output setting comes back with it: the music goes to it only if
         // that was on — the sentence must not promise more (seen in the real run).
         expect(html).toContain('The card then returns to HQPlayer at 10.0.4.200:4321, with its own output setting.');
-        expect(html).toContain('Forget 10.0.4.200:4321');
         expect(html).not.toContain('Disconnect');
+    });
+
+    it('labels the button Forget, and keeps the address in its tooltip', () => {
+        // With the address in the label, the button left the card on a phone
+        // (measured 2026-09-27: a 420 px row in a 270-380 px card, 320-430 px wide).
+        const html = renderToString(makeEl({ ...LOCAL, configured_host: '10.0.4.200' })._renderCard());
+        expect(html).toMatch(/>\s*Forget\s*<\/button>/);
+        expect(html).toContain('title="Forget 10.0.4.200:4321"');
+        // A phone shows no tooltip, and a screen reader reads the accessible name.
+        expect(html).toContain('aria-label="Forget 10.0.4.200:4321"');
     });
 
     it('offers nothing to disconnect when no other instance was chosen', () => {
@@ -752,5 +787,25 @@ describe('AgHqplayerOutput._webInterfaceUrl — the box\'s own settings page', (
             makeEl({ ...LOCAL, available: false, web_port: 8088 })._renderCard());
         expect(html).toContain('Offline');
         expect(html).toContain('Web interface');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// The action row on a phone
+// ---------------------------------------------------------------------------
+// The card clips what overflows it. With DSP, Web interface and Forget, the row
+// is wider than a phone's card: without wrapping, the last button was cut off
+// (measured 2026-09-27 at 320 px, still true after the label was shortened).
+
+describe('AgHqplayerOutput — action row', () => {
+    const css = readStylesheet('css', 'components', 'library-sources.css');
+
+    it('wraps its buttons rather than letting the card cut the last one', () => {
+        expect(cssRuleBody(css, '.lib-hqp-actions')).toMatch(/flex-wrap:\s*wrap/);
+    });
+
+    it('is never told not to wrap by a later rule', () => {
+        // A more specific selector or a media query would win over the rule above.
+        expect(css).not.toMatch(/\.lib-hqp-actions[^{}]*\{[^}]*flex-wrap:\s*nowrap/);
     });
 });

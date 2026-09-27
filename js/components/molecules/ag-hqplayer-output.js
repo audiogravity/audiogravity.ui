@@ -478,6 +478,23 @@ class AgHqplayerOutput extends LitElement {
     }
 
     /**
+     * The card's title: HQPlayer, then what the instance says it is — Desktop or
+     * Embedded, and its engine. The network instance is named like this box's own,
+     * which is what the manual promises.
+     *
+     * A product that arrives without the vendor prefix is shown whole by
+     * {@link _identity}, and may already name HQPlayer: it is not named twice.
+     *
+     * @returns {string} e.g. "HQPlayer Desktop 5.28.1", or "HQPlayer" when nothing is known.
+     */
+    _cardName() {
+        const identity = this._identity(this._connection.product, this._connection.engine_version);
+        return /^HQPlayer\b/i.test(identity)
+            ? identity
+            : ['HQPlayer', identity].filter(Boolean).join(' ');
+    }
+
+    /**
      * Where this box's own HQPlayer serves its settings page, or null.
      *
      * What this card does not do — the DSD rate, the licence key, the fine
@@ -522,13 +539,7 @@ class AgHqplayerOutput extends LitElement {
                         <img src="./pics/hqplayer.webp" alt="HQPlayer" width="24" height="24" />
                     </div>
                     <div class="lib-hqp-col">
-                        <div class="lib-hqp-name">
-                            ${local
-                                ? ['HQPlayer', this._identity(this._connection.product, this._connection.engine_version)]
-                                    .filter(Boolean).join(' ')
-                                : html`HQPlayer${this._connection.engine_version
-                                    ? ` ${this._connection.engine_version}` : ''}`}
-                        </div>
+                        <div class="lib-hqp-name">${this._cardName()}</div>
                         <div class="lib-hqp-desc">
                             ${local ? 'This box' : `${this._connection.host}:${this._connection.port}`}
                             ${this._status?.active_mode ? ` · ${this._status.active_mode}` : ''}
@@ -601,8 +612,12 @@ class AgHqplayerOutput extends LitElement {
                             Disconnect
                         </button>
                     ` : chosen ? html`
-                        <button class="action-btn compact secondary" @click=${this._disconnect}>
-                            Forget ${chosen}
+                        <!-- The address stays in the note above, the tooltip and the
+                             accessible name: in the label it pushed the button out of the
+                             card on a phone. -->
+                        <button class="action-btn compact secondary" @click=${this._disconnect}
+                                title="Forget ${chosen}" aria-label="Forget ${chosen}">
+                            Forget
                         </button>
                     ` : nothing}
                 </div>

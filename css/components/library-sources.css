@@ -478,8 +478,13 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     color: var(--text-secondary);
 }
 
+/* Wraps: the card clips what overflows it (overflow: hidden above). The HQPlayer
+   card's three buttons — DSP, Web interface, Forget — do not fit one row on a
+   phone. The UPnP renderer card shares this row (Disconnect, volume), which fits,
+   so wrapping leaves it unchanged. */
 .lib-hqp-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 0 14px 14px;
 }
