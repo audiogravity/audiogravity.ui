@@ -75,23 +75,22 @@ const AG_SCRIPT_TAG_GLOBALS = {
  * inside the preview iframe and its first statement is `window.IS_STORYBOOK = true`; filed
  * under Node it produced fourteen reports for code that is exactly right.
  *
- * `scripts/` holds only Python today, so that glob matches nothing; it is the right answer
- * for the day a JavaScript file lands there, and matching nothing is not a claim that it
- * does. Same for `tools/**\/*.js` below, beside the one `.cjs` that exists.
+ * `scripts/sync-manual.js`, run by `npm run dev` and `npm run build`, is the JavaScript
+ * that glob exists for.
  */
 const NODE_FILES = ['vite.config.js', '.storybook/main.js', 'scripts/**/*.js'];
 
 /**
  * Node scripts that also contain browser code, because they drive a browser.
  *
- * `tools/shoot-manual.cjs` is a Playwright script: the file runs in Node, but the bodies
- * of `page.evaluate(...)` are serialised and executed in the page, where `document`,
+ * `tools/manual-shots/` drives Playwright: its files run in Node, but the bodies of
+ * `page.evaluate(...)` are serialised and executed in the page, where `document`,
  * `OffscreenCanvas` and `createImageBitmap` all exist. ESLint sees one file with one set
  * of globals and cannot follow that hop, so both sides are declared. The cost is real and
  * worth naming: inside these files a browser name is not checked against Node, nor the
- * reverse. It buys back a whole file that would otherwise have to be excluded outright.
+ * reverse. It buys back whole files that would otherwise have to be excluded outright.
  */
-const BROWSER_DRIVER_FILES = ['tools/**/*.js', 'tools/**/*.cjs'];
+const BROWSER_DRIVER_FILES = ['tools/**/*.js'];
 
 /** Runs in a worker: `self`, `caches`, `clients`, and no DOM whatsoever. */
 const WORKER_FILES = ['sw.js', 'public/js/sse-worker.js'];
