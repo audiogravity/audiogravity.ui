@@ -14,6 +14,7 @@
  * @dependency AppState - Used for connection status
  */
 import { LitElement, html, nothing } from 'lit';
+import { onActivateKey } from '../utils-lit.js';
 import { apiGet, apiPost } from '../../api.js';
 import { iconMinimize, iconMaximize } from '../../ag-icons.js';
 import { showToast, showConfirm, handleError } from '../../ui-helpers.js';
@@ -43,7 +44,7 @@ export class AgServicesPage extends LitElement {
         config: { type: Object },
         metricsHistory: { type: Object },
         _filter: { type: String, state: true },
-        _detailService: { type: Object, state: true },
+        _detailName: { type: String, state: true },
         _memoryUnavailable: { type: Boolean, state: true },
         _accountingOff: { type: Boolean, state: true }
     };
@@ -56,7 +57,7 @@ export class AgServicesPage extends LitElement {
         this._lastSampleAt = {};
         this.metricsHistory = this._loadMetricsHistory();
         this._filter = 'all';
-        this._detailService = null;
+        this._detailName = null;
         this._memoryUnavailable = false;
         this._accountingOff = false;
         this._loaded = false;
@@ -565,40 +566,15 @@ export class AgServicesPage extends LitElement {
         );
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'The Services tab allows you to monitor and control individual systemd services in real-time.',
-            [
-                { title: 'Real-time Status', text: 'Monitor whether services are active (green dot), inactive (gray dot), or failed (red dot). The status dot blinks orange while a start/stop action is pending.' },
-                { title: 'Health Bar', text: 'The segmented bar at the top shows the proportion of running / stopped / failed services at a glance, with live counters.' },
-                { title: 'Quick Filter', text: 'Use ALL / RUNNING / STOPPED / FAILED to instantly narrow the service list to the state you care about.' },
-                { title: 'Manual Control', text: 'Start, stop, or restart any listed service directly from its tile. The ENABLED / DISABLED badge controls whether the service starts automatically at boot.' },
-                { title: 'Uptime', text: 'When a service is running, its uptime (e.g. 54m, 2h 10m, 3d 4h) is displayed next to the systemd unit name.' },
-                { title: 'Service Detail', text: 'Click the service name to open a detail modal with live metrics (CPU, Memory, Tasks, NET ↓/↑, Disk Read/Write, boot state) and the session action history.' },
-                { title: 'Sparklines — NET dual-line', text: 'The NET sparkline displays two lines simultaneously: solid for download (↓ RX) and dashed for upload (↑ TX). Both share the same auto-scaled axis.' },
-                { title: 'Detailed Metrics', text: 'Click any metric box or sparkline to expand a full chart with historical data. CPU and MEM show a single series; NET shows separate Ingress / Egress panels; Disk shows Read / Write panels.' },
-                {
-                    title: 'Activity Level Colors',
-                    text: 'Service metrics use color coding to indicate activity levels optimized for individual audio services:<ul class="info-list">' +
-                        '<li class="info-list-item"><strong>CPU Usage:</strong></li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-low">● LOW</span> ≤ 5% — Service idle or minimal activity</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-medium">● MEDIUM</span> 5–20% — Active streaming, normal playback</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-high">● HIGH</span> &gt; 20% — DSP processing, upsampling, multiple streams</li>' +
-                        '<li class="info-list-item" style="margin-top: 8px;"><strong>Memory Usage:</strong></li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-low">● LOW</span> ≤ 30 MB — Idle or minimal footprint</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-medium">● MEDIUM</span> 30–100 MB — Active streaming with normal buffers</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-high">● HIGH</span> &gt; 100 MB — Large buffers, cache, multiple streams</li>' +
-                        '<li class="info-list-item" style="margin-top: 8px;"><strong>Network / Disk I/O:</strong></li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-low">● LOW</span> ≤ 1 MB/s — Idle, compressed audio, single stream</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-medium">● MEDIUM</span> 1–5 MB/s — Active FLAC / Hi-Res streaming</li>' +
-                        '<li class="info-list-item"><span class="info-badge activity-high">● HIGH</span> &gt; 5 MB/s — Multiple Hi-Res streams, DSD, heavy I/O</li>' +
-                        '</ul><div class="info-reference-box"><strong>Audio Format Reference:</strong> CD Quality (16/44.1) ≈1.4 MB/s • Hi-Res (24/96) ≈4–5 MB/s • Hi-Res (24/192) ≈9–10 MB/s • DSD64 ≈5–6 MB/s • FLAC lossless ≈1–2 MB/s per stream</div>'
-                }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Audiogravity Services', content);
+    /**
+     * The service whose detail window is open, as it stands now. Every metrics
+     * sample replaces a service's object in `services`, so the object that was
+     * clicked goes stale at the next one: the window is handed the current one,
+     * found by name, and its figures follow the tiles.
+     * @returns {object|null}
+     */
+    _detailServiceNow() {
+        return this._detailName ? this.services.find(s => s.name === this._detailName) || null : null;
     }
 
     render() {
@@ -616,25 +592,26 @@ export class AgServicesPage extends LitElement {
             return true;
         });
 
+        const detail = this._detailServiceNow();
         const running = this.services.filter(s => s.state === 'active').length;
         const failed  = this.services.filter(s => s.state === 'failed').length;
         const idle    = this.services.length - running - failed;
 
         return html`
             <ag-service-detail-modal
-                .service=${this._detailService}
-                .history=${this._detailService ? (AppState.serviceHistory || []).filter(h => h.action?.includes(this._detailService.name)).slice(0, 8) : []}
-                ?show=${!!this._detailService}
-                @modal-close=${() => { this._detailService = null; }}>
+                .service=${detail}
+                .history=${detail ? (AppState.serviceHistory || []).filter(h => h.action?.includes(detail.name)).slice(0, 8) : []}
+                ?show=${!!detail}
+                @modal-close=${() => { this._detailName = null; }}>
             </ag-service-detail-modal>
 
             <div class="services-zone tab-zone">
                 <div class="tab-title-container">
                     <h2>SERVICES</h2>
-                    <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
-                    <span class="toggle-metrics-icon"
-                        title="Toggle all metrics"
-                        @click=${this._toggleAllMetrics}>${this._renderToggleIcon()}</span>
+                    <span class="toggle-metrics-icon" role="button" tabindex="0"
+                        aria-label="Toggle all metrics"
+                        @click=${this._toggleAllMetrics}
+                        @keydown=${onActivateKey(this._toggleAllMetrics)}>${this._renderToggleIcon()}</span>
                 </div>
                 ${this._memoryUnavailable || this._accountingOff ? html`
                     <p class="services-note">
@@ -697,7 +674,7 @@ export class AgServicesPage extends LitElement {
                     @toggle-enabled=${this._handleToggleEnabled}
                     @restart-service=${this._handleRestartService}
                     @metric-expanded-changed=${() => this.requestUpdate()}
-                    @show-service-detail=${e => { this._detailService = e.detail?.service || null; }}>
+                    @show-service-detail=${e => { this._detailName = e.detail?.service?.name || null; }}>
                 </ag-card-grid>
             </div>
         `;

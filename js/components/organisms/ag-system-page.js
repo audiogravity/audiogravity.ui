@@ -98,24 +98,6 @@ export class AgSystemPage extends LitElement {
         this.events = [];
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'The System tab provides real-time monitoring of your system\'s vital metrics, hardware information, and system management actions.',
-            [
-                { title: 'Real-time Metrics', text: 'Monitor CPU usage, temperature, memory, disk space, and network I/O — updated every few seconds via SSE.' },
-                { title: 'System Information', text: 'Detailed hardware specs: hostname, OS, kernel version, CPU model, and core count.' },
-                { title: 'Audio Hardware', text: 'All connected audio devices with card details, USB interfaces, and available subdevices.' },
-                { title: 'Live Connection', text: 'The LIVE badge indicates active real-time data streaming from the server.' },
-                { title: 'Event Log', text: 'Track system events and SSE messages. Use RUNNING/STOPPED to pause capture, CLEAR to reset.' },
-                { title: 'System Actions (admin)', text: '<strong>Restart Core</strong> restarts the Audiogravity core without rebooting. <strong>Reboot OS</strong> performs a full system reboot (double confirmation required). The UI reconnects automatically in both cases.' },
-                { title: 'Terminal (admin)', text: 'Full interactive bash shell over WebSocket. The session runs as the service user of the core — use with care.' }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About System Monitoring', content);
-    }
-
     /** Open the body-level support report window (same pattern as the other modals). */
     _openSupportReport() {
         const modal = document.getElementById('agSupportReport');
@@ -136,7 +118,6 @@ export class AgSystemPage extends LitElement {
                 <div class="system-zone tab-zone">
                     <div class="tab-title-container">
                         <h2>SYSTEM VITALS</h2>
-                        <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                         <ag-badge type="info" label="LIVE" ?pulse=${this.isConnected}></ag-badge>
                     </div>
                     <ag-system-dashboard id="systemGrid" class="system-grid"></ag-system-dashboard>
@@ -167,7 +148,7 @@ export class AgSystemPage extends LitElement {
                 ${!isGuest() ? html`
                 <ag-log-viewer
                     class="backend-logs-zone tab-zone"
-                    title="CORE LOGS"
+                    heading="CORE LOGS"
                     syslog-identifier="">
                 </ag-log-viewer>
                 ` : nothing}

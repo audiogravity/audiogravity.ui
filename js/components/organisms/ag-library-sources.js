@@ -345,7 +345,7 @@ export class AgLibrarySources extends LitElement {
                 <div class="lib-upnp-header">
                     <span class="lib-src-lbl">UPnP servers</span>
                     ${this._upnpDiscovered ? html`
-                        <button class="lib-upnp-rescan" @click=${this._rescanUpnp} title="Re-scan UPnP servers">
+                        <button class="lib-upnp-rescan" @click=${this._rescanUpnp}>
                             Re-scan
                         </button>
                     ` : nothing}
@@ -425,7 +425,7 @@ export class AgLibrarySources extends LitElement {
                 <div class="lib-hqp-section">
                     <div class="lib-hqp-header">
                         <span class="lib-src-lbl">HQPlayer</span>
-                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-hqplayer-output')?._refresh()} title="Re-scan HQPlayer state">
+                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-hqplayer-output')?._refresh()}>
                             Re-scan
                         </button>
                     </div>
@@ -435,7 +435,7 @@ export class AgLibrarySources extends LitElement {
                 <div class="lib-hqp-section">
                     <div class="lib-hqp-header">
                         <span class="lib-src-lbl">Audio Output</span>
-                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-upnp-renderer-card')?._load()} title="Reload output list">
+                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-upnp-renderer-card')?._load()}>
                             Reload
                         </button>
                     </div>

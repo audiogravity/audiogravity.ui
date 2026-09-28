@@ -98,3 +98,29 @@ describe('the Escape listener', () => {
         expect(installed.size).toBe(0);
     });
 });
+
+describe('the dialog\'s accessible name', () => {
+    /** A modal whose attributes are recorded. */
+    function named() {
+        const modal = aModal();
+        const attrs = {};
+        modal.setAttribute = (k, v) => { attrs[k] = v; };
+        modal.removeAttribute = (k) => { delete attrs[k]; };
+        return { modal, attrs };
+    }
+
+    it('is its title', () => {
+        const { modal, attrs } = named();
+        modal.title = 'Install HQPlayer';
+        modal.updated(new Map([['title', '']]));
+        expect(attrs['aria-label']).toBe('Install HQPlayer');
+    });
+
+    it('goes with an empty title', () => {
+        const { modal, attrs } = named();
+        attrs['aria-label'] = 'Old';
+        modal.title = '';
+        modal.updated(new Map([['title', 'Old']]));
+        expect(attrs).not.toHaveProperty('aria-label');
+    });
+});

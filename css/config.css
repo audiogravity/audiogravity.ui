@@ -564,6 +564,22 @@
     flex-shrink: 0;
 }
 
+/* The service's state, in the colours of the Services tab's status dots. */
+.config-status-badge--running {
+    color: var(--color-success-text);
+    background: var(--color-success-bg);
+}
+
+.config-status-badge--stopped {
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+}
+
+.config-status-badge--failed {
+    color: var(--color-error-text);
+    background: var(--color-error-bg);
+}
+
 /* =====================
    RESTART TOGGLE
    ===================== */
@@ -656,6 +672,26 @@
     font-size: var(--font-size-xs);
     white-space: pre;
     color: var(--text-primary);
+}
+
+/* Added lines green, removed lines red — the colours of the form view's
+   before/after table (.diff-old / .diff-new) and of the +N / −N counters. */
+.diff-line--add {
+    background: var(--color-success-bg);
+}
+
+.diff-line--add .diff-line-prefix,
+.diff-line--add .diff-line-code {
+    color: var(--color-success-text);
+}
+
+.diff-line--remove {
+    background: var(--color-error-bg);
+}
+
+.diff-line--remove .diff-line-prefix,
+.diff-line--remove .diff-line-code {
+    color: var(--color-error-text);
 }
 
 .diff-hunk-sep {

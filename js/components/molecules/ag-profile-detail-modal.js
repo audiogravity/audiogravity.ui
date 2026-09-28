@@ -113,7 +113,7 @@ export class AgProfileDetailModal extends LitElement {
 
         return html`
             <ag-modal
-                title="${this.profile.name}"
+                heading="${this.profile.name}"
                 ?show=${this.show}
                 size="large"
                 .bodyTemplate=${this._renderBody()}

@@ -19,6 +19,7 @@ const Template = (args) => html`
   <div style="padding: 20px; max-width: 400px;">
     <ag-governor-card 
         .cpu="${args.cpu}"
+        .throttled="${args.throttled ?? false}"
         @governor-change="${(e) => console.log('Governor change requested:', e.detail)}">
     </ag-governor-card>
   </div>
@@ -27,4 +28,11 @@ const Template = (args) => html`
 export const Default = Template.bind({});
 Default.args = {
     cpu: cpuMock
+};
+
+/** The core saw the kernel throttle this core for heat since its previous monitoring tick. */
+export const Throttled = Template.bind({});
+Throttled.args = {
+    cpu: cpuMock,
+    throttled: true
 };

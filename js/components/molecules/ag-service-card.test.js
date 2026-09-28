@@ -6,11 +6,11 @@
  * tab). The card shows a dash for those, because printing 0 under a flat graph
  * is what an idle service looks like — a claim, not a gap.
  *
- * The traps these tests exist for are the places the zero crept back in: the
- * tooltips, which format their own copy of the values through a helper that
- * answers "0.0 MB/s" for anything that is not a number, and the expanded charts,
- * which are opened by "Toggle all metrics" without asking whether there is
- * anything to draw.
+ * The traps these tests exist for are the places the zero crept back in: any
+ * copy of the values formatted through the shared helper, which answers
+ * "0.0 MB/s" for anything that is not a number, and the expanded charts, which
+ * are opened by "Toggle all metrics" without asking whether there is anything
+ * to draw.
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -86,9 +86,9 @@ describe('a figure nobody measured', () => {
         expect(out).not.toContain('0 MB');
     });
 
-    it('is a dash in the tooltip too, where a zero used to creep back in', () => {
-        // The tooltips format their own copy of the values; the shared helper
-        // answers '0.0 MB/s' for a null, so an unguarded one said "idle".
+    it('never says 0.0 MB/s for it, anywhere on the card', () => {
+        // The shared helper answers '0.0 MB/s' for a null, so any copy of the
+        // values formatted without a guard said "idle".
         const out = flat(card(NOTHING_MEASURED).render());
         expect(out).not.toContain('0.0 MB/s');
     });
@@ -101,8 +101,7 @@ describe('a figure nobody measured', () => {
     it('opens no expanded chart for it, even when everything is expanded', () => {
         // "Toggle all metrics" expands unconditionally; a flat zero graph under a
         // tile that says the figure is not measured contradicts it.
-        // Matched on the section marker, not the heading: "Network Activity" and
-        // "Disk I/O" are also the tooltip titles on the tiles themselves.
+        // Matched on the section marker, not on the heading text.
         const out = flat(card(NOTHING_MEASURED, { expanded: true }).render());
         expect(out).toContain('data-expanded="cpu"');   // CPU is measured, it expands
         expect(out).not.toContain('data-expanded="mem"');

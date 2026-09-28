@@ -19,7 +19,7 @@ const Template = (args) => html`
     <ag-library-list-row
         cover="${args.cover ?? ''}"
         fallback="${args.fallback}"
-        title="${args.title}"
+        heading="${args.title}"
         subtitle="${args.subtitle}"
         ?actionable="${args.actionable}"
         ?wide="${args.wide}"
@@ -76,7 +76,7 @@ export const PlaylistRow = () => html`
   <div style="max-width:480px">
     <ag-library-list-row
         fallback="list"
-        title="Audiogravity test"
+        heading="Audiogravity test"
         subtitle="Playlist · For the integration"
         openable
         actionable
@@ -91,13 +91,13 @@ export const PlaylistRow = () => html`
  */
 export const PlaylistPageTracks = () => html`
   <div style="max-width:480px">
-    <ag-library-list-row fallback="track" title="Stars (Live – Montreux Jazz Festival 1976)"
+    <ag-library-list-row fallback="track" heading="Stars (Live – Montreux Jazz Festival 1976)"
         subtitle="Nina Simone · The Montreux Years" position="1" note="6:37" removable
         @playlist-remove=${() => console.log('playlist-remove')}></ag-library-list-row>
-    <ag-library-list-row fallback="track" title="Pressure Down (Remastered)"
+    <ag-library-list-row fallback="track" heading="Pressure Down (Remastered)"
         subtitle="John Farnham · Whispering Jack" position="10" note="3:50" removable>
     </ag-library-list-row>
-    <ag-library-list-row fallback="track" title="Grace"
+    <ag-library-list-row fallback="track" heading="Grace"
         subtitle="Jeff Buckley" position="3" note="5:22" playlistable
         @playlist-add=${() => console.log('playlist-add')}></ag-library-list-row>
   </div>

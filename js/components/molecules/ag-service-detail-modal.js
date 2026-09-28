@@ -137,7 +137,7 @@ export class AgServiceDetailModal extends LitElement {
 
         return html`
             <ag-modal
-                title="${this.service.name}"
+                heading="${this.service.name}"
                 ?show=${this.show}
                 size="large"
                 .bodyTemplate=${this._renderBody()}

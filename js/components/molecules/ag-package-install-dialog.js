@@ -418,7 +418,7 @@ export class AgPackageInstallDialog extends LitElement {
         if (!this.pkg) return html``;
         return html`
             <ag-modal
-                title="Install ${this.pkg.label}"
+                heading="Install ${this.pkg.label}"
                 ?show=${this.show}
                 size="large"
                 .bodyTemplate=${this._renderBody()}

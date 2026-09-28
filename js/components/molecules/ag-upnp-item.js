@@ -74,7 +74,7 @@ export class AgUpnpItem extends LitElement {
                                 fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round">${iconChevronRight}</svg>`
                         : item.res ? html`
-                                <button class="lib-lr-add" title="Play"
+                                <button class="lib-lr-add" aria-label="Play"
                                     ?disabled=${acting}
                                     @click=${(e) => this._play(e, 'play')}>
                                     ${acting
@@ -85,7 +85,7 @@ export class AgUpnpItem extends LitElement {
                                             </svg>`
                                     }
                                 </button>
-                                <button class="lib-lr-add" title="Add to queue"
+                                <button class="lib-lr-add" aria-label="Add to queue"
                                     @click=${(e) => this._play(e, 'add')}>
                                     <svg viewBox="0 0 24 24" width="14" height="14"
                                         fill="none" stroke="currentColor" stroke-width="2"

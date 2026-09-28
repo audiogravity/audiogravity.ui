@@ -45,7 +45,7 @@ function page(memoryUnavailable) {
     const el = Object.create(AgServicesPage.prototype);
     el.services = [];
     el._filter = 'all';
-    el._detailService = null;
+    el._detailName = null;
     el._memoryUnavailable = memoryUnavailable;
     el._accountingOff = false;
     el._renderToggleIcon = () => '';
@@ -341,5 +341,27 @@ describe('the chart history holds only what was measured', () => {
         const saved = JSON.parse(localStorage.getItem('ag_metricsHistory_v2'));
         expect(saved.histories.mpd.cpu.length).toBeGreaterThan(0);
         expect(typeof saved.savedAt).toBe('number');
+    });
+});
+
+describe('the detail window follows the live figures', () => {
+    it('hands the window the service as it stands after a new sample, not as clicked', () => {
+        const el = page(false);
+        el.services = [{ name: 'mpd', metrics: { cpu_percent: 1 } }];
+        el._detailName = 'mpd';
+        const clicked = el._detailServiceNow();
+
+        // A sample replaces the object, as _handleServiceMetrics does.
+        el.services = [{ name: 'mpd', metrics: { cpu_percent: 9 } }];
+
+        expect(clicked.metrics.cpu_percent).toBe(1);
+        expect(el._detailServiceNow().metrics.cpu_percent).toBe(9);
+    });
+
+    it('closes on a service that is no longer listed', () => {
+        const el = page(false);
+        el.services = [];
+        el._detailName = 'mpd';
+        expect(el._detailServiceNow()).toBe(null);
     });
 });

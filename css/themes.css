@@ -161,10 +161,6 @@
       dismissed now-playing bar. */
    --radius-pull-tab: 6px;
 
-   /* @var --radius-queue-tip @description The explanation bubble over the disabled
-      Clear of a Roon queue. Its own entry: the shared tooltip follows --radius-sm. */
-   --radius-queue-tip: 4px;
-
    /* @var --radius-badge @description Badges: the output connector (USB, TOSLINK…) and
       the stream origin (Qobuz, Tidal, radio, UPnP server…). The connector's own small
       radius by default; the origin badge, a pill until then, takes the same. */
@@ -211,7 +207,6 @@
     */
    --z-base: 1;
    --z-tabs: 100;
-   --z-tooltip: 500;
    --z-modal-backdrop: 999;
    --z-topbar: 1000;
 

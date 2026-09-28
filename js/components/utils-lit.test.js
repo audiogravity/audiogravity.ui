@@ -7,7 +7,8 @@ import {
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel } from './utils-lit.js';
+    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel,
+    onActivateKey } from './utils-lit.js';
 
 describe('svgIcon', () => {
     it('wraps an icon in a sized <svg> with the Lucide stroke convention', () => {
@@ -307,5 +308,44 @@ describe('planLabel', () => {
     it('shows an unknown plan as given instead of inventing one', () => {
         expect(planLabel('enterprise', null)).toBe('enterprise');
         expect(planLabel(null, null)).toBe('—');
+    });
+});
+
+describe('onActivateKey', () => {
+    /** A keydown event on the element itself, with preventDefault watched. */
+    const key = (k) => {
+        const el = {};
+        return { key: k, target: el, currentTarget: el, preventDefault: vi.fn() };
+    };
+
+    it.each(['Enter', ' '])('%j acts as a click, without scrolling the page', (k) => {
+        const handler = vi.fn();
+        const e = key(k);
+        onActivateKey(handler)(e);
+        expect(handler).toHaveBeenCalledWith(e);
+        expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    it.each(['Tab', 'Escape', 'a'])('%j is left alone', (k) => {
+        const handler = vi.fn();
+        const e = key(k);
+        onActivateKey(handler)(e);
+        expect(handler).not.toHaveBeenCalled();
+        expect(e.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('leaves a key pressed on a control inside the element to that control', () => {
+        // The favourite star of a radio card: Enter there must not play the station.
+        const handler = vi.fn();
+        const e = { ...key('Enter'), target: { inner: true } };
+        onActivateKey(handler)(e);
+        expect(handler).not.toHaveBeenCalled();
+        expect(e.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('keeps the host Lit calls it with', () => {
+        const host = { opened: false, open() { this.opened = true; } };
+        onActivateKey(host.open).call(host, key('Enter'));
+        expect(host.opened).toBe(true);
     });
 });

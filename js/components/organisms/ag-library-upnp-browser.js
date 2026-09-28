@@ -156,7 +156,7 @@ export class AgLibraryUpnpBrowser extends LitElement {
 
         return html`
             <ag-library-browser-topbar
-                title=${_levelTitle || this.serverName || 'Browse'}
+                heading=${_levelTitle || this.serverName || 'Browse'}
                 @browser-back=${() => this._browseBack()}
                 @browser-refresh=${() => {
                     const cur = this._stack.at(-1);

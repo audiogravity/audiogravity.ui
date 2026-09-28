@@ -74,11 +74,17 @@ export class AgUserCard extends LitElement {
         }));
     }
 
+    /**
+     * Whether the status badge stays put: the system account cannot be disabled,
+     * and neither can your own (the core refuses both).
+     * @returns {boolean}
+     */
+    get _statusLocked() {
+        return this.user.username === 'admin' || this.isMe;
+    }
+
     _handleToggleStatus() {
-        if (this.user.username === 'admin') {
-            showToast('error', 'Security', 'The main admin account cannot be disabled.');
-            return;
-        }
+        if (this._statusLocked) return;
         this.dispatchEvent(new CustomEvent('toggle-user-status', {
             bubbles: true,
             composed: true,
@@ -122,7 +128,7 @@ export class AgUserCard extends LitElement {
                         </h3>
                     </div>
                     <div class="active-indicator-container" style="display: ${this.isActive ? 'flex' : 'none'}; align-items: center; justify-content: flex-end; width: 24px; height: 24px;">
-                        ${this.isActive ? html`<ag-status-indicator state="up" title="User is currently online"></ag-status-indicator>` : ''}
+                        ${this.isActive ? html`<ag-status-indicator state="up" sr-label="User is currently online"></ag-status-indicator>` : ''}
                     </div>
                 </div>
 
@@ -141,8 +147,8 @@ export class AgUserCard extends LitElement {
                         <span class="metric-label">Status:</span>
                         <span class="metric-value-text">
                             ${this.user.enabled
-                ? html`<ag-badge type="success" label="Enabled" ?clickable=${this.user.username !== 'admin'} title=${this.user.username === 'admin' ? 'System account' : 'Click to disable user'} @badge-click=${this._handleToggleStatus}></ag-badge>`
-                : html`<ag-badge type="error" label="Disabled" clickable title="Click to enable user" @badge-click=${this._handleToggleStatus}></ag-badge>`
+                ? html`<ag-badge type="success" label="Enabled" ?clickable=${!this._statusLocked} @badge-click=${this._handleToggleStatus}></ag-badge>`
+                : html`<ag-badge type="error" label="Disabled" clickable @badge-click=${this._handleToggleStatus}></ag-badge>`
             }
                         </span>
                     </div>
@@ -154,7 +160,7 @@ export class AgUserCard extends LitElement {
 
                 <!-- Footer Actions -->
                 <div class="admin-user-footer" style="display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-sm); margin-top: auto; padding-top: var(--spacing-sm); border-top: 1px solid var(--border-color);">
-                    <div class="persistence-toggle-footer" style="display: flex; align-items: center; gap: 6px;" title="Session Persistante : si activé, la session reste valide 12h même après fermeture du navigateur">
+                    <div class="persistence-toggle-footer" style="display: flex; align-items: center; gap: 6px;">
                         <span class="metric-label" style="font-size: var(--font-size-xxs); margin: 0; opacity: 0.8;">PERSIST</span>
                         <ag-switch
                             .compact=${true}
@@ -169,7 +175,6 @@ export class AgUserCard extends LitElement {
                                 icon="icon-key"
                                 label="PASSKEYS"
                                 compact
-                                title="Manage passkeys for this account"
                                 @btn-click=${() => { this._showPasskeys = !this._showPasskeys; }}>
                             </ag-button>
                         ` : ''}

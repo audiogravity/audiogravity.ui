@@ -434,12 +434,9 @@ export class AgConfigEditor extends LitElement {
                         <span class="config-file-path">${this.service.path}</span>
                     </div>
                     <div class="config-header-actions ml-auto flex-center">
-                        <div class="has-tooltip">
-                            <button class="btn-action compact" @click=${this._handleBack}>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowLeft}</svg> Back
-                            </button>
-                            <div class="tooltip tooltip-bottom">Return to service selection</div>
-                        </div>
+                        <button class="btn-action compact" @click=${this._handleBack}>
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowLeft}</svg> Back
+                        </button>
                         ${this.guided ? html`
                             <div class="config-mode-tabs" role="tablist">
                                 <button class="config-mode-tab ${this.currentMode === 'guided' ? 'active' : ''}" @click=${() => this._setMode('guided')}>Guided</button>
@@ -448,12 +445,9 @@ export class AgConfigEditor extends LitElement {
                                 <button class="config-mode-tab ${this.currentMode === 'raw' ? 'active' : ''}" @click=${() => this._setMode('raw')}>Expert</button>
                             </div>
                         ` : this._hasForm ? html`
-                        <div class="has-tooltip">
-                            <button class="btn-action compact config-mode-toggle" @click=${this._handleToggleMode}>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCode}</svg> ${this.currentMode === 'form' ? 'Expert Mode' : 'Form Mode'}
-                            </button>
-                            <div class="tooltip tooltip-bottom-right">Switch between Form view and Raw file editor</div>
-                        </div>
+                        <button class="btn-action compact config-mode-toggle" @click=${this._handleToggleMode}>
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCode}</svg> ${this.currentMode === 'form' ? 'Expert Mode' : 'Form Mode'}
+                        </button>
                         ` : ''}
                     </div>
                 </div>
@@ -488,39 +482,26 @@ export class AgConfigEditor extends LitElement {
                 ` : html`
                 <div class="config-actions">
                     ${!this.isGuest ? html`
-                        <div class="has-tooltip">
-                            <button class="btn-action compact success" @click=${this._handleSave}>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSave}</svg> Save Changes
-                            </button>
-                            <div class="tooltip">${this._restartAfterSave ? 'Save and restart service' : 'Save without restarting service'}</div>
-                        </div>
+                        <button class="btn-action compact success" @click=${this._handleSave}>
+                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSave}</svg> Save Changes
+                        </button>
                         ${this.isDirty ? html`
-                            <div class="has-tooltip">
-                                <button class="btn-action compact" @click=${() => { this._showDiff = !this._showDiff; }}>
-                                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSliders}</svg> ${this._showDiff ? 'Hide Diff' : 'Preview Changes'}
-                                </button>
-                                <div class="tooltip">Show what changed before saving</div>
-                            </div>
+                            <button class="btn-action compact" @click=${() => { this._showDiff = !this._showDiff; }}>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSliders}</svg> ${this._showDiff ? 'Hide Diff' : 'Preview Changes'}
+                            </button>
                         ` : ''}
-                        <label class="restart-toggle has-tooltip">
+                        <label class="restart-toggle">
                             <input type="checkbox" .checked=${this._restartAfterSave}
                                    @change=${(e) => { this._restartAfterSave = e.target.checked; }}>
                             <span class="restart-toggle-label">Restart after save</span>
-                            <div class="tooltip tooltip-bottom">Automatically restart the service after saving</div>
                         </label>
                     ` : ''}
-                    <div class="has-tooltip">
-                        <button class="btn-action compact" @click=${this._handleCancel}>
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconClose}</svg> Cancel
-                        </button>
-                        <div class="tooltip">Discard unsaved changes</div>
-                    </div>
-                    <div class="has-tooltip">
-                        <button class="btn-action compact" @click=${this._handleToggleBackups}>
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconHistory}</svg> Backups (${this.backups.length})
-                        </button>
-                        <div class="tooltip">View and restore previous configuration versions</div>
-                    </div>
+                    <button class="btn-action compact" @click=${this._handleCancel}>
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconClose}</svg> Cancel
+                    </button>
+                    <button class="btn-action compact" @click=${this._handleToggleBackups}>
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconHistory}</svg> Backups (${this.backups.length})
+                    </button>
                 </div>
                 
                 ${this.showBackups ? this._renderBackups() : ''}

@@ -392,6 +392,41 @@ describe('ag-package-card — which way the offered version goes', () => {
     });
 });
 
+describe('ag-package-card — a failed operation that left the software in place', () => {
+    // A failed update keeps the previous version: installed, and still needing its
+    // configuration and its web password — the card used to forget both.
+    beforeEach(() => { document.body.innerHTML = ''; session.guest = false; });
+
+    it.each([
+        ['installed', '1.0', true],
+        ['error', '1.0', true],
+        ['error', null, false],
+        ['not_installed', null, false],
+        ['updating', '1.0', false],
+    ])('%s with version %s: on the box = %s', async (status, installed_version, expected) => {
+        const { packageIsInstalled } = await import('./ag-package-card.js');
+        expect(packageIsInstalled({ status, installed_version })).toBe(expected);
+    });
+
+    it('still says it is not configured', async () => {
+        const card = document.createElement('ag-package-card');
+        card.pkg = { ...basePkg, service_id: 'mpd', status: 'error', installed_version: '0.24.5-1' };
+        card.configuredByAg = false;
+        document.body.appendChild(card);
+        await card.updateComplete;
+        const badges = [...card.querySelectorAll('.software-meta .badge')].map(b => b.textContent.trim());
+        expect(badges).toContain('Not configured');
+    });
+
+    it('still offers to set the web password', async () => {
+        const card = await mount({
+            ...basePkg, status: 'error', installed_version: '6.0.2-3',
+            web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
+        });
+        expect(card.querySelector('.web-password-badge')).not.toBeNull();
+    });
+});
+
 describe('ag-package-card — a web interface with no password', () => {
     // The install sets it; when it could not, the card offers to — the only
     // way back used to be an uninstall and a reinstall, 144 MB downloaded again.

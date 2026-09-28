@@ -28,7 +28,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { coverUrl } from '../utils-lit.js';
+import { coverUrl, onActivateKey } from '../utils-lit.js';
 import { iconStar, iconStarFilled, iconPencil, iconPlus, iconCheck } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow, SINGLE } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
@@ -111,6 +111,7 @@ export class AgRadioCard extends LitElement {
                 <div class="lib-radio-card"
                      ${swipeRow(this._swipe, SINGLE, this.swipeable)}
                      @click=${this._onTap}
+                     @keydown=${onActivateKey(this._onTap)}
                      role="button" tabindex="0">
                     <ag-library-cover
                         cover=${logoUrl}

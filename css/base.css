@@ -323,30 +323,3 @@ body.dark-mode [tabindex]:focus-visible {
 /* stylelint-disable-next-line declaration-no-important */
 body.role-guest .admin-only { display: none !important; }
 
-/* =====================
-   LOW POWER MODE (Phase 3)
-   ===================== */
-
-/**
- * Disables heavy animations and visual effects
- * to reduce CPU/GPU load on low battery or legacy hardware.
- */
-/* stylelint-disable declaration-no-important */
-body.low-power-mode * {
-    animation: none !important;
-    transition: none !important;
-}
-
-body.low-power-mode .animate-pulse,
-body.low-power-mode .premium-progress-fill::after,
-body.low-power-mode .spinner {
-    animation: none !important;
-}
-
-body.low-power-mode .spinner {
-    border-top-color: var(--text-tertiary) !important;
-    animation: none !important;
-    transform: none !important;
-}
-/* stylelint-enable declaration-no-important */
-

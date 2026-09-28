@@ -47,9 +47,13 @@ export class AgPerformancePage extends LitElement {
     constructor() {
         super();
         this.cpuInfo = [];
+        /** @type {string|null} The governor last chosen on a card — what Apply All offers. */
+        this._lastChosenGovernor = null;
         this.cpuGeneralInfo = null;
         this._loaded = false;
         this._cpuMetricsMap = new Map(); // Store real-time metrics and history
+        /** @type {boolean[]|null} Per logical CPU: throttled since the previous monitoring tick. */
+        this._cpuThrottled = null;
 
         this._onSysinfoUpdate = this._handleSysinfoUpdate.bind(this);
 
@@ -132,6 +136,10 @@ export class AgPerformancePage extends LitElement {
 
     _handleSysinfoUpdate(data) {
         if (!data || !data.cpu_per_core) return;
+
+        // Which cores were throttled since the previous tick, as the core decided it;
+        // null on a processor that exposes no throttle counter.
+        this._cpuThrottled = Array.isArray(data.cpu_throttled) ? data.cpu_throttled : null;
         
         // Skip updates if animations are globally disabled
         if (document.body.classList.contains('no-animations')) {
@@ -188,8 +196,12 @@ export class AgPerformancePage extends LitElement {
             if (showToast) showToast('success', 'Governor Updated', `Set ${governor} on CPU ${cpuId}`);
             if (addToHistory) addToHistory('performance', `Set governor ${governor} on CPU ${cpuId}`, true);
 
-            // Optional: refresh data to ensure sync
-            // this._loadData(); 
+            // Keep what the page knows in step, without a reload: Apply All used to offer
+            // the first core's governor as read at the last load, so a choice just made on
+            // a card was offered back as its old value.
+            const cpu = this.cpuInfo.find(c => c.cpu_id === cpuId);
+            if (cpu) cpu.current_governor = governor;
+            this._lastChosenGovernor = governor;
         } catch (error) {
             console.error(`Failed to set governor for CPU ${cpuId}:`, error);
             handleError(error, 'Failed to set governor');
@@ -198,13 +210,13 @@ export class AgPerformancePage extends LitElement {
     }
 
     async _applyAllGovernors() {
-        // Find common governor or ask. The API field is `current_governor`
-        // (see ag-governor-card.js); using `.governor` yielded undefined, which
-        // surfaced as 'Set "undefined"...' and a backend "governor: Field required".
-        let governor = 'performance';
-        if (this.cpuInfo.length > 0 && this.cpuInfo[0].current_governor) {
-            governor = this.cpuInfo[0].current_governor;
-        }
+        // The governor last chosen on a card, else the first core's. The API field is
+        // `current_governor` (see ag-governor-card.js); using `.governor` yielded
+        // undefined, which surfaced as 'Set "undefined"...' and a backend
+        // "governor: Field required".
+        const governor = this._lastChosenGovernor
+            || this.cpuInfo[0]?.current_governor
+            || 'performance';
 
         const confirmed = await showConfirm(
             'Apply Governor to All CPUs',
@@ -252,24 +264,6 @@ export class AgPerformancePage extends LitElement {
         }
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'The Performance tab lets you tune CPU scheduling and monitor real-time audio process health for bit-perfect, glitch-free playback.',
-            [
-                { title: 'CPU Governor', text: 'Controls how the kernel scales CPU frequency. <strong>performance</strong> holds maximum frequency at all times (lowest latency, highest power). <strong>schedutil</strong> adapts to load (good compromise). <strong>powersave</strong> reduces frequency aggressively (not recommended for audio).' },
-                { title: 'THROTTLED Badge', text: 'Appears on a CPU core tile when the kernel detects a thermal throttling event (core_throttle_count increased since last refresh). Indicates the CPU was forced to reduce frequency due to heat. Sustained throttling during playback causes audio glitches.' },
-                { title: 'Apply All / Save Conf', text: '<strong>Apply All</strong> sets the selected governor on all cores immediately. <strong>Save Conf</strong> persists the current governor map to /etc/cpu-governor.conf. <strong>Create Service</strong> installs a systemd unit that restores governors at boot.' },
-                { title: 'Latency Test', text: 'Runs cyclictest to measure real-time scheduling latency (µs). Lower max latency = fewer audio dropouts. Priority 99 + mlockall = standard audio configuration. Results are saved to history (last 10 runs).' },
-                { title: 'Network Test', text: 'Measures ping jitter/loss or iperf3 UDP/TCP throughput. Essential for Roon ARC, AirPlay (shairport-sync), or NAS-based playback. Results saved to history.' },
-                { title: 'RT Process Monitor', text: 'Shows the real-time scheduling policy of audio processes (mpd, shairport-sync, RoonBridge, RAATServer). <strong>SCHED_FIFO / SCHED_RR</strong> = real-time, green badge. <strong>NON-RT</strong> = SCHED_OTHER, red badge — risk of glitches under load. Configure via systemd unit CPUSchedulingPolicy=fifo.' }
-            ]
-        );
-
-        window.UIComponents.InfoModal.show('About Performance Optimization', content);
-    }
-
     render() {
         return html`
             <div class="performance-zone">
@@ -277,7 +271,6 @@ export class AgPerformancePage extends LitElement {
                 <div class="performance-section tab-zone">
                     <div class="tab-title-container">
                         <h2>PERFORMANCE</h2>
-                        <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                     </div>
                     
                     ${this.cpuGeneralInfo ? html`
@@ -307,7 +300,8 @@ export class AgPerformancePage extends LitElement {
                                     .delayIndex=${index}
                                     .usage=${metrics.usage}
                                     .temp=${metrics.temp}
-                                    .usageHistory=${metrics.history}>
+                                    .usageHistory=${metrics.history}
+                                    .throttled=${this._cpuThrottled?.[cpu.cpu_id] === true}>
                                 </ag-governor-card>
                             `;
                         }}

@@ -95,7 +95,7 @@ export class AgSleepTimer extends LitElement {
         const active = !!this.sleepEnd;
         return html`
             <div class="ag-st-wrap">
-                <button class="npfs-header-btn ${active ? 'active' : ''}" title="Sleep timer"
+                <button class="npfs-header-btn ${active ? 'active' : ''}" aria-label="Sleep timer"
                     @click=${this._toggleOpen}>
                     ${active
                         ? html`<span class="ag-st-countdown">${this._remaining()}</span>`

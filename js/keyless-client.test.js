@@ -30,7 +30,10 @@ vi.mock('./common.js', () => ({
     EventEmitter: { on: () => {}, off: () => {}, emit: () => {} },
     AgTimerManager: { setInterval: () => 0, clearInterval: () => {}, setTimeout: () => 0, clearTimeout: () => {} },
 }));
-vi.mock('./auth.js', () => ({
+vi.mock('./auth.js', async (importOriginal) => ({
+    // The real module — api.js sends through its session layer (fetchInSession) — with
+    // only the token read from where these tests seed it.
+    ...(await importOriginal()),
     getAuthToken: () => localStorage.getItem('authToken'),
 }));
 vi.mock('./core/config.js', async (importOriginal) => ({

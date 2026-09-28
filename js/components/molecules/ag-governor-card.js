@@ -12,6 +12,10 @@ import '../atoms/ag-sparkline.js';
  * @prop {number} usage - Current CPU usage percentage
  * @prop {number} temp - Current CPU temperature in °C
  * @prop {Array} usageHistory - Historical usage values for sparkline
+ * @prop {boolean} throttled - The core was throttled for heat since the previous monitoring
+ *     tick. Decided by the core (core/cpu_throttle.py), which keeps the counts between two
+ *     looks: this card is rebuilt on every reload of the tab, so it never had a previous
+ *     count to compare with, and the badge it used to compute itself never appeared.
  *
  * @fires governor-change - Emitted when a new governor is selected
  * @dependency css/performance.css - Uses .governor-tile layout and .throttled-badge
@@ -23,7 +27,7 @@ export class AgGovernorCard extends LitElement {
         usage: { type: Number },
         temp: { type: Number },
         usageHistory: { type: Array },
-        _isThrottled: { type: Boolean, state: true }
+        throttled: { type: Boolean }
     };
 
     constructor() {
@@ -31,9 +35,7 @@ export class AgGovernorCard extends LitElement {
         this.usage = 0;
         this.temp = null;
         this.usageHistory = [];
-        this._isThrottled = false;
-        this._prevThrottleCount = null;
-        this._throttledTimer = null;
+        this.throttled = false;
     }
 
     createRenderRoot() {
@@ -45,30 +47,6 @@ export class AgGovernorCard extends LitElement {
         super.connectedCallback();
         // Do NOT add 'display-contents' - breaks grid layout
         // Grid CSS expects ag-governor-card to exist as a container
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        if (this._throttledTimer) {
-            clearTimeout(this._throttledTimer);
-            this._throttledTimer = null;
-        }
-    }
-
-    willUpdate(changedProperties) {
-        if (changedProperties.has('cpu') && this.cpu?.throttle_count !== undefined) {
-            const current = this.cpu.throttle_count;
-            if (this._prevThrottleCount !== null && current > this._prevThrottleCount) {
-                this._isThrottled = true;
-                if (this._throttledTimer) clearTimeout(this._throttledTimer);
-                // Clear badge after 10 seconds
-                this._throttledTimer = setTimeout(() => {
-                    this._isThrottled = false;
-                    this._throttledTimer = null;
-                }, 10000);
-            }
-            this._prevThrottleCount = current;
-        }
     }
 
     handleChange(e) {
@@ -118,7 +96,7 @@ export class AgGovernorCard extends LitElement {
                         <div class="cpu-id">CPU ${this.cpu.cpu_id}</div>
                         <div class="cpu-details">Socket: ${this.cpu.physical_id}, Core: ${this.cpu.core_id}${this.cpu.threadLabel || ''}</div>
                     </div>
-                    ${this._isThrottled ? html`<span class="throttled-badge">THROTTLED</span>` : nothing}
+                    ${this.throttled ? html`<span class="throttled-badge">THROTTLED</span>` : nothing}
                 </div>
                 
                 <div class="cpu-metrics-row">

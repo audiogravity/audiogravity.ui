@@ -379,32 +379,10 @@ export class AgConfigPage extends LitElement {
         this.backups = [];
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'The Configuration tab allows you to safely edit the actual configuration files of your audio services.',
-            [
-                { title: 'First-time setup', text: 'On a new box (administrators only), an <strong>Initialize audio stack</strong> panel auto-detects your DAC and music library and generates a minimal working configuration for MPD, AirPlay (shairport-sync) and UPnP (upmpdcli), all wired to the chosen output. It asks for your admin password before applying. Once at least one service is set up, the panel disappears.' },
-                { title: 'Music on a NAS', text: 'The music-library picker lists your USB drives and existing mounts. To use a network share, use <strong>Add network share (NAS)</strong> at the bottom of the picker: enter the host, share and (unless it is a guest share) credentials — Audiogravi<sup>ty</sup> mounts and tests it on the spot, read-only by default. CIFS/SMB only; for NFS, mount it at the OS level under /mnt and it is detected automatically.' },
-                { title: 'Guided mode', text: 'For MPD, AirPlay, UPnP and HQPlayer Embedded, the editor opens in a <strong>Guided</strong> view where you change the audio output or music library in a couple of clicks — only the changed setting is rewritten, the rest of your config is preserved. For MPD, AirPlay and UPnP, a <strong>Reset to default</strong> action there regenerates a minimal working config (admin password required; the current file is backed up first). HQPlayer Embedded keeps its own settings: only its audio output is chosen here. Each of these tiles shows a <strong>CONFIGURED</strong> badge once set up by Audiogravi<sup>ty</sup> — for HQPlayer Embedded, once you have chosen its output.' },
-                { title: 'Service Status', text: 'Each tile shows a <strong>RUNNING</strong> (green) or <strong>STOPPED</strong> (grey) badge reflecting the current systemd state of the service — so you know what is active before editing.' },
-                { title: 'Form Mode', text: 'Edit common settings through a user-friendly interface with field descriptions and validation. Ideal for day-to-day configuration.' },
-                { title: 'Expert Mode (Raw)', text: 'Directly edit the raw configuration file for advanced parameters not exposed in Form Mode. Includes syntax validation before save.' },
-                { title: 'Audio Output', text: 'The badge on each tile shows the current active audio output device configured for that service.' },
-                { title: 'Restart after save', text: 'Checked by default — the service is automatically restarted after saving to apply changes immediately. Uncheck to save the file without restarting (useful when making multiple edits or when a manual restart is preferred).' },
-                { title: 'Preview Changes (Diff)', text: 'Appears when you have unsaved edits. In Raw mode: shows a unified diff with added lines in green and removed lines in red. In Form mode: shows a table of changed fields with before/after values.' },
-                { title: 'Automatic Backups', text: 'Every save creates a timestamped backup. Use the <strong>Backups</strong> button to browse and restore any previous version — the current file is backed up first.' }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Audio Services Configuration', content);
-    }
-
     render() {
         return html`
             <div class="tab-title-container">
                 <h2>AUDIO SERVICES CONFIGURATION</h2>
-                <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
             </div>
             
             ${this.selectedServiceId ? html`
@@ -442,7 +420,7 @@ export class AgConfigPage extends LitElement {
                     </div>
                 ` : ''}
                 ${this._showInitModal ? html`
-                    <ag-modal title="First-time setup" ?show=${this._showInitModal} size="large"
+                    <ag-modal heading="First-time setup" ?show=${this._showInitModal} size="large"
                         .bodyTemplate=${html`
                             <ag-audio-stack-provisioning
                                 @status-loaded=${this._boundHandleStatusLoaded}

@@ -250,16 +250,11 @@ export class AgProfileCard extends LitElement {
                 <div class="profile-footer">
                     <div class="profile-actions">
                         ${!isGuest() ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn ${this.isActive ? 'secondary' : 'activate'}"
-                                    ?disabled=${isPending || (!isAvailable && !this.isActive)}
-                                    @click=${this._handleToggle}>
-                                ${isPending ? (this.profile.state === 'activating' ? 'ACTIVATING...' : 'STOPPING...') : this.isActive ? 'DEACTIVATE' : 'ACTIVATE'}
-                            </button>
-                            <div class="tooltip tooltip-top">
-                                ${!isAvailable ? 'Some services are not installed' : isPending ? 'Please wait...' : this.isActive ? 'Deactivate this profile' : 'Activate this profile'}
-                            </div>
-                        </div>
+                        <button class="tile-action-btn ${this.isActive ? 'secondary' : 'activate'}"
+                                ?disabled=${isPending || (!isAvailable && !this.isActive)}
+                                @click=${this._handleToggle}>
+                            ${isPending ? (this.profile.state === 'activating' ? 'ACTIVATING...' : 'STOPPING...') : this.isActive ? 'DEACTIVATE' : 'ACTIVATE'}
+                        </button>
                         ` : nothing}
                     </div>
                     ${!isAvailable ? html`<span class="badge error">UNAVAILABLE</span>` : ''}

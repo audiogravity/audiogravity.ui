@@ -26,6 +26,16 @@ if (typeof window !== 'undefined') {
 // WORKER INITIALIZATION (Phase 3 Optimization #5)
 let sseWorker = null;
 
+// A new session token (auth.js: replaceToken, or one another tab put in place)
+// makes the open stream reconnect with it: left on the old one, the stream carried
+// the ended session, and reconnecting on its own it would come back as no one — the
+// core opens it without a user, and the Admin tab's online mark goes. A hidden tab
+// has its stream closed (initVisibilityManager), which reopens it with the current
+// token once the tab is shown: it is left alone here.
+window.addEventListener('ag-session-token-replaced', () => {
+    if (sseWorker && !document.hidden) connectSSE();
+});
+
 /**
  * Handle messages from the SSE Worker.
  *

@@ -15,7 +15,7 @@
  * @attr {string} variant - "row" (30×30 bordered, in a list row's action cell) |
  *                          "card" (24×24 overlay on a cover) |
  *                          "player" (44×44 bordered, beside the full-screen player's title)
- * @attr {string} label   - aria-label and tooltip (default: the mode's own)
+ * @attr {string} label   - aria-label (default: the mode's own)
  *
  * @fires playlist-add    - Bubbles, composed (mode "add"). No detail: the consumer knows its item.
  * @fires playlist-remove - Bubbles, composed (mode "remove").

@@ -11,7 +11,8 @@ import { classMap } from 'lit/directives/class-map.js';
  * Generic Modal Web Component
  * @element ag-modal
  *
- * @attr {string} title - Dialog title
+ * @attr {string} heading - Dialog title (the `title` property). Never `title`: on the element it
+ *   is a tooltip over the whole dialog.
  * @attr {boolean} show - Controls visibility
  * @attr {string} size - Modal size ('normal', 'large', 'premium')
  * @attr {boolean} no-backdrop-close - Prevent closing when clicking outside
@@ -25,7 +26,7 @@ import { classMap } from 'lit/directives/class-map.js';
  */
 export class AgModal extends LitElement {
     static properties = {
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
         show: { type: Boolean, reflect: true },
         size: { type: String },
         noBackdropClose: { type: Boolean, attribute: 'no-backdrop-close' },
@@ -80,6 +81,13 @@ export class AgModal extends LitElement {
     }
 
     updated(changedProperties) {
+        // The dialog's accessible name. The `title` attribute gave it one, and with it
+        // a tooltip over the whole dialog; the title is now read from `heading`, so it
+        // names the dialog here.
+        if (changedProperties.has('title')) {
+            if (this.title) this.setAttribute('aria-label', this.title);
+            else this.removeAttribute('aria-label');
+        }
         if (changedProperties.has('show')) {
             if (this.show) {
                 this._saveFocus();

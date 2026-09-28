@@ -51,7 +51,6 @@ describe('the theme entries that replaced literal radii', () => {
         '--radius-pipeline': '4px',
         '--radius-toast': '0px',
         '--radius-pull-tab': '6px',
-        '--radius-queue-tip': '4px',
     };
 
     it('default to the literal each one replaced, so other themes keep their look', () => {
@@ -65,7 +64,6 @@ describe('the theme entries that replaced literal radii', () => {
             ['css/layout.css', '.topbar .metric-value.activity-high', '--radius-chip'],
             ['css/components/now-playing.css', '.np-cover--placeholder', '--radius-cover'],
             ['css/components/toast.css', '.toast', '--radius-toast'],
-            ['css/components/library-queue.css', '.lib-queue-tip:focus-within::after', '--radius-queue-tip'],
         ];
         for (const [file, selector, token] of uses) {
             const body = ruleBody(read(file), selector);
@@ -91,9 +89,8 @@ describe('minimal: one 2px radius', () => {
         }
     });
 
-    it('leaves the pull tab and the queue tip at their own radius', () => {
+    it('leaves the pull tab at its own radius', () => {
         expect(tokenValue(MINIMAL, '--radius-pull-tab')).toBeNull();
-        expect(tokenValue(MINIMAL, '--radius-queue-tip')).toBeNull();
     });
 });
 

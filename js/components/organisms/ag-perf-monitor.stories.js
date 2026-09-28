@@ -19,10 +19,10 @@ const mockStats = {
 };
 
 const mockTimers = [
-    { id: 'perf-monitor-ui', interval: 1000, effectiveInterval: 1000, ticks: 120, running: true, pauseOnHidden: false },
-    { id: 'uptime-updater', interval: 30000, effectiveInterval: 90000, ticks: 4, running: true, pauseOnHidden: true },
-    { id: 'sse-reconnect', interval: 3000, effectiveInterval: 3000, ticks: 0, running: false, pauseOnHidden: false },
-    { id: 'sw-check', interval: 300000, effectiveInterval: 300000, ticks: 1, running: true, pauseOnHidden: false }
+    { id: 'perf-monitor-ui', interval: 1000, ticks: 120, running: true, pauseOnHidden: false },
+    { id: 'uptime-updater', interval: 30000, ticks: 4, running: true, pauseOnHidden: true },
+    { id: 'sse-reconnect', interval: 3000, ticks: 0, running: false, pauseOnHidden: false },
+    { id: 'sw-check', interval: 300000, ticks: 1, running: true, pauseOnHidden: false }
 ];
 
 const Template = (args) => {
@@ -31,7 +31,6 @@ const Template = (args) => {
     // Seed initial data
     el.timers = args.timers || mockTimers;
     el.sse = args.sse || mockStats;
-    el.lowPower = args.lowPower || false;
     el.expanded = args.expanded || false;
     
     // In Storybook, we might want to prevent the internal interval from 
@@ -56,13 +55,5 @@ export const Detailed = Template.bind({});
 Detailed.args = {
     timers: mockTimers,
     sse: mockStats,
-    expanded: true
-};
-
-export const LowPowerMode = Template.bind({});
-LowPowerMode.args = {
-    timers: mockTimers.map(t => ({...t, effectiveInterval: t.interval * 3})),
-    sse: mockStats,
-    lowPower: true,
     expanded: true
 };

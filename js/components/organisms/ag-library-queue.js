@@ -235,14 +235,11 @@ export class AgLibraryQueue extends LitElement {
                     ·
                     <button class="lib-queue-action" @click=${() => this._load()}>Refresh</button>
                     ${upNext.length > 0 ? html`·
-                        <span class=${this._isRoon() ? 'lib-queue-tip' : ''}
-                              data-tip=${this._isRoon() ? 'Roon does not expose a clear-queue API — use the Roon app to manage the queue.' : ''}>
-                            <button
-                                class="lib-queue-action ${this._isRoon() ? 'disabled' : ''}"
-                                ?disabled=${this._isRoon()}
-                                @click=${() => this._isRoon() ? null : this._clear()}
-                            >Clear</button>
-                        </span>
+                        <button
+                            class="lib-queue-action ${this._isRoon() ? 'disabled' : ''}"
+                            ?disabled=${this._isRoon()}
+                            @click=${() => this._isRoon() ? null : this._clear()}
+                        >Clear</button>
                     ` : nothing}
                 </span>
             </div>
@@ -292,7 +289,7 @@ export class AgLibraryQueue extends LitElement {
                         </div>
                         <span class="lib-queue-dur">${fmtDuration(item.duration)}</span>
                         ${swipeable ? html`
-                        <button class="lib-queue-more" @click=${() => !this._swipe.swiping && this._remove(item.queue_id)} title="Remove">
+                        <button class="lib-queue-more" @click=${() => !this._swipe.swiping && this._remove(item.queue_id)} aria-label="Remove">
                             <svg viewBox="0 0 24 24">${iconArrowLeft}</svg>
                         </button>` : nothing}
                     </div>

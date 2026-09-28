@@ -320,7 +320,7 @@ export class AgPlaylistPicker extends LitElement {
         return html`
             <ag-modal
                 class="ag-plp"
-                title=${this._mode === 'create' ? 'New playlist' : 'Add to playlist'}
+                heading=${this._mode === 'create' ? 'New playlist' : 'Add to playlist'}
                 ?show=${this._open}
                 .bodyTemplate=${this._mode === 'create' ? this._renderCreate() : this._renderList()}
                 .footerTemplate=${this._renderFooter()}

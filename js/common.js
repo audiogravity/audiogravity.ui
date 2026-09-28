@@ -214,9 +214,7 @@ function monoFontFamily() {
 }
 
 /**
- * OPTIMIZATION: Throttling function to limit the execution rate
- * PERFORMANCE OPTIMIZATION (Phase 3): Low Power Mode aware.
- * Doubles the effective limit when Low Power Mode is enabled.
+ * OPTIMIZATION: Throttling function to limit the execution rate.
  */
 function throttle(func, limit) {
     let inThrottle;
@@ -224,11 +222,7 @@ function throttle(func, limit) {
         if (!inThrottle) {
             func.apply(this, args);
             inThrottle = true;
-
-            // If Low Power Mode is on, double the wait time to reduce processing
-            const effectiveLimit = AgTimerManager._lowPowerMode ? limit * 2 : limit;
-
-            setTimeout(() => inThrottle = false, effectiveLimit);
+            setTimeout(() => inThrottle = false, limit);
         }
     }
 }
@@ -409,25 +403,25 @@ function initNavigation() {
         const templates = {
             'services': `
                 <ag-services-page id="agServicesPage"></ag-services-page>
-                <ag-history-panel type="service" title="HISTORY"></ag-history-panel>
+                <ag-history-panel type="service" heading="HISTORY"></ag-history-panel>
             `,
             'audio-software': `
                 <ag-audio-software-page id="agAudioSoftwarePage"></ag-audio-software-page>
-                <ag-history-panel type="software" title="HISTORY"></ag-history-panel>
+                <ag-history-panel type="software" heading="HISTORY"></ag-history-panel>
             `,
             'systemd': `
                 <ag-systemd-page id="agSystemdPage"></ag-systemd-page>
-                <ag-history-panel type="systemd" title="HISTORY"></ag-history-panel>
+                <ag-history-panel type="systemd" heading="HISTORY"></ag-history-panel>
             `,
             'performance': `
                 <ag-performance-page id="agPerformancePage"></ag-performance-page>
-                <ag-history-panel type="performance" title="HISTORY"></ag-history-panel>
+                <ag-history-panel type="performance" heading="HISTORY"></ag-history-panel>
             `,
             'config': `
                 <div class="config-zone tab-zone">
                     <ag-config-page id="agConfigPage"></ag-config-page>
                 </div>
-                <ag-history-panel type="config" title="HISTORY"></ag-history-panel>
+                <ag-history-panel type="config" heading="HISTORY"></ag-history-panel>
             `,
             'system': `
                 <ag-system-page id="agSystemPage"></ag-system-page>
@@ -437,8 +431,8 @@ function initNavigation() {
             `,
             'admin': `
                 <ag-admin-page id="agAdminPage"></ag-admin-page>
-                <ag-history-panel type="admin" title="HISTORY"></ag-history-panel>
-                <ag-log-viewer class="login-logs-zone tab-zone" title="LOGIN HISTORY" syslog-identifier=""
+                <ag-history-panel type="admin" heading="HISTORY"></ag-history-panel>
+                <ag-log-viewer class="login-logs-zone tab-zone" heading="LOGIN HISTORY" syslog-identifier=""
                     grep-pattern="auth.router" ?auto-refresh=${false} .reverse=${true}></ag-log-viewer>
             `
         };
@@ -710,8 +704,8 @@ if ('serviceWorker' in navigator) {
 if (import.meta.env.DEV) {
     window.addEventListener('DOMContentLoaded', () => {
         const badge = document.createElement('div');
+        badge.id = 'ag-dev-badge';   // what tools/manual-shots removes before a capture
         badge.textContent = 'DEV';
-        badge.title = 'Development mode — click to dismiss';
         Object.assign(badge.style, {
             position: 'fixed',
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
@@ -742,7 +736,6 @@ if (import.meta.env.VITE_BETA === 'true') {
     window.addEventListener('DOMContentLoaded', () => {
         const badge = document.createElement('div');
         badge.textContent = 'BETA';
-        badge.title = 'Beta build — click to dismiss';
         Object.assign(badge.style, {
             position: 'fixed',
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',

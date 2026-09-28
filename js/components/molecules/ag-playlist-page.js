@@ -355,9 +355,9 @@ export class AgPlaylistPage extends LitElement {
                 </button>
                 ${this._editable ? html`
                     <span class="ag-pp-spacer"></span>
-                    <button class="ag-pp-icon-btn" title="Rename" aria-label="Rename the playlist"
+                    <button class="ag-pp-icon-btn" aria-label="Rename the playlist"
                         @click=${() => { this._renaming = true; }}>${svgIcon(iconPencil, { size: '18px' })}</button>
-                    <button class="ag-pp-icon-btn" title="Delete" aria-label="Delete the playlist"
+                    <button class="ag-pp-icon-btn" aria-label="Delete the playlist"
                         @click=${() => { this._confirmingDelete = true; }}>${svgIcon(iconTrash, { size: '18px' })}</button>
                 ` : nothing}
             </div>
@@ -388,7 +388,7 @@ export class AgPlaylistPage extends LitElement {
                         class=${this._removing.has(t.id) ? 'ag-pp-pending' : ''}
                         cover=${coverUrl(t.cover_token)}
                         fallback="track"
-                        title=${t.title}
+                        heading=${t.title}
                         subtitle=${this._byline(t)}
                         position=${i + 1}
                         note=${t.duration ? fmtDuration(t.duration) : ''}
@@ -408,7 +408,7 @@ export class AgPlaylistPage extends LitElement {
         return html`
             <ag-modal
                 class="ag-pp-delete"
-                title="Delete playlist"
+                heading="Delete playlist"
                 ?show=${this._confirmingDelete}
                 .bodyTemplate=${html`
                     <p class="ag-pp-delete-q">Delete <strong>${this._title}</strong> from ${this._account}?</p>

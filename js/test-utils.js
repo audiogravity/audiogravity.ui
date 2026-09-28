@@ -3,7 +3,7 @@
  * @description Helpers shared by the unit tests. Not loaded by the application.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -61,4 +61,43 @@ export function flat(node) {
     }
     if (typeof node === 'function') return '';
     return String(node);
+}
+
+/**
+ * The application's own sources, for the guards that read markup: every .js under js/
+ * except the tests and the stories, and the two HTML pages.
+ *
+ * @returns {string[]} Paths relative to the repository root.
+ */
+export function appSources() {
+    const walk = (dir) => readdirSync(path.join(process.cwd(), dir)).flatMap((name) => {
+        const rel = path.join(dir, name);
+        if (statSync(path.join(process.cwd(), rel)).isDirectory()) return walk(rel);
+        return /\.js$/.test(name) && !/\.(test|stories)\.js$/.test(name) ? [rel] : [];
+    });
+    return [...walk('js'), 'index.html', 'login.html'];
+}
+
+/**
+ * The opening tags written in a source, each read to its closing `>` — the one outside
+ * any `${...}` expression, so the `=>` of an arrow function inside does not end it.
+ *
+ * @param {string} text - Source text: a component's templates, or an HTML page.
+ * @returns {string[]} Each tag, from `<` to `>`.
+ */
+export function openingTags(text) {
+    const tags = [];
+    for (let i = text.indexOf('<'); i !== -1; i = text.indexOf('<', i + 1)) {
+        if (!/[a-zA-Z]/.test(text[i + 1] || '')) continue;
+        let depth = 0;
+        let j = i + 1;
+        for (; j < text.length; j++) {
+            if (text[j] === '$' && text[j + 1] === '{') { depth++; j++; }
+            else if (depth && text[j] === '{') depth++;
+            else if (depth && text[j] === '}') depth--;
+            else if (!depth && text[j] === '>') break;
+        }
+        tags.push(text.slice(i, j + 1));
+    }
+    return tags;
 }

@@ -20,7 +20,7 @@ const ICON_MAP = {
  * System Meter/Metric Tile
  * @element ag-system-tile
  * 
- * @prop {string} title
+ * @prop {string} title - Tile title; as an attribute, `heading` (`title` would be a tooltip).
  * @prop {string} icon - icon class name (e.g. icon-chip)
  * @prop {string} value
  * @prop {string} unit
@@ -39,7 +39,7 @@ const ICON_MAP = {
  */
 export class AgSystemTile extends LitElement {
     static properties = {
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
         icon: { type: String },
         value: { type: String },
         unit: { type: String },

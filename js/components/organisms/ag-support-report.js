@@ -125,7 +125,7 @@ export class AgSupportReport extends LitElement {
                 ?show=${this.show}
                 @modal-close=${this._handleClose}
                 size="large"
-                title="Support Report"
+                heading="Support Report"
                 no-backdrop-close
                 .bodyTemplate=${html`
                     <p class="support-report-intro">

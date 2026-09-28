@@ -141,7 +141,7 @@ export class AgPackageUninstallDialog extends LitElement {
         if (!this.pkg) return html``;
         return html`
             <ag-modal
-                title="Uninstall ${this.pkg.label}"
+                heading="Uninstall ${this.pkg.label}"
                 ?show=${this.show}
                 .bodyTemplate=${this._renderBody()}
                 .footerTemplate=${this._renderActions()}

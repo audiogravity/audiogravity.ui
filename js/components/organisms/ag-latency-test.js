@@ -23,6 +23,35 @@ import { iconHistory } from '../../ag-icons.js';
 import '../atoms/ag-stat-box.js';
 import '../atoms/ag-switch.js';
 
+/**
+ * What the core accepts for each setting (LatencyTestConfig in
+ * audiogravity.core/modules/performance/models.py). The fields used to allow more —
+ * 32 threads, 100 loops, priority 0 — and the refusal only came back once TEST
+ * was pressed; the same bounds now drive the fields and a check before sending.
+ */
+export const LATENCY_LIMITS = Object.freeze({
+    threads: { label: 'Threads', min: 1, max: 16 },
+    priority: { label: 'Priority (RT)', min: 1, max: 99 },
+    loops: { label: 'Loops', min: 1000, max: 10000000 },
+    interval_us: { label: 'Interval (µs)', min: 10, max: 10000 },
+    histogram_max_us: { label: 'Histogram Max (µs)', min: 100, max: 50000 },
+});
+
+/**
+ * The first setting outside what the core accepts, as a sentence, or null.
+ * @param {Object} config - The test's settings.
+ * @returns {string|null}
+ */
+export function latencyConfigProblem(config) {
+    for (const [key, { label, min, max }] of Object.entries(LATENCY_LIMITS)) {
+        const value = config[key];
+        if (!Number.isInteger(value) || value < min || value > max) {
+            return `${label} must be between ${min} and ${max}.`;
+        }
+    }
+    return null;
+}
+
 export class AgLatencyTest extends LitElement {
     static properties = {
         config: { type: Object },
@@ -44,7 +73,9 @@ export class AgLatencyTest extends LitElement {
             loops: 10000,
             interval_us: 100,
             histogram_max_us: 5000,
-            cpu_affinity: '0,1,2,3',
+            // Empty: no pinning. All four cores used to be pre-filled, harmlessly while
+            // the field never reached the core; a box with fewer cores would now refuse it.
+            cpu_affinity: '',
             mlockall: true,
             quiet: true
         };
@@ -94,24 +125,12 @@ export class AgLatencyTest extends LitElement {
         }
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'Runs cyclictest to measure real-time scheduling latency. The maximum latency (µs) is the key indicator: it represents the worst-case delay between a timer event and the thread waking up — directly linked to audio buffer underruns.',
-            [
-                { title: 'Threads', text: 'Number of concurrent RT threads. Use 1 for a focused single-core measurement, or match your CPU count for a stress scenario.' },
-                { title: 'Priority (RT)', text: 'SCHED_FIFO priority of the test threads (1–99). Priority 99 matches the highest audio daemon priority. Using a lower value gives a pessimistic but realistic view.' },
-                { title: 'Loops', text: 'Total number of measurement cycles per thread. More loops = more samples = more representative max latency. 100 000 is a quick check; 1 000 000+ for a thorough measurement.' },
-                { title: 'Interval', text: 'Wake-up interval in µs. 100 µs is the standard audio reference (corresponds to a 10 kHz timer). Lower values stress the scheduler more aggressively.' },
-                { title: 'Memory Lock (mlockall)', text: 'Locks the process memory to prevent page faults during the test. Always enable for a realistic audio workload simulation.' },
-                { title: 'Results & History', text: 'Min/Avg/Max latency and percentiles are displayed after the test. The last 10 results are saved locally (History panel) to track improvements after governor or kernel changes.' }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Latency Test', content);
-    }
-
     async _startTest() {
+        const problem = latencyConfigProblem(this.config);
+        if (problem) {
+            showToast('error', 'Latency Test', problem);
+            return;
+        }
         const affinityStr = this.config.cpu_affinity || '';
         const cpuAffinity = affinityStr.split(',')
             .map(n => parseInt(n.trim()))
@@ -123,7 +142,9 @@ export class AgLatencyTest extends LitElement {
             loops: this.config.loops,
             interval_us: this.config.interval_us,
             histogram_max_us: this.config.histogram_max_us,
-            cpu_affinity: cpuAffinity.length > 0 ? cpuAffinity : null,
+            // The core's field is `affinity`: sent as `cpu_affinity`, it was dropped and
+            // the test was never pinned to the cores asked for.
+            affinity: cpuAffinity.length > 0 ? cpuAffinity : null,
             mlockall: this.config.mlockall,
             quiet: this.config.quiet
         };
@@ -340,7 +361,7 @@ export class AgLatencyTest extends LitElement {
                     </span>
                     <div style="display:flex;align-items:center;gap:var(--spacing-sm)">
                         ${this._historyOpen ? html`
-                            <button class="test-history-clear" title="Clear history"
+                            <button class="test-history-clear"
                                 @click=${e => { e.stopPropagation(); clearTestHistory(); this._testHistory = []; }}>
                                 Clear
                             </button>
@@ -422,8 +443,7 @@ export class AgLatencyTest extends LitElement {
             <div class="performance-section tab-zone">
                 <div class="test-header">
                     <div class="tab-title-container">
-                        <h2>LATENCE TEST</h2>
-                        <span class="badge info clickable" id="latencyInfoBtn" @click=${this._showInfo}>INFO</span>
+                        <h2>LATENCY TEST</h2>
                     </div>
                     <div class="test-actions">
                         <button class="btn-action compact success" @click=${this._startTest} ?disabled=${this.testState === 'running'}>
@@ -442,29 +462,29 @@ export class AgLatencyTest extends LitElement {
                     <div class="config-row">
                         <div class="config-field">
                             <label>Threads</label>
-                            <input type="number" id="cfg_threads" .value=${this.config.threads} min="1" max="32" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_threads" .value=${this.config.threads} min=${LATENCY_LIMITS.threads.min} max=${LATENCY_LIMITS.threads.max} @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="config-field">
                             <label>Priority (RT)</label>
-                            <input type="number" id="cfg_priority" .value=${this.config.priority} min="0" max="99" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_priority" .value=${this.config.priority} min=${LATENCY_LIMITS.priority.min} max=${LATENCY_LIMITS.priority.max} @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="config-field">
                             <label>Loops</label>
-                            <input type="number" id="cfg_loops" .value=${this.config.loops} min="100" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_loops" .value=${this.config.loops} min=${LATENCY_LIMITS.loops.min} max=${LATENCY_LIMITS.loops.max} @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                         </div>
                         
                         ${this.expertMode ? html`
                             <div class="config-field animate-fade-in">
                                 <label>Interval (µs)</label>
-                                <input type="number" id="cfg_interval_us" .value=${this.config.interval_us} min="10" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                                <input type="number" id="cfg_interval_us" .value=${this.config.interval_us} min=${LATENCY_LIMITS.interval_us.min} max=${LATENCY_LIMITS.interval_us.max} @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                             </div>
                             <div class="config-field animate-fade-in">
                                 <label>Histogram Max (µs)</label>
-                                <input type="number" id="cfg_histogram_max_us" .value=${this.config.histogram_max_us} min="100" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                                <input type="number" id="cfg_histogram_max_us" .value=${this.config.histogram_max_us} min=${LATENCY_LIMITS.histogram_max_us.min} max=${LATENCY_LIMITS.histogram_max_us.max} @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                             </div>
                             <div class="config-field animate-fade-in">
                                 <label>CPU Affinity</label>
-                                <input type="text" id="cfg_cpu_affinity" .value=${this.config.cpu_affinity} placeholder="0,1,2,3" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
+                                <input type="text" id="cfg_cpu_affinity" .value=${this.config.cpu_affinity} placeholder="e.g. 2,3" @input=${this._handleConfigChange} ?disabled=${this.testState === 'running'}>
                             </div>
                         ` : ''}
                     </div>

@@ -179,67 +179,7 @@
 /* .metric-label and .metric-value handled by components/metrics.css */
 }
 
-/* =====================
-   METRIC TOOLTIPS
-   ===================== */
-
-/* Tooltip container */
-.services-zone .metric-value {
-    position: relative;
-    cursor: help;
-}
-
-/* Tooltip content */
-.metric-tooltip {
-    display: none;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: var(--spacing-sm);
-    background: var(--bg-primary);
-    border: 1px solid var(--text-primary);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
-    white-space: nowrap;
-    z-index: var(--z-tooltip);
-    box-shadow: 0 4px 12px var(--shadow-color);
-    line-height: 1.6;
-    pointer-events: none;
-
-    /* Don't block clicks */
-}
-
-/* Show tooltip on hover */
-.services-zone .metric-value:hover .metric-tooltip,
-.services-zone .metric-value:focus-within .metric-tooltip {
-    display: block;
-}
-
-/* Tooltip arrow */
-.metric-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: var(--text-primary);
-}
-
 /* Activity level colors moved to components/metrics.css */
-
-/* Ensure tooltips don't overflow on small screens */
-@media (width <= 480px) {
-    .metric-tooltip {
-        font-size: var(--font-size-xs);
-        padding: 4px 6px;
-    }
-
-    .metric-tooltip::after {
-        border-width: 4px;
-    }
-}
 
 /* =====================
    SPARKLINE GRAPHS

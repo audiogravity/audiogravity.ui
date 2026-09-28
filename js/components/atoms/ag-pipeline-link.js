@@ -171,11 +171,13 @@ export const renderPipelineLink = (link, sourceNode) => {
                 d="${pathD}"
                 style="fill: none; stroke: ${bitPerfect ? bitPerfectStroke : strokeColor}; stroke-width: ${strokeWidth}; stroke-dasharray: ${dashArray}; stroke-linecap: round; --flow-speed: ${duration}s; ${active ? `filter: drop-shadow(0 0 3px ${bitPerfect ? bitPerfectStroke : strokeColor});` : ''}"
             />
-            <!-- OPTIMIZATION: Bit-perfect and format badges with cache (stable values) -->
+            <!-- OPTIMIZATION: full-resolution and format badges with cache (stable values).
+                 FULL RES, not BIT-PERFECT: the check is that the connector can carry
+                 the format sent to the card, not that nothing upstream altered it. -->
             ${cache((active && bitPerfect && showBitPerfect) ? svg`
                 <g transform="translate(${(sourceX + targetX)/2}, ${(sourceY + targetY)/2 - 10})">
                     <rect x="-35" y="-12" width="70" height="14" rx="7" style="fill: none; stroke: ${bitPerfectStroke}; stroke-width: 1.5;" />
-                    <text y="-2" style="fill: ${bitPerfectInk}; font-size: 7px; font-weight: bold; text-anchor: middle; letter-spacing: 0.5px;">BIT-PERFECT</text>
+                    <text y="-2" style="fill: ${bitPerfectInk}; font-size: 7px; font-weight: bold; text-anchor: middle; letter-spacing: 0.5px;">FULL RES</text>
                     ${(formatInfo && showBitrate) ? svg`
                         <text y="8" style="fill: ${bitPerfectInk}; font-size: 6px; font-weight: 600; text-anchor: middle;">${formatInfo}</text>
                     ` : ''}

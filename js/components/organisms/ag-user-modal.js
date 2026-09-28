@@ -21,6 +21,28 @@
 import { LitElement, html } from 'lit';
 import './ag-modal.js';
 
+/**
+ * Why an account's role and enabled state cannot be changed from this window, if
+ * they cannot. The core refuses both changes for the system account and for your
+ * own; the window says so under each greyed-out field instead of letting the save
+ * fail.
+ *
+ * @param {Object|null} user - The account being edited (null when creating one).
+ * @param {Object|null} currentUser - The signed-in user.
+ * @returns {?{role: string, enabled: string}} One reason per field, or null when both
+ *   can change.
+ */
+export function lockedReasons(user, currentUser) {
+    if (!user) return null;
+    if (user.username === 'admin') {
+        return { role: 'The system account keeps its role.', enabled: 'The system account cannot be disabled.' };
+    }
+    if (currentUser && currentUser.username === user.username) {
+        return { role: 'You cannot change your own role.', enabled: 'You cannot disable your own account.' };
+    }
+    return null;
+}
+
 export class AgUserModal extends LitElement {
     static properties = {
         isOpen: { type: Boolean, attribute: 'is-open' },
@@ -121,27 +143,15 @@ export class AgUserModal extends LitElement {
         const isEditing = !!this.user;
         const title = isEditing ? `Edit User: ${this.user.username}` : 'Create New User';
 
-        // Disable role and enabled if editing "admin" or self
-        let disableRole = false;
-        let disableEnabled = false;
-        let tooltipMsg = "";
-
-        if (isEditing && this.user.username === 'admin') {
-            disableRole = true;
-            disableEnabled = true;
-            tooltipMsg = "System account cannot be disabled or demoted.";
-        } else if (isEditing && this.currentUser && this.currentUser.username === this.user.username) {
-            disableRole = true;
-            disableEnabled = true;
-            tooltipMsg = "You cannot disable or re-role your own account.";
-        }
+        // Role and enabled state are locked for the system account and for your own.
+        const locked = lockedReasons(this.user, this.currentUser);
 
         return html`
             <ag-modal 
                 ?show=${this.isOpen} 
                 @modal-close=${this._handleClose}
                 size="premium"
-                title="${title}"
+                heading="${title}"
                 .bodyTemplate=${html`
                     <div class="form-section">
                         <h4>Account Information</h4>
@@ -171,26 +181,28 @@ export class AgUserModal extends LitElement {
                                 @input=${(e) => this._handleInput('password', e)}
                                 placeholder="Minimum 6 chars">
                         </div>
-                        <div class="form-field" title=${tooltipMsg}>
+                        <div class="form-field">
                             <label>Role</label>
-                            <select .value=${this._role} @change=${(e) => this._handleInput('role', e)} ?disabled=${disableRole}>
+                            <select .value=${this._role} @change=${(e) => this._handleInput('role', e)} ?disabled=${!!locked}>
                                 <option value="user">User</option>
                                 <option value="guest">Guest</option>
                                 <option value="admin">Admin</option>
                             </select>
+                            ${locked ? html`<p class="help-text">${locked.role}</p>` : ''}
                         </div>
                     </div>
 
                     <div class="form-section">
                         <h4>Account Status</h4>
-                        <div class="checkbox-field" title=${tooltipMsg}>
+                        <div class="checkbox-field">
                             <label>
                                 <input type="checkbox" 
                                     .checked=${this._enabled}
                                     @change=${(e) => this._handleInput('enabled', e)}
-                                    ?disabled=${disableEnabled}>
+                                    ?disabled=${!!locked}>
                                 Account Enabled
                             </label>
+                            ${locked ? html`<p class="help-text">${locked.enabled}</p>` : ''}
                         </div>
                     </div>
                 `}

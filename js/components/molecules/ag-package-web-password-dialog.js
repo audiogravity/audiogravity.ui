@@ -130,7 +130,7 @@ export class AgPackageWebPasswordDialog extends LitElement {
         if (!this.pkg?.web_credentials) return html``;
         return html`
             <ag-modal
-                title="Web interface password — ${this.pkg.label}"
+                heading="Web interface password — ${this.pkg.label}"
                 ?show=${this.show}
                 .bodyTemplate=${this._renderBody()}
                 .footerTemplate=${this._renderActions()}

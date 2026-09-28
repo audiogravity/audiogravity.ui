@@ -24,6 +24,27 @@ const TERMINAL_FONT_SIZE = 13;
 /** Frames held while the terminal is being built. Generous for a banner, finite. */
 const PENDING_FRAME_CAP = 500;
 
+/**
+ * What to say when the core closes the terminal.
+ *
+ * 4001 means two things: no session to open it with, or — on a terminal already open —
+ * the session that opened it has ended, which the core checks every 15 s. After an
+ * admin changed their own password, it was the second, and "Authentication required."
+ * sent them looking for a sign-in they did not need: their session goes on, and a
+ * reconnection opens a new shell with it.
+ *
+ * @param {number} code - The WebSocket close code.
+ * @param {boolean} wasOpen - Whether the terminal had opened.
+ * @returns {string} The message, or '' for a close that needs none.
+ */
+export function closeMessage(code, wasOpen) {
+    if (code === 4003) return 'Access denied — admin only.';
+    if (code !== 4001) return '';
+    return wasOpen
+        ? 'The session that opened this terminal has ended. Reconnect to open a new one.'
+        : 'Authentication required.';
+}
+
 export class AgTerminal extends LitElement {
     static properties = {
         _status: { type: String, state: true }, // 'idle' | 'connecting' | 'connected' | 'error' | 'closed'
@@ -116,9 +137,9 @@ export class AgTerminal extends LitElement {
         };
 
         ws.onclose = (e) => {
+            const wasOpen = this._status === 'connected';
             this._status = e.code === 4003 ? 'error' : 'closed';
-            if (e.code === 4003) this._errorMsg = 'Access denied — admin only.';
-            if (e.code === 4001) this._errorMsg = 'Authentication required.';
+            this._errorMsg = closeMessage(e.code, wasOpen) || this._errorMsg;
             if (this._term) { this._term.writeln('\r\n\x1b[31m[connection closed]\x1b[0m'); }
         };
 

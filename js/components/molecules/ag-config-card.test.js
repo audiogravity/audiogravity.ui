@@ -52,6 +52,22 @@ describe('provisioning state defaults', () => {
 });
 
 
+/**
+ * Whether a button of the rendered tile is disabled, found by its exact class list.
+ * `flat` renders false as nothing, so the binding reads "?disabled=true" or "?disabled=".
+ * @param {string} out - Flattened template.
+ * @param {string} classes - The button's class attribute.
+ * @returns {boolean}
+ */
+function isDisabled(out, classes) {
+    const m = new RegExp(`<button class="${classes}" \\?disabled=(true)?`).exec(out);
+    if (!m) throw new Error(`no <button class="${classes}"> in the tile`);
+    return m[1] === 'true';
+}
+
+const EDIT = 'tile-action-btn';
+const DOWNLOAD = 'tile-action-btn tile-action-btn--icon';
+
 /** Render a tile for a service, overriding the defaults of a healthy mpd. */
 function renderCard(overrides = {}) {
     const el = Object.create(AgConfigCard.prototype);
@@ -169,8 +185,9 @@ describe('package removed but its configuration file left behind', () => {
 
     it('keeps the file downloadable — it is on the box, whatever became of the package', () => {
         const out = renderCard(LEFTOVER);
-        expect(out).toContain('Download config file');
-        expect(out).toContain('backups available');
+        expect(isDisabled(out, EDIT)).toBe(true);
+        expect(isDisabled(out, DOWNLOAD)).toBe(false);
+        expect(out).toContain('config-backup-badge');
         expect(out).toContain('Modified');
     });
 
@@ -213,8 +230,8 @@ describe('installed service whose configuration file is missing', () => {
         // Only the download is refused: there is nothing yet to take off the box.
         const out = renderCard(NO_FILE);
         expect(out.match(/\?disabled=true/g)).toHaveLength(1);
-        expect(out).toContain('Configure this service');
-        expect(out).toContain('No configuration file on this box');
+        expect(isDisabled(out, EDIT)).toBe(false);
+        expect(isDisabled(out, DOWNLOAD)).toBe(true);
     });
 
     it('treats an unknown file state as present rather than disabling anything', () => {

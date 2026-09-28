@@ -220,7 +220,7 @@ export class AgSystemdOverrideEditor extends LitElement {
                 ?show=${this.isOpen}
                 @modal-close=${this._handleClose}
                 size="premium"
-                title="${title}"
+                heading="${title}"
                 .bodyTemplate=${html`
                     <form id="propertiesForm">
 
@@ -228,12 +228,12 @@ export class AgSystemdOverrideEditor extends LitElement {
                             <h4>RT Presets</h4>
                             <div class="form-field" style="display:flex; gap: var(--spacing-sm); flex-wrap: wrap;">
                                 <button type="button" class="btn-action compact success"
-                                        title="Apply Real-Time audio-optimised values (SCHED_FIFO 80, RTPRIO 99, MEMLOCK infinity…)"
+
                                         @click=${() => this._applyPreset('audio')}>
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconMusicNote}</svg> Audio Optimized
                                 </button>
                                 <button type="button" class="btn-action compact"
-                                        title="Clear all fields (restore systemd defaults)"
+
                                         @click=${() => this._applyPreset('reset')}>
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUndo}</svg> Reset to Defaults
                                 </button>

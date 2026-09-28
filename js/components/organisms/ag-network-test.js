@@ -168,30 +168,6 @@ export class AgNetworkTest extends LitElement {
         }
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'Measures network stability for audio streaming (AirPlay, Roon ARC, NAS). Three test modes: Ping for quick latency checks, iperf3 UDP to simulate real-time streaming, iperf3 TCP for raw throughput.',
-            [
-                { title: 'Ping (Quick Check)', text: 'Measures round-trip time, jitter, and packet loss to a target host. Key metrics: <strong>Avg</strong> (baseline latency), <strong>Jitter</strong> (variance — critical for real-time streaming), <strong>Loss</strong> (any loss causes audible dropouts). Target: 1.1.1.1 for WAN, router IP for LAN.' },
-                { title: 'Iperf3 UDP (Audio Streaming)', text: 'Simulates a constant-bitrate audio stream. Measures jitter and packet loss at a defined bandwidth. Use packet size 1450 bytes (standard Ethernet MTU minus headers). Run an iperf3 server on another machine: <code>iperf3 -s</code>.' },
-                { title: 'Iperf3 TCP (Throughput)', text: 'Measures sustainable TCP bandwidth and retransmits. Useful to confirm the link can carry uncompressed audio (DSD512 ≈ 15 Mbps, PCM 768kHz/32bit ≈ 12 Mbps). High retransmits indicate an unreliable link.' },
-                { title: 'History', text: 'The last 10 test results are saved locally (History panel). Compare before/after a network change: cable vs Wi-Fi, different iperf3 server, router QoS configuration.' },
-                {
-                    title: 'Network Health Scores',
-                    text: 'Scoring system:<ul class="info-list">' +
-                        '<li class="info-list-item"><span class="health-badge excellent">EXCELLENT</span> Ping: Jitter &lt; 2ms, Loss = 0% | Iperf3: Jitter &lt; 0.1ms, Loss &lt; 0.001%, BW ≥ 15 Mbps</li>' +
-                        '<li class="info-list-item"><span class="health-badge good">GOOD</span> Ping: Jitter &lt; 5ms, Loss &lt; 0.5% | Iperf3: Jitter &lt; 0.1ms, Loss &lt; 0.001%, BW ≥ 15 Mbps (one criterion)</li>' +
-                        '<li class="info-list-item"><span class="health-badge fair">FAIR</span> Ping: Jitter &lt; 10ms, Loss &lt; 2% | Iperf3: Jitter &lt; 0.5ms, Loss &lt; 0.01%, BW ≥ 10 Mbps</li>' +
-                        '<li class="info-list-item"><span class="health-badge critical">CRITICAL</span> Ping: Jitter ≥ 10ms or Loss ≥ 2% | Iperf3: Jitter ≥ 2ms, Loss ≥ 0.1%, or BW &lt; 5 Mbps</li>' +
-                        '</ul>'
-                }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Network Stability Test', content);
-    }
-
     async _startTest() {
         let payload;
 
@@ -304,7 +280,7 @@ export class AgNetworkTest extends LitElement {
                     </span>
                     <div style="display:flex;align-items:center;gap:var(--spacing-sm)">
                         ${this._historyOpen ? html`
-                            <button class="test-history-clear" title="Clear history"
+                            <button class="test-history-clear"
                                 @click=${e => { e.stopPropagation(); clearTestHistory(); this._testHistory = []; }}>
                                 Clear
                             </button>
@@ -455,7 +431,6 @@ export class AgNetworkTest extends LitElement {
                 <div class="test-header">
                     <div class="test-title-wrapper tab-title-container">
                         <h2>NETWORK STABILITY TEST</h2>
-                        <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                         ${this.healthStatus ? html`
                             <div class="health-badge ${this.healthStatus.class} inline-flex">${this.healthStatus.label}</div>
                         ` : ''}

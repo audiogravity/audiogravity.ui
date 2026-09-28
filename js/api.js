@@ -1,6 +1,6 @@
 import { API_BASE_URL, API_KEY_HEADER, API_KEY } from './core/config.js';
 import { AppState, updateConnectionStatus } from './common.js';
-import { getAuthToken } from './auth.js';
+import { getAuthToken, fetchInSession, fetchJsonInSession } from './auth.js';
 import { hasCoreCredentials, isKeylessLocked, recordKeylessVerdict } from './core/credentials.js';
 
 export { hasCoreCredentials };
@@ -10,7 +10,7 @@ export { hasCoreCredentials };
 // =====================
 
 import { getUserFriendlyError } from './ui-helpers.js';
-import { fetchOrNetworkError, throwForStatus, fetchJson, readJson, isRetryableFailure } from './net-errors.js';
+import { throwForStatus, readJson, isRetryableFailure } from './net-errors.js';
 
 /**
  * Retry API call with exponential backoff
@@ -136,7 +136,8 @@ export async function apiCall(endpoint, options = {}) {
         // The transport tag is set inside fetchOrNetworkError and nowhere wider: the catch at
         // the bottom of this function also covers onSuccess-style code in callers, so
         // classifying there would call a caller's TypeError a dead network.
-        const response = await fetchOrNetworkError(`${API_BASE_URL}${endpoint}`, fetchOptions);
+        // Through the session: a refused session is ended here (auth.js, fetchInSession).
+        const response = await fetchInSession(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
         // The keyless probe's answer settles the verdict: 403 is the middleware's
         // "Invalid or missing API key"; anything else means the core does not gate on
@@ -244,7 +245,7 @@ export async function apiUpload(endpoint, file) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        return await fetchJson(`${API_BASE_URL}${endpoint}`, {
+        return await fetchJsonInSession(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
             headers,
             body: formData

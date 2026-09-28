@@ -32,6 +32,23 @@ Every request must carry:
 JWT tokens are obtained from `POST /auth/login` and stored in
 `localStorage` / `sessionStorage` depending on the user's persistence setting.
 
+**A session ends** before its token expires when its account changes — a new password, a
+new role, disabled, deleted, or deleted and created again under the same name. From the
+next request on, the token is refused with **401** and a `WWW-Authenticate: Bearer`
+challenge (`detail`: `Session ended — sign in again`, or `Invalid or expired token`) on
+every route that carries it — the public paths, `/auth/login`, `/auth/logout` and
+`/auth/webauthn/login/*` excepted — and the client signs in again. A request without a
+token is left to its route. A 401
+**without** that challenge — a password re-typed wrong for a sensitive action, a streaming
+service refusing its login — does not end the session. An open `/sysinfo/terminal/ws`
+checks its session again every 15 s and closes with code **4001** once it has ended.
+
+**Guests** (role `guest`) read everything but `/auth/users*`, the logs and the admin
+routes, and control what is playing: `/player/control`, `/player/source`,
+`/player/sleep-timer`, `/hqplayer/stop`, `/hqplayer/volume`, and the transport and volume
+routes of `/upnp-renderer/{udn}/*` (`next`, `prev`, `stop`, `pause`, `seek`, `volume`).
+Every other write route answers **403** to a guest token.
+
 ---
 
 ## Endpoint groups
@@ -43,7 +60,7 @@ JWT tokens are obtained from `POST /auth/login` and stored in
 | POST | `/auth/logout` | Invalidate session |
 | GET | `/auth/users` | List users (admin) |
 | POST | `/auth/users` | Create user (admin) |
-| PATCH | `/auth/users/{username}` | Update a user (password, role, enabled) |
+| PATCH | `/auth/users/{username}` | Update a user (`password`, `role`, `enabled`, `persistent_auth`). **400** for your own account disabled or given another role, and for a protected account (the built-in `admin`) disabled or given another role. A new password, a new role or disabling ends the account's sessions; when that ends the caller's own (their own password), the response carries **`access_token`** to replace theirs — `null` otherwise |
 | DELETE | `/auth/users/{username}` | Delete a user |
 | GET | `/auth/users/active` | Usernames holding a live SSE connection (admin) — feeds the online mark on each user card |
 | POST | `/auth/webauthn/register/begin` | Start passkey registration |
@@ -616,8 +633,8 @@ ends. Never present it as what will be heard.
 | POST | `/services/{name}/restart` | Restart |
 | POST | `/services/{name}/reload` | Reload the unit's config |
 | POST | `/services/{name}/properties/validate` | Check an override without applying it → `{ valid, errors, warnings, properties_preview }`; `errors` names the values a service cannot start with (see **Saving settings**) |
-| POST | `/services/{name}/properties/restore` | Put back the override that the last change which stayed replaced (`has_backup` in `GET /services/{name}/properties`) |
-| DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults |
+| POST | `/services/{name}/properties/restore` | Put back the override that the last change which stayed replaced (`has_backup` in `GET /services/{name}/properties`) — applied as a save is, see **Putting settings back** |
+| DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults — applied as a save is, see **Putting settings back** |
 | POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravi<sup>ty</sup>-managed units** (audio engines + core AG services); a non-managed unit is rejected |
 | GET | `/services/{name}/properties` | systemd unit properties. `nice` and `cpu_scheduling_policy` are `null` when the unit keeps systemd's default (nice 0, policy `other`) — render as "default"; an unlimited limit reads `infinity`. The `properties` block of `/services/{name}` follows the same rules |
 | POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
@@ -632,6 +649,13 @@ On the core's own unit (`ag-core-server`), `stop`, `restart` and `reload` — as
 - **kept, service stopped** — a service already restarting in a loop keeps the new settings, and is stopped.
 
 A service not running when the save arrives — stopped, or dead after a failure — is not started: **200** with `service_restarted: false`, the settings apply at its next start. The answer comes once the service is restarted and watched: seconds, up to the time systemd allows its stop and start. The backup `/properties/restore` puts back is only replaced by a change that stays — a refused or undone save leaves it as it was.
+
+**Putting settings back** — `/properties/restore` and `DELETE /properties/override` answer **200** `{ success, message, service, service_restarted }` once the settings put back are in place: a running service is restarted on them and watched (`service_restarted: true`); one that is not running is left as it is (`false`), they apply at its next start. `message` is meant to be shown as is. They answer **400**, `detail` saying why, when:
+- the service's current settings cannot be read (nothing changed), or systemd refuses the reload;
+- **undone** — a running service that does not start on them gets back the settings it ran on and is restarted; `detail` says whether it runs again. The backup stays, as before the call;
+- **kept, service stopped** — a service already restarting in a loop keeps them, and is stopped.
+
+On the core's own unit (`ag-core-server`), both answer **409** while software is being installed, as a save applied at once does.
 
 ### Profiles — `/profiles/*`
 | Method | Path | Description |
@@ -849,6 +873,13 @@ badged `origin: "radio"`.
 | POST | `/packages/update_all` | Update every managed package |
 | GET | `/packages/config/view` | The registry-generated config, as applied |
 | POST | `/packages/config/refresh` | Regenerate that config from the registry |
+
+**`status`** — `not_installed`, `installing`, `installed`, `updating`, `uninstalling`, or
+**`error`** while the last operation on the package failed: until the next one starts, or
+until the version on the box changes (the package was dealt with outside
+Audiogravi<sup>ty</sup>). `installed_version` stays the real one, so with `error` a version
+means the previous one stayed (a failed update or uninstall), and none that nothing is
+installed (a failed install). The `package_state` SSE event carries the same.
 
 `available_version` comes from apt for packages that live in a repository, and **from the source itself** for those that do not — a downloaded `.deb` (HQPlayer NAA) is read from the vendor's own listing, and an AG-hosted bundle from the checksum manifest published beside it. Asking apt about those returns the version already installed, so a comparison against it always said "up to date". It stays `null` for a vendor that publishes no version at all (Roon): there, `installer_type` is `script` and updating means reinstalling the current build rather than comparing.
 
@@ -1068,7 +1099,7 @@ The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 | `audio_pipeline` | Full pipeline topology update — same node shape as `GET /audio_pipeline/current`, `unmatched_outputs` included |
 | `services_metrics` | CPU/memory/IO per service. Five figures can be `null` — **absent, not zero** — for a **running** service whose counter is off: `memory_mb` when the kernel exposes no memory cgroup controller (the event's `memory_accounting` flag says which case the box is in), and `io_read_rate` / `io_write_rate` / `network_rx_rate` / `network_tx_rate` until *IO Accounting* / *IP Accounting* are enabled on the unit. `cpu_percent` and `tasks` are always measured. A **stopped** unit reports `0` for all of them — that silence is real. |
 | `profile_metrics` | Profile activation result |
-| `sysinfo` | CPU, memory, disk, network |
+| `sysinfo` | CPU, memory, disk, network. **`cpu_throttled`**: one flag per entry of `cpu_per_core`, true when that CPU was slowed down since the previous event — for heat (Intel's throttle counters), or on a Raspberry Pi for an under-powered supply, which marks every core. `null` when the box measures neither, or on a Pi while its supply is fine: not measured, never "not throttled" |
 | `renderer_status` | UPnP renderer connection state — see below |
 
 ---

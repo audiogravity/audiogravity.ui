@@ -35,9 +35,6 @@ import { isGuest } from '../../auth.js';
 import { downloadTextFile } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';
 
-/** Shown on the download button when there is no file to take off the box. */
-const _NO_FILE_TOOLTIP = 'No configuration file on this box';
-
 /** Format an ISO 8601 mtime string to a compact locale-aware relative label. */
 const _fmtMtime = (iso) => {
     const d = new Date(iso);
@@ -137,19 +134,13 @@ export class AgConfigCard extends LitElement {
                             <span class="badge error">UNAVAILABLE</span>
                         ` : nothing}
                         ${this.service.backupCount > 0 ? html`
-                            <div class="has-tooltip">
-                                <span class="badge neutral config-backup-badge">${this.service.backupCount}</span>
-                                <div class="tooltip">${this.service.backupCount} backup${this.service.backupCount > 1 ? 's' : ''} available</div>
-                            </div>
+                            <span class="badge neutral config-backup-badge">${this.service.backupCount}</span>
                         ` : nothing}
                         ${isInstalled && statusLabel ? html`
                             <span class="config-status-badge config-status-badge--${statusVariant}">${statusLabel}</span>
                         ` : nothing}
                         ${isInstalled && this.provisionable ? html`
-                            <div class="has-tooltip">
-                                <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
-                                <div class="tooltip">${this.configured ? 'Set up by Audiogravity' : 'Using package defaults — not set up by Audiogravity'}</div>
-                            </div>
+                            <span class="badge ${this.configured ? 'success' : 'neutral'}">${this.configured ? 'CONFIGURED' : 'NOT CONFIGURED'}</span>
                         ` : nothing}
                     </div>
                 </div>
@@ -178,26 +169,17 @@ export class AgConfigCard extends LitElement {
                 <div class="service-footer">
                     <div class="config-footer-left">
                         ${!isGuest() ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn" ?disabled=${!canEdit}
-                                    @click="${this.handleEdit}">EDIT CONFIG</button>
-                            <div class="tooltip">${canEdit ? 'Configure this service' : 'Package not installed'}</div>
-                        </div>
+                        <button class="tile-action-btn" ?disabled=${!canEdit}
+                                @click="${this.handleEdit}">EDIT CONFIG</button>
                         ` : nothing}
                         ${this.service.critical ? html`
-                            <div class="has-tooltip">
-                                <span class="badge warning">CRITICAL</span>
-                                <div class="tooltip">Critical Service</div>
-                            </div>
+                            <span class="badge warning">CRITICAL</span>
                         ` : nothing}
                     </div>
-                    <div class="has-tooltip">
-                        <button class="tile-action-btn tile-action-btn--icon" ?disabled=${!canDownload}
-                                @click="${this.handleDownload}" aria-label="Download config">
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
-                        </button>
-                        <div class="tooltip">${canDownload ? 'Download config file' : _NO_FILE_TOOLTIP}</div>
-                    </div>
+                    <button class="tile-action-btn tile-action-btn--icon" ?disabled=${!canDownload}
+                            @click="${this.handleDownload}" aria-label="Download config">
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
+                    </button>
                 </div>
             </div>
         `;

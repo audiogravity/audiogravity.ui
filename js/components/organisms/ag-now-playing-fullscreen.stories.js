@@ -123,7 +123,7 @@ export const CastToRenderer = {
  * The sound card is held by another player, so nothing comes out.
  *
  * The reason is shown under the output instead of leaving the user with silence
- * and no explanation — the engine's exact wording stays available as a tooltip.
+ * and no explanation.
  */
 export const OutputBusy = {
     render: () => mount({
