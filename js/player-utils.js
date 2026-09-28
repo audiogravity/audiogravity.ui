@@ -111,7 +111,7 @@ export function activeOutputError(state) {
 
 /**
  * Plain-language rendering of {@link activeOutputError} — the raw ALSA/engine
- * string is only ever shown as a tooltip, never as the primary message.
+ * string is never shown to the listener: this label is the message.
  * @param {string|null} raw - Value returned by {@link activeOutputError}.
  * @returns {string}
  */

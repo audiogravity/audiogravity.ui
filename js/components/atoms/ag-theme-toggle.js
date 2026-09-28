@@ -72,7 +72,7 @@ export class AgThemeToggle extends LitElement {
         // what pressing it gets you.
         const label = this.darkMode ? 'Switch to the light appearance' : 'Switch to the dark appearance';
         return html`
-            <button type="button" class="ag-theme-toggle" title="${label}" aria-label="${label}"
+            <button type="button" class="ag-theme-toggle" aria-label="${label}"
                 aria-pressed="${this.darkMode}" @click=${this._toggle}>
                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

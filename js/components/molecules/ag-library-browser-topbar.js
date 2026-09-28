@@ -7,7 +7,8 @@
  *
  * @element ag-library-browser-topbar
  *
- * @attr {string} title - Current browse-level title.
+ * @attr {string} heading - Current browse-level title (the `title` property; `title` would be a
+ *   tooltip).
  *
  * @fires browser-back    - Bubbles. Back button clicked.
  * @fires browser-refresh - Bubbles. Refresh button clicked.
@@ -21,7 +22,7 @@ import { iconBack, iconRefresh } from '../../ag-icons.js';
 
 export class AgLibraryBrowserTopbar extends LitElement {
     static properties = {
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
     };
 
     createRenderRoot() { return this; }
@@ -47,7 +48,7 @@ export class AgLibraryBrowserTopbar extends LitElement {
                 </button>
                 <span class="lib-browser-title">${this.title || 'Browse'}</span>
                 <button class="lib-browser-refresh-btn" @click=${this._onRefresh}
-                    title="Refresh" aria-label="Refresh">
+                        aria-label="Refresh">
                     <svg viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0"
                         fill="none" stroke="currentColor" stroke-width="1.7"
                         stroke-linecap="round" stroke-linejoin="round">

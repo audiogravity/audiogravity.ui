@@ -63,7 +63,7 @@ export class AgProvOutputPicker extends LitElement {
                 <span class="ag-prov-card-icon">${svgIcon(o.is_usb_dac ? iconConnectorUsbA : iconHardDrive)}</span>
                 <span class="ag-prov-card-label">${o.label}</span>
                 ${o.recommended
-                    ? html`<span class="ag-prov-rec" title="Recommended" aria-label="Recommended">${svgIcon(iconStar)}</span>`
+                    ? html`<span class="ag-prov-rec" role="img" aria-label="Recommended">${svgIcon(iconStar)}</span>`
                     : nothing}
             </button>`;
     }

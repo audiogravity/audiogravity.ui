@@ -311,7 +311,7 @@ export class AgTabs extends LitElement {
     _syncSidebarToggleEl() {
         if (!this._sidebarToggleEl) return;
         this._sidebarToggleEl.textContent = this._sidebarHidden ? '›' : '‹';
-        this._sidebarToggleEl.title = this._sidebarHidden ? 'Afficher les onglets' : 'Masquer les onglets';
+        this._sidebarToggleEl.setAttribute('aria-label', this._sidebarHidden ? 'Show tabs' : 'Hide tabs');
     }
 
     disconnectedCallback() {
@@ -727,7 +727,7 @@ export class AgTabs extends LitElement {
                 </ag-license-badge>
                 <ag-status-indicator
                     state=${this._connected ? 'up' : 'down'}
-                    title="${this._connected ? 'Core connected' : 'Core disconnected'}">
+                    sr-label="${this._connected ? 'Core connected' : 'Core disconnected'}">
                 </ag-status-indicator>
             </div>
             <div class="tabs-user-bar">
@@ -759,17 +759,16 @@ export class AgTabs extends LitElement {
                             aria-controls="${tab.id}"
                             id="tab-${tab.id}"
                             tabindex="${isActive ? '0' : '-1'}"
-                            title="${locked ? 'Requires a full license or active trial' : ''}"
                             @click=${() => this.selectTab(tab.id)}>
                         ${TAB_SVG_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24">${TAB_SVG_ICONS[tab.id]}</svg></span>` : TAB_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[tab.id]}</svg></span>` : ''}
                         ${tab.label}
                         ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
                         ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
-                            <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning-text);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
+                            <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" role="img" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning-text);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
                         ` : ''}
                         ${!locked && tab.id === 'admin' && this._updateAvailable ? html`
-                            <span aria-label="Update available" title="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning-text)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
+                            <span role="img" aria-label="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning-text)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
                         ` : ''}
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`
@@ -779,14 +778,14 @@ export class AgTabs extends LitElement {
         })}
             <button class="tab-btn tab-manual-btn"
                     @click=${this._openManual}
-                    title="User Manual">
+>
                 <span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconManual}</svg></span>
                 Manual
             </button>
             ${!this._isMobile ? html`
             <button class="tab-orientation-btn"
                     @click=${this._toggleOrientation}
-                    title="${this._vertical ? 'Passer en horizontal' : 'Passer en vertical'}">
+>
                 <span class="btn-text">Switch</span>&nbsp;${this._vertical ? '⇄' : '⇅'}
             </button>` : nothing}
         `;

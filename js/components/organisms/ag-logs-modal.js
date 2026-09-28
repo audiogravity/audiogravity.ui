@@ -160,7 +160,7 @@ export class AgLogsModal extends LitElement {
                 ?show=${this.isOpen} 
                 @modal-close=${this._handleClose}
                 size="large"
-                title="${this.title}"
+                heading="${this.title}"
                 .bodyTemplate=${html`
                     <div class="install-progress-container">
                         <div class=${classMap(progressClasses)}>

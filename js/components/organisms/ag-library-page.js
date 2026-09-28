@@ -1049,7 +1049,7 @@ export class AgLibraryPage extends LitElement {
                         <div class="lib-topbar-right">
                             ${this._isRoon(_sourceId) ? html`
                                 <button class="lib-action" @click=${() => this._navigate('roon-browser')}
-                                        title="Browse Roon" aria-label="Browse Roon">
+                                        aria-label="Browse Roon">
                                     <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                         ${iconQueue}
@@ -1058,7 +1058,7 @@ export class AgLibraryPage extends LitElement {
                                 </button>
                             ` : html`
                                 <button class="lib-action" @click=${() => this._refreshBrowse({ refresh: true })}
-                                        title="Refresh library" aria-label="Refresh library">
+                                        aria-label="Refresh library">
                                     <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                         ${iconRefresh}
@@ -1141,7 +1141,7 @@ export class AgLibraryPage extends LitElement {
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             <button class="lib-action" @click=${() => this._navigate('outputs')}
-                                    title="Outputs" aria-label="Outputs">
+                                    aria-label="Outputs">
                                 <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                      stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     ${iconOutput}
@@ -1167,7 +1167,7 @@ export class AgLibraryPage extends LitElement {
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             <button class="lib-action" @click=${() => this._navigate('library')}
-                                    title="Back to library" aria-label="Back to library">
+                                    aria-label="Back to library">
                                 <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                      stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     ${iconBack}

@@ -236,13 +236,12 @@ export class AgManualModal extends LitElement {
     }
 
     /**
-     * Name a copy button — for the tooltip and for assistive technology alike.
+     * Name a copy button for assistive technology.
      * @param {HTMLButtonElement} btn
      * @param {string} text
      */
     _labelCopyButton(btn, text) {
         btn.setAttribute('aria-label', text);
-        btn.title = text;
     }
 
     /**

@@ -37,15 +37,15 @@ export class AgSystemInfo extends LitElement {
             <div class="property-grid compact">
                 <div class="property-item">
                     <div class="property-label">Hostname</div>
-                    <div class="property-value" title="${this.system.hostname}">${this.system.hostname}</div>
+                    <div class="property-value">${this.system.hostname}</div>
                 </div>
                 <div class="property-item">
                     <div class="property-label">OS</div>
-                    <div class="property-value" title="${this.system.operating_system}">${this.system.operating_system}</div>
+                    <div class="property-value">${this.system.operating_system}</div>
                 </div>
                 <div class="property-item">
                     <div class="property-label">Kernel</div>
-                    <div class="property-value" title="${this.system.kernel}">${this.system.kernel}</div>
+                    <div class="property-value">${this.system.kernel}</div>
                 </div>
                 <div class="property-item">
                     <div class="property-label">Arch</div>
@@ -53,7 +53,7 @@ export class AgSystemInfo extends LitElement {
                 </div>
                 <div class="property-item">
                     <div class="property-label">CPU Model</div>
-                    <div class="property-value" title="${this.cpu.model}">${this.cpu.model}</div>
+                    <div class="property-value">${this.cpu.model}</div>
                 </div>
                 <div class="property-item">
                     <div class="property-label">Cores</div>

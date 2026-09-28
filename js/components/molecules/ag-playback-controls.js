@@ -50,29 +50,29 @@ export class AgPlaybackControls extends LitElement {
             <div class="ag-pc-controls">
                 <button class="ag-pc-ctrl small ${repeat ? 'active' : ''}"
                     @click=${() => this._emit('set_repeat', repeat ? 0 : 1)}
-                    aria-label="Repeat" title="Repeat">
+                    aria-label="Repeat">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg>
                 </button>
                 <button class="ag-pc-ctrl nav" ?disabled=${!canPrev}
                     @click=${() => this._emit('prev')}
-                    aria-label="Previous" title="Previous">
+                    aria-label="Previous">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSkipBack}</svg>
                 </button>
                 <button class="ag-pc-ctrl play"
                     @click=${() => this._emit('toggle')}
-                    aria-label="${playing ? 'Pause' : 'Play'}" title="${playing ? 'Pause' : 'Play'}">
+                    aria-label="${playing ? 'Pause' : 'Play'}">
                     ${playing
                         ? html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPause}</svg>`
                         : html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPlay}</svg>`}
                 </button>
                 <button class="ag-pc-ctrl nav" ?disabled=${!canNext}
                     @click=${() => this._emit('next')}
-                    aria-label="Next" title="Next">
+                    aria-label="Next">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
                 </button>
                 <button class="ag-pc-ctrl small ${shuffle ? 'active' : ''}"
                     @click=${() => this._emit('set_shuffle', shuffle ? 0 : 1)}
-                    aria-label="Shuffle" title="Shuffle">
+                    aria-label="Shuffle">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconShuffle}</svg>
                 </button>
             </div>

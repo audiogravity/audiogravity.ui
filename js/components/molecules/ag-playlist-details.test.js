@@ -73,7 +73,7 @@ afterEach(() => { document.body.innerHTML = ''; });
 describe('ag-playlist-details — a new playlist', () => {
     it('asks for a name and an optional description, and says it starts empty', async () => {
         const el = await mount();
-        expect(el.querySelector('ag-modal').getAttribute('title')).toBe('New playlist');
+        expect(el.querySelector('ag-modal').getAttribute('heading')).toBe('New playlist');
         expect(inputs(el).map((i) => i.value)).toEqual(['', '']);
         expect(el.textContent).toContain('(optional)');
         expect(el.textContent).toContain('It starts empty');
@@ -141,7 +141,7 @@ describe('ag-playlist-details — a new playlist', () => {
 describe('ag-playlist-details — renaming', () => {
     it('opens on the playlist\'s name and description', async () => {
         const el = await mount(PLAYLIST);
-        expect(el.querySelector('ag-modal').getAttribute('title')).toBe('Rename playlist');
+        expect(el.querySelector('ag-modal').getAttribute('heading')).toBe('Rename playlist');
         expect(inputs(el).map((i) => i.value)).toEqual(['Audiogravity test', 'For the integration']);
         expect(el.textContent).not.toContain('It starts empty');
     });

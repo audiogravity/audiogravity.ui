@@ -1270,7 +1270,7 @@ export class AgLibraryBrowse extends LitElement {
                 cover=${coverUrl(album.cover_token)}
                 fallback=${this._playlistFallback}
                 ?wide=${this._bannerCovers}
-                title=${album.title}
+                heading=${album.title}
                 subtitle=${this._showsPlaylists
                     ? (byline ? `${PLAYLIST_TAG} · ${byline}` : PLAYLIST_TAG)
                     : byline}

@@ -9,7 +9,7 @@ export default {
 
 const Template = (args) => html`
   <ag-library-browser-topbar
-    title="${args.title}"
+    heading="${args.title}"
     @browser-back=${() => console.log('back')}
     @browser-refresh=${() => console.log('refresh')}>
   </ag-library-browser-topbar>

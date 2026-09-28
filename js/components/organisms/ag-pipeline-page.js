@@ -154,26 +154,6 @@ export class AgPipelinePage extends LitElement {
         }
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'Real-time visualization of your Hi-Fi signal chain, built from the audio topology configuration.',
-            [
-                { title: 'Controller nodes', text: 'Control apps on remote devices (Roon Remote, JPlay, etc.). Links show which streaming service they are driving.' },
-                { title: 'Server nodes', text: 'Music servers such as Roon Core. Shown when actively serving a stream.' },
-                { title: 'Streamer nodes', text: 'The local audio computer. Displays active services (Roon Bridge, AirPlay, MPD…) with their status.' },
-                { title: 'Converter / Amplifier / Output', text: 'Physical devices in the signal chain: DAC, integrated amp, speakers.' },
-                { title: 'Audio links', text: 'Animated particles indicate an active audio stream. Orange glow = signal flowing.' },
-                { title: 'Control links', text: 'Dashed amber lines show control flow from a controller to its target service.' },
-                { title: 'Bit-perfect', text: 'Green links indicate lossless transmission with no sample-rate conversion.' },
-                { title: 'Toggles', text: 'Use CONTROLLERS, STORAGE and OUTPUTS buttons to show or hide device groups.' },
-                { title: 'Mobile view', text: 'On small screens, a simplified Now Playing view is shown with per-stream output steering (USB / Optical).' },
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Audio Pipeline', content);
-    }
-
     render() {
         if (!this._isActive) return html``;
 
@@ -190,7 +170,6 @@ export class AgPipelinePage extends LitElement {
                     <div class="pipeline-zone tab-zone amp-mobile-bar">
                         <div class="tab-title-container">
                             <h2>AUDIO PIPELINE</h2>
-                            <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                             ${!isGuest() ? html`
                                 <span class="badge warning clickable"
                                       @click=${this._openTopologyConfigModal}>CONFIG</span>
@@ -208,7 +187,6 @@ export class AgPipelinePage extends LitElement {
                 <div class="pipeline-zone tab-zone">
                     <div class="tab-title-container">
                         <h2>AUDIO PIPELINE</h2>
-                        <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                         <ag-badge type="info" label="LIVE" pulse></ag-badge>
                         ${!isGuest() ? html`<span class="badge warning clickable" style="margin-left: auto" @click=${this._openTopologyConfigModal}>CONFIG</span>` : ''}
                     </div>
@@ -219,7 +197,7 @@ export class AgPipelinePage extends LitElement {
                 <!-- Events Zone -->
                 <ag-history-panel
                     type="audio_pipeline"
-                    title="AUDIO EVENTS"
+                    heading="AUDIO EVENTS"
                     collapsible
                     @panel-collapse=${() => { this._eventsCollapsed = true; }}
                     @panel-expand=${() => { this._eventsCollapsed = false; }}>

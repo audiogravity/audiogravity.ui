@@ -112,3 +112,21 @@ describe('webauthnFetch — what a refusal and a dead network look like to the c
         expect(err.status).toBeUndefined();
     });
 });
+
+describe('registerPasskey — with a session the core ended', () => {
+    afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
+
+    it('ends the session here too', async () => {
+        localStorage.setItem('jwt_token', 'tok');
+        localStorage.setItem('jwt_expiry', new Date(Date.now() + 3600000).toISOString());
+        localStorage.setItem('jwt_user', JSON.stringify({ username: 'alice', role: 'user' }));
+        const { initAuth, isAuthenticated } = await import('./auth.js');
+        initAuth();
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"Session ended — sign in again"}', {
+            status: 401, headers: { 'WWW-Authenticate': 'Bearer' },
+        })));
+        const { registerPasskey } = await import('./webauthn.js');
+        await expect(registerPasskey('alice', 'Phone')).rejects.toMatchObject({ status: 401 });
+        expect(isAuthenticated()).toBe(false);
+    });
+});

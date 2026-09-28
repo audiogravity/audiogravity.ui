@@ -139,7 +139,7 @@ export class AgPasskeyManager extends LitElement {
                                     </div>
                                     <button
                                         class="btn-action compact error"
-                                        title="Remove passkey"
+                                        aria-label="Remove passkey"
                                         @click=${() => this._handleDelete(c.credential_id, c.device_name)}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg>
                                     </button>

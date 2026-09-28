@@ -6,7 +6,8 @@
  * @element ag-history-panel
  *
  * @attr {string} type - History category (e.g., 'profile', 'service', 'systemd')
- * @attr {string} title - Panel title
+ * @attr {string} heading - Panel title (the `title` property). Never `title`: on the element it
+ *   is a tooltip over the whole panel.
  * @attr {Array} items - History items array: [{ timestamp, action, success }]
  * @attr {number} maxItems - Maximum visible items
  * @attr {boolean} collapsible - Enables collapse/expand toggle button
@@ -27,7 +28,7 @@ import { iconTrash, iconCheck, iconClose } from '../../ag-icons.js';
 export class AgHistoryPanel extends LitElement {
     static properties = {
         type: { type: String },
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
         items: { type: Array },
         maxItems: { type: Number },
         collapsible: { type: Boolean },
@@ -75,7 +76,7 @@ export class AgHistoryPanel extends LitElement {
                     <button
                         class="clear-btn compact"
                         style="width: 24px; height: 24px; padding: 0; font-size: var(--font-size-md); display: flex; align-items: center; justify-content: center;"
-                        title="Expand panel"
+                        aria-label="Expand panel"
                         @click=${this._toggleCollapse}
                     >›</button>
                     <span style="writing-mode: vertical-rl; transform: rotate(180deg); color: var(--text-tertiary); font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 1px; white-space: nowrap; margin-top: 4px;">${this.title}</span>
@@ -92,7 +93,7 @@ export class AgHistoryPanel extends LitElement {
                             <button
                                 class="clear-btn compact"
                                 style="opacity: 0.7;"
-                                title="Collapse panel"
+                                aria-label="Collapse panel"
                                 @click=${this._toggleCollapse}
                             >‹</button>
                         ` : ''}

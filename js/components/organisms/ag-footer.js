@@ -1,4 +1,5 @@
 import { LitElement, html } from 'lit';
+import { onActivateKey } from '../utils-lit.js';
 import { EventEmitter, API_BASE_URL, AppState } from '../../common.js';
 import { apiDocsUrl, openApiDocs } from '../../api-docs.js';
 import { iconApiTree } from '../../ag-icons.js';
@@ -92,16 +93,6 @@ export class AgFooter extends LitElement {
         modal.addEventListener('modal-close', closeHandler);
     }
 
-    /**
-     * Open the preview from the keyboard, the way a button would.
-     * @param {KeyboardEvent} e
-     */
-    _onLogoKey(e) {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();          // Space would scroll the page
-        this._openLogoModal();
-    }
-
     _openApiDocs() {
         openApiDocs(this._docsUrl);
     }
@@ -113,9 +104,9 @@ export class AgFooter extends LitElement {
                      reachable by keyboard and announced as a button. It was a bare div with a
                      click handler, which no Tab ever landed on. -->
                 <div class="footer-logo" role="button" tabindex="0"
-                     title="Preview the application icon"
+                     aria-label="Preview the application icon"
                      @click="${this._openLogoModal}"
-                     @keydown="${this._onLogoKey}">
+                     @keydown="${onActivateKey(this._openLogoModal)}">
                     <img class="ag-app-icon" src="/pics/apple-touch-180.png" alt="Audiogravity"
                          width="36" height="36">
                 </div>
@@ -130,18 +121,15 @@ export class AgFooter extends LitElement {
                          keeps "API": what it opens really is the API reference. -->
                     <span id="footerApiUrl">CORE: ${this.apiUrl}</span>
                     ${this._docsUrl ? html`
-                    <div class="has-tooltip">
-                        <button class="icon-btn" id="footerApiDocsBtn" title="API Documentation"
-                            @click="${this._openApiDocs}"
-                            /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
-                            so the value is the geometry of a control rather than typography. The page scale has
-                            no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
-                            two and the largest grew 17 percent. See css/components/playback-controls.css. */
-                            style="width: 32px; height: 32px; font-size: 18px;">
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
-                        </button>
-                        <div class="tooltip tooltip-top">Open API Documentation (Swagger UI)</div>
-                    </div>` : ''}
+                    <button class="icon-btn" id="footerApiDocsBtn" aria-label="API Documentation"
+                        @click="${this._openApiDocs}"
+                        /* rule 12 exception — this sizes an icon, not text: the SVG inside is width/height 1em,
+                        so the value is the geometry of a control rather than typography. The page scale has
+                        no step between 20 and 28; forced onto it, the transport's three sizes collapsed into
+                        two and the largest grew 17 percent. See css/components/playback-controls.css. */
+                        style="width: 32px; height: 32px; font-size: 18px;">
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
+                    </button>` : ''}
                 </div>
             </footer>
         `;

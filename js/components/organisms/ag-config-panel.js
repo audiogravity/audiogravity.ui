@@ -18,6 +18,7 @@
  */
 
 import { LitElement, html } from 'lit';
+import { onActivateKey } from '../utils-lit.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
@@ -583,7 +584,6 @@ export class AgConfigPanel extends LitElement {
                 <button
                     class="config-panel-toggle"
                     aria-label="${this.active ? 'Close Settings' : 'Open Settings'}"
-                    title="${this.active ? 'Close Settings' : 'Open Settings'}"
                     @click="${(e) => { e.stopPropagation(); this.active = !this.active; if (this.active) document.dispatchEvent(new CustomEvent('config-panel-opened')); }}"
                 >${this.active ? '›' : '‹'}</button>
 
@@ -643,7 +643,7 @@ export class AgConfigPanel extends LitElement {
                                 <span class="passkey-device-chip">
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg>
                                     ${p.device_name}
-                                    <button class="passkey-chip-delete" title="Remove"
+                                    <button class="passkey-chip-delete" aria-label="Remove"
                                         @click=${() => this._deletePasskey(p.credential_id)}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconClose}</svg>
                                     </button>
@@ -653,7 +653,7 @@ export class AgConfigPanel extends LitElement {
                     ` : ''}
 
                     <div class="config-footer">
-                        <button class="config-footer-logout" @click=${this._logout} title="Logout">
+                        <button class="config-footer-logout" @click=${this._logout}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconLogout}</svg>
                             <span>Logout</span>
                         </button>
@@ -662,7 +662,9 @@ export class AgConfigPanel extends LitElement {
                                 <span class="version-wrapper">
                                     <span>v${this.bwVersion}</span>
                                     ${this._docsUrl ? html`
-                                    <span class="version-icon clickable" title="Open API Documentation (Swagger)" @click=${this._openApiDocs}>
+                                    <span class="version-icon clickable" role="button" tabindex="0"
+                                        aria-label="Open API Documentation (Swagger)"
+                                        @click=${this._openApiDocs} @keydown=${onActivateKey(this._openApiDocs)}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
                                     </span>` : ''}
                                 </span>

@@ -1108,7 +1108,7 @@ export class AgAudioPipeline extends LitElement {
             <div class="node-detail-panel" @mousedown=${(e) => e.stopPropagation()}>
                 <div class="ndp-header">
                     <div class="ndp-dot" style="background: ${statusFill};"></div>
-                    <span class="ndp-name" title="${node.name}">${node.name}</span>
+                    <span class="ndp-name">${node.name}</span>
                     <button class="ndp-close" @click=${() => { this._selectedNode = null; }}>×</button>
                 </div>
                 ${subtitle ? html`<div class="ndp-section" style="padding: 5px 12px; font-size: var(--font-size-xxs); color: var(--text-tertiary);">${subtitle}</div>` : ''}
@@ -1300,7 +1300,7 @@ export class AgAudioPipeline extends LitElement {
                 </div>
                 ${link.service_name ? html`<div class="link-bubble-row"><span>Service</span><span>${link.service_name}</span></div>` : ''}
                 <div class="link-bubble-row"><span>Status</span><span style="color: ${link.active ? 'var(--color-success-text)' : 'var(--text-tertiary)'};">${link.active ? 'Active' : 'Inactive'}</span></div>
-                ${link.active && link.is_bit_perfect ? html`<div class="link-bubble-row"><span>Quality</span><span style="color: var(--color-success-text);">BIT-PERFECT</span></div>` : ''}
+                ${link.active && link.is_bit_perfect ? html`<div class="link-bubble-row"><span>Quality</span><span style="color: var(--color-success-text);">FULL RES</span></div>` : ''}
                 ${formatStr ? html`<div class="link-bubble-row"><span>Format</span><span style="color: var(--color-success-text);">${formatStr}</span></div>` : ''}
                 ${link.resampling_info ? html`<div class="link-bubble-row"><span>Resampling</span><span style="color: var(--color-error-text);">${link.resampling_info}</span></div>` : ''}
                 ${link.latency_us != null ? html`<div class="link-bubble-row"><span>Latency</span><span style="color: ${latencyColor};">${link.latency_us.toFixed(0)}µs</span></div>` : ''}
@@ -1586,22 +1586,22 @@ export class AgAudioPipeline extends LitElement {
                 
                 <!-- Controls -->
                 <div class="controls ${this._controlsCollapsed ? 'collapsed' : ''}">
-                    <button class="controls-toggle" @click=${this._toggleControlsCollapsed} title="${this._controlsCollapsed ? 'Expand controls' : 'Collapse controls'}">${this._controlsCollapsed ? '›' : '‹'}</button>
+                    <button class="controls-toggle" @click=${this._toggleControlsCollapsed} aria-label="${this._controlsCollapsed ? 'Expand controls' : 'Collapse controls'}">${this._controlsCollapsed ? '›' : '‹'}</button>
                     <div class="control-group">
-                        <button class="zoom-btn" @click=${this._zoomIn} title="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
+                        <button class="zoom-btn" @click=${this._zoomIn} aria-label="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
                         <span class="zoom-value">${Math.round(this.zoom * 100)}%</span>
-                        <button class="zoom-btn" @click=${this._zoomOut} title="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
-                        <button class="zoom-btn" @click=${this._zoomToFit} title="Zoom to fit" style="font-size: var(--font-size-xxs); font-weight: 700;">FIT</button>
-                        <button class="zoom-btn" @click=${this._resetView} title="Reset Zoom/Pan">
+                        <button class="zoom-btn" @click=${this._zoomOut} aria-label="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
+                        <button class="zoom-btn" @click=${this._zoomToFit} style="font-size: var(--font-size-xxs); font-weight: 700;">FIT</button>
+                        <button class="zoom-btn" @click=${this._resetView} aria-label="Reset Zoom/Pan">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconCrosshair}</svg>
                         </button>
                     </div>
 
                     <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; flex-wrap: wrap; gap: 2px;">
-                        <button class="zoom-btn" @click=${this._resetLayout} title="Reset Layout" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs);">RESET</button>
-                        <button class="zoom-btn" @click=${this._toggleLegend} title="Legend" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
-                        <button class="zoom-btn" @click=${this._toggleMinimap} title="Minimap" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
-                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} title="Network links" style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
+                        <button class="zoom-btn" @click=${this._resetLayout} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs);">RESET</button>
+                        <button class="zoom-btn" @click=${this._toggleLegend} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
+                        <button class="zoom-btn" @click=${this._toggleMinimap} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
+                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
                     </div>
 
                     <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 8px;">
@@ -1795,7 +1795,7 @@ export class AgAudioPipeline extends LitElement {
                             <div class="legend-grid">
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: var(--color-success); box-shadow: 0 0 5px var(--color-success);"></div>
-                                    <span>Audio — bit-perfect · badge: <strong style="color: var(--color-success-text); font-size: var(--font-size-xxs);">BIT-PERFECT · 24bit / 96kHz</strong></span>
+                                    <span>Audio — full resolution · badge: <strong style="color: var(--color-success-text); font-size: var(--font-size-xxs);">FULL RES · 24bit / 96kHz</strong></span>
                                 </div>
                                 <div class="legend-item" style="grid-column: span 2;">
                                     <div class="legend-color-line" style="background: repeating-linear-gradient(90deg, var(--color-success) 0px, var(--color-success) 8px, transparent 8px, transparent 12px);"></div>

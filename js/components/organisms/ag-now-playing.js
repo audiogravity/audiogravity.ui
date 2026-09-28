@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
-import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
+import { coverUrl, pickPrimaryCoverToken, onActivateKey } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
@@ -647,8 +647,8 @@ export class AgNowPlaying extends LitElement {
                     role="button"
                     tabindex="0"
                     aria-label="Album details"
-                    title="Album details"
                     @click="${(e) => this._toggleDetailPopover(item.source_id, e)}"
+                    @keydown="${onActivateKey((e) => this._toggleDetailPopover(item.source_id, e))}"
                 >
                     ${coverSrc && !this._brokenCovers.has(primaryToken)
                         ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy"
@@ -702,10 +702,10 @@ export class AgNowPlaying extends LitElement {
                             ? html`<ag-connector-badge .connector=${item.output_connector}></ag-connector-badge>`
                             : nothing}
                         ${this._rendererActive
-                            ? html`<span class="np-renderer-badge" title="Routed to UPnP renderer">→ ${this._rendererOut.name ?? 'Renderer'}</span>`
+                            ? html`<span class="np-renderer-badge">→ ${this._rendererOut.name ?? 'Renderer'}</span>`
                             : nothing}
                         ${this._offline
-                            ? html`<span class="np-offline-badge" title="No network — showing last known state">Offline</span>`
+                            ? html`<span class="np-offline-badge">Offline</span>`
                             : nothing}
                     </div>
                     <div class="np-track">
@@ -723,7 +723,6 @@ export class AgNowPlaying extends LitElement {
                         <button
                             class="np-btn"
                             aria-label="Previous"
-                            title="Previous"
                             @click="${() => this._sendControl(item.source_id, 'prev', null, item)}"
                         >
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSkipBack}</svg>
@@ -732,7 +731,6 @@ export class AgNowPlaying extends LitElement {
                     <button
                         class="np-btn"
                         aria-label="${statusLabel}"
-                        title="${statusLabel}"
                         @click="${() => this._sendControl(item.source_id, 'toggle', null, item)}"
                     >
                         ${isPlaying
@@ -743,7 +741,6 @@ export class AgNowPlaying extends LitElement {
                         <button
                             class="np-btn"
                             aria-label="Next"
-                            title="Next"
                             @click="${() => this._sendControl(item.source_id, 'next', null, item)}"
                         >
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
@@ -787,7 +784,6 @@ export class AgNowPlaying extends LitElement {
                 ${!window.matchMedia('(pointer: coarse)').matches ? html`
                 <button
                     aria-label="Open fullscreen player"
-                    title="Open fullscreen player"
                     style="position:absolute;top:-24px;right:0;z-index:104;width:32px;height:24px;display:flex;align-items:center;justify-content:center;background:var(--bg-secondary);border:1px solid var(--border-color);border-bottom:none;border-radius:var(--radius-sm,4px) var(--radius-sm,4px) 0 0;padding:0;color:var(--text-secondary);cursor:pointer;"
                     @click="${() => window.dispatchEvent(new CustomEvent('np-expand', {
                         detail: {
@@ -811,6 +807,7 @@ export class AgNowPlaying extends LitElement {
                                     tabindex="0"
                                     aria-label="Source ${idx + 1}"
                                     @click="${() => { this._activeSourceIdx = idx; this._userSourceOverride = true; }}"
+                                    @keydown="${onActivateKey(() => { this._activeSourceIdx = idx; this._userSourceOverride = true; })}"
                                 ></div>
                             `)}
                         </div>

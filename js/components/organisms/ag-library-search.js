@@ -316,7 +316,7 @@ export class AgLibrarySearch extends LitElement {
                 <ag-library-list-row
                     cover=${coverUrl(item.cover_token)}
                     fallback="album"
-                    title=${label}
+                    heading=${label}
                     subtitle=${sub}
                     @row-click=${drillable ? () => this.dispatchEvent(new CustomEvent('lib-open-artist', {
                         detail: { artistId: item.id, artistName: item.name ?? label },
@@ -329,7 +329,7 @@ export class AgLibrarySearch extends LitElement {
             <ag-library-list-row
                 cover=${coverUrl(item.cover_token)}
                 fallback=${type === 'track' ? 'track' : 'album'}
-                title=${label}
+                heading=${label}
                 subtitle=${sub}
                 actionable
                 ?favoritable=${type === 'album' && this._isStreaming}

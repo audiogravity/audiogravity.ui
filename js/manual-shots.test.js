@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -57,15 +57,37 @@ describe('readSessionSecrets', () => {
     beforeEach(() => { dir = mkdtempSync(path.join(os.tmpdir(), 'ag-shots-env-')); });
     afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-    it('returns the JWT secret and the API key of the dev core', () => {
+    /** The dev core's accounts file, beside its environment. */
+    const accounts = (users, name = 'users.json') =>
+        writeFileSync(path.join(dir, name), JSON.stringify(users));
+
+    it('returns the JWT secret and the API key of the dev core, and its admin\'s session', () => {
         const file = path.join(dir, '.env.dev');
         writeFileSync(file, 'JWT_SECRET_KEY=s3cret\nAPI_KEY="k3y"\nOTHER=1\n');
-        expect(readSessionSecrets(file)).toEqual({ jwtSecret: 's3cret', apiKey: 'k3y', algorithm: 'HS256' });
+        accounts([{ username: 'bob' }, { username: 'admin', token_version: 3, session_key: 'abc' }]);
+        expect(readSessionSecrets(file)).toEqual({
+            jwtSecret: 's3cret', apiKey: 'k3y', algorithm: 'HS256', tokenVersion: 3, sessionKey: 'abc',
+        });
+    });
+
+    it('reads an admin from before versions and keys as the core does', () => {
+        const file = path.join(dir, '.env.dev');
+        writeFileSync(file, 'JWT_SECRET_KEY=s\nAPI_KEY=k\nUSERS_FILE_PATH=accounts.json\n');
+        accounts([{ username: 'admin' }], 'accounts.json');
+        expect(readSessionSecrets(file)).toMatchObject({ tokenVersion: 0, sessionKey: '' });
+    });
+
+    it('names an accounts file without an admin', () => {
+        const file = path.join(dir, '.env.dev');
+        writeFileSync(file, 'JWT_SECRET_KEY=s\nAPI_KEY=k\n');
+        accounts([{ username: 'bob' }]);
+        expect(() => readSessionSecrets(file)).toThrow(/no admin account/);
     });
 
     it('signs with the algorithm the core is set to', () => {
         const file = path.join(dir, '.env.dev');
         writeFileSync(file, 'JWT_SECRET_KEY=s\nAPI_KEY=k\nJWT_ALGORITHM=HS512\n');
+        accounts([{ username: 'admin' }]);
         expect(readSessionSecrets(file).algorithm).toBe('HS512');
     });
 
@@ -93,6 +115,12 @@ describe('forgeToken', () => {
         const claims = jwtPart(forgeToken('s3cret', now).split('.')[1]);
         expect(claims).toMatchObject({ sub: 'admin', role: 'admin', iat: now / 1000, exp: now / 1000 + 7200 });
         expect(claims.jti).not.toBe(jwtPart(forgeToken('s3cret', now).split('.')[1]).jti);
+    });
+
+    it('carries the admin\'s session version and key, as a login does', () => {
+        const claims = jwtPart(forgeToken('s3cret', now, 'HS256', { tokenVersion: 2, sessionKey: 'k' }).split('.')[1]);
+        expect(claims).toMatchObject({ tv: 2, sk: 'k' });
+        expect(jwtPart(forgeToken('s3cret', now).split('.')[1])).toMatchObject({ tv: 0, sk: '' });
     });
 
     it('depends on the secret', () => {
@@ -381,5 +409,13 @@ describe('capture.js, run as a command', () => {
         expect(r.status).toBe(2);
         expect(r.stderr).toContain('--out needs a folder');
         expect(existsSync(path.join(process.cwd(), '--playback'))).toBe(false);
+    });
+});
+
+describe('the DEV badge', () => {
+    it('is found by the id the app gives it', async () => {
+        const { DEV_BADGE_ID } = await import('../tools/manual-shots/harness.js');
+        const source = readFileSync(path.join(process.cwd(), 'js', 'common.js'), 'utf8');
+        expect(source).toContain(`badge.id = '${DEV_BADGE_ID}'`);
     });
 });

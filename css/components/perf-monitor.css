@@ -89,10 +89,6 @@
     font-weight: 500;
 }
 
-.td-warning {
-    color: var(--color-warning-text);
-}
-
 .type-pill {
     display: inline-block;
     padding: 2px 6px;

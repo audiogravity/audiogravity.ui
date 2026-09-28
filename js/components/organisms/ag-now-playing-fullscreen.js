@@ -28,7 +28,7 @@ import '../atoms/ag-track-meta.js';
 import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
-import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
+import { coverUrl, fmtDuration, pickPrimaryCoverToken, onActivateKey } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
@@ -782,7 +782,7 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     /**
      * Plain-language version of _outputError — the raw ALSA/engine string is
-     * shown as a tooltip, not as the primary message.
+     * not shown to the listener.
      * @returns {string}
      */
     get _outputErrorLabel() {
@@ -807,9 +807,8 @@ export class AgNowPlayingFullscreen extends LitElement {
                         role="button"
                         tabindex="0"
                         aria-label=${src.display_name ?? src.source_id}
-                        title=${src.display_name ?? src.source_id}
                         @click=${() => this._switchSource(src.source_id)}
-                        @keydown=${(e) => e.key === 'Enter' && this._switchSource(src.source_id)}
+                        @keydown=${onActivateKey(() => this._switchSource(src.source_id))}
                     ></div>
                 `)}
             </div>
@@ -859,7 +858,6 @@ export class AgNowPlayingFullscreen extends LitElement {
                     ${overlay ? html`
                         <button class="npfs-cover-overlay"
                                 aria-label=${swapLabel}
-                                title=${swapLabel}
                                 @click=${this._toggleCoverSwap}
                                 style="background-image:url('${overlay}')"></button>
                     ` : nothing}
@@ -886,7 +884,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                         ${hasSignal ? this._renderSignalPath(s?.signal_path, s?.output_label) : nothing}
                         ${!hasSignal && this._rendererActive ? html`
                             <span class="np-renderer-badge npfs-renderer-badge"
-                                  title="Routed to UPnP renderer">
+>
                                 → ${this._rendererOut?.name ?? 'Renderer'}
                             </span>
                         ` : nothing}
@@ -1005,7 +1003,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 : nothing}
                         </div>
                         ${this._outputError
-                            ? html`<span class="npfs-out-error" title=${this._outputError}>${this._outputErrorLabel}</span>`
+                            ? html`<span class="npfs-out-error">${this._outputErrorLabel}</span>`
                             : nothing}
                     </div>
                 </div>
@@ -1071,7 +1069,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                     </button>
                     <span class="npfs-title">Now Playing</span>
                     <div class="npfs-header-actions">
-                        <button class="npfs-header-btn" title="Queue"
+                        <button class="npfs-header-btn" aria-label="Queue"
                             @click=${() => { this._closePlayer(); window.dispatchEvent(new CustomEvent('lib-goto', { detail: { view: 'queue' } })); }}>
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
                                 ${iconQueue}

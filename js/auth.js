@@ -4,7 +4,8 @@
  */
 
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, JWT_ENABLED, IS_TEST_ENV } from './core/config.js';
-import { fetchJson } from './net-errors.js';
+import { fetchJson, fetchOrNetworkError, readJson, throwForStatus } from './net-errors.js';
+import { sessionEnded } from './core/credentials.js';
 
 // =====================
 // AUTH STATE
@@ -14,7 +15,11 @@ const AuthState = {
     token: null,
     user: null,
     isAuthenticated: false,
-    tokenExpiry: null
+    tokenExpiry: null,
+    // Where this tab's session lives: localStorage (persistent, shared by the tabs of
+    // the browser) or sessionStorage (this tab's own). Another tab may since have put
+    // another account's session in localStorage.
+    storage: null
 };
 
 // =====================
@@ -49,8 +54,11 @@ function initAuth() {
     let userStr = localStorage.getItem(AUTH_STORAGE_KEYS.USER);
     let expiry = localStorage.getItem(AUTH_STORAGE_KEYS.EXPIRY);
 
+    let storage = localStorage;
+
     // If not found, check sessionStorage
     if (!token) {
+        storage = sessionStorage;
         token = sessionStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
         userStr = sessionStorage.getItem(AUTH_STORAGE_KEYS.USER);
         expiry = sessionStorage.getItem(AUTH_STORAGE_KEYS.EXPIRY);
@@ -66,6 +74,7 @@ function initAuth() {
             try { AuthState.user = JSON.parse(userStr); } catch { clearAuth(); return false; }
             AuthState.tokenExpiry = expiryDate;
             AuthState.isAuthenticated = true;
+            AuthState.storage = storage;
 
             applyRoleClass();
             return true;
@@ -106,6 +115,7 @@ function saveAuth(token, user, expiresInHours = 12, persistent = true) {
     AuthState.user = user;
     AuthState.tokenExpiry = expiry;
     AuthState.isAuthenticated = true;
+    AuthState.storage = storage;
 
     applyRoleClass();
 }
@@ -114,22 +124,140 @@ function saveAuth(token, user, expiresInHours = 12, persistent = true) {
  * Efface l'authentification des deux types de stockage
  */
 function clearAuth() {
-    localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.EXPIRY);
-    localStorage.removeItem('redirect_after_login');
+    for (const storage of [localStorage, sessionStorage]) {
+        dropStoredSession(storage);
+        storage.removeItem('redirect_after_login');
+    }
+    forgetSession();
+}
 
-    sessionStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
-    sessionStorage.removeItem(AUTH_STORAGE_KEYS.USER);
-    sessionStorage.removeItem(AUTH_STORAGE_KEYS.EXPIRY);
-    sessionStorage.removeItem('redirect_after_login');
+/**
+ * Remove the session a storage holds.
+ * @param {Storage} storage - localStorage or sessionStorage.
+ */
+function dropStoredSession(storage) {
+    storage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
+    storage.removeItem(AUTH_STORAGE_KEYS.USER);
+    storage.removeItem(AUTH_STORAGE_KEYS.EXPIRY);
+}
 
+/**
+ * Drop this tab's session from memory, leaving the storages as they are.
+ */
+function forgetSession() {
     AuthState.token = null;
     AuthState.user = null;
     AuthState.tokenExpiry = null;
     AuthState.isAuthenticated = false;
+    AuthState.storage = null;
 
     applyRoleClass();
+}
+
+/**
+ * The account a storage holds a session for.
+ * @param {?Storage} storage - localStorage or sessionStorage.
+ * @returns {?Object} Its user, or null when it holds none (or an unreadable one).
+ */
+function storedUser(storage) {
+    try { return JSON.parse(storage?.getItem(AUTH_STORAGE_KEYS.USER) || 'null'); } catch { return null; }
+}
+
+/**
+ * Whether a storage holds a session of this tab's account.
+ * @param {?Storage} storage - localStorage or sessionStorage.
+ * @returns {boolean}
+ */
+function holdsThisAccount(storage) {
+    const user = storedUser(storage);
+    return Boolean(user && AuthState.user && user.username === AuthState.user.username);
+}
+
+/**
+ * End in this tab a session the core no longer accepts — expired, or ended because
+ * the account changed (a new password, a new role, disabled, deleted) — and send the
+ * user to the sign-in page, which brings them back here afterwards.
+ *
+ * Only while the token refused is still the one the tab's storage keeps: a request
+ * sent before the token was replaced — by this tab, or by another tab sharing its
+ * storage — is refused for the old one, and the session goes on with the new, taken
+ * up here with the account's role and expiry as they now are. Never another
+ * account's: a session another tab signed in since, in the storage the tabs share, is
+ * neither taken up nor erased — the tab's own session ends, the other stays.
+ * @param {string} [rejectedToken] - The token the refused request carried.
+ */
+function endSession(rejectedToken) {
+    const storage = AuthState.storage;
+    const kept = storage?.getItem(AUTH_STORAGE_KEYS.TOKEN);
+    if (rejectedToken && kept && kept !== rejectedToken && holdsThisAccount(storage)) {
+        if (AuthState.token !== kept) {
+            // Replaced by another tab: take it up, and let the streams reconnect with it.
+            AuthState.token = kept;
+            AuthState.user = storedUser(storage);
+            AuthState.tokenExpiry = new Date(storage.getItem(AUTH_STORAGE_KEYS.EXPIRY));
+            applyRoleClass();
+            window.dispatchEvent(new CustomEvent('ag-session-token-replaced'));
+        }
+        return;
+    }
+    if (!rejectedToken || !storage) {
+        clearAuth();
+    } else {
+        // The refused session is erased where this tab kept it, and only there: the
+        // other storage, or this one once another account signed in, is not this tab's.
+        if (!kept || kept === rejectedToken) dropStoredSession(storage);
+        forgetSession();
+    }
+    requireAuth();
+}
+
+/**
+ * Swap the session token for the one the core issued to replace it, keeping the
+ * rest of the session as it is: same user, same storage, same expiry. An admin
+ * who changes their own password ends their own sessions with the others, and the
+ * core hands back a token for the one the change was made from.
+ *
+ * Announced with an `ag-session-token-replaced` event on window: a stream opened
+ * with the old token (sse.js) reconnects with the new one — reconnecting on its own
+ * with the old, it would come back as no one, the core opening it without a user.
+ * @param {string} token - Replacement JWT.
+ */
+function replaceToken(token) {
+    // Only where this tab's session lives, and only while it is still this account's
+    // there: another tab may have signed another account in since.
+    if (holdsThisAccount(AuthState.storage)) {
+        AuthState.storage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+    }
+    AuthState.token = token;
+    window.dispatchEvent(new CustomEvent('ag-session-token-replaced'));
+}
+
+/**
+ * Send a request that carries this device's session, and end the session here when
+ * the core answers that it no longer accepts it (see `sessionEnded`). Every request
+ * that sends the token goes through it: the API calls, the uploads, the passkey
+ * registration.
+ * @param {string} url - Full URL.
+ * @param {RequestInit} options - Its `headers` a plain object, `Authorization` included when sent.
+ * @returns {Promise<Response>} The response, whatever its status.
+ */
+async function fetchInSession(url, options) {
+    const response = await fetchOrNetworkError(url, options);
+    const sent = options.headers?.Authorization;
+    if (sessionEnded(response, sent)) endSession(sent.replace(/^Bearer\s+/i, ''));
+    return response;
+}
+
+/**
+ * `fetchInSession`, then the JSON body — or the error the status calls for.
+ * @param {string} url - Full URL.
+ * @param {RequestInit} options - As for `fetchInSession`.
+ * @returns {Promise<any>}
+ */
+async function fetchJsonInSession(url, options) {
+    const response = await fetchInSession(url, options);
+    if (!response.ok) await throwForStatus(response);
+    return readJson(response);
 }
 
 /**
@@ -336,6 +464,10 @@ export {
     initAuth,
     saveAuth,
     clearAuth,
+    endSession,
+    replaceToken,
+    fetchInSession,
+    fetchJsonInSession,
     isAuthenticated,
     getCurrentUser,
     isAdmin,

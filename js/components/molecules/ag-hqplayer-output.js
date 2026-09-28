@@ -612,11 +612,11 @@ class AgHqplayerOutput extends LitElement {
                             Disconnect
                         </button>
                     ` : chosen ? html`
-                        <!-- The address stays in the note above, the tooltip and the
-                             accessible name: in the label it pushed the button out of the
-                             card on a phone. -->
+                        <!-- The address stays in the note above and the accessible
+                             name: in the label it pushed the button out of the card on
+                             a phone. -->
                         <button class="action-btn compact secondary" @click=${this._disconnect}
-                                title="Forget ${chosen}" aria-label="Forget ${chosen}">
+                                aria-label="Forget ${chosen}">
                             Forget
                         </button>
                     ` : nothing}

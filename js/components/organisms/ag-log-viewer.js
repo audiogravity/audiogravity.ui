@@ -5,7 +5,8 @@
  * 
  * @element ag-log-viewer
  * 
- * @attr {string} title - Viewer title
+ * @attr {string} heading - Viewer title (the `title` property). Never `title`: on the element it
+ *   is a tooltip over the whole viewer.
  * @attr {string} syslog-identifier - Target service identifier (e.g., 'python')
  * @attr {string} grep-pattern - Search pattern to filter logs server-side
  * @attr {number} lines - Number of lines to fetch
@@ -15,7 +16,6 @@
  * @attr {boolean} reverse - Newest on top
  * 
  * @dependency ag-badge
- * @dependency ag-tooltip
  * @dependency css/components/badge.css, css/components/forms.css - Log entry, level and control styles
  * 
  * @fires filter-changed - Dispatched when log level filters change
@@ -28,11 +28,10 @@ import { apiGet, apiPost, showToast, AgTimerManager } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { logger } from '../../utils.js';
 import '../atoms/ag-badge.js';
-import '../atoms/ag-tooltip.js';
 
 export class AgLogViewer extends LitElement {
     static properties = {
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
         syslogIdentifier: { type: String, attribute: 'syslog-identifier' },
         grepPattern: { type: String, attribute: 'grep-pattern' },
         lines: { type: Number },
@@ -258,22 +257,14 @@ export class AgLogViewer extends LitElement {
                     
                     <div class="log-controls">
                         <div class="log-filter-group">
-                            <ag-tooltip position="tooltip-top" text="Toggle INFO logs">
-                                <button class="log-filter-btn log-filter-info ${this.activeLevels.includes('info') ? 'active' : ''}" 
-                                        @click=${() => this._toggleLevel('info')}>I</button>
-                            </ag-tooltip>
-                            <ag-tooltip position="tooltip-top" text="Toggle WARNING logs">
-                                <button class="log-filter-btn log-filter-warning ${this.activeLevels.includes('warning') ? 'active' : ''}" 
-                                        @click=${() => this._toggleLevel('warning')}>W</button>
-                            </ag-tooltip>
-                            <ag-tooltip position="tooltip-top" text="Toggle ERROR logs">
-                                <button class="log-filter-btn log-filter-error ${this.activeLevels.includes('error') ? 'active' : ''}" 
-                                        @click=${() => this._toggleLevel('error')}>E</button>
-                            </ag-tooltip>
-                            <ag-tooltip position="tooltip-top" text="Toggle DEBUG logs">
-                                <button class="log-filter-btn log-filter-debug ${this.activeLevels.includes('debug') ? 'active' : ''}" 
-                                        @click=${() => this._toggleLevel('debug')}>D</button>
-                            </ag-tooltip>
+                            <button aria-label="Toggle INFO logs" class="log-filter-btn log-filter-info ${this.activeLevels.includes('info') ? 'active' : ''}" 
+                                    @click=${() => this._toggleLevel('info')}>I</button>
+                            <button aria-label="Toggle WARNING logs" class="log-filter-btn log-filter-warning ${this.activeLevels.includes('warning') ? 'active' : ''}" 
+                                    @click=${() => this._toggleLevel('warning')}>W</button>
+                            <button aria-label="Toggle ERROR logs" class="log-filter-btn log-filter-error ${this.activeLevels.includes('error') ? 'active' : ''}" 
+                                    @click=${() => this._toggleLevel('error')}>E</button>
+                            <button aria-label="Toggle DEBUG logs" class="log-filter-btn log-filter-debug ${this.activeLevels.includes('debug') ? 'active' : ''}" 
+                                    @click=${() => this._toggleLevel('debug')}>D</button>
                         </div>
 
                         <select class="log-select" .value=${String(this.lines)} @change=${this._handleLinesChange}>
@@ -283,11 +274,9 @@ export class AgLogViewer extends LitElement {
                             <option value="500">500 lines</option>
                         </select>
 
-                        <ag-tooltip position="tooltip-top" text="Force refresh logs">
-                            <button class="log-btn" @click=${this.loadLogs} ?disabled=${this.logsFetch.loading}>
-                                ${this.logsFetch.loading ? html`<span class="spinner small"></span>` : '↻'}
-                            </button>
-                        </ag-tooltip>
+                        <button aria-label="Force refresh logs" class="log-btn" @click=${this.loadLogs} ?disabled=${this.logsFetch.loading}>
+                            ${this.logsFetch.loading ? html`<span class="spinner small"></span>` : '↻'}
+                        </button>
 
                         <button class="log-btn ${this.autoRefresh ? 'log-btn-active' : ''}" 
                                 @click=${this._toggleAutoRefresh}>

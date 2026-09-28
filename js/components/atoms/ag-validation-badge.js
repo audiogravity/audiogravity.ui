@@ -30,19 +30,19 @@ export class AgValidationBadge extends LitElement {
 
         if (valid && warnings.length === 0) {
             return html`
-                <span class="validation-badge success" title="Valid configuration">
+                <span class="validation-badge success">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCheck}</svg> Valid
                 </span>
             `;
         } else if (valid && warnings.length > 0) {
             return html`
-                <span class="validation-badge warning" title="${warnings.length} warning(s)">
+                <span class="validation-badge warning">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconWarning}</svg> ${warnings.length} warning(s)
                 </span>
             `;
         } else {
             return html`
-                <span class="validation-badge error" title="${errors.length} error(s)">
+                <span class="validation-badge error">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconClose}</svg> ${errors.length} error(s)
                 </span>
             `;

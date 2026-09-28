@@ -50,7 +50,6 @@ import './components/atoms/ag-stat-box.js';
 import './components/atoms/ag-badge.js';
 import './components/atoms/ag-source-badge.js';
 import './components/atoms/ag-button.js';
-import './components/atoms/ag-tooltip.js';
 import './components/atoms/ag-status-indicator.js';
 import './components/atoms/ag-sparkline.js';
 import './components/atoms/ag-switch.js';

@@ -163,32 +163,23 @@ export class AgSystemdCard extends LitElement {
                 ${!isGuest() ? html`
                 <div class="systemd-actions">
                     <div class="systemd-actions-row">
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn secondary"
-                                    ?disabled=${!isInstalled}
-                                    @click="${this.handleEdit}">
-                                Edit Properties
-                            </button>
-                            <div class="tooltip">${!isInstalled ? 'Package not installed' : 'Modify systemd service configuration (CPU affinity, priority, limits...)'}</div>
-                        </div>
+                        <button class="tile-action-btn secondary"
+                                ?disabled=${!isInstalled}
+                                @click="${this.handleEdit}">
+                            Edit Properties
+                        </button>
                     </div>
                     ${(this.service.has_override || this.service.has_backup) ? html`
                     <div class="systemd-actions-row">
                         ${this.service.has_override ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn warning" @click="${this.handleRemoveOverride}">
-                                Remove Override
-                            </button>
-                            <div class="tooltip">Restore default systemd configuration</div>
-                        </div>
+                        <button class="tile-action-btn warning" @click="${this.handleRemoveOverride}">
+                            Remove Override
+                        </button>
                         ` : nothing}
                         ${this.service.has_backup ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn secondary" @click="${this.handleRestoreBackup}">
-                                Restore Backup
-                            </button>
-                            <div class="tooltip">Restore configuration from before last update</div>
-                        </div>
+                        <button class="tile-action-btn secondary" @click="${this.handleRestoreBackup}">
+                            Restore Backup
+                        </button>
                         ` : nothing}
                     </div>
                     ` : nothing}

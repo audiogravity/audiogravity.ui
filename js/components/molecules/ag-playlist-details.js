@@ -195,7 +195,7 @@ export class AgPlaylistDetails extends LitElement {
         return html`
             <ag-modal
                 class="ag-pld"
-                title=${this._renaming ? 'Rename playlist' : 'New playlist'}
+                heading=${this._renaming ? 'Rename playlist' : 'New playlist'}
                 ?show=${this.show}
                 .bodyTemplate=${this._renderBody()}
                 .footerTemplate=${this._renderFooter()}

@@ -10,7 +10,6 @@
  * @attr {Object} user - Current user data
  * 
  * @dependency ag-status-indicator
- * @dependency ag-tooltip
  * @dependency css/layout.css, css/components/metrics.css - Topbar layout and metric styles
  * @dependency EventEmitter - For listening to 'sysinfo-update' and 'connection-status'
  * 
@@ -25,7 +24,6 @@ import { AppState, EventEmitter } from '../../common.js';
 import { safeToFixed, formatUptime } from '../utils-lit.js';
 import { iconSettings, iconTabLibrary } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
-import '../atoms/ag-tooltip.js';
 
 export class AgTopBar extends LitElement {
     static properties = {
@@ -177,11 +175,9 @@ export class AgTopBar extends LitElement {
                 </div>
 
                 <div style="margin-right: var(--spacing-sm);">
-                    <ag-tooltip position="tooltip-bottom-right" text="Library">
-                        <button class="icon-btn" @click=${() => this._emitAction('library-click')} aria-label="Open Library">
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTabLibrary}</svg>
-                        </button>
-                    </ag-tooltip>
+                    <button class="icon-btn" @click=${() => this._emitAction('library-click')} aria-label="Open Library">
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTabLibrary}</svg>
+                    </button>
                 </div>
 
                 <button class="burger-menu" @click=${() => this._emitAction('burger-click')} aria-label="Open settings">

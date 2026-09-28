@@ -477,7 +477,7 @@ class AgUpnpRendererCard extends LitElement {
         return html`
             <div class="lib-hqp-card"
                  style="margin-top:var(--spacing-xs); opacity:0.6"
-                 title="This Audiogravity device is discoverable so external apps can cast to it. To play here, use “Local DAC”.">
+>
                 <div class="lib-hqp-card-hd">
                     <div class="lib-hqp-ic lib-rdr-ic">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none"

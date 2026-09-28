@@ -14,6 +14,7 @@
  * @dependency ag-logs-modal (via ID)
  */
 import { LitElement, html } from 'lit';
+import { onActivateKey } from '../utils-lit.js';
 import { getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-filter-bar.js';
 import { iconRepeat, iconDownload } from '../../ag-icons.js';
@@ -35,10 +36,18 @@ import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import './ag-card-grid.js';
-import '../molecules/ag-package-card.js';
+import { packageIsInstalled } from '../molecules/ag-package-card.js';
 import '../molecules/ag-package-install-dialog.js';
 import '../molecules/ag-package-uninstall-dialog.js';
 import '../molecules/ag-package-web-password-dialog.js';
+
+/**
+ * Whether the source offers a version other than the one installed.
+ * @param {Object} pkg - Package payload as returned by GET /packages/.
+ * @returns {boolean}
+ */
+const hasUpdates = pkg => Boolean(pkg.installed_version && pkg.available_version
+    && pkg.installed_version !== pkg.available_version);
 
 export class AgAudioSoftwarePage extends LitElement {
     static properties = {
@@ -988,30 +997,6 @@ export class AgAudioSoftwarePage extends LitElement {
         }
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'Manage audio software packages — install, update, and uninstall the services used by Audiogravi<sup>ty</sup>.',
-            [
-                { title: 'Filter', text: 'Use ALL / INSTALLED / UPDATES to quickly narrow the package list.' },
-                { title: 'Package States', text: 'NOT INSTALLED (gray), INSTALLED (green), INSTALLING / UPDATING / UNINSTALLING (orange progress bar), ERROR (red).' },
-                { title: 'Actions', text: 'INSTALL adds the package to the system. UPDATE upgrades to the latest available version. UNINSTALL removes it. After a failure the card offers what fits: a failed install left nothing behind, so it offers to retry; a failed update left the previous version in place, so it offers to update or remove.' },
-                { title: 'Version Check', text: 'Your box checks by itself once a day and tells you when something new is published. CHECK UPDATES in the header asks straight away, and first refreshes what the system knows its software sources publish — which is what makes the answer current.' },
-                { title: 'Not Available', text: 'A greyed-out INSTALL always says why, and the reasons differ: no build for this architecture (nothing to be done), the publisher\'s site could not be reached when the list was resolved (worth retrying — the refresh icon in the header rebuilds it), or another installed package rules it out. Roon Server and Roon Bridge cannot share a box.' },
-                { title: 'Installed, Not Configured', text: 'Installing a service does not configure it — that is a separate step. A card says so while the service still runs on the settings its own package shipped, since it can then play to the wrong output while looking ready.' },
-                { title: 'Playback', text: 'Updating a service restarts it and uninstalling stops it, so the confirmation names the service about to be interrupted before you commit to it.' },
-                { title: 'Restart Required', text: 'After an install or update, a pulsing badge appears on cards whose associated service needs a restart. Click it to restart the service immediately. A package Audiogravi<sup>ty</sup> restarts by itself once installed, such as HQPlayer Embedded, only shows it when that restart failed.' },
-                { title: 'Web Password', text: 'A package with its own web interface, such as HQPlayer Embedded, gets its password in the install dialog. When the install could not set it, its card offers SET WEB PASSWORD: no need to uninstall and reinstall.' },
-                { title: 'Documentation', text: 'The book icon in the footer of each card opens the official documentation in a new tab.' },
-                { title: 'DRY-RUN Mode', text: 'Simulates operations without executing them — safe for testing before making real changes.' },
-                { title: 'Architecture Support', text: 'The CPU badge shows which architectures are supported (amd64, arm64, armhf, all).' }
-            ]
-        );
-
-        window.UIComponents.InfoModal.show('Audio Software Management', content);
-    }
-
     _toggleDryRun(e) {
         this.dryRun = e.target.checked;
     }
@@ -1037,14 +1022,21 @@ export class AgAudioSoftwarePage extends LitElement {
         }
     }
 
-    render() {
-        const hasUpdates = pkg => pkg.installed_version && pkg.available_version && pkg.installed_version !== pkg.available_version;
-
-        const filteredPackages = this.packages.filter(pkg => {
-            if (this._filter === 'installed') return pkg.status === 'installed';
+    /**
+     * The packages the filter bar lets through. INSTALLED counts a package whose
+     * last operation failed but left a version on the box: it is installed.
+     * @returns {Array<Object>}
+     */
+    _visiblePackages() {
+        return this.packages.filter(pkg => {
+            if (this._filter === 'installed') return packageIsInstalled(pkg);
             if (this._filter === 'updates')   return hasUpdates(pkg);
             return true;
         });
+    }
+
+    render() {
+        const filteredPackages = this._visiblePackages();
 
         const filterOptions = [
             { label: 'ALL',     value: 'all'       },
@@ -1056,28 +1048,32 @@ export class AgAudioSoftwarePage extends LitElement {
             <div class="software-zone tab-zone">
                 <div class="tab-title-container">
                     <h2>AUDIO SOFTWARE</h2>
-                    <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                     ${!isGuest() ? html`
-                    <span class="badge warning ${this._isRefreshing ? 'animate-pulse' : 'clickable'}" title="Refresh package config (re-probe sources)" @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></span>
-                    <span class="badge neutral clickable" title="Download resolved configuration" @click=${this._downloadConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
-                    <span class="badge success clickable ${this.isCheckingAll ? 'animate-pulse' : ''}"
-                          @click=${this._checkAllUpdates}>
+                    <span class="badge warning ${this._isRefreshing ? 'animate-pulse' : 'clickable'}" role="button" tabindex="0"
+                          aria-label="Refresh package config (re-probe sources)" aria-disabled=${this._isRefreshing ? 'true' : 'false'}
+                          @click=${this._isRefreshing ? null : this._refreshConfig}
+                          @keydown=${this._isRefreshing ? null : onActivateKey(this._refreshConfig)}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></span>
+                    <span class="badge neutral clickable" role="button" tabindex="0"
+                          aria-label="Download resolved configuration"
+                          @click=${this._downloadConfig} @keydown=${onActivateKey(this._downloadConfig)}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
+                    <span class="badge success clickable ${this.isCheckingAll ? 'animate-pulse' : ''}" role="button" tabindex="0"
+                          @click=${this._checkAllUpdates} @keydown=${onActivateKey(this._checkAllUpdates)}>
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
                     </span>
                     ${this.packages.some(hasUpdates) ? html`
-                        <span class="badge error clickable" @click=${this._handleUpdateAll}>UPDATE ALL</span>
+                        <span class="badge error clickable" role="button" tabindex="0"
+                              @click=${this._handleUpdateAll} @keydown=${onActivateKey(this._handleUpdateAll)}>UPDATE ALL</span>
                     ` : ''}
                     ` : ''}
                     ${isAdmin() ? html`
                     <!-- Admin-only: a catalog-validation tool (command preview + config check),
                          not a dependency-resolving simulation — kept out of the regular User UI. -->
-                    <div class="dry-run-toggle has-tooltip">
+                    <div class="dry-run-toggle">
                         <label class="switch">
                             <input type="checkbox" .checked=${this.dryRun} @change=${this._toggleDryRun}>
                             <span class="slider"></span>
                         </label>
                         <span class="dry-run-label">DRY-RUN</span>
-                        <div class="tooltip tooltip-bottom">Test mode: simulate operations without executing them</div>
                     </div>
                     ` : ''}
                 </div>

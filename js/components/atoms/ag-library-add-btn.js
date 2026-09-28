@@ -7,7 +7,7 @@
  *
  * @element ag-library-add-btn
  *
- * @attr {string} label - aria-label and tooltip text (default: "Add to queue")
+ * @attr {string} label - aria-label (default: "Add to queue")
  * @attr {string} variant - "row" (default, 14px icon inline) | "card" (24×24 overlay with hover fade)
  *
  * @dependency css/components/library-cover.css

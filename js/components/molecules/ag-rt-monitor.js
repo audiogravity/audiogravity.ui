@@ -98,7 +98,7 @@ export class AgRtMonitor extends LitElement {
                     </div>
                     <div class="test-actions">
                         <button class="action-btn secondary compact" @click=${() => this._load()}
-                            title="Refresh RT process status">
+>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg> Refresh
                         </button>
                     </div>

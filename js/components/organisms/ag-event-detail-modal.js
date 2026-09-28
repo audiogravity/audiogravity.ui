@@ -71,7 +71,7 @@ export class AgEventDetailModal extends LitElement {
             <ag-modal 
                 ?show=${this.isOpen} 
                 @modal-close=${this._handleClose}
-                title="Event Details"
+                heading="Event Details"
                 size="large"
                 .bodyTemplate=${html`
                     <pre class="json-viewer">${unsafeHTML(highlightedHtml)}</pre>

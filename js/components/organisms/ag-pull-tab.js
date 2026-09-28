@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
+import { onActivateKey } from '../utils-lit.js';
 
 /**
  * @module AgPullTab
@@ -110,10 +111,11 @@ export class AgPullTab extends LitElement {
         return html`
             <div
                 role="button"
+                tabindex="0"
                 aria-label="Restore Now Playing"
-                title="Restore Now Playing"
                 style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:var(--pull-tab-height);display:flex;align-items:flex-end;justify-content:center;z-index:103;background:none;border:none;padding:0;-webkit-tap-highlight-color:transparent"
                 @click="${this._restore}"
+                @keydown="${onActivateKey(this._restore)}"
                 @touchstart="${this._handleTouchStart}"
                 @touchend="${this._handleTouchEnd}"
             >
@@ -122,7 +124,6 @@ export class AgPullTab extends LitElement {
             ${!window.matchMedia('(pointer: coarse)').matches ? html`
             <button
                 aria-label="Restore Now Playing"
-                title="Restore Now Playing"
                 style="position:fixed;right:0;bottom:var(--footer-height,0px);z-index:103;display:flex;align-items:center;justify-content:center;background:#000;border:1px solid #000;border-right:none;border-radius:var(--radius-sm,4px) 0 0 0;padding:var(--spacing-sm,6px) 6px;color:#fff;cursor:pointer;font-size:var(--font-size-sm)"
                 @click="${this._restore}"
             >∧</button>` : nothing}

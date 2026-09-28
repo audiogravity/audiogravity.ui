@@ -13,6 +13,8 @@ import { classMap } from 'lit/directives/class-map.js';
  * @attr {string} state - The status state: 'up', 'down', 'pending', 'error' (red, failed), 'active', 'inactive' (default: 'down')
  * @attr {string} label - Optional text label to display next to the dot
  * @attr {string} type - Context type: 'service' or 'profile' (affects CSS classes, default: 'service')
+ * @attr {string} sr-label - What the dot means, read by screen readers and shown nowhere. A
+ *   `title` would be a tooltip, and the interface has none.
  *
  * @dependency css/components/status-indicator.css - Classes .service-state-dot, .profile-status-dot, etc.
  *
@@ -24,7 +26,8 @@ export class AgStatusIndicator extends LitElement {
     static properties = {
         state: { type: String },
         label: { type: String },
-        type: { type: String }
+        type: { type: String },
+        srLabel: { type: String, attribute: 'sr-label' }
     };
 
     constructor() {
@@ -32,6 +35,7 @@ export class AgStatusIndicator extends LitElement {
         this.state = 'down';
         this.label = '';
         this.type = 'service';
+        this.srLabel = '';
     }
 
     // Light DOM to use global existing status-indicator.css
@@ -63,6 +67,7 @@ export class AgStatusIndicator extends LitElement {
             <div class=${containerClass}>
                 <span class=${classMap(dotClasses)}></span>
                 ${this.label ? html`<span class=${classMap(textClasses)}>${this.label}</span>` : ''}
+                ${this.srLabel ? html`<span class="sr-only">${this.srLabel}</span>` : ''}
             </div>
         `;
     }

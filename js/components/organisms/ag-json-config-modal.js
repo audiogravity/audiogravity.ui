@@ -268,7 +268,7 @@ export class AgJsonConfigModal extends LitElement {
             <ag-modal 
                 ?show=${this.isOpen} 
                 @modal-close=${this._handleClose}
-                title=${title}
+                heading=${title}
                 size="large"
                 .bodyTemplate=${html`
                     <div class="form-group" style="margin-bottom: 0;">
@@ -294,12 +294,12 @@ export class AgJsonConfigModal extends LitElement {
                         Cancel
                     </button>
                     ${this.allowFileTransfer ? html`
-                        <button class="btn-action" @click=${this._handleDownload} ?disabled=${this._isLoading} title="Download this file">
+                        <button class="btn-action" @click=${this._handleDownload} ?disabled=${this._isLoading}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> Download
                         </button>
                     ` : ''}
                     ${this.allowFileTransfer && !this.isGuest ? html`
-                        <button class="btn-action" @click=${this._handleUploadClick} ?disabled=${this._isLoading} title="Load a file into the editor">
+                        <button class="btn-action" @click=${this._handleUploadClick} ?disabled=${this._isLoading}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg> Upload
                         </button>
                     ` : ''}

@@ -46,7 +46,7 @@
  * @description Highlights the tile border on hover with lift effect.
  */
 
-/* Enhanced hover state for all tiles to ensure tooltips are above siblings */
+/* A hovered tile rises above its neighbours, so its lift and shadow are not covered */
 .services-grid .service-tile:hover,
 .profiles-grid .profile-tile:hover,
 .systemd-grid .systemd-tile:hover,
@@ -185,7 +185,7 @@
     opacity: 0.55;
 }
 
-/* Overflow visible pour profiles (tooltips) */
+/* Profile tiles do not clip their content */
 .profile-tile {
     overflow: visible;
     min-height: 110px;

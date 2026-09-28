@@ -1,7 +1,7 @@
 /**
  * @module AgServiceCard
  * @description Molecule component representing a single Systemd service in the Services tab.
- * Composes ag-status-indicator, ag-sparkline, and ag-tooltip.
+ * Composes ag-status-indicator and ag-sparkline.
  * 
  * @element ag-service-card
  * 
@@ -23,7 +23,7 @@ import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { formatRate, formatTimestamp, getActivityLevel, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate } from '../utils-lit.js';
 import { isGuest } from '../../auth.js';
-import { iconPower, iconArrowDown, iconArrowUp, iconFileText, iconPencil } from '../../ag-icons.js';
+import { iconPower } from '../../ag-icons.js';
 import './ag-metric-detail.js';
 import '../atoms/ag-sparkline.js';
 import { SERVICE_METRICS_WINDOW } from '../../core/metrics-window.js';
@@ -124,8 +124,7 @@ export class AgServiceCard extends LitElement {
      * Format a rate, or a dash when nobody measured it.
      *
      * The shared formatter answers '0.0 MB/s' for anything that is not a number,
-     * so an unguarded null printed a zero — the very claim the dash removes, and
-     * it slipped back in through the tooltips.
+     * so an unguarded null printed a zero — the very claim the dash removes.
      *
      * @param {number|null|undefined} rate
      * @returns {string}
@@ -285,8 +284,8 @@ export class AgServiceCard extends LitElement {
                              @click=${() => this.dispatchEvent(new CustomEvent('show-service-detail', { detail: { service: this.service }, bubbles: true, composed: true }))}>
                             ${this.service.name}
                             ${this.service.enabled
-                                ? html`<svg class="service-boot-icon enabled" title="Enabled at boot" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPower}</svg>`
-                                : html`<svg class="service-boot-icon disabled" title="Disabled at boot" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPower}</svg>`}
+                                ? html`<svg class="service-boot-icon enabled" role="img" aria-label="Enabled at boot" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPower}</svg>`
+                                : html`<svg class="service-boot-icon disabled" role="img" aria-label="Disabled at boot" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPower}</svg>`}
                         </div>
                         <div class="service-unit">
                             ${this.service.systemd_unit}
@@ -342,12 +341,6 @@ export class AgServiceCard extends LitElement {
                         <div class="metric-label">NET</div>
                         <div class="metric-value activity-${netMeasured ? this._getActivityLevelForRate(totalNet) : 'none'}">
                             ${netMeasured ? this._formatRate(totalNet) : '—'}
-                            <div class="metric-tooltip">
-                                <strong>Network Activity</strong><br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowDown}</svg> Ingress: ${this._rate(netRx)}<br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconArrowUp}</svg> Egress: ${this._rate(netTx)}<br>
-                                Total: ${netMeasured ? this._formatRate(totalNet) : '—'}
-                            </div>
                         </div>
                         ${netMeasured ? html`
                             <div class="sparkline-container" @click=${() => this._handleExpandMetric('net')}>
@@ -368,12 +361,6 @@ export class AgServiceCard extends LitElement {
                         <div class="metric-label">DISK</div>
                         <div class="metric-value activity-${diskMeasured ? this._getActivityLevelForRate(totalDisk) : 'none'}">
                             ${diskMeasured ? this._formatRate(totalDisk) : '—'}
-                            <div class="metric-tooltip">
-                                <strong>Disk I/O</strong><br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconFileText}</svg> Read: ${this._rate(diskRead)}<br>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPencil}</svg> Write: ${this._rate(diskWrite)}<br>
-                                Total: ${diskMeasured ? this._formatRate(totalDisk) : '—'}
-                            </div>
                         </div>
                         ${diskMeasured ? html`
                             <div class="sparkline-container" @click=${() => this._handleExpandMetric('disk')}>
@@ -445,41 +432,26 @@ export class AgServiceCard extends LitElement {
                 <div class="service-footer">
                     <div class="service-actions">
                         ${!isGuest() ? html`
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn ${this._pending ? 'secondary' : isRunning ? 'secondary' : 'start'}"
-                                    ?disabled=${this._pending || !isInstalled}
-                                    @click=${this._handleToggleService}>
-                                ${this._pending ? 'PENDING...' : isRunning ? 'STOP' : 'START'}
-                            </button>
-                            <div class="tooltip tooltip-top">
-                                ${!isInstalled ? 'Package not installed' : this._pending ? 'Please wait...' : isRunning ? 'Stop this service' : 'Start this service'}
-                            </div>
-                        </div>
+                        <button class="tile-action-btn ${this._pending ? 'secondary' : isRunning ? 'secondary' : 'start'}"
+                                ?disabled=${this._pending || !isInstalled}
+                                @click=${this._handleToggleService}>
+                            ${this._pending ? 'PENDING...' : isRunning ? 'STOP' : 'START'}
+                        </button>
 
-                        <div class="has-tooltip">
-                            <button class="tile-action-btn secondary"
-                                    ?disabled=${this._pending || !isRunning || !isInstalled}
-                                    @click=${this._handleRestart}>
-                                RESTART
-                            </button>
-                            <div class="tooltip tooltip-top">Restart this service</div>
-                        </div>
+                        <button class="tile-action-btn secondary"
+                                ?disabled=${this._pending || !isRunning || !isInstalled}
+                                @click=${this._handleRestart}>
+                            RESTART
+                        </button>
 
-                        <div class="has-tooltip">
-                            <span class="badge service-enabled-badge ${this.service.enabled ? 'success' : 'neutral'} ${isInstalled ? 'clickable' : ''}"
-                                  @click=${isInstalled ? this._handleToggleEnabled : null}>
-                                ${this.service.enabled ? 'ENABLED' : 'DISABLED'}
-                            </span>
-                            <div class="tooltip tooltip-top">
-                                ${this.service.enabled ? 'Disable service at boot' : 'Enable service at boot'}
-                            </div>
-                        </div>
+                        <span class="badge service-enabled-badge ${this.service.enabled ? 'success' : 'neutral'} ${isInstalled ? 'clickable' : ''}"
+                              @click=${isInstalled ? this._handleToggleEnabled : null}>
+                            ${this.service.enabled ? 'ENABLED' : 'DISABLED'}
+                        </span>
                         ` : html`
-                        <div class="has-tooltip">
-                            <span class="badge ${this.service.enabled ? 'success' : 'neutral'}">
-                                ${this.service.enabled ? 'ENABLED' : 'DISABLED'}
-                            </span>
-                        </div>
+                        <span class="badge ${this.service.enabled ? 'success' : 'neutral'}">
+                            ${this.service.enabled ? 'ENABLED' : 'DISABLED'}
+                        </span>
                         `}
 
                         ${!isInstalled ? html`<span class="badge error">NOT INSTALLED</span>` : ''}

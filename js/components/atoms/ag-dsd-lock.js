@@ -6,7 +6,7 @@
  *
  * Used by both the mini player (`ag-now-playing`) and the fullscreen player
  * (`ag-now-playing-fullscreen`). Positioning (inline vs absolute) is left to
- * the parent — this atom only contributes the SVG icon and its tooltip.
+ * the parent — this atom only contributes the SVG icon and its accessible name.
  *
  * @element ag-dsd-lock
  *
@@ -18,9 +18,15 @@ import { iconDsdLock } from '../../ag-icons.js';
 export class AgDsdLock extends LitElement {
     createRenderRoot() { return this; }
 
-    constructor() {
-        super();
-        this.title = 'Volume fixé à 100% en DSD natif';
+    /**
+     * Name the icon for assistive technology. Set on connection, not in the
+     * constructor: a custom element must not gain attributes while it is being
+     * constructed.
+     */
+    connectedCallback() {
+        super.connectedCallback();
+        this.setAttribute('role', 'img');
+        this.setAttribute('aria-label', 'Volume locked at 100% for native DSD');
     }
 
     render() {

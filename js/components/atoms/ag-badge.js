@@ -4,8 +4,9 @@
  * Represents status, labels, or tags.
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
+import { onActivateKey } from '../utils-lit.js';
 
 /**
  * Badge Web Component
@@ -75,8 +76,11 @@ export class AgBadge extends LitElement {
             'clickable': this.clickable
         };
 
+        // Clickable, it is a button: reached with Tab, pressed with Enter or Space.
         return html`
-            <span class=${classMap(classes)} @click=${this._handleClick}>
+            <span class=${classMap(classes)} @click=${this._handleClick}
+                role=${this.clickable ? 'button' : nothing} tabindex=${this.clickable ? '0' : nothing}
+                @keydown=${onActivateKey(this._handleClick)}>
                 ${this.label}
             </span>
         `;

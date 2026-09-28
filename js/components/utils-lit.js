@@ -51,7 +51,7 @@ export function svgIcon(icon, { size = '1em' } = {}) {
  *
  * @param {object} o
  * @param {string} o.cls - Button class: its look and its place.
- * @param {string} o.label - aria-label and tooltip.
+ * @param {string} o.label - aria-label.
  * @param {*} o.icon - The icon's svg`` paths, from ag-icons.js.
  * @param {(e: Event) => void} [o.onClick] - Click handler. Omitted, the click is left
  *   to a listener on the host element (the "+ queue" is used that way).
@@ -60,11 +60,32 @@ export function svgIcon(icon, { size = '1em' } = {}) {
  */
 export function libIconButton({ cls, label, icon, onClick, fill = 'none' }) {
     return html`
-        <button class=${cls} title=${label} aria-label=${label} @click=${onClick ?? nothing}>
+        <button class=${cls} aria-label=${label} @click=${onClick ?? nothing}>
             <svg viewBox="0 0 24 24" fill=${fill} stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
         </button>
     `;
+}
+
+/**
+ * A keydown listener that makes Enter and Space act as a click, as they do on a
+ * <button> — for an element that has to stay a span or a div (a badge in a row of
+ * badges, an icon inside a title) and is given role="button" and tabindex="0".
+ * Called with the element's host as `this`, as Lit calls listeners.
+ *
+ * Only for a key pressed on the element itself: one pressed on a control inside it
+ * (the favourite star of a radio card) bubbles up here, and taken for the card's own
+ * it cancelled that control's click and played the station instead.
+ * @param {(e: Event) => void} handler - What a click does.
+ * @returns {(e: KeyboardEvent) => void}
+ */
+export function onActivateKey(handler) {
+    return function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target !== e.currentTarget) return;
+        e.preventDefault();          // Space would scroll the page
+        handler.call(this, e);
+    };
 }
 
 /**

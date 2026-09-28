@@ -6,9 +6,6 @@
 export const AgTimerManager = {
     _timers: new Map(),
     _isAppHidden: document.hidden,
-    _lowPowerMode: false,
-    _lowPowerFactor: 3, // Intervals are 3x longer in low power mode
-    _manualOverride: false,
 
     /**
      * Register a new interval timer
@@ -53,53 +50,15 @@ export const AgTimerManager = {
     },
 
     /**
-     * Set Low Power Mode
-     * @param {boolean} enabled - Whether to enable low power mode
-     */
-    setLowPowerMode(enabled, isManual = false) {
-        // If it's a battery event but we are in manual mode, ignore it
-        if (!isManual && this._manualOverride) return;
-        
-        if (isManual) this._manualOverride = true;
-        if (this._lowPowerMode === enabled) return;
-        
-        console.log(`[TimerManager] Low Power Mode: ${enabled ? 'ENABLED' : 'DISABLED'}`);
-        this._lowPowerMode = enabled;
-        
-        // Update UI class
-        if (typeof document !== 'undefined' && document.body) {
-            document.body.classList.toggle('low-power-mode', enabled);
-        }
-        
-        // Notify components
-        if (window.EventEmitter) {
-            window.EventEmitter.emit('low-power-mode-changed', { enabled });
-        }
-
-        // Restart all running timers with new effective intervals
-        for (const id of this._timers.keys()) {
-            const timer = this._timers.get(id);
-            if (timer.running) {
-                this._stopTimer(id);
-                // Only restart if visibility rules allow
-                if (!this._isAppHidden || !timer.pauseOnHidden) {
-                    this._startTimer(id);
-                }
-            }
-        }
-    },
-
-    /**
      * Internal: Start a specific timer
      */
     _startTimer(id) {
         const timer = this._timers.get(id);
         if (timer && !timer.running) {
-            const effectiveInterval = this._lowPowerMode ? timer.interval * this._lowPowerFactor : timer.interval;
             timer.timerId = setInterval(() => {
                 timer.ticks++;
                 timer.callback();
-            }, effectiveInterval);
+            }, timer.interval);
             timer.running = true;
         }
     },
@@ -143,50 +102,14 @@ export const AgTimerManager = {
             result.push({
                 id,
                 interval: timer.interval,
-                effectiveInterval: this._lowPowerMode ? timer.interval * this._lowPowerFactor : timer.interval,
                 pauseOnHidden: timer.pauseOnHidden,
                 running: timer.running,
                 ticks: timer.ticks
             });
         }
         return result;
-    },
-    /**
-     * Reset manual override and return to automatic battery tracking
-     */
-    resetPowerMode() {
-        this._manualOverride = false;
-        // The next battery event will restore the correct state
     }
 };
-
-/**
- * Battery and Power Management Initialization
- */
-function initPowerManager() {
-    if (typeof navigator === 'undefined' || !('getBattery' in navigator)) {
-        console.log('[PowerManager] Battery API not supported');
-        return;
-    }
-
-    navigator.getBattery().then(battery => {
-        const updateLowPowerState = () => {
-            // Logic: Low power if battery < 20% and NOT charging
-            const isLowBattery = battery.level <= 0.20;
-            const isCharging = battery.charging;
-            
-            console.log(`[PowerManager] Level: ${Math.round(battery.level * 100)}%, Charging: ${isCharging}, LowBattery: ${isLowBattery}`);
-            AgTimerManager.setLowPowerMode(isLowBattery && !isCharging);
-        };
-
-        // Listen for changes
-        battery.addEventListener('chargingchange', updateLowPowerState);
-        battery.addEventListener('levelchange', updateLowPowerState);
-        
-        // Initial check with small delay to ensure EventEmitter and other systems are ready
-        setTimeout(updateLowPowerState, 500);
-    });
-}
 
 // Make globally available for legacy support
 if (typeof window !== 'undefined') {
@@ -196,11 +119,4 @@ if (typeof window !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
         AgTimerManager._handleVisibilityChange(document.hidden);
     });
-
-    // Initialize power management on DOM load or immediately if already loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPowerManager);
-    } else {
-        initPowerManager();
-    }
 }

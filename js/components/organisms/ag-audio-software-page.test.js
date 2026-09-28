@@ -242,3 +242,25 @@ describe('Reading which services AG has configured', () => {
         expect([...page._unconfigured]).toEqual([]);
     });
 });
+
+describe('the INSTALLED filter', () => {
+    // A failed update leaves the previous version running: the filter hid it.
+    const PACKAGES = [
+        { id: 'mpd', status: 'installed', installed_version: '0.24' },
+        { id: 'hqplayerd', status: 'error', installed_version: '6.0' },
+        { id: 'roonserver', status: 'error', installed_version: null },
+        { id: 'shairport', status: 'not_installed', installed_version: null },
+    ];
+
+    /** What the filter shows, on a page holding PACKAGES (no Lit instance needed). */
+    const visible = filter =>
+        AgAudioSoftwarePage.prototype._visiblePackages.call({ packages: PACKAGES, _filter: filter });
+
+    it('keeps what is on the box, a failed update included', () => {
+        expect(visible('installed').map(p => p.id)).toEqual(['mpd', 'hqplayerd']);
+    });
+
+    it('shows everything unfiltered', () => {
+        expect(visible('all')).toHaveLength(4);
+    });
+});

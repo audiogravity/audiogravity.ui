@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiPost } from '../../api.js';
+import { API_BASE_URL } from '../../core/config.js';
 import { showConfirm, showPasswordConfirm, showToast, getUserFriendlyError } from '../../ui-helpers.js';
 import { isAdmin } from '../../auth.js';
 import { iconRepeat, iconPowerCord, iconFileText } from '../../ag-icons.js';
@@ -101,7 +102,12 @@ export class AgSystemActions extends LitElement {
     }
 
     /**
-     * Poll /health until the server responds, then reload the page.
+     * Poll the core's /health until it answers, then reload the page.
+     *
+     * Through API_BASE_URL like every other call: a bare '/health' asks the server
+     * that serves the page, which has no such path on an installed box (404 for
+     * ever, so the page never came back by itself) — and in development answers
+     * 200 whatever the core is doing.
      * @param {boolean} isReboot - True for full OS reboot (longer initial delay), false for backend restart
      */
     _startReconnectPolling(isReboot) {
@@ -111,7 +117,7 @@ export class AgSystemActions extends LitElement {
         setTimeout(() => {
             this._reconnectInterval = setInterval(async () => {
                 try {
-                    const res = await fetch('/health', { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE_URL}/health`, { cache: 'no-store' });
                     if (res.ok) {
                         this._stopReconnectPolling();
                         window.location.reload();

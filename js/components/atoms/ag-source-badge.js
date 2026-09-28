@@ -51,7 +51,7 @@ export class AgSourceBadge extends LitElement {
         const badge = originBadge(this.origin, this.name);
         if (!badge) return null;
         return html`
-            <span class="ag-source-badge" title=${badge.label}>
+            <span class="ag-source-badge">
                 <span class="ag-source-badge__icon">${badge.icon}</span>
                 <span class="ag-source-badge__label">${badge.label}</span>
             </span>

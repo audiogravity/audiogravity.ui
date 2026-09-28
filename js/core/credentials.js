@@ -46,3 +46,22 @@ export function recordKeylessVerdict(verdict) {
     _keylessVerdict = verdict;
     try { sessionStorage.setItem('ag-keyless-verdict', verdict); } catch { /* private mode */ }
 }
+
+/**
+ * Whether a response says the core no longer accepts the session the request carried.
+ *
+ * The core ends a session when its token expires or when the account behind it
+ * changes — a new password, a new role, disabled, deleted. It answers 401 with a
+ * `WWW-Authenticate: Bearer` challenge (RFC 6750) then, and only then: a password
+ * re-typed wrong for a sensitive action, or a streaming service refusing its login,
+ * is a 401 too, but without the challenge — and must not sign anyone out.
+ *
+ * @param {Response} response - The core's answer.
+ * @param {string|undefined} sentToken - The Authorization header the request carried, if any.
+ * @returns {boolean}
+ */
+export function sessionEnded(response, sentToken) {
+    return Boolean(sentToken)
+        && response.status === 401
+        && /^Bearer\b/i.test(response.headers.get('WWW-Authenticate') || '');
+}

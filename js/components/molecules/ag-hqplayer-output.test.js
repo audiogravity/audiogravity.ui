@@ -517,13 +517,13 @@ describe("AgHqplayerOutput._renderCard — this box's own HQPlayer", () => {
         expect(html).not.toContain('Disconnect');
     });
 
-    it('labels the button Forget, and keeps the address in its tooltip', () => {
+    it('labels the button Forget, and keeps the address in its accessible name', () => {
         // With the address in the label, the button left the card on a phone
         // (measured 2026-09-27: a 420 px row in a 270-380 px card, 320-430 px wide).
         const html = renderToString(makeEl({ ...LOCAL, configured_host: '10.0.4.200' })._renderCard());
         expect(html).toMatch(/>\s*Forget\s*<\/button>/);
-        expect(html).toContain('title="Forget 10.0.4.200:4321"');
-        // A phone shows no tooltip, and a screen reader reads the accessible name.
+        // No tooltip in the app: a screen reader reads the accessible name.
+        expect(html).not.toContain('title=');
         expect(html).toContain('aria-label="Forget 10.0.4.200:4321"');
     });
 

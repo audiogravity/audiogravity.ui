@@ -92,13 +92,18 @@ export function parseEnv(text) {
 }
 
 /**
- * What an admin session is made of, read from the dev core's environment: the key JWTs
- * are signed with and its algorithm, and the API key every route also requires.
+ * What an admin session is made of, read from the dev core: from its environment, the
+ * key JWTs are signed with and its algorithm, and the API key every route also
+ * requires; from its accounts file, the admin's session version and key, which the core
+ * checks every token against (core/jwt_handler.py, session_is_current).
  *
  * @param {string} [file=DEFAULT_CORE_ENV] - The dotenv file (AG_CORE_ENV overrides it).
- * @returns {{ jwtSecret: string, apiKey: string, algorithm: string }} The algorithm is
- *   JWT_ALGORITHM, HS256 when unset — the core's own default (core/config.py).
- * @throws {Error} When the file is unreadable or lacks a secret.
+ * @returns {{ jwtSecret: string, apiKey: string, algorithm: string, tokenVersion: number,
+ *   sessionKey: string }} The algorithm is JWT_ALGORITHM, HS256 when unset — the core's
+ *   own default (core/config.py). The accounts file is USERS_FILE_PATH, beside the
+ *   dotenv file when relative (users.json when unset); an admin without a version or a
+ *   key there — created before they existed — reads as 0 and "", as in the core.
+ * @throws {Error} When a file is unreadable, lacks a secret, or has no admin.
  */
 export function readSessionSecrets(file = process.env.AG_CORE_ENV || DEFAULT_CORE_ENV) {
     let vars;
@@ -109,26 +114,41 @@ export function readSessionSecrets(file = process.env.AG_CORE_ENV || DEFAULT_COR
     }
     const missing = ['JWT_SECRET_KEY', 'API_KEY'].filter((k) => !vars[k]);
     if (missing.length) throw new Error(`${file} does not define ${missing.join(' and ')}`);
-    return { jwtSecret: vars.JWT_SECRET_KEY, apiKey: vars.API_KEY, algorithm: vars.JWT_ALGORITHM || 'HS256' };
+    const usersFile = path.resolve(path.dirname(file), vars.USERS_FILE_PATH || 'users.json');
+    let admin;
+    try {
+        admin = JSON.parse(readFileSync(usersFile, 'utf8')).find((u) => u.username === 'admin');
+    } catch (err) {
+        throw new Error(`cannot read the dev core's accounts (${usersFile}): ${err.message}`);
+    }
+    if (!admin) throw new Error(`${usersFile} has no admin account`);
+    return {
+        jwtSecret: vars.JWT_SECRET_KEY, apiKey: vars.API_KEY, algorithm: vars.JWT_ALGORITHM || 'HS256',
+        tokenVersion: admin.token_version ?? 0, sessionKey: admin.session_key ?? '',
+    };
 }
 
 /**
  * An admin JWT signed with the dev secret, so the captures need no password. The dev
- * core accepts it as its own: same algorithm, same claims as a login issues.
+ * core accepts it as its own: same algorithm, same claims as a login issues — the
+ * admin's session version (`tv`) and key (`sk`) included, without which it refuses it.
  *
  * @param {string} secret - JWT_SECRET_KEY of the dev core.
  * @param {number} [now=Date.now()] - Current time in ms (for tests).
  * @param {string} [algorithm='HS256'] - JWT_ALGORITHM of the dev core.
+ * @param {{ tokenVersion?: number, sessionKey?: string }} [account] - The admin's, from
+ *   readSessionSecrets().
  * @returns {string} The token.
  * @throws {Error} For an algorithm other than HS256, HS384 or HS512.
  */
-export function forgeToken(secret, now = Date.now(), algorithm = 'HS256') {
+export function forgeToken(secret, now = Date.now(), algorithm = 'HS256', { tokenVersion = 0, sessionKey = '' } = {}) {
     const digest = HMAC_DIGESTS[algorithm];
     if (!digest) throw new Error(`the dev core signs its tokens with ${algorithm}; only HS256, HS384 and HS512 can be forged`);
     const iat = Math.floor(now / 1000);
     const part = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
     const head = `${part({ alg: algorithm, typ: 'JWT' })}.${part({
         sub: 'admin', role: 'admin', iat, exp: iat + SESSION_TTL, jti: randomUUID(),
+        tv: tokenVersion, sk: sessionKey,
     })}`;
     return `${head}.${createHmac(digest, secret).update(head).digest('base64url')}`;
 }
@@ -137,13 +157,14 @@ export function forgeToken(secret, now = Date.now(), algorithm = 'HS256') {
  * What the app keeps in localStorage once signed in as admin — the JWT, who it is and
  * when it ends, and the API key. The routes want both the token and the key.
  *
- * @param {{ jwtSecret: string, apiKey: string, algorithm?: string }} secrets - From readSessionSecrets().
+ * @param {{ jwtSecret: string, apiKey: string, algorithm?: string, tokenVersion?: number,
+ *   sessionKey?: string }} secrets - From readSessionSecrets().
  * @param {number} [now=Date.now()] - Current time in ms (for tests).
  * @returns {Record<string, string>} localStorage key → value.
  */
-export function sessionStorageItems({ jwtSecret, apiKey, algorithm }, now = Date.now()) {
+export function sessionStorageItems({ jwtSecret, apiKey, algorithm, tokenVersion, sessionKey }, now = Date.now()) {
     return {
-        jwt_token: forgeToken(jwtSecret, now, algorithm),
+        jwt_token: forgeToken(jwtSecret, now, algorithm, { tokenVersion, sessionKey }),
         jwt_user: JSON.stringify({ username: 'admin', role: 'admin' }),
         jwt_expiry: new Date(now + SESSION_TTL * 1000).toISOString(),
         apiKey,
@@ -346,16 +367,18 @@ export async function openPhone(browser, { height = PHONE.height, storage = null
 }
 
 /**
- * Remove the dev server's "DEV" badge. It is a class-less div, found by its title — no
- * CSS selector of its own catches it.
+/** The id js/common.js gives the dev server's "DEV" badge. */
+export const DEV_BADGE_ID = 'ag-dev-badge';
+
+/**
+ * Remove the dev server's "DEV" badge, found by its id (js/common.js): it used to be
+ * found by its title, and the interface has no titles any more.
  *
  * @param {import('playwright').Page} page - A page of the dev instance.
  * @returns {Promise<void>}
  */
 export async function dropDevBadge(page) {
-    await page.evaluate(() => {
-        document.querySelectorAll('[title^="Development mode"]').forEach((el) => el.remove());
-    });
+    await page.evaluate((id) => document.getElementById(id)?.remove(), DEV_BADGE_ID);
 }
 
 /**

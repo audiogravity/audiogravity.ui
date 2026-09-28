@@ -389,26 +389,6 @@ export class AgProfilesPage extends LitElement {
             .slice(0, 8);
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'Audiogravi<sup>ty</sup> Profiles represent high-level automation scenarios for your audio system.',
-            [
-                { title: 'One-Click Orchestration', text: 'Switching a profile automatically starts necessary services and stops conflicting ones to ensure bit-perfect playback.' },
-                { title: 'Audiophile Scenarios', text: 'Profiles optimized for Hi-Res Audio or Minimalist configurations to reduce jitter.' },
-                { title: 'Critical Profiles', text: 'Essential profiles for your audio chain, requiring confirmation before major changes.' },
-                { title: 'Starts / Stops / Output', text: 'Each tile shows the raw service IDs started and stopped by the profile, and the live audio output port resolved from the pipeline (e.g. usb, toslink).' },
-                { title: 'Health Bar', text: 'The coloured bar at the bottom of each tile shows the proportion of active (green), failed (red) and idle (grey) services in real time.' },
-                { title: 'Last Activated', text: 'Relative timestamp of the last profile activation (e.g. "2h ago"). Updated on every activation event.' },
-                { title: 'Quick Filter', text: 'Use ALL / ACTIVE / IDLE to narrow the profile list. Active profiles are always sorted to the top.' },
-                { title: 'Detail View', text: 'Click a profile name to open a detail panel showing the full service table and the session activation history.' },
-                { title: 'Dedicated History', text: 'Monitor every activation and potential service failure in the history panel.' }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About Audiogravity Profiles', content);
-    }
-
     render() {
         // Sort: active profiles first, then rest — then apply filter
         const sorted = [...this.profiles].sort((a, b) => {
@@ -439,7 +419,6 @@ export class AgProfilesPage extends LitElement {
             <div class="profiles-zone tab-zone">
                 <div class="tab-title-container">
                     <h2>PROFILES</h2>
-                    <span class="badge info clickable" @click=${this._showInfo}>INFO</span>
                 </div>
                 <div class="tab-filter-row">
                     <ag-filter-bar

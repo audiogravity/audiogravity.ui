@@ -26,7 +26,7 @@ import {
     escapeHtml,
     addToHistory,
 } from '../../common.js';
-import { getCurrentUser, isAdmin } from '../../auth.js';
+import { getCurrentUser, isAdmin, replaceToken } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
@@ -113,7 +113,7 @@ export class AgAdminPage extends LitElement {
         // context (position:fixed + overflow:hidden + view-transition-name = clipped fixed descendants).
         if (this._licenseModal) return;
         this._licenseModal = document.createElement('ag-modal');
-        this._licenseModal.setAttribute('title', 'License Activation');
+        this._licenseModal.setAttribute('heading', 'License Activation');
         this._licenseModal.setAttribute('size', 'large');
         this._licenseModal.bodyTemplate = html`
             <div style="display:flex;flex-direction:column;gap:var(--spacing-md)">
@@ -278,10 +278,13 @@ export class AgAdminPage extends LitElement {
                 const patchPayload = { ...payload };
                 delete patchPayload.username;
 
-                await apiCall(`/auth/users/${encodeURIComponent(originalUsername)}`, {
+                const updated = await apiCall(`/auth/users/${encodeURIComponent(originalUsername)}`, {
                     method: 'PATCH',
                     body: JSON.stringify(patchPayload)
                 });
+                // A new password for your own account ends your own sessions with the
+                // others; the core hands back a token for this one.
+                if (updated?.access_token) replaceToken(updated.access_token);
                 showToast('success', 'User Updated', `User ${username} successfully updated.`);
                 addToHistory('admin', `Updated user: ${username} (Enabled: ${payload.enabled})`, true);
             } else {
@@ -304,23 +307,6 @@ export class AgAdminPage extends LitElement {
         showToast('error', 'Validation Error', e.detail);
     }
 
-    _showInfo() {
-        if (!window.UIComponents || !window.UIComponents.InfoModal) return;
-
-        const content = window.UIComponents.InfoModal.createContent(
-            'The User Management section allows administrators to manage access to the Audiogravi<sup>ty</sup> platform.',
-            [
-                { title: 'Admin Role', text: 'Full access to all system features and user management. Cannot be deleted or demoted by others.' },
-                { title: 'User Role', text: 'Standard access to system features but cannot manage users or core system settings.' },
-                { title: 'Guest Role', text: 'Read-only access. Can view status and logs but cannot change settings or toggle services.' },
-                { title: 'Persistence', text: 'Use the PERSIST toggle in the footer to choose how your session is stored. Persistent storage (localStorage) keeps you logged in even if you close your browser. Session-based storage (sessionStorage) automatically logs you out when you close the tab. This choice takes effect upon your next login.' },
-                { title: 'Passkeys', text: 'The <strong>PASSKEYS</strong> button (visible on your own card) lets you register WebAuthn passkeys — Face ID, Touch ID or a hardware key. Each passkey is tied to a specific device and can be removed individually. Passkeys can be used instead of a password at login.' },
-                { title: 'Security', text: 'Admins cannot delete their own account. Password changes take effect immediately on current sessions.' }
-            ]
-        );
-        window.UIComponents.InfoModal.show('About User Management', content);
-    }
-
     render() {
         const currentUser = getCurrentUser();
 
@@ -335,8 +321,6 @@ export class AgAdminPage extends LitElement {
 
                 <div class="tab-title-container">
                         <h2>USER MANAGEMENT</h2>
-                        <span class="badge info clickable" @click=${this._showInfo}
-                            style="margin-right: var(--spacing-sm);">INFO</span>
                         <span class="badge warning clickable" @click=${() => this._openUserModal()}>NEW USER</span>
                     </div>
                     

@@ -171,7 +171,6 @@ describe('sizes come from the scale', () => {
             ['css/components/library-sources.css', '.lib-tidal-err'],
             ['css/components/library-sources.css', '.lib-hra-err'],
             ['css/components/now-playing-fullscreen.css', '.npfs-out-error'],
-            ['css/services.css', '.metric-tooltip'],
             ['css/system.css', '.network-ip.ipv6'],
         ];
         const offenders = [];

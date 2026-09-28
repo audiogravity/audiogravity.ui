@@ -37,12 +37,13 @@ vi.mock('./common.js', () => ({
         on: vi.fn(),
         off: vi.fn(),
     },
-    AgTimerManager: { setInterval: vi.fn(), _lowPowerMode: false },
+    AgTimerManager: { setInterval: vi.fn() },
 }));
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { handleWorkerMessage } from './sse.js';
+import { handleWorkerMessage, connectSSE } from './sse.js';
+import { buildAuthedUrl } from './api.js';
 
 // The throttle wrapper is built once when the module loads, so its closed
 // window survives from one test to the next. Fake timers are installed for the
@@ -231,5 +232,41 @@ describe('the worker sends errors in the shape the page reads', () => {
         // forward() posts { type, data }, which is right for events and wrong
         // for errors. Naming the failure mode keeps it from coming back.
         expect(source).not.toMatch(/forward\(\s*'error'/);
+    });
+});
+
+describe('a new session token', () => {
+    // Left on the old token, the stream would come back as no one on its next
+    // reconnection. The worker outlives a test (sse.js keeps it), so every test here
+    // shares one fake, and reads what was posted to it.
+    const posted = [];
+    const connects = () => posted.filter(m => m.action === 'connect').map(m => m.url);
+
+    beforeAll(() => { vi.stubGlobal('Worker', class { postMessage(message) { posted.push(message); } }); });
+    afterAll(() => { vi.unstubAllGlobals(); });
+    beforeEach(() => { posted.length = 0; buildAuthedUrl.mockReset(); });
+
+    it('reconnects the open stream with it', () => {
+        buildAuthedUrl.mockReturnValueOnce('http://box/api/sse/dashboard?token=old')
+            .mockReturnValueOnce('http://box/api/sse/dashboard?token=new');
+        connectSSE();
+        window.dispatchEvent(new CustomEvent('ag-session-token-replaced'));
+        expect(connects()).toEqual([
+            'http://box/api/sse/dashboard?token=old',
+            'http://box/api/sse/dashboard?token=new',
+        ]);
+    });
+
+    it('leaves the stream of a hidden tab closed', () => {
+        // Showing the tab reopens it with the token then current (initVisibilityManager).
+        buildAuthedUrl.mockReturnValue('http://box/api/sse/dashboard?token=t');
+        connectSSE();
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+        try {
+            window.dispatchEvent(new CustomEvent('ag-session-token-replaced'));
+        } finally {
+            delete document.hidden;
+        }
+        expect(connects()).toHaveLength(1);
     });
 });

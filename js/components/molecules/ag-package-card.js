@@ -22,6 +22,17 @@ import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
 import { iconRepeat, iconDownload, iconTrash, iconCheckCircle, iconCircle, iconClose, iconSpinner, iconDocs, iconCpu, iconKey } from '../../ag-icons.js';
 
+/**
+ * Whether the software is on the box: INSTALLED, or ERROR with a version still
+ * installed — a failed update or uninstall leaves the previous version in place,
+ * and it goes on running (and needing its configuration) all the same.
+ * @param {Object} pkg - Package payload as returned by GET /packages/.
+ * @returns {boolean}
+ */
+export function packageIsInstalled(pkg) {
+    return pkg.status === 'installed' || (pkg.status === 'error' && Boolean(pkg.installed_version));
+}
+
 export class AgPackageCard extends LitElement {
     static properties = {
         pkg: { type: Object },
@@ -158,7 +169,7 @@ export class AgPackageCard extends LitElement {
      * @private
      */
     _needsConfiguring() {
-        return this.pkg.status === 'installed'
+        return packageIsInstalled(this.pkg)
             && Boolean(this.pkg.service_id)
             && this.configuredByAg === false;
     }
@@ -173,7 +184,7 @@ export class AgPackageCard extends LitElement {
      * @private
      */
     _needsWebPassword() {
-        return this.pkg.status === 'installed'
+        return packageIsInstalled(this.pkg)
             && Boolean(this.pkg.web_credentials)
             && !this.pkg.web_credentials.already_set
             && !isGuest();
@@ -342,9 +353,13 @@ export class AgPackageCard extends LitElement {
             : this.pkg.status === 'error' ? iconClose
             : iconSpinner;
 
+        // The status names the state in the API's words (`not_installed`); the
+        // stylesheet names its classes in kebab-case, and the grey of a card that
+        // is not installed never applied while the two disagreed.
+        const statusClass = String(this.pkg.status).replace(/_/g, '-');
         const wrapperClasses = {
             'software-card': true,
-            [this.pkg.status]: true
+            [statusClass]: true
         };
 
         return html`
@@ -352,7 +367,7 @@ export class AgPackageCard extends LitElement {
                 <div class="software-header">
                     <div class="software-name">${this.pkg.label}</div>
                     <div class="software-status">
-                        <div class="software-status-indicator ${this.pkg.status}">
+                        <div class="software-status-indicator ${statusClass}">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${_statusIconSvg}</svg>
                             <span>${statusText}</span>
                         </div>
@@ -381,9 +396,9 @@ export class AgPackageCard extends LitElement {
                         ${!this.pkg.is_supported && !this._showsAvailabilityBanner()
                             ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this._needsConfiguring() ? html`
-                            <span class="badge warning" title="Installing does not configure: this service is running on the configuration its package ships, not on the output you chose. Set it up in Audio Configuration.">Not configured</span>` : ''}
+                            <span class="badge warning">Not configured</span>` : ''}
                         ${this._needsWebPassword() ? html`
-                            <button class="badge warning web-password-badge" title="Its web interface has no password yet: nobody can sign in to it." @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
+                            <button class="badge warning web-password-badge" @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg> Set web password
                             </button>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
@@ -392,9 +407,8 @@ export class AgPackageCard extends LitElement {
                             </button>` : ''}
                     </div>
                     ${this.pkg.doc_url ? html`
-                        <a class="doc-link has-tooltip" href=${this.pkg.doc_url} target="_blank" rel="noopener noreferrer" @click=${e => e.stopPropagation()}>
+                        <a class="doc-link" href=${this.pkg.doc_url} target="_blank" rel="noopener noreferrer" @click=${e => e.stopPropagation()}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDocs}</svg>
-                            <div class="tooltip tooltip-top">Documentation</div>
                         </a>
                     ` : ''}
                 </div>

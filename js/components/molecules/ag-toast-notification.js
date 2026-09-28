@@ -12,7 +12,7 @@ import { iconCheck, iconClose, iconWarning, iconInfo } from '../../ag-icons.js';
  * @element ag-toast-notification
  *
  * @attr {string} type - Type of toast: 'success', 'error', 'warning', 'info' (default: 'info')
- * @attr {string} title - Toast title
+ * @attr {string} heading - Toast title (the `title` property; `title` would be a tooltip)
  * @attr {string} message - Toast message
  * @attr {number} duration - Duration in ms before auto-hide (default: 3000)
  * @attr {boolean} show - Controls visibility
@@ -21,12 +21,12 @@ import { iconCheck, iconClose, iconWarning, iconInfo } from '../../ag-icons.js';
  * @fires toast-close - Fired when toast is closed
  *
  * @example
- * <toast-notification type="success" title="Saved" message="Configuration saved successfully" show></toast-notification>
+ * <toast-notification type="success" heading="Saved" message="Configuration saved successfully" show></toast-notification>
  */
 export class AgToastNotification extends LitElement {
     static properties = {
         type: { type: String },
-        title: { type: String },
+        title: { type: String, attribute: 'heading' },
         message: { type: String },
         duration: { type: Number },
         show: { type: Boolean, reflect: true }

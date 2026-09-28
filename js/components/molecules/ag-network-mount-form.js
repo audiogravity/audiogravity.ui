@@ -212,7 +212,7 @@ export class AgNetworkMountForm extends LitElement {
                                 <span class="ag-nmf-row-path">//${m.host}/${m.share} → ${m.mountpoint}</span>
                                 ${m.in_use ? html`<span class="badge warning">LIBRARY</span>` : nothing}
                                 <span class="badge ${m.mounted ? 'success' : 'neutral'}">${m.mounted ? 'MOUNTED' : 'ON-DEMAND'}</span>
-                                <button class="ag-nmf-remove" title="Remove share"
+                                <button class="ag-nmf-remove" aria-label="Remove share"
                                         ?disabled=${this._busy}
                                         @click=${() => this._remove(m)}>
                                     ${svgIcon(iconTrash)}

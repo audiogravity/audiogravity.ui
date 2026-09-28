@@ -1,7 +1,7 @@
 /**
  * @module license-docs
  * @description Static HTML content for the License Terms modal (options + EULA).
- * Displayed via UIComponents.InfoModal in ag-license-status.
+ * Displayed via UIComponents.InfoModal in ag-license-status (EDITIONS & LICENSE).
  */
 
 export const LICENSE_TERMS_TITLE = 'Editions & License';
@@ -9,9 +9,8 @@ export const LICENSE_TERMS_TITLE = 'Editions & License';
 export const LICENSE_TERMS_HTML = `
     <h3 style="margin:0 0 .6em">License Options</h3>
 
-    <p>Audiogravi<sup>ty</sup> is available in three tiers: a <strong>30-day trial</strong> with full access,
-    a free <strong>Starter Edition</strong> that activates automatically when the trial ends,
-    and a <strong>Pro License</strong> — a one-time purchase that permanently unlocks all features.</p>
+    <p>Audiogravi<sup>ty</sup> comes in two editions — a free <strong>Starter Edition</strong> and a
+    <strong>Pro License</strong> — and every install starts with a <strong>30-day trial</strong> of Pro.</p>
 
     <h4 style="margin:1em 0 .4em">Trial — 30 days</h4>
     <p>Full access to every feature, automatically activated on first run. No action required.
@@ -22,25 +21,35 @@ export const LICENSE_TERMS_HTML = `
     to run and monitor your audio system:</p>
     <ul style="margin:.4em 0;padding-left:1.4em">
         <li><strong>Profiles</strong> — one-click switching between pre-configured audio chain scenarios; activates required services and stops conflicting ones automatically</li>
-        <li><strong>Services</strong> — real-time monitoring and control of audio services (start / stop / restart / enable at boot) with live CPU, memory and I/O metrics</li>
-        <li><strong>Software</strong> — install, update and remove audio packages from the Software tab</li>
+        <li><strong>Services</strong> — real-time monitoring and control of audio services (start / stop / restart / enable at boot) with live CPU, memory and I/O metrics, each with a sparkline of its recent values</li>
+        <li><strong>Software</strong> — install, update and remove audio packages with dry-run simulation before committing changes</li>
         <li><strong>System</strong> — hardware dashboard: CPU, temperature, memory, disk and network at a glance; full audio device inventory (ALSA cards, USB interfaces, subdevices)</li>
-        <li><strong>Users</strong> — role-based access management (Admin, User, Guest) with account creation, passwords and session history</li>
+        <li><strong>Users</strong> — role-based access management (Admin, User, Guest) with WebAuthn / passkeys login</li>
+        <li><strong>Push notifications</strong> — iOS, Android and desktop alerts when a service goes down, the processor overheats, a software update is available or a profile is activated</li>
+        <li><strong>Audio Services Config</strong> — safe in-place editing of each audio service's own configuration file, with a diff before saving, a basic syntax check and automatic backups</li>
+        <li><strong>Guided provisioning</strong> — generate a minimal, correct configuration for the whole stack (output, music library, network mounts) in a few clicks, instead of editing each service by hand (administrators only)</li>
+        <li><strong>DSD bit-perfect protection</strong> — automatic ALSA hardware volume lock during DSD playback</li>
+        <li><strong>Now Playing</strong> — display-only: shows current track, cover art, format and progress across all sources (transport controls require Pro)</li>
     </ul>
 
     <h4 style="margin:1em 0 .4em">Pro License — one-time payment, no subscription</h4>
     <p>Permanently unlocks all features. Bound to one installation on one machine.
     Includes all updates within the purchased major version (e.g. v1.x).
-    Existing holders receive a <strong>preferential upgrade price</strong> for new major versions.</p>
+    Existing holders receive a <strong>preferential upgrade price</strong> for new major versions.
+    Everything in Starter, plus:</p>
     <ul style="margin:.4em 0;padding-left:1.4em">
+        <li><strong>Player</strong> — full transport controls across all sources (MPD, Roon, AirPlay, UPnP, HQPlayer): play/pause, seek, next/prev, volume, repeat/shuffle and real-time Hi-Fi format readout (PCM / DSD, sample rate, bit depth, bitrate)</li>
+        <li><strong>Library</strong> — high-resolution music library for Roon, MPD, UPnP servers (MinimServer, upmpdcli), Qobuz, Tidal and HIGHRESAUDIO: album browsing, full-text search, queue management and output zone selection; <strong>UPnP Control Point</strong> to send audio directly to any DLNA/UPnP MediaRenderer on the network (amplifiers, networked speakers…)</li>
+        <li><strong>Output steering</strong> — switch between USB, Toslink and HDMI outputs without touching the streamer</li>
+        <li><strong>Internet radio</strong> — Radio Browser directory, custom stations, favourites with Hi-Res filtering</li>
+        <li><strong>HQPlayer DSP remote</strong> — change filter, noise shaper, output mode and volume from the couch, with automatic network discovery</li>
+        <li><strong>Audio Pipeline</strong> — interactive DAG visualisation of the full signal chain from source to DAC: full-resolution badge on the link to the DAC, format per link, real-time output steering without stopping playback</li>
         <li><strong>Systemd Configuration</strong> — fine-tune audio service drop-ins: CPU affinity, SCHED_FIFO / RR priority, MEMLOCK and RTPRIO — eliminates scheduling jitter for bit-perfect, glitch-free playback</li>
-        <li><strong>Performance Optimization</strong> — per-core CPU governor control, real-time thermal throttle detection, µs-scale latency benchmarks (cyclictest) and live RT process monitor (MPD, Roon, shairport-sync scheduling class and priority)</li>
-        <li><strong>Audio Services Configuration</strong> — safe in-place editing of audio service configuration files (MPD, Roon, AirPlay, upmpdcli…) with live syntax validation</li>
-        <li><strong>Audio Pipeline</strong> — interactive DAG visualisation of the full signal chain from source to DAC: bit-perfection badge, format (bit depth / sample rate) and latency per link, real-time output steering without stopping playback</li>
-        <li><strong>Player</strong> — unified playback control across all sources (MPD, Roon, AirPlay, UPnP): transport controls, seek, volume, cover art and real-time Hi-Fi format readout (PCM / DSD / MQA, sample rate, bit depth, bitrate)</li>
-        <li><strong>Library</strong> — high-resolution music library for Roon, MPD, UPnP servers (MinimServer, upmpdcli), Qobuz and Tidal: album browsing, full-text search, queue management and output zone selection. Qobuz and Tidal require an active subscription to their respective services.</li>
+        <li><strong>Performance Optimization</strong> — per-core CPU governor control, real-time thermal throttle detection, µs-scale latency benchmarks (cyclictest) and live RT process monitor</li>
+        <li><strong>Sleep timer</strong> — automatic pause after a set duration</li>
     </ul>
-    <p style="margin:.6em 0 0;font-size: var(--font-size-sm);color:inherit;opacity:.7">Recommended platform: Linux Debian / DietPi. Other Linux distributions may work but are not officially supported.</p>
+    <p style="margin:.6em 0 0;font-size: var(--font-size-sm);color:inherit;opacity:.7">Qobuz, Tidal and HIGHRESAUDIO require an active subscription to their respective services.
+    Recommended platform: Linux Debian / DietPi. Other Linux distributions may work but are not officially supported.</p>
 
     <table style="width:100%;border-collapse:collapse;font-size: var(--font-size-sm);margin-top:1.4em">
         <thead>
@@ -52,30 +61,29 @@ export const LICENSE_TERMS_HTML = `
             </tr>
         </thead>
         <tbody>
-            <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.3em .6em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">General</td>
-            </tr>
             <tr><td style="padding:.3em .6em">Cost</td><td style="text-align:center">Free</td><td style="text-align:center">Free</td><td style="text-align:center">One-time</td></tr>
             <tr><td style="padding:.3em .6em">Duration</td><td style="text-align:center">30 days</td><td style="text-align:center">Unlimited</td><td style="text-align:center">Unlimited</td></tr>
             <tr><td style="padding:.3em .6em">Activation</td><td style="text-align:center">Automatic</td><td style="text-align:center">Automatic</td><td style="text-align:center">Manual</td></tr>
             <tr><td style="padding:.3em .6em">Updates</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">v1.x included</td></tr>
-            <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.6em .6em .3em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Starter features</td>
-            </tr>
             <tr><td style="padding:.3em .6em">Profiles</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Services</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Software</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">System</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
-            <tr><td style="padding:.3em .6em">Users</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
-            <tr style="border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent)">
-                <td style="padding:.6em .6em .3em;font-size: var(--font-size-xs);text-transform:uppercase;opacity:.6;letter-spacing:.04em" colspan="4">Pro features</td>
-            </tr>
-            <tr><td style="padding:.3em .6em">Player</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Users &amp; WebAuthn</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Push notifications</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Now Playing (display)</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Player (controls)</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Library</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Output steering</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Internet radio</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">HQPlayer DSP</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
             <tr><td style="padding:.3em .6em">Audio Pipeline</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
-            <tr><td style="padding:.3em .6em">Audio Services Configuration</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
-            <tr><td style="padding:.3em .6em">Systemd Configuration</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
-            <tr><td style="padding:.3em .6em">Performance Optimization</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Audio Services Config</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Guided provisioning</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Systemd Config</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Performance</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">DSD bit-perfect</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+            <tr><td style="padding:.3em .6em">Sleep timer</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">✓</td></tr>
         </tbody>
     </table>
 

@@ -14,7 +14,7 @@
  *
  * @attr {string}  cover        - Cover URL (empty → ag-library-cover shows fallback)
  * @attr {string}  fallback     - Fallback glyph passed to ag-library-cover (see its docs)
- * @attr {string}  title        - Main label
+ * @attr {string}  heading      - Main label (the `title` property; `title` would be a tooltip)
  * @attr {string}  subtitle     - Secondary label (optional)
  * @attr {boolean} actionable   - When true, render the trailing "+ add" button
  * @attr {string}  action-label - aria/tooltip for the action button (default: "Add to queue")
@@ -55,7 +55,7 @@ export class AgLibraryListRow extends LitElement {
     static properties = {
         cover:       { type: String },
         fallback:    { type: String },
-        title:       { type: String },
+        title:       { type: String, attribute: 'heading' },
         subtitle:    { type: String },
         actionable:  { type: Boolean },
         actionLabel: { type: String, attribute: 'action-label' },

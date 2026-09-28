@@ -1,7 +1,7 @@
 /**
  * @module LibraryQueue
  * @description Styles for ag-library-queue: context label, Now Playing block,
- * queue list rows, action buttons and tooltips.
+ * queue list rows and action buttons.
  */
 
 .lib-queue-action {
@@ -19,34 +19,6 @@
 .lib-queue-action:disabled {
     cursor: not-allowed;
     opacity: .6;
-    pointer-events: none;
-}
-
-.lib-queue-tip {
-    position: relative;
-    display: inline-block;
-}
-
-.lib-queue-tip:hover::after,
-.lib-queue-tip:focus-within::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    right: 0;
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    padding: 6px 10px;
-    border-radius: var(--radius-queue-tip);
-    font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
-    white-space: normal;
-    max-width: 240px;
-    line-height: 1.4;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
     pointer-events: none;
 }
 

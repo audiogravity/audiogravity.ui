@@ -1,9 +1,14 @@
 /**
- * Unit tests for ag-user-modal.js — password trim fix (P3).
- * Fix: password is now .trim()-ed before validation so whitespace-only
- * passwords are rejected by the existing length < 6 check.
+ * Unit tests for ag-user-modal.js.
+ *
+ * Covers:
+ * 1. password trim fix (P3): whitespace-only passwords are rejected by the
+ *    existing length < 6 check
+ * 2. the role and enabled state are locked for the system account and for your
+ *    own, and the window says why next to them (it used to say it in a tooltip)
  */
 import { describe, it, expect, vi } from 'vitest';
+import { flat } from '../../test-utils.js';
 
 // Stub LitElement so the class can be imported in jsdom
 vi.mock('lit', () => ({
@@ -11,7 +16,7 @@ vi.mock('lit', () => ({
         dispatchEvent(e) { this._lastEvent = e; }
         requestUpdate() {}
     },
-    html: (s) => s,
+    html: (strings, ...values) => ({ strings, values }),
     nothing: '',
 }));
 
@@ -76,5 +81,41 @@ describe('AgUserModal._handleSave — password trim (Fix P3)', () => {
         modal.dispatchEvent = (e) => { if (e.type === 'error') errors.push(e.detail); };
         modal._handleSave();
         expect(errors[0]).toMatch(/3 characters/i);
+    });
+});
+
+describe('fields locked for the system account and your own', () => {
+    const ME = { username: 'dora', role: 'admin' };
+
+    it.each([
+        ['creating an account', null, null],
+        ['the system account', { username: 'admin' },
+            { role: 'The system account keeps its role.', enabled: 'The system account cannot be disabled.' }],
+        ['your own account', { username: 'dora' },
+            { role: 'You cannot change your own role.', enabled: 'You cannot disable your own account.' }],
+        ['someone else', { username: 'erin' }, null],
+    ])('%s', async (_, user, reasons) => {
+        const { lockedReasons } = await import('./ag-user-modal.js');
+        expect(lockedReasons(user, ME)).toEqual(reasons);
+    });
+
+    it('says why, under each greyed-out field', async () => {
+        const { AgUserModal } = await import('./ag-user-modal.js');
+        const modal = new AgUserModal();
+        modal.user = { username: 'dora', role: 'admin', enabled: true };
+        modal.currentUser = ME;
+        const out = flat(modal.render());
+        const role = out.indexOf('<p class="help-text">You cannot change your own role.</p>');
+        const enabled = out.indexOf('<p class="help-text">You cannot disable your own account.</p>');
+        expect(role).toBeGreaterThan(out.indexOf('<select'));
+        expect(enabled).toBeGreaterThan(out.indexOf('Account Enabled'));
+    });
+
+    it('shows nothing when both fields can change', async () => {
+        const { AgUserModal } = await import('./ag-user-modal.js');
+        const modal = new AgUserModal();
+        modal.user = { username: 'erin', role: 'user', enabled: true };
+        modal.currentUser = ME;
+        expect(flat(modal.render())).not.toContain('<p class="help-text">');
     });
 });

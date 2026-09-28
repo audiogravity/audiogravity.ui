@@ -217,7 +217,7 @@ export class AgLibraryRoonBrowser extends LitElement {
 
         return html`
             <ag-library-browser-topbar
-                title=${_levelTitle || 'Browse'}
+                heading=${_levelTitle || 'Browse'}
                 @browser-back=${() => this._browseBack()}
                 @browser-refresh=${() => this._browseReset()}
             ></ag-library-browser-topbar>

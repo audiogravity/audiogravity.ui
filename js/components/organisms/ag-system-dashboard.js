@@ -245,7 +245,7 @@ export class AgSystemDashboard extends LitElement {
                 <!-- Connection Tile -->
                 <ag-system-tile 
                     type="connection" 
-                    title="SSE Stream" 
+                    heading="SSE Stream" 
                     icon="icon-wifi"
                     ?connected=${this.isConnected}
                     connection-id=${AppState.connectionId || ''}>
@@ -253,7 +253,7 @@ export class AgSystemDashboard extends LitElement {
 
                 <!-- CPU Tile -->
                 <ag-system-tile 
-                    title="CPU Usage" 
+                    heading="CPU Usage" 
                     icon="icon-chip" 
                     unit="%" 
                     detail="Load: ${this.metrics.load_avg.map(n => typeof n === 'number' ? n.toFixed(2) : n).join(', ')}"
@@ -267,7 +267,7 @@ export class AgSystemDashboard extends LitElement {
 
                 <!-- Temperature Tile -->
                 <ag-system-tile 
-                    title="Temperature" 
+                    heading="Temperature" 
                     icon="icon-thermometer" 
                     unit="°C" 
                     detail="${this.metrics.temperature > 80 ? 'Critical Overheat!' : 'Core Temp'}"
@@ -281,7 +281,7 @@ export class AgSystemDashboard extends LitElement {
 
                 <!-- Memory Tile -->
                 <ag-system-tile 
-                    title="Memory" 
+                    heading="Memory" 
                     icon="icon-memory" 
                     unit="%" 
                     detail="${memUsedGB} GB / ${memTotalGB} GB"
@@ -295,7 +295,7 @@ export class AgSystemDashboard extends LitElement {
 
                 <!-- Disk Tile -->
                 <ag-system-tile 
-                    title="Disk Usage" 
+                    heading="Disk Usage" 
                     icon="icon-drive" 
                     unit="%" 
                     detail="${this.metrics.disk_used_gb?.toFixed(1) || '--'} GB / ${this.metrics.disk_total_gb?.toFixed(1) || '--'} GB"
@@ -309,7 +309,7 @@ export class AgSystemDashboard extends LitElement {
 
                 <!-- Network Tile -->
                 <ag-system-tile 
-                    title="Network I/O" 
+                    heading="Network I/O" 
                     icon="icon-connection" 
                     unit="kB/s" 
                     detail="↑ ${this.metrics.network_sent_detail?.toFixed(1) || '0.0'} / ↓ ${this.metrics.network_recv_detail?.toFixed(1) || '0.0'}"
@@ -323,7 +323,7 @@ export class AgSystemDashboard extends LitElement {
                 
                 <!-- Uptime Tile -->
                 <ag-system-tile 
-                    title="Uptime" 
+                    heading="Uptime" 
                     icon="icon-clock" 
                     unit="Session" 
                     detail="Since last boot"

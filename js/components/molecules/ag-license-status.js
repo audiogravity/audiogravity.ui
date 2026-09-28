@@ -94,7 +94,9 @@ export class AgLicenseStatus extends LitElement {
             if (data?.paypal_url)    this._paypalUrl    = data.paypal_url;
             if (data?.license_price) this._price        = data.license_price;
             if (data?.upgrade_price) this._upgradePrice = data.upgrade_price;
-            if (data?.portal_url)    this._portalUrl    = data.portal_url;
+            // Checked where it arrives, so that every link built from it is safe: an
+            // attribute binding does not stop a javascript: URL from running on click.
+            if (/^https?:\/\//i.test(data?.portal_url || '')) this._portalUrl = data.portal_url;
             if (data?.contact_email) this._contactEmail = data.contact_email;
         } catch {
             // Non-blocking — component renders without portal/contact info if unreachable
@@ -260,9 +262,8 @@ export class AgLicenseStatus extends LitElement {
             pending:           { cls: 'info',    label: 'Server: Checking…' },
         };
         const { cls, label } = MAP[s.status] ?? { cls: 'info', label: `Server: ${s.status}` };
-        const title = s.checked_at ? `Last checked: ${new Date(s.checked_at).toLocaleString()}` : '';
 
-        return html`<span class="badge ${cls}" title="${title}" style="font-size:var(--font-size-xs)">${label}</span>`;
+        return html`<span class="badge ${cls}" style="font-size:var(--font-size-xs)">${label}</span>`;
     }
 
     _renderProgress() {
@@ -281,11 +282,10 @@ export class AgLicenseStatus extends LitElement {
     }
 
     /**
-     * The three steps to owning a licence. Shared by the purchase panel and the
-     * "About Licensing" modal, which is why the price is a parameter rather than a
-     * removal: the panel states it in the sentence right above these steps, so
-     * repeating it there is noise — but the modal has no other figure, and a starter
-     * box's panel has none either.
+     * The three steps to owning a licence, shown in the purchase panel. The price is a
+     * parameter rather than a removal: the panel states it in the sentence right above
+     * these steps, so repeating it there is noise — except on a starter box, whose
+     * sentence is about the trial having ended and names no figure.
      * @param {boolean} [withPrice=true] - State the amount in the payment step.
      * @returns {import('lit').TemplateResult}
      */
@@ -313,29 +313,6 @@ export class AgLicenseStatus extends LitElement {
             <span style="color:var(--text-tertiary);font-size:var(--font-size-xs)">
                 Need help? <a href="mailto:${this._contactEmail}" style="color:var(--text-secondary)">${this._contactEmail}</a>
             </span>`;
-    }
-
-    /** Show an informational modal about the license system. */
-    _showInfo() {
-        // Validate the portal URL before embedding it to prevent javascript: injection;
-        // the rest is a Lit template so every interpolation is auto-escaped.
-        const safePortalUrl = /^https?:\/\//i.test(this._portalUrl || '') ? this._portalUrl : null;
-        const content = html`
-            <p><strong>Trial license</strong> — ${this._status?.trial_days_total ?? 30} days of full access, automatically activated on first run. No action required.</p>
-            <p><strong>Lifetime license</strong> — a single-device <code>.lic</code> file cryptographically tied to this device's hardware fingerprint. One-time payment, no expiry, no subscription.</p>
-            <h4 style="margin:1em 0 .4em">How to get a license</h4>
-            ${this._renderAcquisitionSteps()}
-            ${safePortalUrl ? html`
-                <h4 style="margin:1em 0 .4em">Lost or re-installing?</h4>
-                <p style="margin:0">If you already purchased a license and need to download your <code>.lic</code> file (e.g. after reinstalling Audiogravi<sup>ty</sup>), use the self-service portal — no account required, just your purchase email and this Device ID: <a href=${safePortalUrl} target="_blank" rel="noopener noreferrer">Download .lic →</a></p>
-                ${this._contactEmail ? html`
-                    <p style="margin:.4em 0 0">If you reinstalled the operating system or moved to another machine, write to <a href="mailto:${this._contactEmail}">${this._contactEmail}</a> instead.</p>
-                ` : nothing}
-            ` : nothing}
-            <h4 style="margin:1em 0 .4em">About the Device ID</h4>
-            <p style="margin:0">A SHA-256 fingerprint of this device's hardware, used to bind the license to this specific machine. Displayed for reference — you do not need it to activate.</p>
-        `;
-        window.UIComponents?.InfoModal?.show('About Licensing', content);
     }
 
     /**
@@ -381,7 +358,7 @@ export class AgLicenseStatus extends LitElement {
                            href="${this._portalUrl}"
                            target="_blank"
                            rel="noopener noreferrer"
-                           title="Download the .lic for an order you have already paid for">
+>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconExternalLink}</svg>
                             License portal
                         </a>` : nothing}
@@ -431,7 +408,7 @@ export class AgLicenseStatus extends LitElement {
                                href="${this._portalUrl}#upgrade"
                                target="_blank"
                                rel="noopener noreferrer"
-                               title="Activate your upgrade order and download the new .lic">
+>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconExternalLink}</svg>
                                 Upgrade portal
                             </a>` : nothing}
@@ -482,7 +459,7 @@ export class AgLicenseStatus extends LitElement {
                            href="${this._portalUrl}"
                            target="_blank"
                            rel="noopener noreferrer"
-                           title="Re-download your .lic file (email + device ID required)">
+>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
                             Download .lic
                         </a>` : nothing}
@@ -503,15 +480,10 @@ export class AgLicenseStatus extends LitElement {
     }
 
     /** @private */
-    _renderHeader(showInfo = false) {
+    _renderHeader() {
         return html`
             <div class="tab-title-container">
                 <h2>LICENSE</h2>
-                ${showInfo ? html`
-                    <span class="badge info clickable"
-                          style="margin-right: var(--spacing-sm);"
-                          @click=${this._showInfo}>INFO</span>
-                ` : nothing}
                 <div style="margin-left:auto;display:flex;gap:var(--spacing-sm)">
                     <button class="btn-action btn-action--ghost compact" @click=${this._showLicenseTerms}>EDITIONS & LICENSE</button>
                     <button class="btn-action compact"
@@ -534,7 +506,7 @@ export class AgLicenseStatus extends LitElement {
         }
         if (this._error) {
             return html`
-                ${this._renderHeader(true)}
+                ${this._renderHeader()}
                 <div class="system-tile" style="margin-bottom: var(--spacing-xl); max-width: 100%;">
                     <p style="color: var(--color-error-text); margin: 0;">${this._error}</p>
                 </div>
@@ -547,7 +519,7 @@ export class AgLicenseStatus extends LitElement {
             : '—';
 
         return html`
-            ${this._renderHeader(true)}
+            ${this._renderHeader()}
 
             <div class="system-tile" style="margin-bottom: var(--spacing-xl); max-width: 100%;">
                 <!-- flex-start, against .profile-info-row's space-between: this row holds
@@ -573,10 +545,10 @@ export class AgLicenseStatus extends LitElement {
                     <span class="info-label" style="flex-shrink: 0;">Device ID</span>
                     <span style="display: flex; align-items: center; gap: var(--spacing-sm);">
                         <code style="font-size: var(--font-size-xs);"
-                              title="${device_id}">${shortId}</code>
+>${shortId}</code>
                         <button class="btn-action btn-action--ghost compact"
                                 @click=${this._copyDeviceId}
-                                title="Copy full device ID">
+>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCopy}</svg>
                             ${this._copied ? 'Copied' : 'Copy'}
                         </button>
@@ -590,7 +562,7 @@ export class AgLicenseStatus extends LitElement {
                             <code style="font-size: var(--font-size-xs);">${order_id}</code>
                             <button class="btn-action btn-action--ghost compact"
                                     @click=${() => copyToClipboard(order_id)}
-                                    title="Copy Order ID">
+>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCopy}</svg>
                                 Copy
                             </button>
