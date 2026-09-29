@@ -48,6 +48,7 @@ something its `alt` text does not say: edit the chapter, then run
 | `AG_MANUAL_SRC` | `../audiogravity.site/docs/manual` | The manual, as `scripts/sync-manual.js` reads it |
 | `AG_MANUAL_SHOTS_OUT` | `$TMPDIR/ag-manual-shots` | Where the figures are written |
 | `AG_SERVICES_SETTLE` | `7000` | Milliseconds on the Services tab before `services` is taken |
+| `AG_PERFORMANCE_SETTLE` | `7000` | Milliseconds on the Performance tab before `cpu-cards` is taken: its bars need minutes to fill |
 
 ## Where each page comes from
 

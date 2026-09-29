@@ -308,6 +308,32 @@ export const RECIPES = {
             return { clip: await box(page, 'ag-network-test') };
         },
     },
+    'cpu-cards': {
+        tab: 'performance', height: 1400,
+        // Each card draws one bar per sample, a sample every 2 to 30 s: minutes pass before
+        // the bars say anything. AG_PERFORMANCE_SETTLE (ms) lengthens the wait. The first
+        // two cards only: the buttons under the grid come after every core's card.
+        settle: Number(process.env.AG_PERFORMANCE_SETTLE) || 7000,
+        async run(page) {
+            const cards = page.locator('ag-governor-card');
+            await cards.first().waitFor({ timeout: 15000 });
+            return { clip: union(await boxOf(cards.nth(0)), await boxOf(cards.nth(1))) };
+        },
+    },
+    'latency-test': {
+        tab: 'performance', height: 2600,
+        // A real test, run on the box with its default settings — one thread, 10 000 loops,
+        // about a second at real-time priority 99: not while music plays.
+        needs: ['nothing playing'],
+        async run(page) {
+            const test = page.locator('ag-latency-test');
+            await test.scrollIntoViewIfNeeded();
+            await test.getByRole('button', { name: /^test$/i }).click();
+            await test.locator('.result-chart').waitFor({ timeout: 60000 });
+            await page.waitForTimeout(1500);        // the result's figures fade in
+            return { clip: await box(page, 'ag-latency-test') };
+        },
+    },
     'system-info': {
         tab: 'system', height: 1400,
         async run(page) { return { clip: await box(page, 'ag-system-info') }; },
