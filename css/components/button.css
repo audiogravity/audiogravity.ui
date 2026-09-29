@@ -308,6 +308,34 @@ a.action-btn:hover {
 }
 
 /* =====================
+   PLAIN BUTTONS
+   ===================== */
+
+/**
+ * @component .plain-btn
+ * @description A real <button> that draws as something else — a badge, an icon, a
+ * dot. It stays a button for what the browser gives one: Tab reaches it, Enter and
+ * Space press it, a screen reader announces it. What the browser also gives it — a
+ * face, a border, its own font, colour and centred text — is dropped here, and the
+ * element's own class draws it. `:where()` keeps this rule at no weight, so that
+ * class wins wherever its file loads. Padding and margin are already zeroed by the
+ * reset at the top of base.css.
+ */
+:where(.plain-btn) {
+    appearance: none;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    text-transform: inherit;
+    text-indent: inherit;
+    text-shadow: inherit;
+    text-align: inherit;
+}
+
+/* =====================
    CLEAR BUTTONS
    ===================== */
 .clear-btn {

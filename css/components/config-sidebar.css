@@ -150,7 +150,9 @@
     gap: 4px;
 }
 
-.version-info span {
+/* The API icon is a button: laid out as the spans around it. */
+.version-info span,
+.version-info .version-icon {
     display: flex;
     justify-content: space-between;
     align-items: center;

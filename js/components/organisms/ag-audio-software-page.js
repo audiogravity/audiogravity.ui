@@ -14,7 +14,6 @@
  * @dependency ag-logs-modal (via ID)
  */
 import { LitElement, html } from 'lit';
-import { onActivateKey } from '../utils-lit.js';
 import { getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-filter-bar.js';
 import { iconRepeat, iconDownload } from '../../ag-icons.js';
@@ -1049,20 +1048,22 @@ export class AgAudioSoftwarePage extends LitElement {
                 <div class="tab-title-container">
                     <h2>AUDIO SOFTWARE</h2>
                     ${!isGuest() ? html`
-                    <span class="badge warning ${this._isRefreshing ? 'animate-pulse' : 'clickable'}" role="button" tabindex="0"
+                    <!-- While a refresh runs, it is announced unavailable and a press does nothing.
+                         It is not made disabled: a disabled button throws the focus off itself, and
+                         a keyboard or screen-reader user loses their place (measured in Chromium). -->
+                    <button class="badge warning plain-btn ${this._isRefreshing ? 'animate-pulse' : 'clickable'}"
                           aria-label="Refresh package config (re-probe sources)" aria-disabled=${this._isRefreshing ? 'true' : 'false'}
-                          @click=${this._isRefreshing ? null : this._refreshConfig}
-                          @keydown=${this._isRefreshing ? null : onActivateKey(this._refreshConfig)}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></span>
-                    <span class="badge neutral clickable" role="button" tabindex="0"
+                          @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></button>
+                    <button class="badge neutral clickable plain-btn"
                           aria-label="Download resolved configuration"
-                          @click=${this._downloadConfig} @keydown=${onActivateKey(this._downloadConfig)}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
-                    <span class="badge success clickable ${this.isCheckingAll ? 'animate-pulse' : ''}" role="button" tabindex="0"
-                          @click=${this._checkAllUpdates} @keydown=${onActivateKey(this._checkAllUpdates)}>
+                          @click=${this._downloadConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></button>
+                    <button class="badge success clickable plain-btn ${this.isCheckingAll ? 'animate-pulse' : ''}"
+                          @click=${this._checkAllUpdates}>
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
-                    </span>
+                    </button>
                     ${this.packages.some(hasUpdates) ? html`
-                        <span class="badge error clickable" role="button" tabindex="0"
-                              @click=${this._handleUpdateAll} @keydown=${onActivateKey(this._handleUpdateAll)}>UPDATE ALL</span>
+                        <button class="badge error clickable plain-btn"
+                              @click=${this._handleUpdateAll}>UPDATE ALL</button>
                     ` : ''}
                     ` : ''}
                     ${isAdmin() ? html`
