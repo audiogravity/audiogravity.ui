@@ -349,7 +349,8 @@ export class AgSparkline extends LitElement {
             const top = hasCaption ? CAPTION_BAND : 1, room = baseline - 0.5 - top;
             body = first.points.map(p => {
                 const ratio = Math.min(1, Math.max(0, (p.value - lo) / span));
-                if (ratio === 0) return nothing;
+                // Even a measured zero keeps a 1 px bar: an empty slot is a gap, a
+                // moment nothing was measured, and a core idling at 0 % is not one.
                 const bh = Math.max(1, ratio * room);
                 return svg`<rect class=${p === current ? 'sparkline-bar is-last' : 'sparkline-bar'}
                     x="${p.slot * slotW + 0.5}" y="${baseline - 0.5 - bh}"

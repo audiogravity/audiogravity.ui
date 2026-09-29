@@ -23,7 +23,7 @@ import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
-import { SERVICE_METRICS_WINDOW, MAX_SAMPLE_GAP_MS, appendMeasured } from '../../core/metrics-window.js';
+import { SERVICE_METRICS_WINDOW, appendMeasured, isPause } from '../../core/metrics-window.js';
 import '../atoms/ag-filter-bar.js';
 import '../atoms/ag-health-bar.js';
 import '../molecules/ag-service-detail-modal.js';
@@ -279,7 +279,7 @@ export class AgServicesPage extends LitElement {
     _markGapIfPaused(serviceId, now) {
         const last = this._lastSampleAt[serviceId];
         const history = this.metricsHistory[serviceId];
-        if (history && last !== undefined && now - last > MAX_SAMPLE_GAP_MS) {
+        if (history && isPause(last, now)) {
             for (const metric of Object.keys(history)) {
                 history[metric] = appendMeasured(history[metric], null, SERVICE_METRICS_WINDOW);
             }

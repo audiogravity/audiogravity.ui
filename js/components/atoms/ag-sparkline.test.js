@@ -3,8 +3,8 @@
  *
  * What these variants promise the reader: only what was measured is drawn, where
  * it was measured. Three measurements sit in three slots on the right of the
- * window instead of stretching across it; a missing one is a gap, never a zero;
- * with auto-scale the scale starts at zero, so a flat line is a stable value and
+ * window instead of stretching across it; a missing one is a gap, never a zero —
+ * and, in bars, a zero is never a gap: it keeps a 1 px bar; with auto-scale the scale starts at zero, so a flat line is a stable value and
  * not a magnified wobble. The 'line' variant, used elsewhere, must not move.
  */
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
@@ -171,6 +171,15 @@ describe("'bars' variant", () => {
         expect(bars).toHaveLength(3);
         expect(bars[2].classList.contains('is-last')).toBe(true);
         expect(el.querySelectorAll('rect.is-last')).toHaveLength(1);
+    });
+
+    it('keeps a 1 px bar for a measured zero, and none for a gap', async () => {
+        // A core idling at 0 % must not look like a moment nothing was measured.
+        const el = await mount({ variant: 'bars', slots: 4, minValue: 0, maxValue: 100, data: [0, null, 0, 50] });
+        const bars = [...el.querySelectorAll('rect.sparkline-bar')];
+        expect(bars).toHaveLength(3);
+        expect(Number(bars[0].getAttribute('height'))).toBe(1);
+        expect(bars.map(b => Number(b.getAttribute('x')))).not.toContain(25.5);
     });
 
     it('marks no bar as current when the newest slot is empty', async () => {

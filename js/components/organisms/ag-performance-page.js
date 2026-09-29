@@ -28,6 +28,7 @@ import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
+import { CPU_CORE_METRICS_WINDOW, appendSample, appendSampleTime, isPause, spanOfLast } from '../../core/metrics-window.js';
 import '../../components/molecules/ag-rt-monitor.js';
 import '../atoms/ag-button.js';
 import './ag-card-grid.js';
@@ -52,6 +53,8 @@ export class AgPerformancePage extends LitElement {
         this.cpuGeneralInfo = null;
         this._loaded = false;
         this._cpuMetricsMap = new Map(); // Store real-time metrics and history
+        /** @type {number[]} Arrival time (ms) of each sample the cores' histories hold. */
+        this._historyTimes = [];
         /** @type {boolean[]|null} Per logical CPU: throttled since the previous monitoring tick. */
         this._cpuThrottled = null;
 
@@ -140,25 +143,26 @@ export class AgPerformancePage extends LitElement {
         // Which cores were throttled since the previous tick, as the core decided it;
         // null on a processor that exposes no throttle counter.
         this._cpuThrottled = Array.isArray(data.cpu_throttled) ? data.cpu_throttled : null;
-        
-        // Skip updates if animations are globally disabled
-        if (document.body.classList.contains('no-animations')) {
-            // We still update the raw values but maybe not as frequently? 
-            // Actually, for sparkline it matters less, but let's keep it simple.
-        }
+
+        // A pause in the stream (app hidden, offline): the next sample opens a gap, so
+        // samples minutes apart are not drawn side by side as if consecutive.
+        const now = Date.now();
+        const paused = isPause(this._historyTimes[this._historyTimes.length - 1], now);
+        this._historyTimes = appendSampleTime(this._historyTimes, now, paused, CPU_CORE_METRICS_WINDOW);
 
         data.cpu_per_core.forEach((usage, index) => {
-            // Mapping by index should be robust as psutil returns logical core order
+            // By position: psutil lists the CPUs /proc/stat shows, in order — the cpu_id
+            // while every CPU is online, not once one in the middle is taken offline.
+            // BACKLOG: see "Un processeur mis hors ligne décale les charges de la page
+            // Performance" in audiogravity.ops/BACKLOG.md.
             let metrics = this._cpuMetricsMap.get(index);
             if (!metrics) {
                 metrics = { usage: 0, temp: null, history: [] };
                 this._cpuMetricsMap.set(index, metrics);
             }
-            
+
             metrics.usage = usage;
-            const newHistory = [...metrics.history, usage];
-            if (newHistory.length > 30) newHistory.shift();
-            metrics.history = newHistory;
+            metrics.history = appendSample(metrics.history, usage, paused, CPU_CORE_METRICS_WINDOW);
 
             // Intelligent Temperature Mapping:
             // Find the CPU object for this index to get its core_id
@@ -174,7 +178,7 @@ export class AgPerformancePage extends LitElement {
                 }
             }
         });
-        
+
         // Optimization: only update if on performance tab
         if (AppState.currentTab === 'performance') {
             this.requestUpdate();
@@ -301,6 +305,7 @@ export class AgPerformancePage extends LitElement {
                                     .usage=${metrics.usage}
                                     .temp=${metrics.temp}
                                     .usageHistory=${metrics.history}
+                                    .usageSpan=${spanOfLast(this._historyTimes, metrics.history.length)}
                                     .throttled=${this._cpuThrottled?.[cpu.cpu_id] === true}>
                                 </ag-governor-card>
                             `;
