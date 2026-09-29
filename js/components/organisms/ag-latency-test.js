@@ -550,21 +550,24 @@ export class AgLatencyTest extends LitElement {
                 <div class="performance-section tab-zone">
                     <h2>Latency Test Result</h2>
                     <div class="test-result">
+                        <!-- The unit goes with the value, never in the label: labels are set in
+                             capitals, and the capital of "µ" is the Greek "Μ", which reads as an M —
+                             "(µs)" showed as "(MS)", milliseconds. -->
                         <div class="result-stats grid-fit grid-fit-150 mb-md">
                             <ag-stat-box variant="tertiary" custom-class="stagger-item animate-stagger" custom-style="--delay-index: 1"
-                                label="Min Latency (µs)" value-class="xlarge monospace"
+                                label="Min Latency" unit="µs" value-class="xlarge monospace"
                                 .value=${this._formatStat(this.resultData.stats.min_us)}>
                             </ag-stat-box>
                             <ag-stat-box variant="tertiary" custom-class="stagger-item animate-stagger" custom-style="--delay-index: 2"
-                                label="Avg Latency (µs)" value-class="xlarge monospace"
+                                label="Avg Latency" unit="µs" value-class="xlarge monospace"
                                 .value=${this._formatStat(this.resultData.stats.avg_us)}>
                             </ag-stat-box>
                             <ag-stat-box variant="tertiary" custom-class="stagger-item animate-stagger" custom-style="--delay-index: 3"
-                                label="Max Latency (µs)" value-class="xlarge monospace"
+                                label="Max Latency" unit="µs" value-class="xlarge monospace"
                                 .value=${this._formatStat(this.resultData.stats.max_us)}>
                             </ag-stat-box>
                             <ag-stat-box variant="tertiary" custom-class="stagger-item animate-stagger" custom-style="--delay-index: 4"
-                                label="Std Dev (µs)" value-class="xlarge monospace"
+                                label="Std Dev" unit="µs" value-class="xlarge monospace"
                                 .value=${this._formatStat(this.resultData.stats.stddev_us !== undefined ? this.resultData.stats.stddev_us : this.resultData.stats.std_dev_us)}>
                             </ag-stat-box>
                         </div>
