@@ -11,7 +11,7 @@ import './ag-card-grid.js';
 import '../molecules/ag-network-card.js';
 import '../molecules/ag-system-info.js';
 import '../molecules/ag-system-tile.js';
-import { SYSTEM_METRICS_WINDOW, MAX_SAMPLE_GAP_MS, isMeasured, appendMeasured, appendBounded } from '../../core/metrics-window.js';
+import { SYSTEM_METRICS_WINDOW, isMeasured, appendSample, appendSampleTime, isPause, spanOfLast } from '../../core/metrics-window.js';
 
 /**
  * System Dashboard Web Component
@@ -130,26 +130,12 @@ export class AgSystemDashboard extends LitElement {
     }
 
     /**
-     * The metric's series with one more sample: `value` when measured, else null (a gap).
-     * A new array, never the one a tile was handed at its last render.
-     * @param {string} metric - Key of this._historyStore.
-     * @param {*} value - This update's reading, as received.
-     * @returns {Array<number|null>}
-     */
-    _addHistory(metric, value) {
-        return appendMeasured(this._historyStore[metric], value, this.MAX_HISTORY);
-    }
-
-    /**
      * Time covered by the measurements a tile's chart currently holds.
      * @param {string} metric - Key of this._historyStore.
      * @returns {number} Milliseconds from its oldest to its newest measurement (0 below two).
      */
     _spanOf(metric) {
-        const n = this._historyStore[metric].length;
-        const times = this._historyTimes;
-        if (n < 2 || times.length < n) return 0;
-        return times[times.length - 1] - times[times.length - n];
+        return spanOfLast(this._historyTimes, this._historyStore[metric].length);
     }
 
     _handleSysinfoUpdate(data) {
@@ -176,8 +162,7 @@ export class AgSystemDashboard extends LitElement {
 
         // A pause in the stream (app hidden, offline): the next sample opens a gap.
         const now = Date.now();
-        const lastSample = this._historyTimes[this._historyTimes.length - 1];
-        const paused = lastSample !== undefined && now - lastSample > MAX_SAMPLE_GAP_MS;
+        const paused = isPause(this._historyTimes[this._historyTimes.length - 1], now);
 
         // Calculate network rate. Not across a pause: that would be an average over the
         // whole silence, drawn as if it were one sample's rate.
@@ -211,12 +196,10 @@ export class AgSystemDashboard extends LitElement {
         const measuredNow = Object.values(readings).some(isMeasured)
             || (data.network_bytes_sent !== undefined && data.network_bytes_recv !== undefined);
         if (measuredNow) {
-            if (paused) {
-                for (const metric of Object.keys(readings)) this._historyStore[metric] = this._addHistory(metric, null);
-                this._historyTimes = appendBounded(this._historyTimes, now, this.MAX_HISTORY);
+            for (const [metric, value] of Object.entries(readings)) {
+                this._historyStore[metric] = appendSample(this._historyStore[metric], value, paused, this.MAX_HISTORY);
             }
-            for (const [metric, value] of Object.entries(readings)) this._historyStore[metric] = this._addHistory(metric, value);
-            this._historyTimes = appendBounded(this._historyTimes, now, this.MAX_HISTORY);
+            this._historyTimes = appendSampleTime(this._historyTimes, now, paused, this.MAX_HISTORY);
         }
 
         this.metrics = updated;

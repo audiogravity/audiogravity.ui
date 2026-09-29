@@ -3,7 +3,7 @@
  */
 import { describe, it, expect , vi, afterEach} from 'vitest';
 import {
-    safeToFixed, formatMemory, formatUptime, formatRate,
+    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatRate,
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
@@ -61,6 +61,22 @@ describe('formatUptime', () => {
     });
     it('handles null', () => {
         expect(formatUptime(null)).toBe('--');
+    });
+});
+
+describe('formatWindowSpan', () => {
+    it('writes the time a chart covers in minutes, hours and days', () => {
+        expect(formatWindowSpan(10 * 60 * 1000)).toBe('10m');
+        expect(formatWindowSpan(65 * 60 * 1000)).toBe('1h 5m');
+    });
+
+    it('says "<1m" under a minute, rather than "0m"', () => {
+        expect(formatWindowSpan(25 * 1000)).toBe('<1m');
+    });
+
+    it('writes nothing when nothing is covered yet', () => {
+        expect(formatWindowSpan(0)).toBe('');
+        expect(formatWindowSpan(undefined)).toBe('');
     });
 });
 

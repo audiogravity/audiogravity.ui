@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { iconWifi, iconCpu, iconThermometer, iconMemory, iconHardDrive, iconConnection, iconClock } from '../../ag-icons.js';
 import '../atoms/ag-sparkline.js';
-import { formatUptime, safeToFixed } from '../utils-lit.js';
+import { formatWindowSpan, safeToFixed } from '../utils-lit.js';
 import { isMeasured } from '../../core/metrics-window.js';
 
 /** Map from legacy icomoon class name to SVG icon template. */
@@ -87,9 +87,7 @@ export class AgSystemTile extends LitElement {
      * @returns {string} e.g. "10m", "1h 5m", "<1m", or '' below two measurements.
      */
     _spanCaption() {
-        if (!(this.sparklineSpan > 0)) return '';
-        const seconds = this.sparklineSpan / 1000;
-        return seconds < 60 ? '<1m' : formatUptime(seconds);
+        return formatWindowSpan(this.sparklineSpan);
     }
 
     createRenderRoot() {

@@ -1,6 +1,8 @@
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
+import { CPU_CORE_METRICS_WINDOW } from '../../core/metrics-window.js';
+import { formatWindowSpan } from '../utils-lit.js';
 import '../atoms/ag-sparkline.js';
 
 /**
@@ -11,7 +13,10 @@ import '../atoms/ag-sparkline.js';
  * @prop {number} delayIndex - Index for staggered animations
  * @prop {number} usage - Current CPU usage percentage
  * @prop {number} temp - Current CPU temperature in °C
- * @prop {Array} usageHistory - Historical usage values for sparkline
+ * @prop {Array} usageHistory - Load samples, oldest first; null = not measured (a gap).
+ *     Drawn as one bar per sample on a 0–100 % scale shared by every core, so that the
+ *     cards compare at a glance.
+ * @prop {number} usageSpan - Milliseconds the held samples cover, written beside "Load".
  * @prop {boolean} throttled - The core was throttled for heat since the previous monitoring
  *     tick. Decided by the core (core/cpu_throttle.py), which keeps the counts between two
  *     looks: this card is rebuilt on every reload of the tab, so it never had a previous
@@ -27,6 +32,7 @@ export class AgGovernorCard extends LitElement {
         usage: { type: Number },
         temp: { type: Number },
         usageHistory: { type: Array },
+        usageSpan: { type: Number },
         throttled: { type: Boolean }
     };
 
@@ -35,6 +41,7 @@ export class AgGovernorCard extends LitElement {
         this.usage = 0;
         this.temp = null;
         this.usageHistory = [];
+        this.usageSpan = 0;
         this.throttled = false;
     }
 
@@ -88,15 +95,19 @@ export class AgGovernorCard extends LitElement {
         if (this.delayIndex !== undefined) styles.push(`--delay-index: ${this.delayIndex}`);
         if (this.cpu.coreGroupIndex !== undefined) styles.push(`--group-index: ${this.cpu.coreGroupIndex}`);
         const tileStyle = styles.join('; ');
+        const span = formatWindowSpan(this.usageSpan);
 
         return html`
             <div class=${classMap(tileClasses)} style=${tileStyle}>
+                <!-- One line, "CPU n" at the left and its socket and core at the right: the
+                     line this frees goes to the load chart, so its bars are taller at the
+                     same card height. -->
                 <div class="governor-header">
-                    <div>
-                        <div class="cpu-id">CPU ${this.cpu.cpu_id}</div>
-                        <div class="cpu-details">Socket: ${this.cpu.physical_id}, Core: ${this.cpu.core_id}${this.cpu.threadLabel || ''}</div>
+                    <div class="cpu-id">
+                        CPU ${this.cpu.cpu_id}
+                        ${this.throttled ? html`<span class="throttled-badge">THROTTLED</span>` : nothing}
                     </div>
-                    ${this.throttled ? html`<span class="throttled-badge">THROTTLED</span>` : nothing}
+                    <div class="cpu-details">Socket: ${this.cpu.physical_id}, Core: ${this.cpu.core_id}${this.cpu.threadLabel || ''}</div>
                 </div>
                 
                 <div class="cpu-metrics-row">
@@ -110,16 +121,16 @@ export class AgGovernorCard extends LitElement {
 
                 <div class="cpu-usage-container">
                     <div class="cpu-usage-label">
-                        <span>Load</span>
+                        <span>Load${span ? html` <span class="cpu-usage-span">· ${span}</span>` : nothing}</span>
                         <span>${this.usage.toFixed(1)}%</span>
                     </div>
                     <div class="cpu-sparkline">
-                        <ag-sparkline 
-                            .data=${this.usageHistory} 
-                            line-color="var(--chart-cpu)" 
-                            line-width="1.5" 
-                            auto-scale 
-                            min-value="0" 
+                        <ag-sparkline
+                            variant="bars"
+                            slots=${CPU_CORE_METRICS_WINDOW}
+                            .data=${this.usageHistory}
+                            line-color="var(--chart-cpu)"
+                            min-value="0"
                             max-value="100">
                         </ag-sparkline>
                     </div>

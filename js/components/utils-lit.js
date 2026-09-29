@@ -326,6 +326,17 @@ export const formatUptime = (seconds) => {
 };
 
 /**
+ * The time a chart's window covers, as written beside it.
+ * @param {number} ms - Milliseconds from its oldest to its newest measurement.
+ * @returns {string} e.g. "10m", "1h 5m", "<1m", or '' when nothing is covered yet.
+ */
+export const formatWindowSpan = (ms) => {
+    if (!(ms > 0)) return '';
+    const seconds = ms / 1000;
+    return seconds < 60 ? '<1m' : formatUptime(seconds);
+};
+
+/**
  * Format ISO timestamp to relative time or absolute time
  * @param {string} isoString - ISO 8601 timestamp
  * @returns {string} Formatted time (e.g., "Just now", "5m ago", "2h ago")

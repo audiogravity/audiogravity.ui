@@ -88,11 +88,32 @@
     padding: calc(var(--spacing-md) - 1px);
 }
 
+/* "CPU n" at the left, socket and core at the right, always on one line: the card keeps
+   its height. Where both do not fit — the THROTTLED badge on a narrow card — the details
+   are cut short with an ellipsis rather than pushed onto a second line. */
 .governor-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    column-gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
+}
+
+/* The THROTTLED badge follows the CPU number. */
+.cpu-id {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing-xs);
+    white-space: nowrap;
+}
+
+.cpu-details {
+    min-width: 0;
+    overflow: hidden;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .governor-cpu {
@@ -181,8 +202,16 @@
     justify-content: space-between;
 }
 
+/* The time the bars cover, written as on the System tiles ("10m", not "10M"). */
+.cpu-usage-span {
+    text-transform: none;
+}
+
+/* 24 px plus the line the one-line header freed: the card keeps its height and the bars
+   take it. A browser without the `lh` unit keeps the 24 px. */
 .cpu-sparkline {
     height: 24px;
+    height: calc(24px + 1lh);
     width: 100%;
     margin-top: 2px;
 }
@@ -195,7 +224,10 @@
 .throttled-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 6px;
+
+    /* 1 px above and below, not 2: the badge sits in the header's line of text, and
+       any taller it would make the card grow each time it appears. */
+    padding: 1px var(--spacing-sm);
     border-radius: var(--radius-xs);
     background: var(--color-warning-bg);
     color: var(--color-warning-text);

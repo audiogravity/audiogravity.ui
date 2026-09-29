@@ -7,7 +7,10 @@
  * every chart at once.
  */
 import { describe, it, expect } from 'vitest';
-import { isMeasured, appendBounded, appendMeasured, MAX_SAMPLE_GAP_MS } from './metrics-window.js';
+import {
+    isMeasured, appendBounded, appendMeasured, MAX_SAMPLE_GAP_MS, isPause, spanOfLast,
+    appendSample, appendSampleTime,
+} from './metrics-window.js';
 
 describe('isMeasured', () => {
     it('accepts any finite number, zero included', () => {
@@ -51,5 +54,48 @@ describe('appendMeasured', () => {
 describe('MAX_SAMPLE_GAP_MS', () => {
     it('lies above the core slowest rate (30 s), so a normal sample never opens a gap', () => {
         expect(MAX_SAMPLE_GAP_MS).toBeGreaterThan(30_000);
+    });
+});
+
+describe('isPause', () => {
+    it('sees no pause before the first sample', () => {
+        expect(isPause(undefined, 1_000_000)).toBe(false);
+    });
+
+    it('sees one only past the longest normal silence', () => {
+        expect(isPause(0, MAX_SAMPLE_GAP_MS)).toBe(false);
+        expect(isPause(0, MAX_SAMPLE_GAP_MS + 1)).toBe(true);
+    });
+});
+
+describe('appendSample and appendSampleTime', () => {
+    it('append the sample and its time, nothing more, on a steady stream', () => {
+        expect(appendSample([1, 2], 3, false, 5)).toEqual([1, 2, 3]);
+        expect(appendSampleTime([0, 10], 20, false, 5)).toEqual([0, 10, 20]);
+    });
+
+    it('put a gap before the sample after a pause, and time both, so series and times stay in step', () => {
+        expect(appendSample([1, 2], 3, true, 5)).toEqual([1, 2, null, 3]);
+        expect(appendSampleTime([0, 10], 200, true, 5)).toEqual([0, 10, 200, 200]);
+    });
+
+    it('store a reading that is not a measurement as a gap, and keep the window', () => {
+        expect(appendSample([1, 2, 3], undefined, false, 3)).toEqual([2, 3, null]);
+        expect(appendSample([1, 2, 3], 4, true, 3)).toEqual([3, null, 4]);
+    });
+});
+
+describe('spanOfLast', () => {
+    const times = [0, 10_000, 20_000, 50_000];
+
+    it('measures from the oldest to the newest of the samples a chart holds', () => {
+        expect(spanOfLast(times, 4)).toBe(50_000);
+        expect(spanOfLast(times, 2)).toBe(30_000);
+    });
+
+    it('covers nothing below two samples, or when the times do not reach back that far', () => {
+        expect(spanOfLast(times, 1)).toBe(0);
+        expect(spanOfLast(times, 0)).toBe(0);
+        expect(spanOfLast(times, 5)).toBe(0);
     });
 });
