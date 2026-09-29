@@ -12,6 +12,8 @@
  * 1. no tag in the app sets a title attribute (a `.title=` property binding is fine)
  * 2. no script sets one
  * 3. the check tells an attribute from a property binding
+ * 4. the tag reader reads a tag written across lines, with Lit expressions (and their
+ *    arrows) inside
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -44,5 +46,11 @@ describe('the check', () => {
         expect(TITLE_ATTRIBUTE.test('<ag-modal .title=${x}>')).toBe(false);
         expect(TITLE_ATTRIBUTE.test('<span data-title="x">')).toBe(false);
         expect(TITLE_ATTRIBUTE.test('<ag-modal heading="X">')).toBe(false);
+    });
+
+    it('reads a whole tag, across lines and past the arrow of a listener', () => {
+        // Stopped at the `>` of `=>`, the reader would never see a title written after it.
+        const tag = '<span\n  @click=${(e) => go(e)}\n  title="X">';
+        expect(openingTags(`${tag}x</span>`)).toEqual([tag]);
     });
 });

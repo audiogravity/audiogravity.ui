@@ -14,7 +14,6 @@
  * @dependency AppState - Used for connection status
  */
 import { LitElement, html, nothing } from 'lit';
-import { onActivateKey } from '../utils-lit.js';
 import { apiGet, apiPost } from '../../api.js';
 import { iconMinimize, iconMaximize } from '../../ag-icons.js';
 import { showToast, showConfirm, handleError } from '../../ui-helpers.js';
@@ -608,10 +607,9 @@ export class AgServicesPage extends LitElement {
             <div class="services-zone tab-zone">
                 <div class="tab-title-container">
                     <h2>SERVICES</h2>
-                    <span class="toggle-metrics-icon" role="button" tabindex="0"
+                    <button class="toggle-metrics-icon plain-btn"
                         aria-label="Toggle all metrics"
-                        @click=${this._toggleAllMetrics}
-                        @keydown=${onActivateKey(this._toggleAllMetrics)}>${this._renderToggleIcon()}</span>
+                        @click=${this._toggleAllMetrics}>${this._renderToggleIcon()}</button>
                 </div>
                 ${this._memoryUnavailable || this._accountingOff ? html`
                     <p class="services-note">

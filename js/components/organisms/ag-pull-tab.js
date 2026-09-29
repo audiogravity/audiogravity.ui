@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'lit';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { onActivateKey } from '../utils-lit.js';
 
 /**
  * @module AgPullTab
@@ -88,7 +87,7 @@ export class AgPullTab extends LitElement {
     }
 
     /**
-     * The outer div is the TOUCH TARGET, not the visible tab.
+     * The outer button is the TOUCH TARGET, not the visible tab.
      *
      * It stays anchored at `bottom:0` and aligns its content to `flex-end`, so the
      * visible 18 px bar keeps touching the screen edge while the extra height lands
@@ -109,18 +108,16 @@ export class AgPullTab extends LitElement {
         if (!this._visible) return nothing;
 
         return html`
-            <div
-                role="button"
-                tabindex="0"
+            <button
+                class="plain-btn"
                 aria-label="Restore Now Playing"
-                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:var(--pull-tab-height);display:flex;align-items:flex-end;justify-content:center;z-index:103;background:none;border:none;padding:0;-webkit-tap-highlight-color:transparent"
+                style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:var(--pull-tab-height);display:flex;align-items:flex-end;justify-content:center;z-index:103;-webkit-tap-highlight-color:transparent"
                 @click="${this._restore}"
-                @keydown="${onActivateKey(this._restore)}"
                 @touchstart="${this._handleTouchStart}"
                 @touchend="${this._handleTouchEnd}"
             >
-                <div style="width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:var(--radius-pull-tab) var(--radius-pull-tab) 0 0;background:var(--color-warning);border:1px solid var(--color-warning);border-bottom:none;cursor:pointer;pointer-events:none"><div style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></div></div>
-            </div>
+                <span style="width:56px;height:18px;display:flex;align-items:center;justify-content:center;z-index:103;border-radius:var(--radius-pull-tab) var(--radius-pull-tab) 0 0;background:var(--color-warning);border:1px solid var(--color-warning);border-bottom:none;cursor:pointer;pointer-events:none"><span style="width:28px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;pointer-events:none"></span></span>
+            </button>
             ${!window.matchMedia('(pointer: coarse)').matches ? html`
             <button
                 aria-label="Restore Now Playing"

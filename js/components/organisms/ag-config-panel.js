@@ -18,7 +18,6 @@
  */
 
 import { LitElement, html } from 'lit';
-import { onActivateKey } from '../utils-lit.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
@@ -662,11 +661,11 @@ export class AgConfigPanel extends LitElement {
                                 <span class="version-wrapper">
                                     <span>v${this.bwVersion}</span>
                                     ${this._docsUrl ? html`
-                                    <span class="version-icon clickable" role="button" tabindex="0"
+                                    <button class="version-icon clickable plain-btn"
                                         aria-label="Open API Documentation (Swagger)"
-                                        @click=${this._openApiDocs} @keydown=${onActivateKey(this._openApiDocs)}>
+                                        @click=${this._openApiDocs}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconApiTree}</svg>
-                                    </span>` : ''}
+                                    </button>` : ''}
                                 </span>
                             </span>
                         </div>

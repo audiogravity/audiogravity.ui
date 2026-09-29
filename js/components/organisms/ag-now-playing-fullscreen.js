@@ -28,7 +28,7 @@ import '../atoms/ag-track-meta.js';
 import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
-import { coverUrl, fmtDuration, pickPrimaryCoverToken, onActivateKey } from '../utils-lit.js';
+import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
@@ -802,14 +802,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         return html`
             <div class="npfs-dots" aria-label="Active sources">
                 ${this._sources.map(src => html`
-                    <div
-                        class="npfs-dot ${src.source_id === this._targetSourceId ? 'npfs-dot--active' : ''}"
-                        role="button"
-                        tabindex="0"
+                    <button
+                        class="npfs-dot plain-btn ${src.source_id === this._targetSourceId ? 'npfs-dot--active' : ''}"
                         aria-label=${src.display_name ?? src.source_id}
                         @click=${() => this._switchSource(src.source_id)}
-                        @keydown=${onActivateKey(() => this._switchSource(src.source_id))}
-                    ></div>
+                    ></button>
                 `)}
             </div>
         `;

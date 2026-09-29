@@ -1,5 +1,4 @@
 import { LitElement, html } from 'lit';
-import { onActivateKey } from '../utils-lit.js';
 import { EventEmitter, API_BASE_URL, AppState } from '../../common.js';
 import { apiDocsUrl, openApiDocs } from '../../api-docs.js';
 import { iconApiTree } from '../../ag-icons.js';
@@ -100,16 +99,14 @@ export class AgFooter extends LitElement {
     render() {
         return html`
             <footer class="footer" role="contentinfo">
-                <!-- A control, not an ornament: it opens the icon preview, so it has to be
-                     reachable by keyboard and announced as a button. It was a bare div with a
-                     click handler, which no Tab ever landed on. -->
-                <div class="footer-logo" role="button" tabindex="0"
+                <!-- A control, not an ornament: it opens the icon preview, so it is a
+                     button. -->
+                <button class="footer-logo plain-btn"
                      aria-label="Preview the application icon"
-                     @click="${this._openLogoModal}"
-                     @keydown="${onActivateKey(this._openLogoModal)}">
+                     @click="${this._openLogoModal}">
                     <img class="ag-app-icon" src="/pics/apple-touch-180.png" alt="Audiogravity"
                          width="36" height="36">
-                </div>
+                </button>
                 
                 <span><a href="https://audiogravity.app" target="_blank" rel="noopener"><span
                             class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> © 2026 — <a

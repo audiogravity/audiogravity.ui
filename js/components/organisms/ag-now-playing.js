@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
-import { coverUrl, pickPrimaryCoverToken, onActivateKey } from '../utils-lit.js';
+import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
 import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
@@ -642,13 +642,14 @@ export class AgNowPlaying extends LitElement {
 
         return html`
             <div class="np-row" data-source="${item.source_id}" style="--np-bg-color: ${bgColor}">
-                <!-- Cover art + detail popover -->
+                <!-- Cover art + detail popover. Announced as a button, but out of the
+                     keyboard's reach: the album-details bubble is drawn inside it, which a
+                     button cannot hold. A departure from WCAG 2.1.1, accepted on
+                     2026-09-29: the app is used by touch. -->
                 <div class="np-cover-wrap"
                     role="button"
-                    tabindex="0"
                     aria-label="Album details"
                     @click="${(e) => this._toggleDetailPopover(item.source_id, e)}"
-                    @keydown="${onActivateKey((e) => this._toggleDetailPopover(item.source_id, e))}"
                 >
                     ${coverSrc && !this._brokenCovers.has(primaryToken)
                         ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy"
@@ -801,14 +802,11 @@ export class AgNowPlaying extends LitElement {
                     ${this._items.length > 1 ? html`
                         <div class="np-dots" aria-label="Sources">
                             ${this._items.map((_, idx) => html`
-                                <div
-                                    class="np-dot ${idx === this._activeSourceIdx ? 'np-dot--active' : ''}"
-                                    role="button"
-                                    tabindex="0"
+                                <button
+                                    class="np-dot plain-btn ${idx === this._activeSourceIdx ? 'np-dot--active' : ''}"
                                     aria-label="Source ${idx + 1}"
                                     @click="${() => { this._activeSourceIdx = idx; this._userSourceOverride = true; }}"
-                                    @keydown="${onActivateKey(() => { this._activeSourceIdx = idx; this._userSourceOverride = true; })}"
-                                ></div>
+                                ></button>
                             `)}
                         </div>
                     ` : nothing}

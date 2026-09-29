@@ -1,14 +1,14 @@
 /**
- * Unit tests for ag-radio-card — the keyboard on a card that holds buttons.
+ * Unit tests for ag-radio-card — a tap on a card that holds buttons.
  *
- * The card answers Enter and Space as a button does (it plays the station), and
- * holds buttons of its own: edit, My Live Radio, favourite. A key pressed on one of
- * those bubbled up to the card, whose listener cancelled the button's click and
- * played the station instead (review, 2026-09-28).
+ * A tap on the card plays the station. The card holds buttons of its own — edit,
+ * My Live Radio, favourite — and a tap on one of those does what that button does
+ * and plays nothing: each stops its click before it reaches the card, which would
+ * otherwise play the station as well.
  *
  * Covers:
- * 1. Enter on the card plays the station
- * 2. Enter on a button inside it does what that button does, and plays nothing
+ * 1. a tap on the card plays the station
+ * 2. a tap on a button inside it does what that button does, and plays nothing
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import './ag-radio-card.js';
@@ -29,20 +29,12 @@ async function card() {
     return { el, fired };
 }
 
-/** Press a key on an element the way a browser does: keydown, then the click it triggers. */
-function press(target, key) {
-    const down = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
-    target.dispatchEvent(down);
-    // A native <button> turns Enter into a click unless its keydown was cancelled.
-    if (target.tagName === 'BUTTON' && key === 'Enter' && !down.defaultPrevented) target.click();
-}
-
 beforeEach(() => { document.body.innerHTML = ''; });
 
-describe('the keyboard on a radio card', () => {
-    it('Enter on the card plays the station', async () => {
+describe('a tap on a radio card', () => {
+    it('plays the station', async () => {
         const { el, fired } = await card();
-        press(el.querySelector('.lib-radio-card'), 'Enter');
+        el.querySelector('.lib-radio-card').click();
         expect(fired).toEqual(['radio-play']);
     });
 
@@ -50,9 +42,9 @@ describe('the keyboard on a radio card', () => {
         ['.lib-radio-edit', 'radio-edit'],
         ['.lib-radio-lib', 'radio-library-toggle'],
         ['.lib-radio-star', 'radio-favorite-toggle'],
-    ])('Enter on %s does what that button does', async (selector, event) => {
+    ])('on %s does what that button does, and plays nothing', async (selector, event) => {
         const { el, fired } = await card();
-        press(el.querySelector(selector), 'Enter');
+        el.querySelector(selector).click();
         expect(fired).toEqual([event]);
     });
 });

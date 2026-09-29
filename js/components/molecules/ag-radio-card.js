@@ -28,7 +28,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { coverUrl, onActivateKey } from '../utils-lit.js';
+import { coverUrl } from '../utils-lit.js';
 import { iconStar, iconStarFilled, iconPencil, iconPlus, iconCheck } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow, SINGLE } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
@@ -108,11 +108,15 @@ export class AgRadioCard extends LitElement {
                 ${this.swipeable ? html`
                     <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
                 ` : nothing}
+                <!-- Announced as a button, but out of the keyboard's reach: it holds three
+                     buttons, which a button cannot hold, and the swipe that removes a
+                     station does not start on a button (SwipeToDismissController). A
+                     departure from WCAG 2.1.1, accepted on 2026-09-29: the app is used
+                     by touch. -->
                 <div class="lib-radio-card"
                      ${swipeRow(this._swipe, SINGLE, this.swipeable)}
                      @click=${this._onTap}
-                     @keydown=${onActivateKey(this._onTap)}
-                     role="button" tabindex="0">
+                     role="button">
                     <ag-library-cover
                         cover=${logoUrl}
                         fallback="radio"
