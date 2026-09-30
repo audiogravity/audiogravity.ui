@@ -12,12 +12,17 @@
  *
  * @prop {number} volume - Current volume level (0–100), provided by the parent
  *
- * @fires volume-change - When the user changes the volume.
+ * @fires volume-change - When the user changes the volume. From the slider: the
+ *   first value at once, then at most one every EMIT_INTERVAL_MS — always the
+ *   latest — and the value it stops on as soon as the gesture ends (a key press
+ *   ends at once). From a step button: each value at once. Nothing is sent
+ *   once a gesture has ended.
  *   detail: { volume: number }
  */
 
 import { LitElement, html, nothing } from 'lit';
 import { iconVolume } from '../../ag-icons.js';
+import { latestThrottle } from '../../core/latest-throttle.js';
 
 /* ─── CSS injected once into <head> ─── */
 const AVP_STYLES = `
@@ -220,6 +225,33 @@ export class AgVolumePopover extends LitElement {
      */
     static LIVE_HOLD_MS = 1500;
 
+    /**
+     * Least time between two `volume-change` events from the slider. A range
+     * input fires on every value it crosses — 101 events for the whole course
+     * in 2 s, measured in Chromium on 2026-09-29 — and each one used to become
+     * a request: on the HQPlayer path, two connections to the player. Four a
+     * second still follow the finger.
+     *
+     * Nothing waits once a gesture ends — any sign of it sends the waiting
+     * value at once (GESTURE_END_EVENTS, and the slider's `change`, which a
+     * key press commits): a value sent later reaches whatever the parent shows
+     * by then, since the parents route `volume-change` to the source displayed
+     * when the event arrives.
+     * @type {number}
+     */
+    static EMIT_INTERVAL_MS = 250;
+
+    /**
+     * What ends a gesture, listened for on the window while the popover is
+     * open. No state is kept between the start of a drag and its end — a
+     * right click, a second finger or a touch the browser takes back could
+     * leave one stuck: any of these sends whatever waits, and nothing waits
+     * unless the slider moved within the last interval. Captured, because the
+     * popover stops touch events from bubbling (see render).
+     * @type {string[]}
+     */
+    static GESTURE_END_EVENTS = ['pointerup', 'pointercancel', 'touchend', 'touchcancel'];
+
     createRenderRoot() { return this; }
 
     constructor() {
@@ -229,8 +261,12 @@ export class AgVolumePopover extends LitElement {
         this._liveVolume          = null;
         this._pendingListenerTimer = null;
         this._liveReleaseTimer    = null;
+        this._emitter = latestThrottle((volume) => this._emit(volume),
+            AgVolumePopover.EMIT_INTERVAL_MS);
+        this._boundFlush = () => this._emitter.flush();
         this._boundClose = () => {
             this._open       = false;
+            this._stopListening();
             this._releaseLive();
         };
     }
@@ -242,6 +278,10 @@ export class AgVolumePopover extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        // Dropped, not sent: the popover goes away when the parent shows
+        // something else, and a late value would reach that instead.
+        this._emitter.cancel();
+        this._listenForGestureEnd(false);
         clearTimeout(this._pendingListenerTimer);
         clearTimeout(this._liveReleaseTimer);
         document.removeEventListener('click', this._boundClose);
@@ -267,12 +307,14 @@ export class AgVolumePopover extends LitElement {
         e?.stopPropagation();
         if (this._open) {
             this._open       = false;
+            this._stopListening();
             this._releaseLive();
             clearTimeout(this._pendingListenerTimer);
             this._pendingListenerTimer = null;
             document.removeEventListener('click', this._boundClose);
         } else {
             this._open = true;
+            this._listenForGestureEnd(true);
             this._pendingListenerTimer = setTimeout(() => {
                 this._pendingListenerTimer = null;
                 document.addEventListener('click', this._boundClose, { once: true });
@@ -283,6 +325,7 @@ export class AgVolumePopover extends LitElement {
     close() {
         if (!this._open) return;
         this._open       = false;
+        this._stopListening();
         this._releaseLive();
         document.removeEventListener('click', this._boundClose);
     }
@@ -296,7 +339,25 @@ export class AgVolumePopover extends LitElement {
         e.target.style.setProperty('--avp-pct', `${vol}%`);
         this._liveVolume = vol;
         this._armLiveRelease();
-        this._emit(vol);
+        this._emitter.push(vol);
+    }
+
+    /**
+     * Listen, or stop listening, on the window for the end of a gesture.
+     *
+     * @param {boolean} on - Whether to listen.
+     */
+    _listenForGestureEnd(on) {
+        const method = on ? 'addEventListener' : 'removeEventListener';
+        for (const type of AgVolumePopover.GESTURE_END_EVENTS) {
+            window[method](type, this._boundFlush, true);
+        }
+    }
+
+    /** The popover closes: what waits goes now, to the source it was meant for. */
+    _stopListening() {
+        this._emitter.flush();
+        this._listenForGestureEnd(false);
     }
 
     _step(delta) {
@@ -370,6 +431,7 @@ export class AgVolumePopover extends LitElement {
                                 style="--avp-pct: ${vol}%"
                                 aria-label="Volume"
                                 @input=${(e) => this._onInput(e)}
+                                @change=${this._boundFlush}
                             />
                             <div class="avp-labels">
                                 <span>0</span>
