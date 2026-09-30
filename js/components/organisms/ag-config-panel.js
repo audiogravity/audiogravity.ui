@@ -7,6 +7,8 @@
  * @attr {boolean} active - Visibility of the panel (toggled by burger menu)
  * @attr {boolean} darkMode - UI dark mode state
  * @attr {boolean} animations - Whether UI animations are enabled
+ * @prop {boolean} topBarMetrics - Property only: whether the top bar shows the machine
+ *   metrics on this device (AppState.topBarMetrics)
  * @attr {string} theme - Current selected theme ID
  * @attr {boolean} pushSubscribed - Push notification status
  * 
@@ -39,6 +41,8 @@ export class AgConfigPanel extends LitElement {
         active: { type: Boolean, reflect: true },
         darkMode: { type: Boolean },
         animations: { type: Boolean },
+        // No attribute, as on <ag-top-bar>: a Boolean attribute is true whatever it says.
+        topBarMetrics: { type: Boolean, attribute: false },
         lockPortrait: { type: Boolean },
         theme: { type: String },
         bwVersion: { type: String },
@@ -66,6 +70,7 @@ export class AgConfigPanel extends LitElement {
         // Load initial state from imported AppState
         this.darkMode = AppState ? AppState.darkMode : false;
         this.animations = AppState ? AppState.animationsEnabled : true;
+        this.topBarMetrics = AppState ? AppState.topBarMetrics : true;
         this.lockPortrait = AppState ? AppState.lockPortrait : true;
         // Portrait Lock is a touch affordance — hide the toggle on desktop/mouse,
         // where the overlay never shows and the OS lock is a no-op.
@@ -220,6 +225,7 @@ export class AgConfigPanel extends LitElement {
             if (AppState) {
                 this.darkMode = AppState.darkMode;
                 this.animations = AppState.animationsEnabled;
+                this.topBarMetrics = AppState.topBarMetrics;
                 this.lockPortrait = AppState.lockPortrait;
                 this.theme = AppState.theme;
                 this.requestUpdate(); // Force Lit to re-evaluate properties
@@ -448,17 +454,53 @@ export class AgConfigPanel extends LitElement {
         this.darkMode = setDarkMode(e.detail ? e.detail.checked : e.target.checked);
     }
 
+    /**
+     * Read a switch's new value and keep it as this device's setting.
+     *
+     * The one way the panel's per-device switches are stored — in AppState for the
+     * page, and in this browser's storage for the next load.
+     *
+     * @param {string} key - The setting's name, in AppState and in storage alike.
+     * @param {CustomEvent|Event} e - ag-change from the switch (or a native change).
+     * @returns {boolean} The new value.
+     */
+    _keepDeviceSetting(key, e) {
+        const checked = e.detail ? e.detail.checked : e.target.checked;
+        if (AppState) AppState[key] = checked;
+        if (MemoryCache) MemoryCache.set(key, checked);
+        return checked;
+    }
+
+    /**
+     * Turn the interface's motion on or off, on this device.
+     *
+     * The tabs (their bell) and the log viewer (its LIVE badge) follow through
+     * 'animations-changed', which they listened for and nothing ever sent: they
+     * kept the old setting until the page was loaded again.
+     *
+     * @param {CustomEvent|Event} e - ag-change from the switch (or a native change).
+     */
     _handleAnimations(e) {
-        this.animations = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.animationsEnabled = this.animations;
-        if (MemoryCache) MemoryCache.set('animationsEnabled', this.animations);
+        this.animations = this._keepDeviceSetting('animationsEnabled', e);
         document.body.classList.toggle('no-animations', !this.animations);
+        window.dispatchEvent(new CustomEvent('animations-changed', { detail: { enabled: this.animations } }));
+    }
+
+    /**
+     * Show or hide the machine metrics of the top bar, on this device only.
+     *
+     * The bar follows the change through 'topbar-metrics-changed', with no reload —
+     * a window event carrying `detail.enabled`, as 'animations-changed' is.
+     *
+     * @param {CustomEvent|Event} e - ag-change from the switch (or a native change).
+     */
+    _handleTopBarMetrics(e) {
+        this.topBarMetrics = this._keepDeviceSetting('topBarMetrics', e);
+        window.dispatchEvent(new CustomEvent('topbar-metrics-changed', { detail: { enabled: this.topBarMetrics } }));
     }
 
     _handleLockPortrait(e) {
-        this.lockPortrait = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.lockPortrait = this.lockPortrait;
-        if (MemoryCache) MemoryCache.set('lockPortrait', this.lockPortrait);
+        this.lockPortrait = this._keepDeviceSetting('lockPortrait', e);
         applyOrientationLock(this.lockPortrait);
     }
 
@@ -618,6 +660,11 @@ export class AgConfigPanel extends LitElement {
                     <div class="config-item config-item-row">
                         <label>Animations</label>
                         <ag-switch .checked=${this.animations} @ag-change=${this._handleAnimations}></ag-switch>
+                    </div>
+
+                    <div class="config-item config-item-row">
+                        <label>Top Bar Metrics</label>
+                        <ag-switch .checked=${this.topBarMetrics} @ag-change=${this._handleTopBarMetrics}></ag-switch>
                     </div>
 
                     ${this._isTouchDevice ? html`

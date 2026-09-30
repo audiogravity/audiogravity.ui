@@ -237,6 +237,7 @@ const AppState = {
     theme: (MemoryCache.get('theme', 'minimal') || 'minimal').toLowerCase().trim(),
     darkMode: MemoryCache.get('darkMode', false),
     animationsEnabled: MemoryCache.get('animationsEnabled', true),
+    topBarMetrics: MemoryCache.get('topBarMetrics', true),
     lockPortrait: MemoryCache.get('lockPortrait', true),
     currentTab: window.location.hash.slice(1) || MemoryCache.get('activeTab', 'profiles'),
     sseConnection: null,
