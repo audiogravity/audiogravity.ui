@@ -7,12 +7,15 @@
  * 
  * @attr {boolean} connected - Connection status to the backend
  * @attr {Object} metrics - System metrics (uptime, cpu, temp, memory)
+ * @prop {boolean} showMetrics - Property only: whether the metrics are shown. This
+ *   device's "Top Bar Metrics" setting (AppState.topBarMetrics), followed live through
+ *   the window event 'topbar-metrics-changed'
  * @attr {Object} user - Current user data
- * 
+ *
  * @dependency ag-status-indicator
  * @dependency css/layout.css, css/components/metrics.css - Topbar layout and metric styles
  * @dependency EventEmitter - For listening to 'sysinfo-update' and 'connection-status'
- * 
+ *
  * @fires burger-click - Dispatched when the burger menu button is clicked
  * @fires nav-click - Dispatched when the mobile navigation button is clicked (toggles the vertical tab sidebar)
  * @fires library-click - Dispatched when the Library shortcut button is clicked (jumps to the Library tab)
@@ -21,28 +24,38 @@
 import { LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { AppState, EventEmitter } from '../../common.js';
+import { getLastSystemMetrics } from '../../sse.js';
 import { safeToFixed, formatUptime } from '../utils-lit.js';
 import { iconSettings, iconTabLibrary } from '../../ag-icons.js';
 import '../atoms/ag-status-indicator.js';
+
+/** The metrics before any reading: every figure unknown, each shown as a dash. */
+const NO_METRICS = Object.freeze({
+    uptime: undefined,
+    cpu_percent: undefined,
+    temp: undefined,
+    memory_percent: undefined
+});
 
 export class AgTopBar extends LitElement {
     static properties = {
         connected: { type: Boolean },
         metrics: { type: Object },
+        // No attribute: a Boolean attribute is true whatever it says, "false" included.
+        showMetrics: { type: Boolean, attribute: false },
     };
 
     constructor() {
         super();
         this.connected = false;
-        this.metrics = {
-            uptime: undefined,
-            cpu_percent: undefined,
-            temp: undefined,
-            memory_percent: undefined
-        };
+        this.metrics = { ...NO_METRICS };
+        // Read here rather than on connection, so a caller (a story) can still set it.
+        this.showMetrics = AppState ? AppState.topBarMetrics !== false : true;
+        this._listening = false;
 
         this._handleSysinfo = this._handleSysinfo.bind(this);
         this._handleConnection = this._handleConnection.bind(this);
+        this._handleMetricsSetting = this._handleMetricsSetting.bind(this);
     }
 
     createRenderRoot() {
@@ -57,23 +70,60 @@ export class AgTopBar extends LitElement {
             this.connected = AppState.connected;
         }
 
-        if (EventEmitter) {
-            EventEmitter.on('sysinfo-update', this._handleSysinfo);
-            EventEmitter.on('connection-status', this._handleConnection);
-        } else {
-            EventEmitter.on('sysinfo-update', this._handleSysinfo);
-            EventEmitter.on('connection-status', this._handleConnection);
-        }
-        
+        EventEmitter.on('connection-status', this._handleConnection);
+        window.addEventListener('topbar-metrics-changed', this._handleMetricsSetting);
+        this._listenToMetrics(this.showMetrics);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        const ee = EventEmitter;
-        if (ee) {
-            ee.off('sysinfo-update', this._handleSysinfo);
-            ee.off('connection-status', this._handleConnection);
+        EventEmitter.off('connection-status', this._handleConnection);
+        window.removeEventListener('topbar-metrics-changed', this._handleMetricsSetting);
+        this._listenToMetrics(false);
+    }
+
+    willUpdate(changedProperties) {
+        if (!changedProperties.has('showMetrics')) return;
+        if (this.showMetrics && changedProperties.get('showMetrics') === false) {
+            // Shown again, whoever switched it: the last reading of the stream now open
+            // (sse.js) — at most one core cycle old, dashes before its first — and never
+            // the figures from before it was hidden. The core is asked nothing: its
+            // /sysinfo/current answers a partial reading, with a CPU figure measured
+            // over the few milliseconds since the stream's last one.
+            this.metrics = { ...NO_METRICS };
+            const last = getLastSystemMetrics();
+            if (last) this._handleSysinfo(last);
         }
+        if (this.isConnected) this._listenToMetrics(this.showMetrics);
+    }
+
+    /**
+     * Follow the machine metrics, or stop following them.
+     *
+     * The metrics still arrive while hidden — they travel on the one stream that
+     * carries every live update, and the System and Performance tabs read them — but
+     * the bar no longer handles them. Idempotent: the bus would call a listener
+     * added twice twice.
+     *
+     * @param {boolean} on - Whether the bar should handle 'sysinfo-update'.
+     */
+    _listenToMetrics(on) {
+        if (on === this._listening) return;
+        this._listening = on;
+        if (on) {
+            EventEmitter.on('sysinfo-update', this._handleSysinfo);
+        } else {
+            EventEmitter.off('sysinfo-update', this._handleSysinfo);
+        }
+    }
+
+    /**
+     * Apply a change of this device's "Top Bar Metrics" setting; willUpdate does the rest.
+     *
+     * @param {CustomEvent<{enabled: boolean}>} event - 'topbar-metrics-changed'.
+     */
+    _handleMetricsSetting({ detail }) {
+        this.showMetrics = detail.enabled;
     }
 
     _handleSysinfo(data) {
@@ -152,7 +202,10 @@ export class AgTopBar extends LitElement {
                     <span>${statusLabel}</span>
                 </div>
 
+                <!-- Kept when empty: it is the flexible middle that holds the Library
+                     and Settings buttons at the right-hand end. -->
                 <div class="system-metrics">
+                    ${this.showMetrics ? html`
                     <div class="metric">
                         <span class="metric-label">Uptime:</span>
                         <span class="metric-value topbar-value">
@@ -170,7 +223,7 @@ export class AgTopBar extends LitElement {
                     <div class="metric">
                         <span class="metric-label">Memory:</span>
                         <span class=${memClass}>${this._formatMetricValue(this.metrics.memory_percent, '%')}</span>
-                    </div>
+                    </div>` : ''}
                 </div>
 
                 <div style="margin-right: var(--spacing-sm);">

@@ -26,6 +26,13 @@ if (typeof window !== 'undefined') {
 // WORKER INITIALIZATION (Phase 3 Optimization #5)
 let sseWorker = null;
 
+// The last machine reading of the stream now open, whoever was listening: a view that
+// starts following the readings late (the top bar switched back on) shows it at once,
+// instead of asking the core again — which answers a partial reading, with a CPU figure
+// measured over the few milliseconds since the stream's last one. Only the stream's own
+// readings are kept, and forgotten when it closes (updateConnectionStatus).
+let lastSystemMetrics = null;
+
 // A new session token (auth.js: replaceToken, or one another tab put in place)
 // makes the open stream reconnect with it: left on the old one, the stream carried
 // the ended session, and reconnecting on its own it would come back as no one — the
@@ -91,8 +98,7 @@ export function handleWorkerMessage(e) {
             window.dispatchEvent(new CustomEvent('active_users_update', { detail: data }));
             break;
         case 'sysinfo':
-            // Use the original throttled function
-            throttledUpdateSystemMetrics(data);
+            throttledStreamReading(data);
             break;
         case 'services_metrics':
             throttledServicesMetrics(data);
@@ -136,7 +142,12 @@ export function handleWorkerMessage(e) {
 }
 
 // Create throttled wrappers once
-const throttledUpdateSystemMetrics = throttle(updateSystemMetrics, 1000);
+// A machine reading from the stream: kept for whoever starts following late (a copy,
+// taken before the listeners get the object), then handed on to the views.
+const throttledStreamReading = throttle((data) => {
+    lastSystemMetrics = { ...withUptime(data) };
+    updateSystemMetrics(data);
+}, 1000);
 const throttledServicesMetrics = throttle((data) => {
     // The whole event first, for the views that need what only the envelope
     // carries: `memory_accounting` — a property of the machine, sent once — and
@@ -223,6 +234,9 @@ export function initVisibilityManager() {
 
 export function updateConnectionStatus(connected) {
     AppState.connected = connected;
+    // The kept reading belonged to the stream that just closed: shown hours later, on
+    // the way back from the background, it would pass old figures off as current.
+    if (!connected) lastSystemMetrics = null;
 
     // Notify components like ag-top-bar and ag-footer
     if (window.EventEmitter || EventEmitter) {
@@ -230,11 +244,28 @@ export function updateConnectionStatus(connected) {
     }
 }
 
-export function updateSystemMetrics(data) {
-    // Map uptime_seconds to uptime for compatibility with UI components (Phase 3)
+/**
+ * The last machine reading of the stream now open, or null before its first.
+ * @returns {Object|null} As handed to 'sysinfo-update'.
+ */
+export function getLastSystemMetrics() {
+    return lastSystemMetrics;
+}
+
+/**
+ * Give a reading the `uptime` the views read, from the core's `uptime_seconds` (Phase 3).
+ * @param {Object} data - A machine reading, changed in place.
+ * @returns {Object} The same reading.
+ */
+function withUptime(data) {
     if (data.uptime_seconds !== undefined && data.uptime === undefined) {
         data.uptime = data.uptime_seconds;
     }
+    return data;
+}
+
+export function updateSystemMetrics(data) {
+    withUptime(data);
 
     // Notify components like ag-top-bar and individual tiles (System tab)
     if (window.EventEmitter || EventEmitter) {

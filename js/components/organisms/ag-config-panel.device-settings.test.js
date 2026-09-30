@@ -1,5 +1,6 @@
 /**
- * Tests for the Settings panel's per-device switches: Animations, Portrait Lock.
+ * Tests for the Settings panel's per-device switches: Top Bar Metrics, Animations,
+ * Portrait Lock.
  *
  * Rendered for real, unlike ag-config-panel.test.js, which reads the panel's source:
  * what is under test here is behaviour — this device remembers the choice, and what
@@ -16,9 +17,10 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 
 import { AppState, MemoryCache } from '../../common.js';
 import './ag-config-panel.js';
+import './ag-top-bar.js';
 import './ag-log-viewer.js';
 
-const SETTINGS = ['animationsEnabled', 'lockPortrait'];
+const SETTINGS = ['topBarMetrics', 'animationsEnabled', 'lockPortrait'];
 
 /** Mount an element in the document and wait for its first render. */
 async function mount(tag) {
@@ -69,6 +71,50 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+describe('Settings — Top Bar Metrics', () => {
+    it('is offered, on by default', async () => {
+        const sw = switchOf(await mount('ag-config-panel'), 'Top Bar Metrics');
+
+        expect(sw).toBeTruthy();
+        expect(sw.checked).toBe(true);
+    });
+
+    it('switched off, is remembered on this device and announced', async () => {
+        // Announced as Animations is: a window event carrying detail.enabled.
+        const heard = vi.fn();
+        window.addEventListener('topbar-metrics-changed', heard);
+        const sw = switchOf(await mount('ag-config-panel'), 'Top Bar Metrics');
+
+        await flip(sw, false);
+
+        window.removeEventListener('topbar-metrics-changed', heard);
+        expect(AppState.topBarMetrics).toBe(false);
+        expect(localStorage.getItem('topBarMetrics')).toBe('false');
+        expect(heard.mock.calls.map(([e]) => e.detail)).toEqual([{ enabled: false }]);
+    });
+
+    it('takes the top bar with it, without a reload', async () => {
+        const panel = await mount('ag-config-panel');
+        const bar = await mount('ag-top-bar');
+        expect(bar.querySelectorAll('.system-metrics .metric')).toHaveLength(4);
+
+        await flip(switchOf(panel, 'Top Bar Metrics'), false);
+        await bar.updateComplete;
+
+        expect(bar.querySelectorAll('.system-metrics .metric')).toHaveLength(0);
+    });
+
+    it('shows the state of this device when the panel opens', async () => {
+        const panel = await mount('ag-config-panel');
+        AppState.topBarMetrics = false;   // set elsewhere — another open of the panel
+
+        panel.active = true;
+        await panel.updateComplete;
+
+        expect(switchOf(panel, 'Top Bar Metrics').checked).toBe(false);
+    });
+});
+
 describe('Settings — Animations', () => {
     it('switched off, is remembered on this device and stops the motion', async () => {
         const sw = switchOf(await mount('ag-config-panel'), 'Animations');
@@ -115,5 +161,32 @@ describe('Settings — Portrait Lock', () => {
         expect(panel.lockPortrait).toBe(false);
         expect(AppState.lockPortrait).toBe(false);
         expect(localStorage.getItem('lockPortrait')).toBe('false');
+    });
+});
+
+describe('Settings — Top Bar Metrics across a reload', () => {
+    // A reload evaluates every module again, the API key's among them: without one in
+    // storage, core/config.js stops to ask for it, which a test has no way to answer.
+    beforeEach(() => {
+        localStorage.setItem('apiKey', 'test-key');
+        vi.resetModules();
+    });
+
+    afterEach(() => {
+        localStorage.removeItem('apiKey');
+    });
+
+    it('comes back off on a device that switched it off', async () => {
+        localStorage.setItem('topBarMetrics', 'false');
+
+        const { AppState: reloaded } = await import('../../common.js');
+
+        expect(reloaded.topBarMetrics).toBe(false);
+    });
+
+    it('comes back on everywhere else', async () => {
+        const { AppState: reloaded } = await import('../../common.js');
+
+        expect(reloaded.topBarMetrics).toBe(true);
     });
 });
