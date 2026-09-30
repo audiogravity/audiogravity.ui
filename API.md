@@ -504,7 +504,7 @@ only what is running. Same entry shape, different contents.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/hqplayer/connection` | Connection state — `available` (HQPlayer reachable), `naa_available` (networkaudiod active) + **`use_as_output`** (library playback routed through HQPlayer). Also identifies the instance: `product`, `engine_version`, `major`, and the pairing with the local adapter — `naa_version` and `pairing_ok`. **`local`** is true while the box's own HQPlayer runs (see below); `host`/`port` are then the loopback address it answers on, and **`configured_host`** / **`configured_port`** the instance chosen in the card, kept meanwhile. **`web_port`** is where that local instance serves its own settings page, from its package's declaration — `null` for an HQPlayer on the network (HQPlayer Desktop serves none) and for a package that declares none. A client composes the address itself, with the host it reached this box on: the core cannot know whether the browser came by a name, a LAN address or a tunnel. Worth offering even when `available` is false — that port keeps answering while the control port refuses, which is what an expired vendor trial looks like, and that page is where a licence key is entered |
-| PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available`. **400** when the host is this box: its own HQPlayer is not a choice of the card |
+| PUT | `/hqplayer/connection` | Connect to HQPlayer instance — response includes `naa_available`. Each HQPlayer (address and port) keeps its own DSP selection — filter, shaper, mode; not the volume: connecting one sends its own back, and one never connected keeps the selection it has, taken as its own. **400** when the host is this box: its own HQPlayer is not a choice of the card |
 | DELETE | `/hqplayer/connection` | Disconnect and delete the persisted config. **Stops HQPlayer first**, so its NAA releases the local sound card. Answers with the connection that remains: empty, or the box's own HQPlayer while it runs — which it neither stops nor forgets |
 | PUT | `/hqplayer/use-as-output` | Route library playback through HQPlayer — body `{ enabled }` → `{ use_as_output }` |
 | GET | `/hqplayer/discover` | Scan local subnet. Each instance carries `product` and `engine_version`, which is what tells a Desktop from an Embedded when a network holds both. The box itself is never listed |
@@ -515,7 +515,7 @@ only what is running. Same entry shape, different contents.
 | GET | `/hqplayer/modes` | Available output modes |
 | PUT | `/hqplayer/mode` | Select an output mode by index |
 | PUT | `/hqplayer/volume` | Set volume (dB) |
-| DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection. **503** while the box's own HQPlayer runs: the saved selection is the card's instance's, kept for when it stops |
+| DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection of the HQPlayer chosen in the card; the others keep theirs. **503** while the box's own HQPlayer runs: the saved selection is the card's instance's, kept for when it stops |
 | GET | `/hqplayer/status` | Current DSP status — carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
 
 **Seeking through HQPlayer.** The player state reports `can_seek: true` whenever a length
