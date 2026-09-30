@@ -99,24 +99,23 @@ export class AgTopBar extends LitElement {
         this.connected = data.connected;
     }
 
-    _getCpuActivityLevel(cpuPercent) {
-        if (cpuPercent === undefined) return '';
-        if (cpuPercent < 50) return 'activity-low';
-        if (cpuPercent < 80) return 'activity-medium';
-        return 'activity-high';
-    }
-
-    _getTempActivityLevel(tempC) {
-        if (tempC === null) return '';
-        if (tempC < 60) return 'activity-low';
-        if (tempC < 75) return 'activity-medium';
-        return 'activity-high';
-    }
-
-    _getMemoryActivityLevel(memPercent) {
-        if (memPercent === undefined) return '';
-        if (memPercent < 60) return 'activity-low';
-        if (memPercent < 85) return 'activity-medium';
+    /**
+     * The colour band of a figure — low, medium or high — or none when it is unknown.
+     *
+     * Unknown until the first reading, and for good for the temperature of a machine
+     * without a sensor: a dash, never a colour. The three figures had a copy each, one
+     * testing `=== null` and two `=== undefined`, and the temperature's dash glowed red
+     * as critical.
+     *
+     * @param {number|null|undefined} value - The figure.
+     * @param {number} medium - Where the medium band starts.
+     * @param {number} high - Where the high band starts.
+     * @returns {string} The class to add; empty for an unknown figure.
+     */
+    _activityLevel(value, medium, high) {
+        if (value === null || value === undefined) return '';
+        if (value < medium) return 'activity-low';
+        if (value < high) return 'activity-medium';
         return 'activity-high';
     }
 
@@ -133,9 +132,9 @@ export class AgTopBar extends LitElement {
         const statusState = this.connected ? 'up' : 'down';
         const statusLabel = this.connected ? 'Connected' : 'Connecting...';
 
-        const memClass = `metric-value topbar-value ${this._getMemoryActivityLevel(this.metrics.memory_percent)}`;
-        const cpuClass = `metric-value topbar-value ${this._getCpuActivityLevel(this.metrics.cpu_percent)}`;
-        const tempClass = `metric-value topbar-value ${this._getTempActivityLevel(this.metrics.temp)}`;
+        const memClass = `metric-value topbar-value ${this._activityLevel(this.metrics.memory_percent, 60, 85)}`;
+        const cpuClass = `metric-value topbar-value ${this._activityLevel(this.metrics.cpu_percent, 50, 80)}`;
+        const tempClass = `metric-value topbar-value ${this._activityLevel(this.metrics.temp, 60, 75)}`;
 
         return html`
             <header class="topbar" role="banner">
