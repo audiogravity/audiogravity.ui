@@ -95,6 +95,9 @@ export class AgAudioSoftwarePage extends LitElement {
         this._bindPackageState = this._handlePackageStateUpdate.bind(this);
         this._bindPackageLog = this._handlePackageLogUpdate.bind(this);
         this._bindConnectionStatus = this._handleConnectionStatus.bind(this);
+        // The cards read AppState.animationsEnabled as they are drawn: switched back on,
+        // their badges would stay still until the page redrew for another reason.
+        this._bindAnimationsChanged = () => this.requestUpdate();
 
         this.packagesFetch = new FetchController(this, {
             autoFetch: false,
@@ -178,6 +181,7 @@ export class AgAudioSoftwarePage extends LitElement {
         window.addEventListener('packages_sync', this._bindSyncEvent);
         window.addEventListener('package-state-update', this._bindPackageState);
         window.addEventListener('package-log-update', this._bindPackageLog);
+        window.addEventListener('animations-changed', this._bindAnimationsChanged);
         EventEmitter.on('connection-status', this._bindConnectionStatus);
 
         const logsModal = document.getElementById('agLogsModal');
@@ -223,6 +227,7 @@ export class AgAudioSoftwarePage extends LitElement {
         window.removeEventListener('packages_sync', this._bindSyncEvent);
         window.removeEventListener('package-state-update', this._bindPackageState);
         window.removeEventListener('package-log-update', this._bindPackageLog);
+        window.removeEventListener('animations-changed', this._bindAnimationsChanged);
         EventEmitter.off('connection-status', this._bindConnectionStatus);
 
         EventEmitter.off('app-visible', this._bindAppVisible);

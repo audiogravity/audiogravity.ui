@@ -448,17 +448,40 @@ export class AgConfigPanel extends LitElement {
         this.darkMode = setDarkMode(e.detail ? e.detail.checked : e.target.checked);
     }
 
+    /**
+     * Read a switch's new value and keep it as this device's setting.
+     *
+     * The one way the panel's per-device switches are stored — in AppState for the
+     * page, and in this browser's storage for the next load.
+     *
+     * @param {string} key - The setting's name, in AppState and in storage alike.
+     * @param {CustomEvent|Event} e - ag-change from the switch (or a native change).
+     * @returns {boolean} The new value.
+     */
+    _keepDeviceSetting(key, e) {
+        const checked = e.detail ? e.detail.checked : e.target.checked;
+        if (AppState) AppState[key] = checked;
+        if (MemoryCache) MemoryCache.set(key, checked);
+        return checked;
+    }
+
+    /**
+     * Turn the interface's motion on or off, on this device.
+     *
+     * The tabs (their bell) and the log viewer (its LIVE badge) follow through
+     * 'animations-changed', which they listened for and nothing ever sent: they
+     * kept the old setting until the page was loaded again.
+     *
+     * @param {CustomEvent|Event} e - ag-change from the switch (or a native change).
+     */
     _handleAnimations(e) {
-        this.animations = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.animationsEnabled = this.animations;
-        if (MemoryCache) MemoryCache.set('animationsEnabled', this.animations);
+        this.animations = this._keepDeviceSetting('animationsEnabled', e);
         document.body.classList.toggle('no-animations', !this.animations);
+        window.dispatchEvent(new CustomEvent('animations-changed', { detail: { enabled: this.animations } }));
     }
 
     _handleLockPortrait(e) {
-        this.lockPortrait = e.detail ? e.detail.checked : e.target.checked;
-        if (AppState) AppState.lockPortrait = this.lockPortrait;
-        if (MemoryCache) MemoryCache.set('lockPortrait', this.lockPortrait);
+        this.lockPortrait = this._keepDeviceSetting('lockPortrait', e);
         applyOrientationLock(this.lockPortrait);
     }
 
