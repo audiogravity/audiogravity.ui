@@ -834,11 +834,14 @@ a service twice in one list or both started and stopped by one profile, a `syste
 not a `.service`. `warnings` are the box's state — a service whose systemd unit is **not
 installed** (its configuration file is then not looked for), an installed service whose
 configuration file is missing — and a profile with nothing to start or stop.
-For `validate-topology`, structural problems (unknown device type, malformed shape) are blocking
-`errors`; broken references (`target_device_id`/`target_input_id`) and unmappable streamer
-connectors are non-blocking `warnings` (the topology only feeds the signal-path view). The UI
-runs it before saving from the topology editor — errors block the save, warnings ask for
-confirmation.
+For `validate-topology`, structural problems are blocking `errors`: an unknown device type, a
+missing required field, a value of another type than the topology's model gives — anywhere in
+the file, a device's services, connection, network interfaces and input ports and the pinned
+`outputs` / `selected_output` included (the core leaves such a value out when it reads the file,
+and draws the rest). Numbers and yes/no are read leniently: `"1"` is the number 1, `"true"` a yes.
+Broken references (`target_device_id`/`target_input_id`) and unmappable streamer connectors are
+non-blocking `warnings` (the topology only feeds the signal-path view). The UI runs it before
+saving from the topology editor — errors block the save, warnings ask for confirmation.
 
 ### Radio — `/radio/*`
 | Method | Path | Description |
