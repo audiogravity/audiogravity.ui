@@ -12,11 +12,12 @@
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
 import { UI_VERSION } from '../../core/config.js';
+import { bareVersion } from '../../core/versions.js';
 import { iconWarning } from '../../ag-icons.js';
 
 /** major.minor of a version string ("v0.9.10-dev" → "0.9"). */
 function _majorMinor(v) {
-    const p = String(v || '').replace(/^v/i, '').split('-')[0].split('+')[0].split('.');
+    const p = bareVersion(v).split('.');
     return `${parseInt(p[0], 10) || 0}.${parseInt(p[1], 10) || 0}`;
 }
 
