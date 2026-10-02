@@ -5,6 +5,10 @@
  * mount and reads its `update` field (computed by the license server). When an
  * update applies, an admin can trigger it (password-confirmed); progress is then
  * polled from GET /sysinfo/update-status, tolerating the core restart mid-update.
+ * An update that does not go through leaves its reason under the banner — the
+ * `error` of that status, in the installer's own words — until the next attempt;
+ * on mount, the banner reads it back for an admin when the failed attempt was at
+ * the version still on offer.
  *
  * Uses light DOM (createRenderRoot override) so global theme tokens and
  * stylesheet rules apply without shadow-DOM piercing.
@@ -14,10 +18,13 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { iconDownload, iconRepeat } from '../../ag-icons.js';
 import { isAdmin } from '../../auth.js';
+import { bareVersion } from '../../core/versions.js';
 import { showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
 
 /** Self-update phases that end the flow (no more polling). */
 const _TERMINAL_PHASES = new Set(['done', 'rolled_back', 'failed']);
+/** The terminal phases of an update that did not go through. */
+const _FAILED_PHASES = new Set(['rolled_back', 'failed']);
 /** Poll cadence and overall guard for the progress loop. */
 const _POLL_INTERVAL_MS = 3000;
 const _POLL_TIMEOUT_MS = 6 * 60 * 1000;
@@ -49,6 +56,30 @@ export function updatePhaseLabel(phase) {
 }
 
 /**
+ * What the banner says after an update that did not go through: the phase's label,
+ * then the reason the box gave, when it gave one.
+ * @param {string} phase - The terminal phase (`rolled_back` or `failed`).
+ * @param {?string} error - The `error` of GET /sysinfo/update-status.
+ * @returns {string}
+ */
+export function updateFailureText(phase, error) {
+    const label = updatePhaseLabel(phase);
+    const reason = (error || '').trim();
+    return reason ? `${label}. ${reason}` : label;
+}
+
+/**
+ * A sentence from the box with the brand set as the interface sets it. The
+ * installers write it plain — the right form in the terminal they print to.
+ * @param {string} text
+ * @returns {Array<string|import('lit').TemplateResult>} Parts for a Lit template.
+ */
+function withBrand(text) {
+    return text.split('Audiogravity').flatMap((part, i) =>
+        (i === 0 ? [part] : [html`Audiogravi<sup>ty</sup>`, part]));
+}
+
+/**
  * Update-available banner molecule.
  * Reads GET /license/online-status on connect and renders a single banner when
  * the license server reports a newer release for this device.
@@ -63,6 +94,7 @@ export class AgUpdateBanner extends LitElement {
         _update:   { state: true },
         _updating: { state: true },
         _phase:    { state: true },
+        _failure:  { state: true },
     };
 
     /** Light DOM — inherits global CSS variables and stylesheet rules. */
@@ -73,6 +105,8 @@ export class AgUpdateBanner extends LitElement {
         this._update = null;
         this._updating = false;
         this._phase = null;
+        /** Why the last attempt did not go through, shown until the next one. */
+        this._failure = null;
         this._abortController = null;
         this._pollTimer = null;
     }
@@ -91,13 +125,38 @@ export class AgUpdateBanner extends LitElement {
     }
 
     async _load() {
+        // Taken before the wait: disconnectedCallback drops the controller, so read
+        // after it, an unmount in between would never show as aborted.
+        const signal = this._abortController?.signal;
         try {
             const data = await apiGet('/license/online-status');
-            if (this._abortController?.signal.aborted) return;
+            if (!signal || signal.aborted) return;
             this._update = data.update || null;
             this._emitBadge();
+            // The reason is for the admin, who alone can act on it — and it may name a
+            // path on the box. Other users are not shown it, and the box is not asked.
+            if (isAdmin() && isUpdateAvailable(this._update)) await this._loadLastAttempt(signal);
         } catch {
             // Non-blocking — the banner is optional.
+        }
+    }
+
+    /**
+     * Show why the last attempt at the version on offer did not go through, if it
+     * did not. The progress polling only reaches the tab that launched the update:
+     * without this, a reload — or the same box opened from another device — offers
+     * the update again with no word of what stopped it.
+     * @param {AbortSignal} signal - The mount's signal, aborted on disconnect.
+     */
+    async _loadLastAttempt(signal) {
+        try {
+            const s = await apiGet('/sysinfo/update-status', false);
+            if (signal.aborted || this._updating) return;
+            if (_FAILED_PHASES.has(s?.phase) && bareVersion(s.to) === bareVersion(this._update?.latest)) {
+                this._failure = updateFailureText(s.phase, s.error);
+            }
+        } catch {
+            // Non-blocking — the banner reads the same without it.
         }
     }
 
@@ -134,6 +193,7 @@ export class AgUpdateBanner extends LitElement {
             await apiPost('/sysinfo/actions/update', { password, version: u.latest });
             this._updating = true;
             this._phase = 'starting';
+            this._failure = null;
             showToast('info', 'Update started', 'Installing — the app will reconnect automatically…');
             this._startPolling();
         } catch (err) {
@@ -163,6 +223,9 @@ export class AgUpdateBanner extends LitElement {
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
                         this._updating = false;
+                        // The toast is gone in seconds and the reason can run to a few
+                        // lines: it stays under the banner, where it can be read.
+                        this._failure = updateFailureText(this._phase, s?.error);
                         showToast('error', 'Update not applied', updatePhaseLabel(this._phase));
                     }
                 }
@@ -217,6 +280,11 @@ export class AgUpdateBanner extends LitElement {
                     color: var(--bg-primary);
                 }
                 ag-update-banner .ag-upd-text { color: var(--text-secondary); font-size: var(--font-size-xs); }
+                ag-update-banner .ag-upd-failure {
+                    margin-top: var(--spacing-xs);
+                    color: var(--color-warning-text);
+                    font-size: var(--font-size-xs);
+                }
                 ag-update-banner .ag-upd-link {
                     display: inline-block;
                     margin-top: var(--spacing-xs);
@@ -267,6 +335,7 @@ export class AgUpdateBanner extends LitElement {
                         ${u.mandatory ? html`<span class="ag-upd-badge">required</span>` : nothing}
                     </div>
                     <div class="ag-upd-text">A newer Audiogravi<sup>ty</sup> release is available for this device.</div>
+                    ${this._failure ? html`<div class="ag-upd-failure">${withBrand(this._failure)}</div>` : nothing}
                     ${u.notes_url
                         ? html`<a class="ag-upd-link" href=${u.notes_url} target="_blank" rel="noopener">Release notes →</a>`
                         : nothing}

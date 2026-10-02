@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import { AgUpdateBanner } from './ag-update-banner.js';
+import { AgUpdateBanner, updateFailureText } from './ag-update-banner.js';
 
 export default {
     title: 'Molecules/UpdateBanner',
@@ -37,6 +37,21 @@ export const NoReleaseNotes = () => Template({
 });
 
 export const NoUpdate = () => Template({ available: false });
+
+/** After an update the box turned down: the reason it gave stays under the banner. */
+export const FailedWithReason = () => {
+    const el = new AgUpdateBanner();
+    el._load = async () => {};
+    el._update = {
+        available: true, latest: '0.9.65', mandatory: false,
+        notes_url: 'https://audiogravity.app/releases',
+    };
+    el._failure = updateFailureText('rolled_back',
+        'This system (Debian GNU/Linux 12 (bookworm)) has glibc 2.36; this core needs 2.38 or later. '
+        + 'Audiogravity requires Debian 13 (Trixie) or later — DietPi and Raspberry Pi OS included, '
+        + 'in their Trixie-based release. The installed version is left as it is.');
+    return _wrap(el);
+};
 
 /** Renders the in-progress state (bypasses the API call and the trigger flow). */
 const Progress = (phase) => {
