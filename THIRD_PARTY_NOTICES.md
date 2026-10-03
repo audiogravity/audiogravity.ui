@@ -34,31 +34,6 @@ Same BSD-3-Clause terms as above.
 
 ---
 
-### Cytoscape.js
-**Copyright** © 2016–2026 The Cytoscape Consortium  
-**License** MIT  
-**Source** https://js.cytoscape.org  
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions: The above copyright notice and this
-permission notice shall be included in all copies or substantial portions of
-the Software.
-
----
-
-### cytoscape-dagre
-**Copyright** © 2016–2018, 2020, 2022 The Cytoscape Consortium  
-**License** MIT  
-**Source** https://github.com/cytoscape/cytoscape.js-dagre  
-
-Same MIT terms as above.
-
----
-
 ### Lucide Icons
 **Copyright** © 2020 Lucide Contributors  
 **License** ISC  
@@ -86,30 +61,41 @@ the Software.
 
 ---
 
-## Loaded via CDN at runtime
-
-### Chart.js 4.4.0
+### Chart.js
 **Copyright** © 2014–2022 Chart.js Contributors  
 **License** MIT  
 **Source** https://www.chartjs.org  
+**Used by** the latency and network graphs of the Performance tab  
 
 Same MIT terms as above.
 
 ---
 
-### dagre 0.8.5
-**Copyright** © 2012–2014 Chris Pettitt  
+### @kurkle/color
+**Copyright** © 2018–2024 Jukka Kurkela  
 **License** MIT  
-**Source** https://github.com/dagrejs/dagre  
+**Source** https://github.com/kurkle/color  
+**Used by** Chart.js — colour parsing and conversion  
 
 Same MIT terms as above.
 
 ---
 
-### CodeMirror 5.65.16
+### CodeMirror
 **Copyright** © 2017 Marijn Haverbeke and others  
 **License** MIT  
 **Source** https://codemirror.net  
+**Used by** the Expert configuration editor and the JSON editor  
+
+Same MIT terms as above.
+
+---
+
+### xterm.js
+**Copyright** © 2017–2019 The xterm.js authors; © 2014–2016 SourceLair Private Company; © 2012–2013 Christopher Jeffrey  
+**License** MIT  
+**Source** https://xtermjs.org  
+**Used by** the terminal, with its fit addon (`@xterm/addon-fit`, © 2019 The xterm.js authors, same license)  
 
 Same MIT terms as above.
 

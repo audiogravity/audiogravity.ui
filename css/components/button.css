@@ -54,7 +54,9 @@
     gap: var(--spacing-xs);
 }
 
-.btn-action:hover {
+/* Not on an unavailable button — here and in the variants' :hover rules below. In
+   :where() so each keeps its weight, and the variants still win over this one as before. */
+.btn-action:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--bg-hover);
     border-color: var(--text-tertiary);
     transform: translateY(-1px) scale(1.02);
@@ -71,7 +73,10 @@
 
 
 
-.btn-action:disabled {
+/* `aria-disabled` is the unavailable state that keeps the focus (a disabled button throws
+   it off itself): it must read as unavailable all the same. */
+.btn-action:disabled,
+.btn-action[aria-disabled="true"] {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
@@ -107,8 +112,8 @@
     color: var(--color-error-text);
 }
 
-.btn-action--error:hover,
-.btn-action.error:hover,
+.btn-action--error:hover:where(:not(:disabled, [aria-disabled="true"])),
+.btn-action.error:hover:where(:not(:disabled, [aria-disabled="true"])),
 .tile-action-btn.stop:hover,
 .tile-action-btn.deactivate:hover {
     background: var(--color-error-bg, var(--btn-error-hover-bg));
@@ -124,7 +129,7 @@
     color: var(--color-warning-text);
 }
 
-.btn-action.warning:hover,
+.btn-action.warning:hover:where(:not(:disabled, [aria-disabled="true"])),
 .tile-action-btn.warning:hover {
     background: var(--color-warning-bg, var(--btn-warning-hover-bg));
     border-color: var(--color-warning);
@@ -138,7 +143,7 @@
     color: var(--color-info-text);
 }
 
-.btn-action.info:hover {
+.btn-action.info:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--color-info-bg);
     border-color: var(--color-info);
     transform: translateY(-1px) scale(1.05);
@@ -153,8 +158,8 @@
     color: var(--text-secondary);
 }
 
-.btn-action--ghost:hover,
-.btn-action.ghost:hover {
+.btn-action--ghost:hover:where(:not(:disabled, [aria-disabled="true"])),
+.btn-action.ghost:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--bg-tertiary);
     border-color: var(--text-primary);
     color: var(--text-primary);

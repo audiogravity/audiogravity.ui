@@ -7,7 +7,7 @@
  * page load — the pipeline views, the test pages, the editors, the dashboard — so that
  * they would be cached for offline use. They already are: the service worker precaches
  * every chunk Vite emits, those nine included, at install. So the warm-up filled
- * nothing and instead EXECUTED nine modules on each load (cytoscape among them),
+ * nothing and instead EXECUTED nine modules on each load,
  * registering their elements and holding their memory — undoing the lazy loading the
  * page structure exists to provide, on a box whose spare CPU is the audio's.
  * The trade accepted by removing it: the first visit to one of those tabs now parses

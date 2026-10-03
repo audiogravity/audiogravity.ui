@@ -18,8 +18,8 @@
  * that 404s is simply not drawn, and a manifest icon that 404s falls through to the next
  * one. That is precisely why they have to be asserted: the only symptom is an absence.
  *
- * Same-origin paths only. The CDN entries in the app-shell list are the other half of its
- * job, and reaching for them would put a network call in the unit suite.
+ * Same-origin paths only — the only kind the list holds since its CDN entries went with
+ * the libraries they fetched. js/module-imports.test.js keeps third-party URLs out of it.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';

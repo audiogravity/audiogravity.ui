@@ -5,6 +5,8 @@
  * - disconnectedCallback destroys the CodeMirror instance to prevent memory leaks
  *   (regression for the missing lifecycle cleanup fixed in this review)
  * - disconnectedCallback is safe when CodeMirror has not been initialised yet
+ * - CodeMirror is loaded on demand: built once loaded, never for a view already left,
+ *   once when two calls overlap — and a failed load refuses the save it would spoil
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -12,6 +14,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // exercises the editor's own mode logic, so stub it out.
 vi.mock('./ag-guided-config.js', () => ({}));
 
+// CodeMirror is loaded on demand through this seam. By default it hands out a stand-in
+// that records what it is asked to build; a test can make the load fail, or hold it.
+const cm = vi.hoisted(() => ({
+    fromTextArea: vi.fn(() => ({
+        setSize: vi.fn(), on: vi.fn(), getValue: vi.fn(() => ''), setValue: vi.fn(),
+        getWrapperElement: () => document.createElement('div'), toTextArea: vi.fn(),
+    })),
+}));
+vi.mock('../../core/load-codemirror.js', () => ({ loadCodeMirror: vi.fn(async () => cm) }));
+
+import { loadCodeMirror } from '../../core/load-codemirror.js';
 import { AgConfigEditor } from './ag-config-editor.js';
 
 // ag-config-editor uses light DOM (createRenderRoot returns this),
@@ -219,5 +232,241 @@ describe('AgConfigEditor — a service with no form (HQPlayer Embedded)', () => 
         document.body.replaceChildren();
         const on = await mount({ guided: true, schema: {} });
         expect(on.querySelector('ag-guided-config').regenerable).toBe(true);
+    });
+});
+
+describe('AgConfigEditor — the Expert editor is loaded on demand', () => {
+    // It used to come from a CDN as a global, and the editor read the global or gave up.
+    // It is a chunk of its own now: the editor waits for it, and the wait is where the
+    // view can change under it.
+    async function mountRaw(props = {}) {
+        const el = document.createElement('ag-config-editor');
+        Object.assign(el, {
+            service: { id: 'hqplayerd', displayName: 'HQPlayer Embedded', path: '/etc/hqplayer/hqplayerd.xml' },
+            guided: false, schema: {}, configFormat: 'xml', rawContent: '<xml/>', ...props,
+        });
+        document.body.appendChild(el);
+        await el.updateComplete;
+        return el;
+    }
+
+    /** Let every pending promise and timer callback run. */
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    /** What the Expert view's message area says, once rendered. */
+    async function note(el) {
+        await el.updateComplete;
+        return el.querySelector('.config-raw-editor .validation-message').textContent.trim();
+    }
+
+    /** Make the next load wait until the returned function is called. */
+    function holdNextLoad() {
+        let release;
+        vi.mocked(loadCodeMirror).mockImplementationOnce(() => new Promise(resolve => { release = () => resolve(cm); }));
+        return () => release();
+    }
+
+    /** Make the next load wait, then fail when the returned function is called. */
+    function failNextLoadLater() {
+        let fail;
+        vi.mocked(loadCodeMirror).mockImplementationOnce(() => new Promise((_, reject) => { fail = () => reject(new Error('offline')); }));
+        return () => fail();
+    }
+
+    beforeEach(() => {
+        // Editors mounted by the suites above built theirs through the same stand-in, and
+        // a load held by a test that failed would otherwise serve the next one.
+        vi.mocked(loadCodeMirror).mockReset().mockImplementation(async () => cm);
+        cm.fromTextArea.mockClear();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+        vi.restoreAllMocks();
+    });
+
+    it('builds the editor on the textarea, in the file\'s mode, once the library has loaded', async () => {
+        const el = await mountRaw();
+        await settle();
+
+        expect(loadCodeMirror).toHaveBeenCalled();
+        expect(cm.fromTextArea).toHaveBeenCalledOnce();
+        const [textarea, options] = cm.fromTextArea.mock.calls[0];
+        expect(textarea.id).toBe('configEditorTextarea');
+        expect(options.mode).toBe('xml');
+        expect(el._cmInstance).not.toBeNull();
+    });
+
+    it('refuses to save when the library could not be loaded', async () => {
+        // Without the editor nothing reads the textarea back: a save would send the file
+        // as it was loaded, discard what was typed, and restart the service on top.
+        vi.mocked(loadCodeMirror).mockRejectedValueOnce(new Error('offline'));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        window.showToast = vi.fn();
+        window.showConfirm = vi.fn();
+
+        const el = await mountRaw();
+        await settle();
+
+        expect(el._cmInstance).toBeNull();
+        expect(el._cm.state).toBe('failed');
+        expect(await note(el)).toMatch(/could not be loaded/);
+        el._handleSave();
+        expect(window.showToast).toHaveBeenCalledWith('error', expect.any(String), expect.stringMatching(/could not be loaded/));
+        expect(window.showConfirm).not.toHaveBeenCalled();
+    });
+
+    it('says the editor is loading while it loads', async () => {
+        const release = holdNextLoad();
+        const el = await mountRaw();
+        await settle();
+
+        expect(await note(el)).toBe('Loading the editor…');
+        release();
+        await settle();
+        expect(await note(el)).not.toMatch(/Loading the editor/);
+    });
+
+
+    it('refuses to save while the library is still loading', async () => {
+        // The bare textarea is on screen meanwhile, and typing in it is possible: a save
+        // then would send the file as it was loaded — the review of 2026-10-02.
+        const release = holdNextLoad();
+        window.showToast = vi.fn();
+        window.showConfirm = vi.fn();
+        const el = await mountRaw();
+
+        el._handleSave();
+
+        expect(window.showToast).toHaveBeenCalledWith('error', expect.any(String), expect.stringMatching(/still loading/));
+        expect(window.showConfirm).not.toHaveBeenCalled();
+        release();
+        await settle();
+    });
+
+    it('builds nothing for a view left while the library was loading', async () => {
+        // A service with a form opens in it; Expert is chosen, then left before the load ends.
+        const el = await mountRaw({ schema: { music_directory: { type: 'string' } } });
+        expect(el.currentMode).toBe('form');
+        const release = holdNextLoad();
+        el.currentMode = 'raw';
+        await el.updateComplete;
+        expect(loadCodeMirror).toHaveBeenCalledOnce();
+        el.currentMode = 'form';
+        await el.updateComplete;
+
+        release();
+        await settle();
+
+        expect(cm.fromTextArea).not.toHaveBeenCalled();
+        expect(el._cmInstance).toBeNull();
+    });
+
+    it('builds nothing once the editor has left the page', async () => {
+        const release = holdNextLoad();
+        const el = await mountRaw();
+        el.remove();
+
+        release();
+        await settle();
+
+        expect(cm.fromTextArea).not.toHaveBeenCalled();
+    });
+
+    it('leaves a call made during a load to the load under way', async () => {
+        const release = holdNextLoad();
+        const el = await mountRaw();   // the first call waits on the held load
+        await el._initCodeMirror();    // a second one must not start another
+        expect(loadCodeMirror).toHaveBeenCalledOnce();
+        expect(cm.fromTextArea).not.toHaveBeenCalled();
+
+        release();
+        await settle();
+
+        expect(cm.fromTextArea).toHaveBeenCalledOnce();
+    });
+
+    it('shows the file read-only until the editor takes over', async () => {
+        // Typed there, text would have been taken over by the editor unvalidated (review
+        // of 2026-10-02), or refused at save time after a failure.
+        const release = holdNextLoad();
+        const el = await mountRaw();
+
+        expect(el.querySelector('#configEditorTextarea').readOnly).toBe(true);
+        release();
+        await settle();
+    });
+
+    it('says a retry is loading, not that the previous attempt failed', async () => {
+        vi.mocked(loadCodeMirror).mockRejectedValueOnce(new Error('offline'));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        window.showToast = vi.fn();
+        const el = await mountRaw({ schema: { music_directory: { type: 'string' } } });
+        el.currentMode = 'raw';
+        await el.updateComplete;
+        await settle();
+        expect(await note(el)).toMatch(/could not be loaded/);
+
+        el.currentMode = 'form';
+        await el.updateComplete;
+        const release = holdNextLoad();
+        el.currentMode = 'raw';
+        await el.updateComplete;
+        await settle();
+
+        expect(await note(el)).toBe('Loading the editor…');
+        el._handleSave();
+        expect(window.showToast).toHaveBeenCalledWith('error', expect.any(String), expect.stringMatching(/still loading/));
+        release();
+        await settle();
+    });
+
+    it('tries again when Expert is opened again after a failure in another view', async () => {
+        const fail = failNextLoadLater();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const el = await mountRaw({ schema: { music_directory: { type: 'string' } } });
+        el.currentMode = 'raw';
+        await el.updateComplete;
+        el.currentMode = 'form';
+        await el.updateComplete;
+        fail();
+        await settle();
+
+        el.currentMode = 'raw';
+        await el.updateComplete;
+        await settle();
+
+        expect(loadCodeMirror).toHaveBeenCalledTimes(2);
+        expect(el._cmInstance).not.toBeNull();
+    });
+
+    it('builds the editor again when it comes back to the page in Expert mode', async () => {
+        // disconnectedCallback tears CodeMirror down; updated() only rebuilds it on a
+        // change of mode, so a moved element stayed a read-only preview for good.
+        const el = await mountRaw();
+        await settle();
+        expect(cm.fromTextArea).toHaveBeenCalledOnce();
+
+        el.remove();
+        expect(el._cmInstance).toBeNull();
+        expect(el._cm.state, 'an editor torn down is no longer ready').toBe('idle');
+        document.body.appendChild(el);
+        await settle();
+
+        expect(cm.fromTextArea).toHaveBeenCalledTimes(2);
+        expect(el._cmInstance).not.toBeNull();
+    });
+
+    it('says so when the editor fails to build, rather than loading for ever', async () => {
+        cm.fromTextArea.mockImplementationOnce(() => { throw new Error('bad mode'); });
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        window.showToast = vi.fn();
+        const el = await mountRaw();
+        await settle();
+
+        expect(el._cm.state).toBe('failed');
+        expect(await note(el)).toMatch(/could not be loaded/);
+        el._handleSave();
+        expect(window.showToast).toHaveBeenCalledWith('error', expect.any(String), expect.stringMatching(/could not be loaded/));
     });
 });

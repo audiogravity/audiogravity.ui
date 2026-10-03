@@ -38,16 +38,17 @@ const FALLBACK_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8
 // reproduced twice, and a passing check proved nothing about the next build.
 const ASSETS_PREFIX = '/assets/';
 
-// CDN classification:
-//   CDN_IMMUTABLE — version-pinned content (cdn.jsdelivr.net@x.y.z), cache-first like hashed assets.
+// No third-party host is cached here, because the app loads nothing from one. Inter
+// ships with the box, and so do Chart.js, CodeMirror and xterm.js: they were fetched
+// from jsDelivr and classified here as version-pinned, cache-first content, until
+// they became npm dependencies — hashed assets like the rest of the bundle.
 //
 // There is no stale-while-revalidate class left at all, here or same-origin. It
 // existed for Google Fonts, whose stylesheet is mutable (the subset served depends
-// on the browser asking); Inter now ships with the box, so no third-party host is
-// left to revalidate — and the same-origin files that inherited that strategy could
-// not be revalidated either, since the cache is renamed at every release. See the
-// asset classification in the fetch handler.
-const CDN_IMMUTABLE = new Set(['cdn.jsdelivr.net']);
+// on the browser asking); with no third-party host left to revalidate, and the
+// same-origin files that inherited that strategy unable to be revalidated either,
+// since the cache is renamed at every release, it went. See the asset
+// classification in the fetch handler.
 
 // App shell: static files that never change between releases (no hash in name).
 // Vite-hashed assets are in WB_MANIFEST above.
@@ -90,11 +91,8 @@ const CACHE_URLS = [
     '/pics/apple-touch-180.png',
     '/pics/favicon-32.png',
     '/pics/favicon-16.png',
-    // CDN dependencies (Chart.js, CodeMirror). Inter is not among them any more:
-    // it is a hashed asset in assets/, precached by the Workbox manifest above.
-    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-    'https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css',
-    'https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js'
+    // No third-party entry. Inter is a hashed asset in assets/, precached by the Workbox
+    // manifest above; so are Chart.js, CodeMirror and xterm.js (vite.config.js).
 ];
 
 /**
@@ -174,9 +172,9 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
 
     // Every rule below reads a PATH, and a path means nothing on its own: a third
-    // party serving /assets/ or /api/ would otherwise be classified as ours. The
-    // only cross-origin hosts this file knows about are named explicitly, in
-    // CDN_IMMUTABLE.
+    // party serving /assets/ or /api/ would otherwise be classified as ours. Nothing
+    // cross-origin is cache-first: the app loads no code from another host. A GET to
+    // one would still take the network-first path at the bottom — the app makes none.
     const isSameOrigin = url.origin === self.location.origin;
 
     // 1. GESTION DES APPELS API / SSE / SYSINFO
@@ -201,6 +199,13 @@ self.addEventListener('fetch', (event) => {
 
     // Skip Vite dev-only paths
     if (url.pathname.startsWith('/@') || url.pathname.startsWith('/node_modules') || url.pathname === '/stats.html') {
+        return;
+    }
+
+    // The interface asking the box which version it serves (js/core/stale-chunk-reload.js,
+    // VERSION_CHECK_PARAM): the box's answer or none — never the page this cache holds,
+    // which network-first would hand back with the box down — and nothing stored.
+    if (isSameOrigin && url.pathname === '/index.html' && url.searchParams.has('version-check')) {
         return;
     }
 
@@ -230,23 +235,19 @@ self.addEventListener('fetch', (event) => {
             || url.pathname === '/theme-boot.js');
 
     const isHashedAsset  = isSameOrigin && url.pathname.startsWith(ASSETS_PREFIX);
-    const isCDNImmutable = CDN_IMMUTABLE.has(url.hostname);
     const isNavigation   = request.mode === 'navigate';
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);
 
         // ── Strategy 1: Cache-first (immutable for the life of this cache) ────
-        // Hashed Vite assets, version-pinned CDN files, and the stable static files
-        // above. Same URL, same bytes, until a release renames the cache.
-        //
-        // cdn.jsdelivr.net URLs are version-pinned (@x.y.z) — cache-first avoids
-        // unnecessary CDN requests on every navigation (CLAUDE.md §12).
+        // Hashed Vite assets and the stable static files above. Same URL, same
+        // bytes, until a release renames the cache.
         //
         // theme-boot.js belongs here and never on the network path: it is a
         // render-blocking <head> script, so a round trip in front of it is a round
         // trip in front of every paint — the delay that file exists to remove.
-        if (isHashedAsset || isCDNImmutable || isStableStatic) {
+        if (isHashedAsset || isStableStatic) {
             const cached = await caches.match(request);
             if (cached) return cached;
             try {

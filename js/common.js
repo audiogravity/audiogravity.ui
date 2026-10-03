@@ -462,7 +462,17 @@ function initNavigation() {
             'system': () => import('./components/organisms/ag-system-dashboard.js'),
         };
 
-        if (lazyModules[tabName]) lazyModules[tabName]();
+        // A failure — a network blip, the box restarting — cannot be tried again in place:
+        // the browser keeps a failed import for the life of the page, and asks nothing
+        // more of the box (Chromium 145, measured 2026-10-03). Only a reload loads the
+        // screen: say so, rather than leave it half empty. If the page is stale instead,
+        // a newer version in place, it is being reloaded already (core/stale-chunk-reload.js).
+        if (lazyModules[tabName]) {
+            lazyModules[tabName]().catch((error) => {
+                console.error(`[Tabs] "${tabName}" could not be loaded`, error);
+                showToast('error', 'Screen not loaded', 'Part of this screen could not be loaded. Reload the page to try again.');
+            });
+        }
     };
 
     // Écoute des événements émis par le composant ag-tabs
@@ -668,6 +678,8 @@ if ('serviceWorker' in navigator) {
                         registration.update();
                     }, 300000, false);
 
+                    // BACKLOG: a worker already waiting when the page loads is never sent
+                    // SKIP_WAITING — see audiogravity.ops/BACKLOG.md ("app installée bloquée").
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
                         newWorker.addEventListener('statechange', () => {

@@ -144,9 +144,11 @@ describe('each file is checked against its own platform, not against every platf
         expect(await undeclaredIn('js/api.js', 'sohwToast("a");')).toEqual(['sohwToast']);
     });
 
-    it('accepts the libraries index.html loads from a script tag', async () => {
-        // Real globals, published by <script> rather than by an import. Leaving them
-        // undeclared would keep the gate permanently red.
-        expect(await undeclaredIn('js/api.js', 'new Chart(null, {}); CodeMirror.fromTextArea();')).toEqual([]);
+    it('no longer accepts Chart or CodeMirror as globals', async () => {
+        // They were published by <script> tags from a CDN, so eslint.config.js declared
+        // them. Both are imported now: a bare use left behind would throw at runtime, and
+        // the linter has to say so instead of approving it.
+        expect(await undeclaredIn('js/api.js', 'new Chart(null, {}); CodeMirror.fromTextArea();'))
+            .toEqual(['Chart', 'CodeMirror']);
     });
 });

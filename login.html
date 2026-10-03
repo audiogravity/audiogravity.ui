@@ -7,11 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- CSP: enforced via HTTP headers in production (Nginx/Lighttpd via install.sh). -->
+    <!-- CSP: this meta tag is the policy in production too — the box's server.py sends
+         no CSP header (the comment here used to name Nginx/Lighttpd headers that do not
+         exist). Same policy as index.html: no third-party origin. -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
-        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        script-src 'self' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob:;
         font-src 'self' data:;
         connect-src 'self' ws: wss: * http://*:* https://*:*;

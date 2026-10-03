@@ -53,22 +53,6 @@ const AG_COMPAT_GLOBALS = {
 };
 
 /**
- * Libraries that arrive as a `<script>` tag in `index.html` rather than as an import.
- *
- * `CodeMirror` (expert-mode editor) and `Chart` (latency and network graphs) are loaded
- * from jsDelivr, so they are globals in the literal sense and `no-undef` is right to be
- * told about them — leaving them undeclared would keep the gate permanently red, which is
- * how a lint gate stops being read.
- *
- * What this does NOT say is that the call sites survive the script failing to load.
- * `no-undef` cannot express "guard this"; it is traced in ops/BACKLOG.md.
- */
-const AG_SCRIPT_TAG_GLOBALS = {
-    Chart: 'readonly',
-    CodeMirror: 'readonly',
-};
-
-/**
  * Runs under Node, never in a browser: build config, Storybook's own config, tooling.
  *
  * `.storybook/main.js` only — NOT the whole directory. `.storybook/preview.js` is loaded
@@ -125,11 +109,13 @@ export default [
     },
     {
         // The application itself, plus its stories and tests: a browser, and the names the
-        // compatibility layer and index.html publish there.
+        // compatibility layer publishes there. No library arrives as a global any more:
+        // Chart.js, CodeMirror and xterm.js are imported, so a bare `Chart` or `CodeMirror`
+        // left behind is undeclared, and an error.
         files: ['**/*.js'],
         ignores: [...NODE_FILES, ...WORKER_FILES],
         languageOptions: {
-            globals: { ...globals.browser, ...AG_COMPAT_GLOBALS, ...AG_SCRIPT_TAG_GLOBALS },
+            globals: { ...globals.browser, ...AG_COMPAT_GLOBALS },
         },
     },
     {

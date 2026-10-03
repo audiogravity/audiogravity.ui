@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { VERSION_CHECK_PARAM } from './core/stale-chunk-reload.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SW_SRC = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
@@ -164,7 +165,7 @@ describe('immutable assets are served from the cache, whatever their hash spells
         sw.net.mockClear();
 
         // Same path, another host: nothing guarantees it is content-addressed, so it must
-        // not be treated as immutable. Only the hosts named in CDN_IMMUTABLE may be.
+        // not be treated as immutable — and no other host is: the app loads nothing from one.
         //
         // Asking once proves nothing — cache-first also reaches the network on a miss.
         // What separates the two is the SECOND ask: cache-first would answer from the
@@ -416,6 +417,37 @@ describe('the file says what the file does', () => {
         // still uses it.
         expect(SW_SRC).not.toMatch(/keeps? that strategy/i);
         expect(SW_SRC, 'du code de revalidation subsiste').not.toMatch(/_swrRefresh/);
+    });
+});
+
+describe("the interface's question about the version goes to the box", () => {
+    // js/core/stale-chunk-reload.js reloads the page when the box's index.html has another
+    // start bundle. Answered from the cache with the box down, the question got the page
+    // this worker stored — another version than a page loaded since — and the page was
+    // reloaded onto a box that was restarting; answered from the network, it overwrote
+    // the stored /index.html, the shell the manifest's shortcuts open offline.
+    const CHECK = `/index.html?${VERSION_CHECK_PARAM}=1700000000000`;
+    let sw;
+    beforeEach(async () => { sw = loadSw(); await install(sw); });
+
+    it('leaves it to the network, the box down included', async () => {
+        sw.net.mockRejectedValue(new TypeError('Failed to fetch'));
+        const { response } = await get(sw, CHECK);
+        expect(response, 'the worker answered for the box').toBeUndefined();
+    });
+
+    it('stores nothing of it', async () => {
+        const cache = await liveCache(sw);
+        const put = vi.spyOn(cache, 'put');
+        await get(sw, CHECK);
+        expect(put).not.toHaveBeenCalled();
+    });
+
+    it('still serves the page itself from the cache when the box is down', async () => {
+        // The contrast: without the query, network-first falls back on the stored shell.
+        sw.net.mockRejectedValue(new TypeError('Failed to fetch'));
+        const { response } = await get(sw, '/index.html');
+        expect(response.body).toBe('net');
     });
 });
 

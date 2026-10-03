@@ -25,11 +25,13 @@
  * @dependency ag-validation-results - Validation feedback display
  * @dependency js/utils.js - autoExpandTextarea helper
  * @dependency css/config.css - Editor layout and styling
+ * @dependency js/core/CodeMirrorController.js - CodeMirror 5, the Expert editor, loaded on first use
  */
 import { LitElement, html, css } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { autoExpandTextarea } from '../utils-lit.js';
 import { iconArrowLeft, iconCode, iconCheck, iconWarning, iconSave, iconSliders, iconClose, iconHistory, iconInfo } from '../../ag-icons.js';
+import { CodeMirrorController, EDITOR_LOAD_FAILED } from '../../core/CodeMirrorController.js';
 import './ag-guided-config.js';
 
 export class AgConfigEditor extends LitElement {
@@ -82,10 +84,20 @@ export class AgConfigEditor extends LitElement {
         this._originalFormData = {};
         this._originalRawContent = '';
         this._cmInstance = null;
+        /** Loads CodeMirror on demand and says where that stands (.state). */
+        this._cm = new CodeMirrorController(this);
     }
 
     createRenderRoot() {
         return this; // Use Light DOM for CodeMirror & global CSS
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        // Back on the page in Expert mode — moved, re-attached — after disconnectedCallback
+        // tore the editor down: nothing else would build it again, since updated() only
+        // does on a change of mode.
+        if (this.hasUpdated && this.currentMode === 'raw') this._initCodeMirror();
     }
 
     disconnectedCallback() {
@@ -93,6 +105,7 @@ export class AgConfigEditor extends LitElement {
         if (this._cmInstance) {
             this._cmInstance.toTextArea();
             this._cmInstance = null;
+            this._cm.reset();
         }
     }
 
@@ -138,30 +151,61 @@ export class AgConfigEditor extends LitElement {
         }
     }
 
-    _initCodeMirror() {
-        const textarea = this.querySelector('#configEditorTextarea');
-        if (!textarea || typeof CodeMirror === 'undefined' || this._cmInstance) return;
+    /**
+     * Turn the raw textarea into a CodeMirror editor, loading the library on first use.
+     *
+     * The library is a chunk of its own: this._cm (CodeMirrorController) loads it, runs one
+     * build at a time and says where that stands. Everything is checked again once it
+     * has arrived: the editor may have been left or the mode switched meanwhile.
+     *
+     * Until the editor exists, the textarea is a read-only preview. Nothing reads it back
+     * — a raw save sends rawContent, which only the editor's change handler updates — and
+     * text typed there would have been taken over by the editor without ever being
+     * validated. _handleSave refuses a raw save without the editor. What the view says
+     * meanwhile — loading, or failed — follows this._cm.state (_editorNote).
+     */
+    async _initCodeMirror() {
+        if (this._cmInstance) return;
+        await this._cm.build((CodeMirror) => {
+            const textarea = this.querySelector('#configEditorTextarea');
+            if (!textarea || !this.isConnected || this.currentMode !== 'raw' || this._cmInstance) return null;
 
-        this._cmInstance = CodeMirror.fromTextArea(textarea, {
-            mode: this._getCodeMirrorMode(this.configFormat),
-            lineNumbers: true,
-            lineWrapping: true,
-            theme: 'default',
-            autofocus: false,
-            extraKeys: { Tab: false },
-        });
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: this._getCodeMirrorMode(this.configFormat),
+                lineNumbers: true,
+                lineWrapping: true,
+                theme: 'default',
+                autofocus: false,
+                extraKeys: { Tab: false },
+            });
 
-        // Set fixed height to enable internal scrolling for large files
-        this._cmInstance.setSize('100%', '600px');
+            // Set fixed height to enable internal scrolling for large files
+            editor.setSize('100%', '600px');
 
-        this._cmInstance.on('change', () => {
-            this.rawContent = this._cmInstance.getValue();
-            this._checkRawDirty();
-            this._validateRawContent();
+            editor.on('change', () => {
+                this.rawContent = editor.getValue();
+                this._checkRawDirty();
+                this._validateRawContent();
+            });
+            this._cmInstance = editor;
+            return editor;
         });
 
         // initial validation
-        this._validateRawContent();
+        if (this._cmInstance) this._validateRawContent();
+    }
+
+    /**
+     * What the Expert view says about its editor while it has none: that it is loading,
+     * or that it could not be loaded. Null once it is there, or before any attempt.
+     *
+     * @returns {?string}
+     */
+    _editorNote() {
+        if (this._cmInstance) return null;
+        if (this._cm.state === 'failed') return EDITOR_LOAD_FAILED;
+        if (this._cm.state === 'loading') return 'Loading the editor…';
+        return null;
     }
 
     _getCodeMirrorMode(format) {
@@ -335,6 +379,16 @@ export class AgConfigEditor extends LitElement {
     }
 
     _handleSave() {
+        // Raw mode saves what the editor holds; without it, the file as it was loaded
+        // would be sent — whatever was typed in the bare textarea discarded, and the
+        // service restarted on top. Loading takes a moment the first time, or failed.
+        if (this.currentMode === 'raw' && !this._cmInstance) {
+            const reason = this._cm.state === 'failed'
+                ? EDITOR_LOAD_FAILED
+                : 'The editor is still loading — try again in a moment.';
+            window.showToast('error', 'Editor not ready', reason);
+            return;
+        }
         if (this.currentMode === 'raw' && !this.validationValid) {
             window.showToast('error', 'Invalid Configuration', this.validationMsg);
             return;
@@ -425,6 +479,8 @@ export class AgConfigEditor extends LitElement {
 
     render() {
         if (!this.service) return html``;
+        const editorNote = this._editorNote();
+        const editorFailed = editorNote !== null && this._cm.state === 'failed';
 
         return html`
             <div class="config-editor-container active">
@@ -459,14 +515,18 @@ export class AgConfigEditor extends LitElement {
                 <div class=${classMap({ 'config-raw-editor': true, 'active': this.currentMode === 'raw' })}>
                     <!-- Wrapping in a div prevents Lit from getting confused by CodeMirror's DOM manipulation -->
                     <div style="display: ${this.currentMode === 'raw' ? 'block' : 'none'}">
-                        <textarea class="config-editor" id="configEditorTextarea">${this.rawContent}</textarea>
+                        <!-- Read-only: a preview until CodeMirror replaces it (_initCodeMirror). -->
+                        <textarea class="config-editor" id="configEditorTextarea" readonly>${this.rawContent}</textarea>
                     </div>
                         <div class=${classMap({
             'validation-message': true,
-            'validation-success': this.validationValid && this.validationMsg,
-            'validation-error': !this.validationValid
+            'validation-success': !editorNote && this.validationValid && this.validationMsg,
+            'validation-error': editorFailed || (!editorNote && !this.validationValid)
         })}>
-                            ${this.validationMsg ? html`
+                            ${editorNote ? html`
+                                ${editorFailed ? html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mr-xxs">${iconWarning}</svg>` : ''}
+                                ${editorNote}
+                            ` : this.validationMsg ? html`
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mr-xxs">${this.validationValid ? iconCheck : iconWarning}</svg>
                                 ${this.validationMsg}
                             ` : ''}

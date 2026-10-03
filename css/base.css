@@ -106,9 +106,9 @@ body {
 
    `.xterm` is deliberately ABSENT from that list, and adding it would be a
    regression. xterm disables native selection itself (`.xterm { user-select: none }`
-   in its own stylesheet, identical from the version we load through to the current
-   major) and paints its own selection onto the canvas. Re-enabling the native one
-   here would set the two against each other — precisely what xterm avoids. */
+   in its own stylesheet — unchanged from 4.19, once fetched from a CDN, to 6.0, now
+   bundled) and draws its own selection. Re-enabling the native one here would set
+   the two against each other — precisely what xterm avoids. */
 input, textarea, [contenteditable], pre, code {
     /* stylelint-disable-next-line property-no-vendor-prefix -- same as above. */
     -webkit-user-select: text;
