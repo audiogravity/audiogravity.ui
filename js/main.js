@@ -13,6 +13,11 @@
 import { splashScreen } from './splash-screen.js';
 splashScreen.init();
 
+// A screen's on-demand code may be gone after two updates: reload onto the newer version
+// the box serves rather than leave the screen empty (see the module).
+import { watchStaleChunks } from './core/stale-chunk-reload.js';
+watchStaleChunks();
+
 // =====================
 // CORE MODULES (Load first)
 // =====================

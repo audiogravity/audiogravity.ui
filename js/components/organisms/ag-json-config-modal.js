@@ -10,7 +10,7 @@
  * @attr {boolean} allowFileTransfer - Show Download / Upload buttons for the edited file
  *
  * @dependency ag-modal
- * @dependency CodeMirror - External library for the JSON editor
+ * @dependency js/core/CodeMirrorController.js - CodeMirror 5, the JSON editor, loaded on first open
  * @dependency css/components/forms.css, css/validation.css - Form and validation styles
  * 
  * @fires save-request - Dispatched when SAVE button is clicked, with {config} detail
@@ -21,6 +21,7 @@ import { LitElement, html } from 'lit';
 import { iconCheck, iconWarning, iconPencil, iconDownload, iconUpload } from '../../ag-icons.js';
 import './ag-modal.js';
 import { downloadTextFile } from '../../ui-helpers.js';
+import { CodeMirrorController, EDITOR_LOAD_FAILED } from '../../core/CodeMirrorController.js';
 
 export class AgJsonConfigModal extends LitElement {
     static properties = {
@@ -53,6 +54,8 @@ export class AgJsonConfigModal extends LitElement {
         this._validationMessage = '';
         this._isDirty = false;
         this._isLoading = false;
+        /** Loads CodeMirror on demand and says where that stands (.state). */
+        this._cm = new CodeMirrorController(this);
 
         // Unique IDs to avoid conflicts when multiple instances are in the DOM
         const uid = Math.random().toString(36).slice(2, 9);
@@ -103,49 +106,96 @@ export class AgJsonConfigModal extends LitElement {
         this._isLoading = false;
     }
 
-    _initCodeMirror() {
-        // Wait for the modal and textarea to be in the DOM
-        setTimeout(() => {
+    /**
+     * Show the file in the editor, building it — and loading CodeMirror — on first open.
+     *
+     * The library is a chunk of its own, loaded by this._cm (CodeMirrorController): this
+     * component is in the main bundle, and a static import would bring the editor along
+     * with it. Its textarea is never filled without the editor, so until the editor
+     * exists the modal says it is loading — or that it failed — rather than show what
+     * looks like an empty file; Edit and Upload wait for it too.
+     */
+    async _initCodeMirror() {
+        if (!this._editor) {
+            await this._cm.build((CodeMirror) => this._buildEditor(CodeMirror));
             if (!this._editor) {
-                const textarea = this.querySelector(`#${this._editorId}`);
-                if (!textarea) return;
-
-                if (typeof CodeMirror === 'undefined') {
-                    console.error('CodeMirror not loaded');
-                    return;
+                if (this._cm.state === 'failed') {
+                    this._isValid = false;
+                    this._validationMessage = EDITOR_LOAD_FAILED;
                 }
-
-                this._editor = CodeMirror.fromTextArea(textarea, {
-                    mode: { name: "javascript", json: true },
-                    theme: 'default',
-                    lineNumbers: true,
-                    readOnly: true,
-                    lineWrapping: false,
-                    matchBrackets: true,
-                    autoCloseBrackets: true,
-                    foldGutter: true,
-                    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-                    indentUnit: 2,
-                    tabSize: 2,
-                    indentWithTabs: false
-                });
-
-                this._editor.on('change', () => this._validateCode());
+                return;
             }
+        } else {
+            // Reopened: let the modal lay itself out again before the editor measures.
+            await this._rendered();
+        }
+        this._showFile();
+    }
 
-            // Always make sure it's refreshed
+    /**
+     * Wait until this component and its ag-modal have rendered: the textarea is in the
+     * body ag-modal renders, after this component's own update.
+     *
+     * @returns {Promise<void>}
+     */
+    async _rendered() {
+        await this.updateComplete;
+        await this.querySelector('ag-modal')?.updateComplete;
+    }
+
+    /**
+     * Build the editor on the modal's textarea.
+     *
+     * A modal closed meanwhile wants no editor. A textarea missing once both have
+     * rendered is a failed build, said so — rather than "Loading the editor…" for as
+     * long as the modal stays open.
+     *
+     * @param {Function} CodeMirror - The CodeMirror constructor.
+     * @returns {Promise<?Object>} The editor, or null if the modal was closed first.
+     */
+    async _buildEditor(CodeMirror) {
+        await this._rendered();
+        if (!this.isOpen) return null;
+        const textarea = this.querySelector(`#${this._editorId}`);
+        if (!textarea) throw new Error('the editor textarea is not in the modal');
+
+        const editor = CodeMirror.fromTextArea(textarea, {
+            mode: { name: "javascript", json: true },
+            theme: 'default',
+            lineNumbers: true,
+            readOnly: true,
+            lineWrapping: false,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            foldGutter: true,
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+            indentUnit: 2,
+            tabSize: 2,
+            indentWithTabs: false
+        });
+        editor.on('change', () => this._validateCode());
+        this._editor = editor;
+        return editor;
+    }
+
+    /** Show the file in the editor and make the editor measure itself again. */
+    _showFile() {
+        if (!this._editor) return;
+        // Edit may have been pressed meanwhile: then the user is editing, and what they
+        // see must stay theirs and stay writable.
+        if (!this._isEditMode) {
             this._editor.setOption('readOnly', true);
             this._editor.setValue(this.configText);
+        }
 
-            const wrapper = this._editor.getWrapperElement();
-            const rawEditorDiv = wrapper.parentElement;
-            if (rawEditorDiv) {
-                rawEditorDiv.classList.add('active');
-            }
+        const wrapper = this._editor.getWrapperElement();
+        const rawEditorDiv = wrapper.parentElement;
+        if (rawEditorDiv) {
+            rawEditorDiv.classList.add('active');
+        }
 
-            this._editor.refresh();
-            setTimeout(() => this._editor.refresh(), 100); // UI double check
-        }, 50);
+        this._editor.refresh();
+        setTimeout(() => this._editor?.refresh(), 100); // UI double check
     }
 
     _validateCode() {
@@ -212,8 +262,9 @@ export class AgJsonConfigModal extends LitElement {
         downloadTextFile(content, this.filename || 'config.json', 'application/json');
     }
 
-    /** Open the native file picker for uploading a replacement file. */
+    /** Open the native file picker for uploading a replacement file — once the editor is there to show it. */
     _handleUploadClick() {
+        if (!this._editor) return;
         const input = this.querySelector(`#${this._fileInputId}`);
         if (input) input.click();
     }
@@ -242,11 +293,8 @@ export class AgJsonConfigModal extends LitElement {
         // Switch to edit mode and drop the file content into the editor; the
         // 'change' handler validates the JSON syntax automatically.
         if (!this._isEditMode) this._enableEditMode();
-        if (this._editor) {
-            this._editor.setValue(text);
-        } else {
-            this.configText = text;
-        }
+        // Upload waits for the editor (_handleUploadClick), so it is there.
+        this._editor?.setValue(text);
     }
 
     _handleClose() {
@@ -258,7 +306,8 @@ export class AgJsonConfigModal extends LitElement {
         const title = this._isEditMode ? `${this.modalTitle} (Edit Mode)` : `${this.modalTitle} (View Mode)`;
 
         let validationClass = 'validation-message';
-        if (this._isEditMode) {
+        // Outside edit mode only one thing invalidates the view: the editor failed to load.
+        if (this._isEditMode || !this._isValid) {
             validationClass += this._isValid ? ' validation-success' : ' validation-error';
         }
 
@@ -275,13 +324,14 @@ export class AgJsonConfigModal extends LitElement {
                         <label>${this.filename}</label>
                         <div class="validation-wrapper">
                             <div class="${wrapperClasses}" id="${this._editorWrapperId}">
-                                <textarea id="${this._editorId}" class="config-editor"></textarea>
+                                <!-- Read-only: a placeholder until CodeMirror replaces it (_initCodeMirror). -->
+                                <textarea id="${this._editorId}" class="config-editor" readonly></textarea>
                             </div>
                             <div class="${validationClass}" id="${this._validationId}">
                                 ${this._validationMessage ? html`
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">${this._isValid ? iconCheck : iconWarning}</svg>
                                     ${this._validationMessage}
-                                ` : ''}
+                                ` : this._cm.state === 'loading' ? 'Loading the editor…' : ''}
                             </div>
                         </div>
                         ${this.allowFileTransfer ? html`
@@ -299,12 +349,16 @@ export class AgJsonConfigModal extends LitElement {
                         </button>
                     ` : ''}
                     ${this.allowFileTransfer && !this.isGuest ? html`
-                        <button class="btn-action" @click=${this._handleUploadClick} ?disabled=${this._isLoading}>
+                        <button class="btn-action" @click=${this._handleUploadClick} ?disabled=${this._isLoading}
+                            aria-disabled="${this._cm.state === 'ready' ? 'false' : 'true'}">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg> Upload
                         </button>
                     ` : ''}
                     ${!this._isEditMode && !this.isGuest ? html`
-                        <button class="btn-action" @click=${this._enableEditMode}>
+                        <!-- Unavailable, not disabled, until the editor exists: a disabled button
+                             throws the focus off itself (convention of ag-audio-software-page). -->
+                        <button class="btn-action" @click=${this._enableEditMode}
+                            aria-disabled="${this._cm.state === 'ready' ? 'false' : 'true'}">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPencil}</svg> Edit
                         </button>
                     ` : ''}

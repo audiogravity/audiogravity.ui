@@ -6,6 +6,17 @@
 /* 0. FONTS (self-hosted @font-face — must precede anything that names the family) */
 @import 'fonts.css';
 
+/* 0b. VENDOR BASE STYLES (CodeMirror 5, the expert-mode and JSON editors).
+   Here, and not in the chunk that loads the library on demand: config.css and
+   config-editor.css restyle CodeMirror at the same specificity as its own theme —
+   `.config-raw-editor .cm-keyword` against `.cm-s-default .cm-keyword`, both (0,2,0) —
+   so they win by coming later, and only by that. A stylesheet injected when the
+   editor opens lands after this whole bundle and would take every colour back.
+   2.6 KB compressed; the page used to fetch the same two files from a CDN, render-
+   blocking, before anything was drawn. */
+@import 'codemirror/lib/codemirror.css';
+@import 'codemirror/addon/fold/foldgutter.css';
+
 /* 1. ATOMS & BASE (Resets, HTML Base) */
 @import 'base.css';
 

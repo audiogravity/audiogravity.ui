@@ -14,9 +14,12 @@
  * @dependency js/api.js - apiGet, apiPost functions for backend communication
  * @dependency css/performance.css - Performance test page styling
  * @dependency css/components/forms.css, css/components/button.css, css/utilities.css - Form fields, buttons, and utilities
+ * @dependency chart.js - The histogram. Imported statically: this module is itself loaded
+ * only with the Performance tab (common.js), so the library comes with it, from the box.
  */
 
 import { LitElement, html } from 'lit';
+import Chart from 'chart.js/auto';
 import { apiGet, apiPost, AgTimerManager, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
 import { saveLatencyResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { iconHistory } from '../../ag-icons.js';
@@ -410,9 +413,7 @@ export class AgLatencyTest extends LitElement {
 
         // ✅ Set Chart.js global default color - this is what actually controls legend label text
         // legend.labels.color alone is not always sufficient in Chart.js v4
-        if (window.Chart && window.Chart.defaults) {
-            window.Chart.defaults.color = textPrimary;
-        }
+        Chart.defaults.color = textPrimary;
 
         if (this._chartInstance.options.plugins.title) {
             this._chartInstance.options.plugins.title.color = textPrimary;

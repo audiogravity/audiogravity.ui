@@ -24,11 +24,16 @@
          here used to say otherwise). 'unsafe-eval' is needed for Vite HMR, so it ships:
          BACKLOG — audiogravity.ops/BACKLOG.md, "La CSP de production…".
          img-src is 'self': the in-app manual's figures come from the box's own copy
-         (a box repointing AG_CONFIG.manualBase must allow that origin). -->
+         (a box repointing AG_CONFIG.manualBase must allow that origin).
+         Scripts and styles may come from no third party: Chart.js, CodeMirror and xterm.js
+         are npm dependencies, served by the box like the rest of the bundle. They came
+         from jsDelivr, which held the first paint and the start of the app on a CDN
+         round trip and ran unhashed code in the admin's session; an allowed CDN is
+         also any package published on it. js/module-imports.test.js keeps it out. -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
-        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        script-src 'self' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob:;
         font-src 'self' data:;
         connect-src 'self' ws: wss: * http://*:* https://*:*;
@@ -189,11 +194,9 @@
         href="pics/splash/apple-splash-2732-2048.png">
 
     <!-- Performance Optimizations: Resource Hints -->
-    <!-- Inter is served by the box, declared in css/fonts.css and pulled in by
-         css/main.css below. No resource hint for a font host is wanted here:
-         there is no third party left to connect to. -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <!-- None. Inter is served by the box, declared in css/fonts.css and pulled in by
+         css/main.css below, and so are the editor, the charts and the terminal, each
+         loaded by the screen that uses it. There is no third party left to connect to. -->
 
     <!-- Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="pics/apple-touch-180.png">
@@ -201,9 +204,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="pics/favicon-16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="pics/favicon-32.png">
     <link rel="manifest" href="site.webmanifest">
-    <!-- CodeMirror 5 (syntax highlighting for Expert Mode) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.css">
 
     <!-- Critical Inline CSS to prevent white flash during initial load on PWA -->
     <style>
@@ -229,11 +229,6 @@
     <!-- CSS MANIFEST (All styles bundled here) -->
     <link rel="stylesheet" href="css/main.css">
     <!-- CSS BUNDLE END -->
-
-    <!-- Chart.js - Loaded with defer for non-blocking -->
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
-        integrity="sha512-Z4RJa36Kl84unoevz3wyZ0uFDMj7lfaxAs+hiqXXeZcXg/rjdYTafAXxP/hKSqW8Wwo3vwfg2V/dkuH5fKO2bw=="
-        crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -434,19 +429,6 @@
 
     <!-- FOOTER -->
     <ag-footer></ag-footer>
-
-    <!-- CodeMirror 5 modes (properties=INI/conf, clike=libconfig, xml=XML) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/properties/properties.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/clike/clike.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldcode.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/foldgutter.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/brace-fold.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/fold/comment-fold.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.js"></script>
 
     <!-- JS BUNDLE START - Phase 2: ES6 Modules -->
     <!-- Single entry point that loads all modules with proper dependency resolution -->

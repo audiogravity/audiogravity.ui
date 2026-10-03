@@ -59,6 +59,15 @@ Same MIT terms as above.
 
 ---
 
+### dagre 0.8.5
+**Copyright** © 2012–2014 Chris Pettitt  
+**License** MIT  
+**Source** https://github.com/dagrejs/dagre  
+
+Same MIT terms as above.
+
+---
+
 ### Lucide Icons
 **Copyright** © 2020 Lucide Contributors  
 **License** ISC  
@@ -86,30 +95,41 @@ the Software.
 
 ---
 
-## Loaded via CDN at runtime
-
-### Chart.js 4.4.0
+### Chart.js
 **Copyright** © 2014–2022 Chart.js Contributors  
 **License** MIT  
 **Source** https://www.chartjs.org  
+**Used by** the latency and network graphs of the Performance tab  
 
 Same MIT terms as above.
 
 ---
 
-### dagre 0.8.5
-**Copyright** © 2012–2014 Chris Pettitt  
+### @kurkle/color
+**Copyright** © 2018–2024 Jukka Kurkela  
 **License** MIT  
-**Source** https://github.com/dagrejs/dagre  
+**Source** https://github.com/kurkle/color  
+**Used by** Chart.js — colour parsing and conversion  
 
 Same MIT terms as above.
 
 ---
 
-### CodeMirror 5.65.16
+### CodeMirror
 **Copyright** © 2017 Marijn Haverbeke and others  
 **License** MIT  
 **Source** https://codemirror.net  
+**Used by** the Expert configuration editor and the JSON editor  
+
+Same MIT terms as above.
+
+---
+
+### xterm.js
+**Copyright** © 2017–2019 The xterm.js authors; © 2014–2016 SourceLair Private Company; © 2012–2013 Christopher Jeffrey  
+**License** MIT  
+**Source** https://xtermjs.org  
+**Used by** the terminal, with its fit addon (`@xterm/addon-fit`, © 2019 The xterm.js authors, same license)  
 
 Same MIT terms as above.
 

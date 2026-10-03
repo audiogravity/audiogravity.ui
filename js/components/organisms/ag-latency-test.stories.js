@@ -1,15 +1,6 @@
 import { html } from 'lit';
 import './ag-latency-test.js';
 
-// Mock Chart if not available
-if (typeof Chart === 'undefined') {
-    window.Chart = class {
-        constructor() {}
-        destroy() {}
-        update() {}
-    };
-}
-
 export default {
     title: 'Organisms/LatencyTest',
     component: 'ag-latency-test',

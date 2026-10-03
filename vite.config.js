@@ -78,7 +78,17 @@ export default defineConfig({
         //   nowplaying  — mini + fullscreen player; changes with player features
         //   streaming   — service auth cards (HQP, Qobuz, Tidal, HRA, UPnP renderer)
         //   library     — library store, api, constants; isolated from UI atoms
+        //   chart       — Chart.js, for the Performance tab only. Without this, the two
+        //                 components that import it also share test-history.js, and
+        //                 Rollup names the merged chunk after that file.
+        //   codemirror  — CodeMirror 5, its modes and addons, for the two editors.
+        //   xterm       — xterm.js and its fit addon, for the terminal.
+        //                 These three are loaded on demand, never at startup, and the
+        //                 precache below keeps them like any other chunk.
         manualChunks(id) {
+          if (id.includes('/node_modules/chart.js/') || id.includes('/node_modules/@kurkle/color/')) return 'chart';
+          if (id.includes('/node_modules/codemirror/') || id.endsWith('/js/core/codemirror.js')) return 'codemirror';
+          if (id.includes('/node_modules/@xterm/')) return 'xterm';
           if (id.includes('lit-html') || id.includes('lit-element') || id.includes('/lit/') || id.includes('@lit/')) return 'lit';
           if (id.includes('ag-icons.js')) return 'icons';
           if (id.includes('/atoms/')) return 'atoms';
@@ -132,7 +142,11 @@ export default defineConfig({
     injectManifest: {
       // Precache all JS/CSS/image assets produced by Vite (hashed filenames).
       // HTML entry points and sw.js itself are excluded automatically.
-      globPatterns: ['assets/**/*.{js,css,png,webp,svg,woff,woff2}'],
+      // The libraries a screen loads on demand (named in manualChunks above) included,
+      // some 235 KB compressed: a device's cache must hold the whole of its version. The
+      // box keeps the files of two versions only (the installer's retire_old_files), so
+      // an installed app asleep through two updates finds there none of the files its
+      // version still asks for — a screen precached without its library stays empty.
       globIgnores: ['stats.html'],
       // Raise limit for large Nuitka-generated chunks (main bundle ~570 KB).
       maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

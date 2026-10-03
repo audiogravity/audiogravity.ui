@@ -11,8 +11,10 @@ Audiogravity uses a **Component-Driven Architecture** powered by **Lit 3**, **Vi
 - **State**: Reactive Properties (Lit) + `EventEmitter` pub/sub for SSE data streams
 - **Styling**: Design token system (CSS custom properties) + modular stylesheets
 - **Graph**: [Cytoscape.js](https://js.cytoscape.org/) + dagre — audio pipeline visualisation
-- **Charts**: [Chart.js 4](https://www.chartjs.org/) (performance & latency) — loaded via CDN
-- **Editor**: [CodeMirror 5](https://codemirror.net/5/) — JSON/INI/XML/Libconfig — loaded via CDN
+- **Charts**: [Chart.js 4](https://www.chartjs.org/) (performance & latency) — npm, loaded with the Performance tab
+- **Editor**: [CodeMirror 5](https://codemirror.net/5/) — JSON/INI/XML/Libconfig — npm, loaded when an editor opens (`js/core/codemirror.js`)
+- **Terminal**: [xterm.js](https://xtermjs.org/) — npm, loaded on the first connection
+- **No third-party host**: everything the app runs is served by the box — `js/module-imports.test.js` keeps it so
 
 ---
 

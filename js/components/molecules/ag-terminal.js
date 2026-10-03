@@ -6,7 +6,7 @@
  *
  * @element ag-terminal
  *
- * @dependency xterm.js — loaded dynamically from CDN
+ * @dependency @xterm/xterm, @xterm/addon-fit — npm dependencies, loaded on first connection
  * @dependency /sysinfo/terminal/ws — WebSocket PTY endpoint (admin-only)
  */
 
@@ -15,8 +15,8 @@ import { iconTerminal } from '../../ag-icons.js';
 import { getAuthToken } from '../../auth.js';
 import { monoFontFamily } from '../../common.js';
 
-const XTERM_CDN    = 'https://cdn.jsdelivr.net/npm/xterm@4.19.0';
-const XTERM_FIT_CDN = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js';
+/** xterm.js's two classes, {Terminal, FitAddon}, once _loadXterm() has loaded them. */
+let xtermClasses = null;
 
 /** Cell size for the terminal. Shared so the face is preloaded at the size it is drawn. */
 const TERMINAL_FONT_SIZE = 13;
@@ -76,27 +76,52 @@ export class AgTerminal extends LitElement {
         if (this._term) { this._term.dispose(); this._term = null; }
     }
 
-    /** Load xterm.js + FitAddon from CDN (cached after first call). */
+    /**
+     * Load xterm.js, its stylesheet and the fit addon (once; later calls return at once).
+     *
+     * Imported on demand, from the box: this component is part of the main bundle, and a
+     * static import would put about 90 KB compressed on every start for a panel few open.
+     * They used to be injected from jsDelivr, without an integrity hash, in front of a
+     * shell on the box — and a device with no internet had no terminal at all.
+     *
+     * @returns {Promise<{Terminal: Function, FitAddon: Function}>} The two classes.
+     */
     async _loadXterm() {
-        if (window._xtermLoaded) return;
-
-        await Promise.all([
-            _injectStyle(`${XTERM_CDN}/css/xterm.css`),
-            _injectScript(`${XTERM_CDN}/lib/xterm.js`),
-        ]);
-        await _injectScript(XTERM_FIT_CDN);
-        window._xtermLoaded = true;
+        if (!xtermClasses) {
+            const [xterm, fit] = await Promise.all([
+                import('@xterm/xterm'),
+                import('@xterm/addon-fit'),
+                import('@xterm/xterm/css/xterm.css'),
+            ]);
+            xtermClasses = { Terminal: xterm.Terminal, FitAddon: fit.FitAddon };
+        }
+        return xtermClasses;
     }
 
     async _connect() {
+        // RECONNECT and RETRY come here from a closed session whose terminal is still on
+        // screen: without this, a second one opened below it, and the first one's
+        // ResizeObserver kept fitting a terminal nobody held.
+        this._destroy();
         this._status = 'connecting';
         this._errorMsg = '';
 
+        let xterm;
         try {
-            await this._loadXterm();
+            xterm = await this._loadXterm();
         } catch (e) {
             this._status = 'error';
-            this._errorMsg = 'Failed to load terminal library.';
+            // Not RETRY: the browser keeps a failed import for the life of the page, and asks
+            // nothing more of the box (Chromium 145, measured 2026-10-03). Only a reload does.
+            this._errorMsg = 'The terminal could not be loaded. Reload the page to try again.';
+            return;
+        }
+
+        // The panel may have been left while the library loaded: _destroy() then ran with
+        // no socket to close, and one opened now would start a shell on the box that
+        // nothing ends until the page itself goes.
+        if (!this.isConnected) {
+            this._status = 'idle';
             return;
         }
 
@@ -131,12 +156,18 @@ export class AgTerminal extends LitElement {
             if (pending.length < PENDING_FRAME_CAP) pending.push(e.data);
         };
 
+        // The events of a socket this component has moved on from — closed by _destroy()
+        // on DISCONNECT, or replaced by a reconnection — must not touch the current state:
+        // the close event arrives after the fact, and turned an idle panel into
+        // "Disconnected", or wrote "[connection closed]" into the new session.
         ws.onopen = () => {
+            if (this._ws !== ws) return;
             this._status = 'connected';
-            this._mountTerminal(ws, pending);
+            this._mountTerminal(ws, pending, xterm);
         };
 
         ws.onclose = (e) => {
+            if (this._ws !== ws) return;
             const wasOpen = this._status === 'connected';
             this._status = e.code === 4003 ? 'error' : 'closed';
             this._errorMsg = closeMessage(e.code, wasOpen) || this._errorMsg;
@@ -144,12 +175,20 @@ export class AgTerminal extends LitElement {
         };
 
         ws.onerror = () => {
+            if (this._ws !== ws) return;
             this._status = 'error';
             this._errorMsg = 'WebSocket connection failed.';
         };
     }
 
-    _mountTerminal(ws, pending) {
+    /**
+     * Build the terminal once the panel has rendered, and hand the socket over to it.
+     *
+     * @param {WebSocket} ws - The socket this terminal is for.
+     * @param {Array<ArrayBuffer|string>} pending - Frames received before it existed.
+     * @param {{Terminal: Function, FitAddon: Function}} xterm - From _loadXterm().
+     */
+    _mountTerminal(ws, pending, { Terminal, FitAddon }) {
         this.updateComplete.then(async () => {
             /** Give up on this socket and release what it collected. */
             const abandon = () => {
@@ -185,9 +224,9 @@ export class AgTerminal extends LitElement {
             // _destroy() clears it, a new connection replaces it.
             if (this._ws !== ws) { abandon(); return; }
 
-            const term = new window.Terminal({
+            const term = new Terminal({
                 cursorBlink: true,
-                // xterm.js draws to a canvas and cannot read a CSS custom
+                // xterm.js takes its options as values and cannot read a CSS custom
                 // property, so the value is resolved here rather than declared.
                 fontFamily,
                 fontSize: TERMINAL_FONT_SIZE,
@@ -207,7 +246,7 @@ export class AgTerminal extends LitElement {
                 allowProposedApi: true,
             });
 
-            const fitAddon = new window.FitAddon.FitAddon();
+            const fitAddon = new FitAddon();
             term.loadAddon(fitAddon);
             term.open(container);
             fitAddon.fit();
@@ -294,28 +333,3 @@ export class AgTerminal extends LitElement {
 }
 
 customElements.define('ag-terminal', AgTerminal);
-
-/** Inject a CSS link tag if not already present. */
-function _injectStyle(href) {
-    if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        link.onload = resolve;
-        link.onerror = reject;
-        document.head.appendChild(link);
-    });
-}
-
-/** Inject a script tag if not already present. */
-function _injectScript(src) {
-    if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-    });
-}

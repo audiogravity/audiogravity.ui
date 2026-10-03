@@ -23,9 +23,10 @@ The core is required at runtime — see [API.md](API.md) for the contract.
 | Components | [Lit 3](https://lit.dev/) — Web Components, Light DOM, [@lit/context](https://lit.dev/docs/data/context/) for shared state |
 | Build | [Vite 7](https://vitejs.dev/) |
 | Graph | [Cytoscape.js](https://js.cytoscape.org/) + dagre (npm) |
-| Config editor | [CodeMirror 5](https://codemirror.net/) (CDN) |
+| Config editor | [CodeMirror 5](https://codemirror.net/) (npm, loaded on demand) |
 | In-app manual | [marked](https://marked.js.org/) — Markdown rendered client-side, loaded on demand |
-| Charts | [Chart.js 4](https://www.chartjs.org/) (CDN) |
+| Charts | [Chart.js 4](https://www.chartjs.org/) (npm, with the Performance tab) |
+| Terminal | [xterm.js](https://xtermjs.org/) (npm, loaded on demand) |
 | Tests | [Vitest 4](https://vitest.dev/) |
 | Component dev | [Storybook 10](https://storybook.js.org/) |
 | CSS linting | [Stylelint 17](https://stylelint.io/) |

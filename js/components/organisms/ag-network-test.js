@@ -16,9 +16,12 @@
  * @dependency js/api.js - apiPost function for backend communication
  * @dependency css/performance.css - Performance test page styling
  * @dependency css/components/forms.css, css/components/button.css, css/utilities.css - Forms, buttons, and utilities
+ * @dependency chart.js - The jitter graph. Imported statically: this module is itself loaded
+ * only with the Performance tab (common.js), so the library comes with it, from the box.
  */
 
 import { LitElement, html } from 'lit';
+import Chart from 'chart.js/auto';
 import { apiPost } from '../../api.js';
 import { saveNetworkResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { iconHistory } from '../../ag-icons.js';
