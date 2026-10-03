@@ -462,6 +462,27 @@ describe('ag-manual-modal', () => {
         });
     });
 
+    describe('back to the top of a chapter', () => {
+        it('puts the button last in the reading pane, and leaves the pane out of the focus order', async () => {
+            el.isOpen = true;
+            await el.updateComplete;
+            const pane = el.querySelector('.manual-content');
+            const button = pane.lastElementChild;
+            expect(button.tagName).toBe('AG-BACK-TO-TOP');
+            expect(button).not.toBeNull();
+            expect(button.target).toBe(pane);
+            // Focusable for good, a click in the text then an arrow key would frame the whole
+            // pane: the button makes it focusable for its own focus only (ag-back-to-top.js).
+            expect(pane.hasAttribute('tabindex')).toBe(false);
+        });
+
+        it('is not there while the window is closed', async () => {
+            el.isOpen = false;
+            await el.updateComplete;
+            expect(el.querySelector('ag-back-to-top')).toBeNull();
+        });
+    });
+
     describe('code blocks (colour, frame, copy button)', () => {
         // One block to copy, one the reader must adapt first — the manual's two cases.
         const MD = [

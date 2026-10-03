@@ -57,6 +57,7 @@
 @import 'components/playback-controls.css';
 @import 'components/sleep-timer.css';
 @import 'components/format-strip.css';
+@import 'components/back-to-top.css';
 @import 'components/connector-badge.css';
 @import 'components/dsd-lock.css';
 @import 'components/track-meta.css';

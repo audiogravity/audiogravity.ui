@@ -75,6 +75,7 @@ import './components/molecules/ag-playlist-picker.js';
 import './components/molecules/ag-playlist-details.js';
 import './components/molecules/ag-playlist-page.js';
 import './components/molecules/ag-hra-search-filters.js';
+import './components/molecules/ag-back-to-top.js';
 import './components/molecules/ag-library-browser-topbar.js';
 import './components/molecules/ag-library-breadcrumbs.js';
 import './components/molecules/ag-service-card.js';

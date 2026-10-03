@@ -220,7 +220,12 @@
 .manual-content {
     flex: 1;
     min-width: 0;
-    padding: var(--spacing-lg) var(--spacing-xl);
+
+    /* The bottom padding is also the back-to-top button's distance from the bottom, while the
+       chapter scrolls and at its end (a sticky box counts its scroll container's padding, see
+       back-to-top.css). The window runs to the bottom edge of the screen, hence the iPhone's
+       home indicator in it — for the button, and for the chapter's last line. */
+    padding: var(--spacing-lg) var(--spacing-xl) calc(var(--spacing-lg) + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
 }
 
