@@ -762,3 +762,116 @@ describe('the Tidal Explore tree', () => {
         expect(_apiGet).toHaveBeenCalledTimes(2);
     });
 });
+
+import { subscribePlayerState } from './library-store.js';
+
+describe('the player stream, when it drops', () => {
+    // The service worker no longer stands between the stream and the box (sw.js): a box
+    // out of reach is a transport error, after which the browser retries by itself every
+    // few seconds — where the worker's 503 used to close the stream and let it back off.
+
+    /** An EventSource that the test opens, fails and closes. */
+    class FakeEventSource extends EventTarget {
+        static CONNECTING = 0;
+        static OPEN = 1;
+        static CLOSED = 2;
+        static made = [];
+
+        constructor(url) {
+            super();
+            this.url = url;
+            this.readyState = FakeEventSource.CONNECTING;
+            this.onerror = null;
+            FakeEventSource.made.push(this);
+        }
+
+        close() { this.readyState = FakeEventSource.CLOSED; }
+
+        open() {
+            this.readyState = FakeEventSource.OPEN;
+            this.dispatchEvent(new Event('open'));
+        }
+
+        /** A transport error (the browser then reconnects), or a stream the server closed. */
+        fail({ closed = false } = {}) {
+            this.readyState = closed ? FakeEventSource.CLOSED : FakeEventSource.CONNECTING;
+            this.onerror?.(new Event('error'));
+        }
+    }
+
+    let unsubscribe;
+    beforeEach(() => {
+        vi.useFakeTimers();
+        FakeEventSource.made = [];
+        vi.stubGlobal('EventSource', FakeEventSource);
+    });
+    afterEach(() => {
+        unsubscribe?.();
+        vi.unstubAllGlobals();
+        vi.useRealTimers();
+    });
+
+    /** Subscribe under a source of its own (the store keeps its streams per source). */
+    function stream(sourceId) {
+        unsubscribe = subscribePlayerState(() => {}, { sourceId });
+        return FakeEventSource.made.at(-1);
+    }
+
+    it('leaves a first transport error to the browser, which reconnects by itself', () => {
+        // The stream drops at times — the server ends it, a blip — and comes back at once.
+        const es = stream('drop-once');
+        es.fail();
+        vi.advanceTimersByTime(60_000);
+        expect(es.readyState).not.toBe(FakeEventSource.CLOSED);
+        expect(FakeEventSource.made).toHaveLength(1);
+    });
+
+    it('closes the stream and backs off when the error comes again before it reopened', () => {
+        const es = stream('box-out-of-reach');
+        es.fail();
+        es.fail();
+        expect(es.readyState, 'left to the browser, which retries every few seconds').toBe(FakeEventSource.CLOSED);
+
+        vi.advanceTimersByTime(4_000 - 1);
+        expect(FakeEventSource.made).toHaveLength(1);
+        vi.advanceTimersByTime(1);
+        expect(FakeEventSource.made).toHaveLength(2);
+    });
+
+    it('backs off longer at each failed attempt while the box stays out of reach', () => {
+        stream('still-out-of-reach').fail();
+        FakeEventSource.made[0].fail();
+        vi.advanceTimersByTime(4_000);
+        FakeEventSource.made[1].fail();          // the box is still away: no browser retry left to it
+        expect(FakeEventSource.made[1].readyState).toBe(FakeEventSource.CLOSED);
+        vi.advanceTimersByTime(8_000 - 1);
+        expect(FakeEventSource.made).toHaveLength(2);
+        vi.advanceTimersByTime(1);
+        expect(FakeEventSource.made).toHaveLength(3);
+    });
+
+    it('starts afresh once the stream reopened', () => {
+        const es = stream('came-back');
+        es.fail();
+        es.open();
+        es.fail();
+        expect(es.readyState).not.toBe(FakeEventSource.CLOSED);
+    });
+
+    it('reopens a stream the server closed, after a delay', () => {
+        stream('server-closed').fail({ closed: true });
+        vi.advanceTimersByTime(4_000);
+        expect(FakeEventSource.made).toHaveLength(2);
+    });
+
+    it('opens nothing again once nobody listens', () => {
+        const es = stream('left');
+        es.fail();
+        unsubscribe();
+        unsubscribe = null;
+        expect(es.readyState).toBe(FakeEventSource.CLOSED);
+        es.fail();
+        vi.advanceTimersByTime(60_000);
+        expect(FakeEventSource.made).toHaveLength(1);
+    });
+});

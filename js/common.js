@@ -10,6 +10,7 @@ import { addToHistory, clearHistory, renderHistory } from './history.js';
 import { AgTimerManager } from './timer.js';
 import { applyOrientationLock } from './orientation-lock.js';
 import { escapeHtml } from './core/escape-html.js';
+import { applyUpdates } from './core/sw-update.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
@@ -674,26 +675,18 @@ if ('serviceWorker' in navigator) {
 
             navigator.serviceWorker.register('/sw.js')
                 .then((registration) => {
+                    // A new version takes over once installed — one already waiting, or
+                    // still installing, when the page registers included (core/sw-update.js).
+                    // The toast says why the page reloads (controllerchange, below).
+                    const tellWaiting = applyUpdates(registration, {
+                        onUpdate: () => showToast('info', 'Updating…', 'A new version is being applied.', 3000),
+                    });
+                    // The check finds a new version; one found already and still waiting
+                    // is told again, since the check finds nothing new in it.
                     AgTimerManager.setInterval('service-worker-update', () => {
                         registration.update();
+                        tellWaiting();
                     }, 300000, false);
-
-                    // BACKLOG: a worker already waiting when the page loads is never sent
-                    // SKIP_WAITING — see audiogravity.ops/BACKLOG.md ("app installée bloquée").
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // Inform the user before the automatic reload triggered by
-                                // the controllerchange listener below. The toast is intentionally
-                                // brief — the page will reload within ~200 ms.
-                                if (window.showToast) {
-                                    window.showToast('info', 'Updating…', 'A new version is being applied.', 3000);
-                                }
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                            }
-                        });
-                    });
                 })
                 .catch((error) => {
                     console.error('[Service Worker] Registration failed:', error);

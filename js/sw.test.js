@@ -99,13 +99,20 @@ async function install(sw) {
     await Promise.all(waits);
 }
 
-/** Dispatch one GET through the fetch handler and resolve what it answers. */
-async function get(sw, url, { mode = 'no-cors' } = {}) {
+/**
+ * Dispatch one GET through the fetch handler and resolve what it answers.
+ * @param {object} sw - The loaded worker (loadSw).
+ * @param {string} url - Absolute, or relative to the box.
+ * @param {{mode?: string, accept?: string}} [opts] - The request's mode and Accept header.
+ * @returns {Promise<{response: ?object, waits: Promise[]}>} `response` is undefined when
+ *   the worker left the request to the network.
+ */
+async function get(sw, url, { mode = 'no-cors', accept = '*/*' } = {}) {
     const absolute = new URL(url, ORIGIN + '/').href;
     let answered;
     const waits = [];
     const event = {
-        request: { url: absolute, method: 'GET', mode },
+        request: { url: absolute, method: 'GET', mode, headers: new Headers({ Accept: accept }) },
         respondWith: (p) => { answered = p; },
         waitUntil: (p) => waits.push(p),
     };
@@ -448,6 +455,29 @@ describe("the interface's question about the version goes to the box", () => {
         sw.net.mockRejectedValue(new TypeError('Failed to fetch'));
         const { response } = await get(sw, '/index.html');
         expect(response.body).toBe('net');
+    });
+});
+
+describe('live streams go straight to the network', () => {
+    // Relayed by the worker, the player's and the dashboard's streams kept it busy for as
+    // long as a page stayed open, and a new version told to take over waited for them —
+    // until Chromium forced it five minutes later (measured, see the comment in sw.js).
+    const STREAMS = ['/api/player/state?api_key=k&token=t', '/api/sse/dashboard?api_key=k&token=t'];
+    let sw;
+    beforeEach(async () => { sw = loadSw(); await install(sw); });
+
+    it.each(STREAMS)('leaves %s to the network, without a call of its own', async (url) => {
+        const before = sw.net.mock.calls.length;
+        const { response } = await get(sw, url, { accept: 'text/event-stream' });
+        expect(response, 'the worker answered a live stream itself').toBeUndefined();
+        expect(sw.net.mock.calls.length).toBe(before);
+    });
+
+    it('still answers the rest of the API, with the offline marker when the box is gone', async () => {
+        // The contrast: only an EventSource's request is left alone.
+        sw.net.mockRejectedValue(new TypeError('Failed to fetch'));
+        const { response } = await get(sw, '/api/player/state/snapshot', { accept: 'application/json' });
+        expect(response.status).toBe(503);
     });
 });
 
