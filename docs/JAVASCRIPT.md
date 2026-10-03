@@ -10,7 +10,7 @@ Audiogravity uses a **Component-Driven Architecture** powered by **Lit 3**, **Vi
 - **Build**: [Vite 7](https://vitejs.dev/) — tree-shaking, code splitting, hidden source maps
 - **State**: Reactive Properties (Lit) + `EventEmitter` pub/sub for SSE data streams
 - **Styling**: Design token system (CSS custom properties) + modular stylesheets
-- **Graph**: [Cytoscape.js](https://js.cytoscape.org/) + dagre — audio pipeline visualisation
+- **Graph**: the audio pipeline is SVG drawn by Lit components (`ag-audio-pipeline`, `ag-pipeline-node`, `ag-pipeline-link`) — no graph library
 - **Charts**: [Chart.js 4](https://www.chartjs.org/) (performance & latency) — npm, loaded with the Performance tab
 - **Editor**: [CodeMirror 5](https://codemirror.net/5/) — JSON/INI/XML/Libconfig — npm, loaded when an editor opens (`js/core/codemirror.js`)
 - **Terminal**: [xterm.js](https://xtermjs.org/) — npm, loaded on the first connection

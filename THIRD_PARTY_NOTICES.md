@@ -34,40 +34,6 @@ Same BSD-3-Clause terms as above.
 
 ---
 
-### Cytoscape.js
-**Copyright** © 2016–2026 The Cytoscape Consortium  
-**License** MIT  
-**Source** https://js.cytoscape.org  
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions: The above copyright notice and this
-permission notice shall be included in all copies or substantial portions of
-the Software.
-
----
-
-### cytoscape-dagre
-**Copyright** © 2016–2018, 2020, 2022 The Cytoscape Consortium  
-**License** MIT  
-**Source** https://github.com/cytoscape/cytoscape.js-dagre  
-
-Same MIT terms as above.
-
----
-
-### dagre 0.8.5
-**Copyright** © 2012–2014 Chris Pettitt  
-**License** MIT  
-**Source** https://github.com/dagrejs/dagre  
-
-Same MIT terms as above.
-
----
-
 ### Lucide Icons
 **Copyright** © 2020 Lucide Contributors  
 **License** ISC  

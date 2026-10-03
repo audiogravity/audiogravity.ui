@@ -22,7 +22,7 @@ The core is required at runtime — see [API.md](API.md) for the contract.
 | Language | Vanilla JS (ES modules, no framework, no TypeScript) |
 | Components | [Lit 3](https://lit.dev/) — Web Components, Light DOM, [@lit/context](https://lit.dev/docs/data/context/) for shared state |
 | Build | [Vite 7](https://vitejs.dev/) |
-| Graph | [Cytoscape.js](https://js.cytoscape.org/) + dagre (npm) |
+| Graph | SVG drawn by Lit components (`ag-audio-pipeline`) — no graph library |
 | Config editor | [CodeMirror 5](https://codemirror.net/) (npm, loaded on demand) |
 | In-app manual | [marked](https://marked.js.org/) — Markdown rendered client-side, loaded on demand |
 | Charts | [Chart.js 4](https://www.chartjs.org/) (npm, with the Performance tab) |
