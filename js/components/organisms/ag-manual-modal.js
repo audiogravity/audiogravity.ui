@@ -21,11 +21,16 @@
  * site's generator mirrors) and get a copy button once on screen — except a block
  * the Markdown flags `nocopy`: it holds values the reader must replace first.
  *
+ * A round button, last in the reading pane and held to its corner (ag-back-to-top), brings
+ * a long chapter back to its top, as on the online manual, and hands the focus to the pane.
+ * The pane carries no tabindex: the button makes it focusable for that one focus.
+ *
  * @element ag-manual-modal
  *
  * @attr {boolean} is-open - Modal visibility state
  *
  * @dependency css/components/modal.css - .manual-modal styles
+ * @dependency ag-back-to-top - the back-to-top button, last in the reading pane
  *
  * @fires manual-close - Dispatched when the modal is closed
  */
@@ -34,6 +39,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { iconCheck, iconCopy } from '../../ag-icons.js';
 import { renderCodeBlock } from '../../core/code-highlight.js';
 import { parseNotice } from '../../core/manual-notice.js';
+import '../molecules/ag-back-to-top.js';
 import { copyToClipboard, showToast } from '../../ui-helpers.js';
 
 /**
@@ -207,6 +213,9 @@ export class AgManualModal extends LitElement {
             }
         }
         this._mountCopyButtons();
+        // The back-to-top button follows the reading pane it sits in, there only while open.
+        const backToTop = this.querySelector('ag-back-to-top');
+        if (backToTop) backToTop.target = this.querySelector('.manual-content');
     }
 
     /**
@@ -579,6 +588,7 @@ export class AgManualModal extends LitElement {
                         ? html`<article class="manual-md">${unsafeHTML(this._html)}</article>
                             ${this._notice ? html`<p class="manual-notice">${unsafeHTML(this._notice)}</p>` : nothing}`
                         : nothing}
+                    <ag-back-to-top></ag-back-to-top>
                 </div>
             </div>
         `;

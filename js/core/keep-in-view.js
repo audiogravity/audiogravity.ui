@@ -22,6 +22,7 @@
  * container per axis — the nearest ancestor that scrolls BY DESIGN (`auto` or
  * `scroll`), never a clipping `hidden` one — removes that entire failure class.
  */
+import { scrollBehavior } from './scroll-behavior.js';
 
 /**
  * Find the nearest ancestor that deliberately scrolls on the given axis.
@@ -53,7 +54,7 @@ export function scrollParent(el, axis) {
 
 /**
  * Scroll the strip so the given element is visible, animating every time but
- * the first.
+ * the first — and never for a reader who asked for less motion (scroll-behavior.js).
  *
  * The first call is instant on purpose: it happens as a strip appears, and a
  * strip gliding into position on arrival reads as a glitch rather than as
@@ -72,8 +73,7 @@ export function scrollParent(el, axis) {
  */
 export function keepInView(el, { first = false } = {}) {
     if (!el || typeof el.getBoundingClientRect !== 'function') return;
-    const reduced = document.body.classList.contains('no-animations');
-    const behavior = first || reduced ? 'auto' : 'smooth';
+    const behavior = first ? 'auto' : scrollBehavior();
     const r = el.getBoundingClientRect();
 
     const sx = scrollParent(el, 'x');

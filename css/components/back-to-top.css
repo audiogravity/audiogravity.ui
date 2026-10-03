@@ -1,0 +1,114 @@
+/**
+ * @component ag-back-to-top
+ * @description Round back-to-top button in a scrolling pane, with a ring round it that fills
+ * with the reading (drawn by js/components/molecules/ag-back-to-top.js). Hidden — and out of
+ * the tab order and the accessibility tree, through `visibility` — until the pane has scrolled
+ * by more than its own height. The same button as audiogravity.app's landing and online manual.
+ */
+
+/* Last in the pane it follows, held to the pane's bottom-right corner while the pane scrolls,
+   resting under the last line at the end. Inside the pane, a wheel or a swipe that starts on
+   the button scrolls the pane; placed over the pane from outside, a wheel over that corner
+   left it where it was (measured in Chromium). The host never takes the pointer — hidden, its
+   box would still block the corner — and the button takes it back while shown.
+   Its distance from the pane's edges is the pane's own padding: a sticky box counts its
+   scroll container's padding (measured in Chromium; WebKit's constrainingRectForStickyPosition
+   does the same). An offset of its own would add to it, and at the end of the pane lift the
+   button over the last line — measured: 2px left above it. */
+ag-back-to-top {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    width: fit-content;
+    margin: var(--spacing-lg) 0 0 auto;
+    pointer-events: none;
+}
+
+.ag-btt {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-xl);
+    cursor: pointer;
+    pointer-events: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition:
+        opacity var(--transition-fast),
+        transform var(--transition-fast),
+        visibility var(--transition-fast),
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.ag-btt.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+}
+
+.ag-btt:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+/* The app's focus ring (base.css), kept round: its rule gives every focused button
+   --radius-sm corners, which turned this one into a square (measured in Chromium). */
+.ag-btt:focus-visible {
+    border-radius: var(--radius-full);
+}
+
+/* The pane a press hands the focus to, focusable for that one focus: no ring. It is where the
+   reading resumes, not a control, and base.css's ring would frame the whole pane through the
+   reading — clipped by the window to a single bar down its left edge (measured in Chromium).
+   Same choice as GOV.UK's skip links. Must come after base.css: same weight as its rule. */
+.ag-btt-focus-target:focus-visible {
+    outline: none;
+}
+
+/* The ring starts at 12 o'clock: the circle's path starts at 3, hence the quarter turn. */
+.ag-btt-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ag-btt-track {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 2;
+}
+
+.ag-btt-progress {
+    fill: none;
+    stroke: var(--accent-primary);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+}
+
+.ag-btt-arrow {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform var(--transition-fast);
+}
+
+.ag-btt:hover .ag-btt-arrow {
+    transform: translateY(-3px);
+}
