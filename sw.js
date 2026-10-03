@@ -171,6 +171,15 @@ self.addEventListener('fetch', (event) => {
     // Ignorer ce qui n'est pas GET
     if (request.method !== 'GET') return;
 
+    // A live stream — an EventSource asks for text/event-stream — goes straight to the
+    // network. Relayed, the player's and the dashboard's streams kept this worker busy for
+    // as long as a page stayed open, and a new version told to take over waited for them:
+    // "Updating…", then nothing until Chromium forced it five minutes later (measured in
+    // Chromium 145, 2026-10-03; js/core/sw-update.js). An EventSource that loses the box
+    // now meets a network error instead of the offline answer below, which closed it:
+    // js/library-store.js spaces its attempts out itself.
+    if ((request.headers.get('Accept') || '').includes('text/event-stream')) return;
+
     // Every rule below reads a PATH, and a path means nothing on its own: a third
     // party serving /assets/ or /api/ would otherwise be classified as ours. Nothing
     // cross-origin is cache-first: the app loads no code from another host. A GET to

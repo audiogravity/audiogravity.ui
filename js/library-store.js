@@ -130,6 +130,8 @@ const RECONNECT_MIN_MS = 2_000;
 const RECONNECT_MAX_MS = 30_000;
 /** sourceId-or-null → current backoff in ms */
 const _backoff = new Map();
+/** sourceId-or-null → transport errors since the stream last opened */
+const _errorsSinceOpen = new Map();
 
 function _openSse(key) {
     const url = buildAuthedUrl('/player/state', key ? { source_id: key } : {});
@@ -141,6 +143,7 @@ function _openSse(key) {
     }
     const es = new EventSource(url);
     _connections.set(key, es);
+    es.addEventListener('open', () => { _errorsSinceOpen.delete(key); });
 
     es.addEventListener('state', (e) => {
         let state;
@@ -178,11 +181,18 @@ function _openSse(key) {
     });
 
     es.onerror = () => {
-        // EventSource auto-reconnects on transport errors; we only intervene
-        // when the connection has actually closed (server returned a non-
-        // retryable status, e.g. 401/4xx). In that case we schedule a manual
-        // reopen with exponential backoff as long as someone still listens.
-        if (es.readyState !== EventSource.CLOSED) return;
+        // After a transport error the browser retries by itself, every few seconds, for
+        // as long as the page lives — the service worker no longer answers for a box out
+        // of reach with the 503 that closed the stream (sw.js). A first error is left to
+        // it: the stream drops at times, and comes back at once. A second one before the
+        // stream reopened means the box is out of reach: the stream is closed, and opened
+        // again below with a growing delay. A stream the server closed (401/4xx) too.
+        if (es.readyState !== EventSource.CLOSED) {
+            const errors = (_errorsSinceOpen.get(key) ?? 0) + 1;
+            _errorsSinceOpen.set(key, errors);
+            if (errors < 2) return;
+            es.close();
+        }
         _connections.delete(key);
         if (!_subscribers.has(key) || _subscribers.get(key).size === 0) return;
         const next = Math.min((_backoff.get(key) ?? RECONNECT_MIN_MS) * 2, RECONNECT_MAX_MS);
@@ -197,6 +207,7 @@ function _openSse(key) {
 function _closeSse(key) {
     const es = _connections.get(key);
     if (es) { es.close(); _connections.delete(key); }
+    _errorsSinceOpen.delete(key);
     const timer = _reconnectTimers.get(key);
     if (timer) { clearTimeout(timer); _reconnectTimers.delete(key); }
     _backoff.delete(key);

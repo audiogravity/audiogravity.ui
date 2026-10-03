@@ -16,8 +16,10 @@
  * newer version is in place, and the page is reloaded onto it. A failure with the same
  * version in place is a network blip, or the box restarting its server during an update:
  * reloading then could land on an error page, and would lose what was typed elsewhere.
- * Once a minute at most, so that nothing can make it loop.
+ * Once a minute at most, so that nothing can make it loop (reload-guard.js).
  */
+
+import { reloadAllowed, claimReload } from './reload-guard.js';
 
 /** Where the time of the last such reload is kept, for the page's session. */
 const RELOADED_AT = 'stale-chunk-reload-at';
@@ -66,14 +68,8 @@ export async function reloadIfStale({
     storage = window.sessionStorage,
     now = Date.now(),
 } = {}) {
-    try {
-        const elapsed = now - (Number(storage.getItem(RELOADED_AT)) || 0);
-        // A time to come counts as long past: a clock set back since — a tablet
-        // resynchronised after its sleep — would otherwise hold the window shut as long.
-        if (elapsed >= 0 && elapsed < RELOAD_WINDOW_MS) return false;
-    } catch {
-        return false;   // no session storage: nothing would stop a loop, so no reload
-    }
+    // Asked first, so that the box is not asked in vain.
+    if (!reloadAllowed(RELOADED_AT, RELOAD_WINDOW_MS, { storage, now })) return false;
     const ours = startBundleOf(page);
     let theirs = null;
     try {
@@ -86,11 +82,7 @@ export async function reloadIfStale({
         return false;   // the box is not answering: nothing to reload onto
     }
     if (!ours || !theirs || ours === theirs) return false;
-    try {
-        storage.setItem(RELOADED_AT, String(now));
-    } catch {
-        return false;
-    }
+    if (!claimReload(RELOADED_AT, RELOAD_WINDOW_MS, { storage, now })) return false;
     location.reload();
     return true;
 }
