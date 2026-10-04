@@ -721,8 +721,10 @@ export class AgNowPlaying extends LitElement {
                 <!-- Transport controls -->
                 <div class="np-controls ${this._isLicensed() ? '' : 'np-gated'}">
                     ${item.can_prev ? html`
+                        <!-- Not on a phone (now-playing.css): the title needs the room,
+                             and Previous is one tap away in the full player. -->
                         <button
-                            class="np-btn"
+                            class="np-btn np-btn--prev"
                             aria-label="Previous"
                             @click="${() => this._sendControl(item.source_id, 'prev', null, item)}"
                         >

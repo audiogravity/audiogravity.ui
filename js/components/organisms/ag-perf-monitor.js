@@ -83,7 +83,7 @@ export class AgPerfMonitor extends LitElement {
             <div class="perf-container">
                 <div class="perf-header">
                     <div class="tab-title-container">
-                        <span class="perf-title">FRONTEND PERFORMANCE Cockpit</span>
+                        <span class="perf-title">UI Performance Cockpit</span>
                     </div>
                     <ag-button
                         type="secondary"

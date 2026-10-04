@@ -251,7 +251,7 @@
 }
 
 .lib-radio-star,
-.lib-radio-edit,
+.lib-radio-more,
 .lib-radio-lib {
     width: var(--spacing-xl);
     height: var(--spacing-xl);
@@ -282,7 +282,7 @@
    A mouse is precise, so desktop keeps the original geometry. */
 @media (pointer: coarse) {
     .lib-radio-star,
-    .lib-radio-edit,
+    .lib-radio-more,
     .lib-radio-lib {
         width: 36px;
         height: 44px;
@@ -291,12 +291,44 @@
 }
 
 .lib-radio-star.on { color: var(--accent-primary); }
-.lib-radio-lib.on  { color: var(--color-success-text); }
+.lib-radio-more.on { color: var(--text-primary); }
 
 @media (hover: hover) {
     .lib-radio-star:hover,
-    .lib-radio-edit:hover,
+    .lib-radio-more:hover,
     .lib-radio-lib:hover { color: var(--text-primary); }
     .lib-radio-star.on:hover { color: var(--accent-primary); }
-    .lib-radio-lib.on:hover  { color: var(--color-success-text); }
+}
+
+/* The "more" actions, unfolded under their station: worded buttons at finger size
+   (.action-btn grows to 44px under 768px), where the row had a pencil and a check
+   mark. They sit outside the swiped row, so a swipe never drags them along and a
+   tap on them never plays the station. */
+.lib-radio-more-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+/* Side by side on a phone: with the default 18px sides the pair needed 363px and
+   wrapped onto two lines on a 375px screen; at 12px it is 340px and stays one row.
+   The height — 44px under 768px — is untouched. */
+.lib-radio-more-actions .action-btn {
+    padding-inline: var(--spacing-md);
+}
+
+/* Row and actions read as one block: the row's rule moves under the actions, and
+   the pointer over either lights both. */
+.lib-radio-card.more-open {
+    border-bottom-color: transparent;
+}
+
+@media (hover: hover) {
+    ag-radio-card:hover .lib-radio-card.more-open,
+    ag-radio-card:hover .lib-radio-more-actions {
+        background: var(--bg-secondary);
+    }
 }

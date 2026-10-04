@@ -29,6 +29,7 @@ const Template = (args) => html`
         ?in-library=${args.inLibrary}
         ?editable=${args.editable}
         ?swipeable=${args.swipeable}
+        ._moreOpen=${args.moreOpen ?? false}
     ></ag-radio-card>
 `;
 
@@ -44,12 +45,19 @@ FavoriteOnly.args = { favorite: true, inLibrary: false, editable: false, swipeab
 export const InLibraryAndFavorite = Template.bind({});
 InLibraryAndFavorite.args = { favorite: true, inLibrary: true, editable: false, swipeable: true };
 
-// Saved station with edit affordance — pencil shown alongside the toggles.
-// Available on every saved row (RBI catalogue + custom) in My Live Radio &
+// Saved station: Edit sits behind "more" (⋯), with the removal from My Live
+// Radio. Available on every saved row (RBI catalogue + custom) in My Live Radio &
 // Favorites tabs; the organism sets editable=true regardless of is_custom.
 export const Editable = Template.bind({});
 Editable.args = {
     favorite: true, inLibrary: true, editable: true, swipeable: true,
+    station: { ...SAMPLE_STATION, name: 'FIP' },
+};
+
+// The same row with "more" unfolded: worded buttons under the station.
+export const MoreActionsOpen = Template.bind({});
+MoreActionsOpen.args = {
+    favorite: true, inLibrary: true, editable: true, swipeable: true, moreOpen: true,
     station: { ...SAMPLE_STATION, name: 'FIP' },
 };
 

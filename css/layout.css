@@ -410,12 +410,10 @@ body.is-offline {
     transition: transform var(--transition-normal);
     z-index: var(--z-modal-backdrop);
     box-shadow: var(--shadow-xl);
-    background: var(--bg-secondary);
-    background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
-    backdrop-filter: blur(10px);
 
-    /* stylelint-disable-next-line property-no-vendor-prefix */
-    -webkit-backdrop-filter: blur(10px);
+    /* Opaque, not frosted. At 40% the page showed through, blurred: station logos
+       made pink and red smudges under the tab names. */
+    background: var(--bg-secondary);
 
     /* GPU pre-promotion: avoids paying for the promotion on the first gesture */
     will-change: transform;

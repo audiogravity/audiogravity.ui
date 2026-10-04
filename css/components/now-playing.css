@@ -470,9 +470,36 @@ ag-now-playing {
    Responsive
    -------------------------------------------------------------------------- */
 
+/* A narrow bar — a phone — gives the title its room. Title and artist shared one
+   line, in the width four buttons left them (115px on an iPhone mini), and had to
+   scroll to be read; the station badge was cut to "RADIO…". Previous leaves the
+   bar — the full player keeps it, one tap away; volume stays — and title and
+   artist take a line each, cut with an ellipsis. Stacked, they no longer
+   overflow their line, and the marquee is switched off here: ag-now-playing.js
+   decides it on render, and a bar narrowed since (a rotation, a resize) would
+   otherwise keep sliding the column by a distance measured for the wide bar. */
 @container (width < 480px) {
     .np-format {
         display: none;
+    }
+
+    .np-btn--prev {
+        display: none;
+    }
+
+    .np-track {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+
+    .np-track.np-text--scroll {
+        animation: none;
+    }
+
+    .np-track .ag-tm-title,
+    .np-track .ag-tm-artist {
+        text-overflow: ellipsis;
     }
 }
 

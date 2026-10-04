@@ -40,7 +40,7 @@ describe('the cockpit', () => {
         const el = new AgPerfMonitor();
         el.expanded = true;
         const out = flat(el.render());
-        expect(out).toContain('FRONTEND PERFORMANCE Cockpit');
+        expect(out).toContain('UI Performance Cockpit');
         expect(out).not.toMatch(/LOW POWER|Battery|Effective/);
     });
 

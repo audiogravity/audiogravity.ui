@@ -13,6 +13,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 vi.mock('lit', () => ({
     LitElement: class { connectedCallback() {} disconnectedCallback() {} },
     html: (strings, ...values) => ({ strings, values }),
+    nothing: Symbol('nothing'),   // utils-lit.js (formatMemory) imports it
 }));
 vi.mock('lit/directives/class-map.js', () => ({ classMap: () => '' }));
 vi.mock('@lit/context', () => ({ ContextConsumer: class {} }));
@@ -30,7 +31,30 @@ vi.mock('../molecules/ag-network-card.js', () => ({}));
 vi.mock('../molecules/ag-system-info.js', () => ({}));
 vi.mock('../molecules/ag-system-tile.js', () => ({}));
 
-import { AgSystemDashboard } from './ag-system-dashboard.js';
+import { AgSystemDashboard, memoryDetail } from './ag-system-dashboard.js';
+
+describe('the memory line under the Memory tile', () => {
+    // It read "0.0 GB / 0.0 GB" on every box: built from two fields the core never
+    // sends. The total comes with the status; the share in use, with the metrics.
+    it('is the share in use of the total, so it says what the percentage says', () => {
+        // Measured on the x86 box: 65.2% of 3,982,381,056 bytes.
+        expect(memoryDetail(65.2, 3982381056)).toBe('2.4 GB / 3.7 GB');
+    });
+
+    it('counts a small total in megabytes', () => {
+        expect(memoryDetail(50, 512 * 1024 * 1024)).toBe('256 MB / 512 MB');
+    });
+
+    it('says nothing while the total is not known', () => {
+        expect(memoryDetail(50, undefined)).toBe('');
+        expect(memoryDetail(50, 0)).toBe('');
+    });
+
+    it('says nothing without a percentage', () => {
+        expect(memoryDetail(undefined, 4e9)).toBe('');
+        expect(memoryDetail(NaN, 4e9)).toBe('');
+    });
+});
 
 /** A dashboard with only what the history code reads, no DOM, no fetch. */
 function dashboard() {

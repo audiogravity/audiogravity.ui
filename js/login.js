@@ -9,6 +9,7 @@ import './components/atoms/ag-theme-toggle.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
+import { applyStoredAppearance } from './appearance.js';
 import { signInFailureMessage } from './net-errors.js';
 
 // Honour the persisted portrait lock on the login screen too — the app's
@@ -451,20 +452,16 @@ function handleFormSubmit(e) {
 function init() {
     initElements();
 
-    // Apply IHM theme and dark mode (defaults to minimal/light if none saved)
+    // Apply the theme (minimal if none saved) and the appearance (Automatic by default)
     const VALID_THEMES = ['slate', 'gravity', 'minimal'];
     const savedTheme = localStorage.getItem('theme');
     const theme = VALID_THEMES.includes(savedTheme) ? savedTheme : 'minimal';
     document.documentElement.setAttribute('data-theme', theme);
     document.body.setAttribute('data-theme', theme);
 
-    try {
-        const isDark = JSON.parse(localStorage.getItem('darkMode'));
-        if (isDark) {
-            document.documentElement.classList.add('dark-mode');
-            document.body.classList.add('dark-mode');
-        }
-    } catch { /* ignore */ }
+    // The Appearance setting, Automatic by default: the device's palette, followed
+    // live while the form is open (appearance.js).
+    applyStoredAppearance();
 
     // SECURITY: Bloc si API Key manquante
     if (!API_KEY) {

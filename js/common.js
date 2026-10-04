@@ -9,7 +9,9 @@ import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-
 import { addToHistory, clearHistory, renderHistory } from './history.js';
 import { AgTimerManager } from './timer.js';
 import { applyOrientationLock } from './orientation-lock.js';
+import { appearancePreference, isDarkFor, applyStoredAppearance } from './appearance.js';
 import { escapeHtml } from './core/escape-html.js';
+import { parseStoredValue } from './core/stored-value.js';
 import { applyUpdates } from './core/sw-update.js';
 
 import {
@@ -97,13 +99,8 @@ const MemoryCache = {
                 return defaultValue;
             }
 
-            // Try to parse as JSON, fallback to raw value
-            let value;
-            try {
-                value = JSON.parse(stored);
-            } catch {
-                value = stored; // Not JSON, use as-is
-            }
+            // JSON, or the string as set wrote it (core/stored-value.js)
+            const value = parseStoredValue(stored);
 
             // Cache for future access
             this._cache.set(key, value);
@@ -232,11 +229,16 @@ function throttle(func, limit) {
 // STATE MANAGEMENT
 // =====================
 
+/** This device's Appearance setting: 'auto', 'light' or 'dark' (appearance.js). */
+const APPEARANCE = appearancePreference();
+
 // OPTIMIZATION: Use MemoryCache for AppState initialization
 const AppState = {
     connected: false,
     theme: (MemoryCache.get('theme', 'minimal') || 'minimal').toLowerCase().trim(),
-    darkMode: MemoryCache.get('darkMode', false),
+    appearance: APPEARANCE,
+    // The palette in force, which under Automatic is the device's (appearance.js).
+    darkMode: isDarkFor(APPEARANCE),
     animationsEnabled: MemoryCache.get('animationsEnabled', true),
     topBarMetrics: MemoryCache.get('topBarMetrics', true),
     lockPortrait: MemoryCache.get('lockPortrait', true),
@@ -331,10 +333,7 @@ window.applyTheme = applyTheme; // Expose globally
 
 // Apply saved UI state immediately to avoid flashing or inconsistency
 if (document.body) {
-    if (AppState.darkMode) {
-        document.body.classList.add('dark-mode');
-        document.documentElement.classList.add('dark-mode');
-    }
+    applyStoredAppearance();
     if (!AppState.animationsEnabled) document.body.classList.add('no-animations');
     applyOrientationLock(AppState.lockPortrait); // portrait lock (class + touch OS lock)
     applyTheme(AppState.theme);

@@ -273,6 +273,24 @@ export function isDsd(fmtOrSourceFormat) {
 }
 
 /**
+ * Whether what plays is a live broadcast: a radio stream, with no end to count
+ * down to and no position to seek to. A progress bar there showed its knob
+ * stuck at the start, the time listened on one side and "−0:00" on the other.
+ *
+ * Keyed on the origin the core publishes (`'radio'` for a station, whatever the
+ * output), not on a missing duration alone: a track also has none while MPD
+ * warms up its stream, and must not flash "live" meanwhile. A radio item that
+ * does carry a duration is not treated as live.
+ *
+ * @param {{origin?: string|null, duration?: number|null}|null|undefined} state -
+ *   The player state rendered.
+ * @returns {boolean}
+ */
+export function isLiveStream(state) {
+    return state?.origin === 'radio' && !(Number(state?.duration) > 0);
+}
+
+/**
  * Extract a saturated-boost dominant `{r, g, b}` color from an image URL.
  * Samples a 16×16 downscale, averages, then amplifies the dominant channel
  * by 1.4× (and attenuates the others) for a livelier tint.

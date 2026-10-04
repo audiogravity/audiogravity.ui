@@ -169,10 +169,6 @@ ag-license-status {
 }
 
 @media (width <= 480px) {
-    .admin-zone.tab-zone {
-        padding: var(--spacing-md);
-    }
-
     .admin-zone .tab-title-container {
         flex-wrap: wrap;
     }

@@ -48,6 +48,17 @@ const LIB_STYLES = `
 .lib-view { display: none; }
 .lib-view.active { display: block; }
 
+/* A list reads down a column. The list views — queue, sources, outputs, radio —
+   keep their content to a reading width, centred: on a 1440px screen a station's name
+   and its buttons sat 1,300px apart. Not their tab bar: every view has its own, and
+   centred with the list it moved 266px sideways at each switch from an album grid to
+   a list — the tab just clicked left from under the pointer (measured at 1440px). The
+   album grids keep the whole width, which they fill. Under 900px nothing changes. */
+.lib-view.lib-view--list > .lib-body {
+    max-width: 900px;
+    margin-inline: auto;
+}
+
 /* Topbar */
 .lib-topbar {
     position: sticky;
@@ -1119,7 +1130,7 @@ export class AgLibraryPage extends LitElement {
                     </div>
                 </div>
 
-                <div class="lib-view ${isQueue ? 'active' : ''}">
+                <div class="lib-view lib-view--list ${isQueue ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>
@@ -1136,7 +1147,7 @@ export class AgLibraryPage extends LitElement {
                     </div>
                 </div>
 
-                <div class="lib-view ${isLibrary ? 'active' : ''}">
+                <div class="lib-view lib-view--list ${isLibrary ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
@@ -1162,7 +1173,7 @@ export class AgLibraryPage extends LitElement {
                     </div>
                 </div>
 
-                <div class="lib-view ${isOutputs ? 'active' : ''}">
+                <div class="lib-view lib-view--list ${isOutputs ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
@@ -1221,7 +1232,7 @@ export class AgLibraryPage extends LitElement {
                     </div>
                 </div>
 
-                <div class="lib-view ${isRadio ? 'active' : ''}">
+                <div class="lib-view lib-view--list ${isRadio ? 'active' : ''}">
                     <div class="lib-topbar">
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                     </div>

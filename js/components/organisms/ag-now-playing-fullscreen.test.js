@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readStylesheet, cssRuleBody } from '../../test-utils.js';
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Simulate the _applyState auto-follow logic from ag-now-playing-fullscreen.js
@@ -827,5 +827,72 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
             sourceId: 'src_highresaudio', itemType: 'track', itemId: 't1_a1',
             title: 'Tukuman', subtitle: 'Enzo Favata · Ritornare', coverToken: 'url:x',
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// A wide, landscape screen: the cover on the left, everything else beside it
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — two columns on a wide screen', () => {
+    // On a computer the single column scattered: a small cover centred, the title flush
+    // left, the signal path flush right, the format cells stretched across. jsdom lays
+    // nothing out, so the layout contract is read from the stylesheet.
+
+    /** The two-column block of the stylesheet. */
+    const wideBlock = () => mediaBlock(readStylesheet('css', 'components', 'now-playing-fullscreen.css'),
+        /@media\s*\(width\s*>=\s*900px\)\s*and\s*\(orientation:\s*landscape\)/);
+
+    it('lays the player out as a grid of a cover column and a column beside it', () => {
+        const scroll = cssRuleBody(wideBlock(), '.npfs-scroll');
+        expect(scroll).toMatch(/display:\s*grid/);
+        expect(scroll).toMatch(/grid-template-columns:/);
+    });
+
+    it('gives the cover the whole height of the left column', () => {
+        const cover = cssRuleBody(wideBlock(), '.npfs-scroll > .npfs-cover-wrap');
+        expect(cover).toMatch(/grid-column:\s*1/);
+        expect(cover).toMatch(/grid-row:\s*1\s*\/\s*-1/);
+    });
+
+    it('puts everything else in the right column, the format strip included', () => {
+        const block = wideBlock();
+        expect(cssRuleBody(block, '.npfs-scroll > :not(.npfs-cover-wrap)')).toMatch(/grid-column:\s*2/);
+        // A display: contents element makes no grid item.
+        expect(cssRuleBody(block, '.npfs-scroll > ag-format-strip')).toMatch(/display:\s*block/);
+    });
+
+    it('centres that column on the cover, with an empty row above and below', () => {
+        const block = wideBlock();
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/grid-template-rows:\s*1fr repeat\(6, auto\) 1fr/);
+        // Read whole: cssRuleBody would stop at the rule the two pseudo-elements share.
+        expect(block).toMatch(/\.npfs-scroll::before\s*\{\s*grid-row:\s*1;\s*\}/);
+        expect(block).toMatch(/\.npfs-scroll::after\s*\{\s*grid-row:\s*-2;\s*\}/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// A station plays live: the progress bar gives way to a "Live" marker
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — a live station has no progress to show', () => {
+    /** Render the progress block of a state and return its bar. */
+    function progressBar(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        const host = document.createElement('div');
+        litRender(el._renderProgress(state), host);
+        return host.querySelector('ag-progress-bar');
+    }
+
+    it('turns the bar into a Live marker for a radio station', () => {
+        // The bar showed its knob stuck at the start, the time listened on one side
+        // and "−0:00" on the other.
+        const bar = progressBar({ origin: 'radio', duration: 0, title: 'Ma Benz', playing: true });
+        expect(bar.hasAttribute('live')).toBe(true);
+    });
+
+    it('keeps the bar for a track', () => {
+        const bar = progressBar({ origin: 'qobuz', duration: 545, title: 'So What', playing: true });
+        expect(bar.hasAttribute('live')).toBe(false);
     });
 });

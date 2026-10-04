@@ -5,7 +5,8 @@
  * @element ag-config-panel
  * 
  * @attr {boolean} active - Visibility of the panel (toggled by burger menu)
- * @attr {boolean} darkMode - UI dark mode state
+ * @attr {string} appearance - This device's Appearance setting: 'auto' (follow the
+ *   device), 'light' or 'dark' (AppState.appearance, applied by appearance.js)
  * @attr {boolean} animations - Whether UI animations are enabled
  * @prop {boolean} topBarMetrics - Property only: whether the top bar shows the machine
  *   metrics on this device (AppState.topBarMetrics)
@@ -25,7 +26,7 @@ import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
 import { apiGet, apiDelete } from '../../api.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
-import { setDarkMode } from '../../appearance.js';
+import { APPEARANCES, setAppearance } from '../../appearance.js';
 import { docsUrlFrom, openApiDocs } from '../../api-docs.js';
 import { showToast, getUserFriendlyError } from '../../ui-helpers.js';
 import { FetchController } from '../../core/FetchController.js';
@@ -36,10 +37,13 @@ import '../atoms/ag-switch.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { iconSettings, iconClose, iconKey, iconApiTree, iconLogout } from '../../ag-icons.js';
 
+/** What the Appearance setting calls each choice of appearance.js. */
+const APPEARANCE_LABELS = Object.freeze({ auto: 'Automatic', light: 'Light', dark: 'Dark' });
+
 export class AgConfigPanel extends LitElement {
     static properties = {
         active: { type: Boolean, reflect: true },
-        darkMode: { type: Boolean },
+        appearance: { type: String },
         animations: { type: Boolean },
         // No attribute, as on <ag-top-bar>: a Boolean attribute is true whatever it says.
         topBarMetrics: { type: Boolean, attribute: false },
@@ -68,7 +72,7 @@ export class AgConfigPanel extends LitElement {
         this.passkeysLoading = false;
 
         // Load initial state from imported AppState
-        this.darkMode = AppState ? AppState.darkMode : false;
+        this.appearance = AppState ? AppState.appearance : 'auto';
         this.animations = AppState ? AppState.animationsEnabled : true;
         this.topBarMetrics = AppState ? AppState.topBarMetrics : true;
         this.lockPortrait = AppState ? AppState.lockPortrait : true;
@@ -223,7 +227,7 @@ export class AgConfigPanel extends LitElement {
         if (changedProperties.has('active') && this.active) {
             // Re-sync properties from AppState when opening to ensure they are up to date
             if (AppState) {
-                this.darkMode = AppState.darkMode;
+                this.appearance = AppState.appearance;
                 this.animations = AppState.animationsEnabled;
                 this.topBarMetrics = AppState.topBarMetrics;
                 this.lockPortrait = AppState.lockPortrait;
@@ -448,10 +452,17 @@ export class AgConfigPanel extends LitElement {
     }
 
     // Handlers
-    _handleDarkMode(e) {
-        // The sequence lives in appearance.js, which the login page's <ag-theme-toggle>
-        // calls too — the same storage key, the same two elements, the same event.
-        this.darkMode = setDarkMode(e.detail ? e.detail.checked : e.target.checked);
+    /**
+     * Keep the Appearance chosen in the menu, and apply it.
+     *
+     * The sequence lives in appearance.js, which the login page's <ag-theme-toggle>
+     * calls too — the same storage key, the same two elements, the same event.
+     *
+     * @param {Event} e - change from the Appearance select.
+     */
+    _handleAppearance(e) {
+        this.appearance = e.target.value;
+        setAppearance(this.appearance);
     }
 
     /**
@@ -637,8 +648,8 @@ export class AgConfigPanel extends LitElement {
 
                 <div class="config-content">
                     <div class="config-item">
-                        <label>Theme</label>
-                        <select class="theme-select" .value=${this.theme} @change=${this._handleThemeChange}>
+                        <label for="config-theme">Theme</label>
+                        <select id="config-theme" class="theme-select" .value=${this.theme} @change=${this._handleThemeChange}>
                             ${this.themes.map(theme => html`
                                 <option value="${theme.value}" ?selected=${this.theme === theme.value}>
                                     ${theme.label}
@@ -646,10 +657,18 @@ export class AgConfigPanel extends LitElement {
                             `)}
                         </select>
                     </div>
-                    
-                    <div class="config-item config-item-row">
-                        <label>Light/Dark Mode</label>
-                        <ag-switch .checked=${this.darkMode} @ag-change=${this._handleDarkMode}></ag-switch>
+
+                    <!-- Automatic follows the device: light by day, dark at night on a phone
+                         set to switch. -->
+                    <div class="config-item">
+                        <label for="config-appearance">Appearance</label>
+                        <select id="config-appearance" class="theme-select" .value=${this.appearance} @change=${this._handleAppearance}>
+                            ${APPEARANCES.map(choice => html`
+                                <option value="${choice}" ?selected=${this.appearance === choice}>
+                                    ${APPEARANCE_LABELS[choice]}
+                                </option>
+                            `)}
+                        </select>
                     </div>
 
                     <div class="config-item config-item-row">

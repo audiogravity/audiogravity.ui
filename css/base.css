@@ -50,6 +50,18 @@ ag-license-status {
 
 html {
     background: var(--bg-primary);
+
+    /* The palette the browser draws its own parts in — the box of a check box or a
+       radio button, a select's list, an autofilled field: light, and dark under
+       .dark-mode, which theme-boot.js stamps on this element before the first paint.
+       Undeclared, they stayed light in the dark palette: an unchecked box was a white
+       square, and with the accent below — the text's colour, white in the dark — a
+       checked one differed only by its tick (measured in Chromium, three themes). */
+    color-scheme: light;
+}
+
+html.dark-mode {
+    color-scheme: dark;
 }
 
 body {
@@ -57,6 +69,15 @@ body {
     font-size: var(--font-size-md);
     color: var(--text-primary);
     background: var(--bg-primary);
+
+    /* The colour of every native check box, radio button and range the app leaves to
+       the browser: the text's, as the theme draws everything else. Left unset, they
+       took the browser's own blue, a colour found nowhere else in AG. Inherited, so
+       one declaration covers them all; controls the app draws itself (switches,
+       volume, the HQPlayer sliders) are not affected. On body, not html: a custom
+       property resolves where it is used, and body is the element every theme's
+       dark tokens are certain to reach. */
+    accent-color: var(--text-primary);
     line-height: 1.5;
     overflow: hidden;
 
