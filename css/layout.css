@@ -526,6 +526,18 @@ body.is-offline {
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
+/* Manual takes the foot of the column: it is the app's documentation, not a place in
+   it, so it stands apart from the tabs. Switch, where there is one — a computer; the
+   column a phone gets has none — sits right under it: two automatic margins would share
+   the free space, and leave Manual floating halfway down. */
+.tabs--vertical .tab-manual-btn {
+    margin-top: auto;
+}
+
+.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn {
+    margin-top: 0;
+}
+
 /* Logo bar: logo on the left, connectivity indicator on the right */
 .tabs-logo-bar {
     display: none;

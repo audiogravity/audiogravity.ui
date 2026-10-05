@@ -9,7 +9,12 @@
  * @attr {Array} tabs - Data array for tabs: [{ id, label, hidden, badgeCount, badgeType }]
  * 
  * @dependency css/layout.css - Main navigation (.tabs) and tab button (.tab-btn) styles
- * 
+ * @dependency ag-lib-tabbar - The library's own tab bar, carried under the Library entry
+ *   while the tabs are a column. It mirrors the page's ('lib-nav-changed', on window) and
+ *   a tap on it opens the library there ('lib-goto' with a `tab`). Its styles live with
+ *   the library's (LIB_STYLES, ag-library-page.js), under `.lib-menu`, injected when that
+ *   page connects — which it does with the app (index.html), not on demand.
+ *
  * @fires tab-changed - Dispatched when a new tab is selected
  */
 
@@ -21,6 +26,7 @@ import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-license-badge.js';
+import './ag-lib-tabbar.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
 
@@ -68,6 +74,7 @@ export class AgTabs extends LitElement {
         _updateAvailable: { type: Boolean, state: true },
         _updateMandatory: { type: Boolean, state: true },
         _animationsEnabled: { type: Boolean, state: true },
+        _libNav: { type: Object, state: true }, // The library's tab bar: { tab, tabs }
     };
 
     constructor() {
@@ -98,6 +105,8 @@ export class AgTabs extends LitElement {
         this._updateAvailable = false;
         this._updateMandatory = false;
         this._animationsEnabled = window.AppState?.animationsEnabled ?? true;
+        // Until the library page says otherwise: every tab offered, none highlighted.
+        this._libNav = { tab: '', tabs: null };
 
         // Touch gesture state
         this._touchStartX = 0;
@@ -145,6 +154,8 @@ export class AgTabs extends LitElement {
 
         // Add container role and layout class
         this.classList.add('tabs');
+        // BACKLOG: the tablist also holds buttons that are not tabs (Manual, Switch, the
+        // library's bar) — see audiogravity.ops/BACKLOG.md, « La barre d'onglets se déclare… ».
         this.setAttribute('role', 'tablist');
         this.setAttribute('aria-label', 'Main navigation');
 
@@ -203,6 +214,14 @@ export class AgTabs extends LitElement {
         // Jump to the Library tab from the top-bar shortcut (selectTab handles licence gating)
         this._handleLibraryClick = () => this.selectTab('library');
         document.addEventListener('library-click', this._handleLibraryClick);
+
+        // Keep the column's copy of the library's tab bar in step with the page's. The
+        // page is defined after this element (main.js) and announces on its first
+        // render; read it here too, so the order of the two is not a condition.
+        this._handleLibNav = ({ detail }) => { this._libNav = detail; };
+        window.addEventListener('lib-nav-changed', this._handleLibNav);
+        const libraryPage = document.querySelector('ag-library-page');
+        if (libraryPage?.navState) this._libNav = libraryPage.navState;
 
         // Listen for auth changes to update displayed username
         this._handleAuthChanged = ({ isAuthenticated, user }) => {
@@ -323,6 +342,7 @@ export class AgTabs extends LitElement {
         document.removeEventListener('config-panel-opened', this._handleConfigPanelOpened);
         document.removeEventListener('nav-click', this._handleNavClick);
         document.removeEventListener('library-click', this._handleLibraryClick);
+        window.removeEventListener('lib-nav-changed', this._handleLibNav);
         if (this._handleAnnouncementBadge)
             window.removeEventListener('announcement-badge', this._handleAnnouncementBadge);
         if (this._handleUpdateBadge)
@@ -652,6 +672,10 @@ export class AgTabs extends LitElement {
     }
 
     _handleKeyDown(e) {
+        // Only a key pressed on one of the tabs moves to another. The column holds more
+        // than tabs — the library's own bar, Manual, Switch — and an arrow pressed on one
+        // of those moved the app to the next tab.
+        if (!e.target?.closest?.('.tab-btn[data-tab]')) return;
         const visibleTabs = this.tabs.filter(t => !t.hidden);
         const currentIndex = visibleTabs.findIndex(t => t.id === this.activeTab);
         if (currentIndex === -1) return;
@@ -774,6 +798,7 @@ export class AgTabs extends LitElement {
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`
                         }</span>` : ''}
                     </button>
+                    ${tab.id === 'library' ? this._libraryRow(isActive, locked, tab.hidden) : nothing}
                 `;
         })}
             <button class="tab-btn tab-manual-btn"
@@ -789,6 +814,45 @@ export class AgTabs extends LitElement {
                 <span class="btn-text">Switch</span>&nbsp;${this._vertical ? '⇄' : '⇅'}
             </button>` : nothing}
         `;
+    }
+
+    /**
+     * The library's tab bar, under the Library entry — in the column only.
+     *
+     * The horizontal bar does not carry it: there, the page's own bar sits right under
+     * the Library tab whenever it is open. Not offered either when Library is hidden,
+     * or locked, where every tap would only lead to the licence prompt. It highlights a
+     * tab only while Library is the tab shown: elsewhere, a highlight would claim the
+     * reader is somewhere they are not.
+     *
+     * @param {boolean} isActive - Whether Library is the tab shown.
+     * @param {boolean} locked - Whether the licence keeps Library closed.
+     * @param {boolean} hidden - Whether the Library tab itself is hidden.
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _libraryRow(isActive, locked, hidden) {
+        if (!this._vertical || locked || hidden) return nothing;
+        return html`
+            <ag-lib-tabbar class="lib-menu"
+                .tab=${isActive ? this._libNav.tab : ''}
+                .tabs=${this._libNav.tabs}
+                @lib-tab-change=${this._onLibraryTab}></ag-lib-tabbar>`;
+    }
+
+    /**
+     * Open the library on the tab tapped in the column's copy of its bar.
+     *
+     * Handed over as a tab rather than a view, so the tap does what the same tap does
+     * on the page's own bar (ag-library-page `_onLibGoto`). The column is closed here
+     * because `selectTab` only closes it on a CHANGE of tab: with Library already
+     * shown, the column stayed open over the page that had just moved.
+     *
+     * @param {CustomEvent<{tab: string}>} e - 'lib-tab-change' from that bar.
+     * @returns {void}
+     */
+    _onLibraryTab(e) {
+        window.dispatchEvent(new CustomEvent('lib-goto', { detail: { tab: e.detail.tab } }));
+        this.closeSidebar();
     }
 
     /** Open the user-manual modal (mounted once in index.html). */

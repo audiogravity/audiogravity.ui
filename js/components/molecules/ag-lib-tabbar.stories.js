@@ -29,8 +29,9 @@ Search.args = { tab: 'search' };
 export const Queue = Template.bind({});
 Queue.args = { tab: 'queue' };
 
-export const Library = Template.bind({});
-Library.args = { tab: 'library' };
+// The 'library' key is the sources view, labelled Sources.
+export const Sources = Template.bind({});
+Sources.args = { tab: 'library' };
 
 export const Radio = Template.bind({});
 Radio.args = { tab: 'radio' };

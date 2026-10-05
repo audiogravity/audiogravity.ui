@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import './ag-tabs.js';
+import { injectLibStyles } from '../organisms/ag-library-page.js';
 
 export default {
     title: 'Molecules/Tabs',
@@ -47,6 +48,49 @@ export const Vertical = () => {
       </div>
     `;
 };
+
+/* ── Vertical, with the library's tab bar under Library ───────── */
+const TABS_WITH_LIBRARY = [
+    ...TABS,
+    { id: 'admin',   label: 'Admin',   hidden: false, badgeCount: null },
+    { id: 'library', label: 'Library', hidden: false, badgeCount: null },
+];
+
+/**
+ * The column carries the library page's own tab bar under its Library entry. Its
+ * styles come with the library's (LIB_STYLES), hence injectLibStyles().
+ *
+ * @param {{tab: string, tabs: (Array<string>|null)}} nav - What the page would announce.
+ * @returns {HTMLElement} The column, open, with Library shown.
+ */
+const columnWithLibrary = (nav) => {
+    localStorage.setItem('tabs-orientation', 'vertical');
+    localStorage.setItem('tabs-sidebar-hidden', 'false');
+    injectLibStyles();
+    const tabs = document.createElement('ag-tabs');
+    tabs.tabs = TABS_WITH_LIBRARY;
+    tabs.activeTab = 'library';
+    tabs._libNav = nav;
+    tabs._licenseStatus = 'lifetime';
+    // Storybook's fetch answers no licence, which locks Library — and a locked Library
+    // carries no bar. The story keeps the licence it was given.
+    tabs._fetchLicenseStatus = async () => {};
+    return tabs;
+};
+
+// Every source but the radio: the five tabs, the one shown highlighted.
+export const VerticalWithLibrary = () => html`
+  <div style="position: relative; height: 560px; overflow: hidden;">
+    ${columnWithLibrary({ tab: 'queue', tabs: null })}
+  </div>
+`;
+
+// The radio offers three: Browse and Search lead nowhere for stations.
+export const VerticalWithLibraryRadio = () => html`
+  <div style="position: relative; height: 560px; overflow: hidden;">
+    ${columnWithLibrary({ tab: 'radio', tabs: ['queue', 'library', 'radio'] })}
+  </div>
+`;
 
 /* ── With badge ───────────────────────────────────────────────── */
 export const WithBadge = () => html`

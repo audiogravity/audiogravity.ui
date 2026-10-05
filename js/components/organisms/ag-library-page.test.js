@@ -996,3 +996,146 @@ describe('ag-library-page — what the seventh review caught', () => {
         expect(el._dismissedGroup).toBe('qobuz');
     });
 });
+
+describe('ag-library-page — the copy of its tab bar in the tab menu', () => {
+    let selectTab;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        selectTab = vi.fn();
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+    });
+
+    /**
+     * Collect what the page tells the menu while `fn` runs.
+     *
+     * @param {Function} fn - Drives the page.
+     * @returns {Array<Object>} The details of every 'lib-nav-changed' sent.
+     */
+    function heard(fn) {
+        const sent = [];
+        const listener = (e) => sent.push(e.detail);
+        window.addEventListener('lib-nav-changed', listener);
+        try { fn(); } finally { window.removeEventListener('lib-nav-changed', listener); }
+        return sent;
+    }
+
+    const RAW = [{ source_id: 'src_radio', kind: 'radio' }, { source_id: 'src_mpd' }];
+
+    it('a tab sent from the menu opens the library there', () => {
+        const el = makeEl();
+        el._onLibGoto({ detail: { tab: 'queue' } });
+        expect(selectTab).toHaveBeenCalledWith('library');
+        expect(el._view).toBe('queue');
+    });
+
+    it('as the page\'s own bar would: the browse is not reloaded', () => {
+        // Sent as a view, Browse went through _navigate and reloaded its grid on every
+        // tap from the menu, which a tab switch must never do.
+        const el = makeEl({ _view: 'queue' });
+        el._onLibGoto({ detail: { tab: 'browse' } });
+        expect(el._view).toBe('browse');
+        expect(el._refreshBrowse).not.toHaveBeenCalled();
+    });
+
+    it('the banner is left as it stands', () => {
+        const pending = { id: 'src_qobuz', name: 'Qobuz' };
+        const el = makeEl({ _pendingSource: pending });
+        el._onLibGoto({ detail: { tab: 'queue' } });
+        expect(el._pendingSource).toBe(pending);
+    });
+
+    it('and artist mode is left, as on the page\'s bar', () => {
+        const el = makeEl({ _view: 'artist', _artistId: 'x', _artistName: 'X' });
+        el._onLibGoto({ detail: { tab: 'search' } });
+        expect(el._artistId).toBe('');
+        expect(el._view).toBe('search');
+    });
+
+    it('a view still navigates as it did — the fullscreen player\'s buttons', () => {
+        const el = makeEl({ _view: 'queue', _pendingSource: { id: 'src_qobuz', name: 'Qobuz' } });
+        el._onLibGoto({ detail: { view: 'browse' } });
+        expect(el._refreshBrowse).toHaveBeenCalledTimes(1);
+        expect(el._pendingSource).toBeNull();
+    });
+
+    it('says which tab its bar highlights, whatever the view', () => {
+        expect(makeEl({ _view: 'outputs' }).navState.tab).toBe('library');
+        expect(makeEl({ _view: 'artist' }).navState.tab).toBe('browse');
+        expect(makeEl({ _view: 'upnp-browser' }).navState.tab).toBe('browse');
+        expect(makeEl({ _view: 'radio' }).navState.tab).toBe('radio');
+    });
+
+    it('and which tabs the browsed source offers — three for the radio', () => {
+        expect(makeEl({ _sourceId: 'src_radio', _rawSources: RAW }).navState.tabs)
+            .toEqual(['queue', 'library', 'radio']);
+        expect(makeEl({ _sourceId: 'src_mpd', _rawSources: RAW }).navState.tabs).toBeNull();
+    });
+
+    it('tells the menu when its bar changes, and only then', () => {
+        // Every player state renders the page — about every three seconds while
+        // something plays. None of those may cost the menu a render.
+        const el = makeEl({ querySelector: () => null });
+        const sent = heard(() => {
+            el.updated(new Map([['_sources', []]]));   // a player state
+            el.updated(new Map([['_sources', []]]));   // another: nothing moved
+            el._view = 'queue';
+            el.updated(new Map([['_view', 'browse']]));
+        });
+        expect(sent).toEqual([{ tab: 'browse', tabs: null }, { tab: 'queue', tabs: null }]);
+    });
+
+    it('a change of source moves it too: the radio takes Browse and Search away', () => {
+        const el = makeEl({ querySelector: () => null, _rawSources: RAW, _view: 'queue' });
+        const sent = heard(() => {
+            el.updated(new Map());
+            el._sourceId = 'src_radio';
+            el.updated(new Map([['_sourceId', 'src_mpd']]));
+        });
+        expect(sent).toEqual([
+            { tab: 'queue', tabs: null },
+            { tab: 'queue', tabs: ['queue', 'library', 'radio'] },
+        ]);
+    });
+
+    it('its styles keep the copy to its own height, sharing the width, and wrapping', () => {
+        const css = LIB_STYLES_TEXT();
+        const host = cssRuleBody(css, 'ag-lib-tabbar.lib-menu');
+        // Left to the page's flex: 1, the bar swallowed every free pixel of the column
+        // under it — 250px on a 390x844 phone (measured).
+        expect(host).toMatch(/flex:\s*none/);
+        // The column never scrolls sideways: a tab that does not fit must wrap.
+        const nav = cssRuleBody(css, '.lib-menu .lib-nav');
+        expect(nav).toMatch(/flex-wrap:\s*wrap/);
+        // Nothing scrolls, so nothing clips the focus ring: the 5px kept for it go. Kept,
+        // they stuck out of the tray over the Library entry and took its taps (measured).
+        expect(nav).toMatch(/overflow:\s*visible/);
+        expect(nav).toMatch(/padding-block:\s*0/);
+        expect(nav).toMatch(/margin-block:\s*0/);
+        // Five labelled tabs need 282px at the page's spacing; the column gives 218.
+        // They share it instead, whatever their words.
+        const tab = cssRuleBody(css, '.lib-menu .lib-tab');
+        expect(tab).toMatch(/flex:\s*1 1 auto/);
+        expect(tab).toMatch(/padding-inline:\s*0/);
+    });
+
+    it('and they show it as a part of Library: a tray, set in, with smaller icons', () => {
+        // At the page's size its icons (22px) outweighed Library's own, and nothing tied
+        // the row to the entry above it: read as tabs of their own.
+        const css = LIB_STYLES_TEXT();
+        const host = cssRuleBody(css, 'ag-lib-tabbar.lib-menu');
+        expect(host).toMatch(/margin-left:\s*var\(--spacing-md\)/);
+        expect(host).toMatch(/width:\s*calc\(100% - var\(--spacing-md\)\)/);
+        expect(host).toMatch(/background:\s*var\(--color-neutral-bg\)/);
+        const icon = cssRuleBody(css, '.lib-menu .lib-tab svg');
+        expect(icon).toMatch(/width:\s*var\(--size-sm\)/);
+        expect(icon).toMatch(/height:\s*var\(--size-sm\)/);
+    });
+
+    it('marks the view shown as the column marks a swipe\'s target: an amber tint and a bar', () => {
+        const on = cssRuleBody(LIB_STYLES_TEXT(), '.lib-menu .lib-tab.on');
+        expect(on).toMatch(/background:\s*var\(--color-warning-bg\)/);
+        // The amber made for text: the bright one is under 3:1 on the tray in light themes.
+        expect(on).toMatch(/box-shadow:\s*inset 0 -3px 0 var\(--color-warning-text\)/);
+    });
+});

@@ -8,6 +8,9 @@
  * cleared it. _clearDragTransform() must run on every such path.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readStylesheet, cssRuleBody } from '../../test-utils.js';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 vi.mock('lit', () => ({ LitElement: class {}, html: () => ({}), nothing: null }));
 vi.mock('lit/directives/class-map.js', () => ({ classMap: () => ({}) }));
@@ -15,6 +18,8 @@ vi.mock('../../ag-icons.js', () => ({
     iconTabProfiles: '', iconTabServices: '', iconTabPipeline: '', iconTabSystem: '',
     iconTabPerformance: '', iconTabLibrary: '', iconHeadphones: '', iconSettingsSliders: '',
     iconSliders: '', iconShield: '', iconDsdLock: '', iconBell: '', iconDownload: '',
+    // ag-lib-tabbar's, which the column carries: read when its module loads.
+    iconQueue: '', iconSearch: '', iconQueuePlay: '', iconLibraryGrid: '', iconRadio: '',
 }));
 vi.mock('../../auth.js', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));
@@ -142,4 +147,39 @@ describe('ag-tabs — no connected-users counter', () => {
         expect(el._tabStats.services).toEqual({ num: 2, den: 5 });
     });
 
+});
+
+// ---------------------------------------------------------------------------
+// Manual at the foot of the column
+// ---------------------------------------------------------------------------
+
+describe('ag-tabs — Manual at the foot of the column', () => {
+    const css = () => readStylesheet('css', 'layout.css');
+
+    it('takes the foot, on a phone and on a computer alike', () => {
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn')).toMatch(/margin-top:\s*auto/);
+    });
+
+    it('with Switch right under it where there is one: two automatic margins would share the room', () => {
+        // Switch pushes itself down on its own, for a column without Manual; after
+        // Manual, it gives that up.
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-orientation-btn')).toMatch(/margin-top:\s*auto/);
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn')).toMatch(/margin-top:\s*0/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// The order of the tabs
+// ---------------------------------------------------------------------------
+
+describe('ag-tabs — the order of the tabs', () => {
+    it('ends on Library, after Admin', () => {
+        // The order is read from index.html, and everything follows it: the column, the
+        // horizontal bar, the swipe from tab to tab and the arrow keys.
+        const page = readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+        const order = [...page.matchAll(/class="tab-btn[^"]*" data-tab="([^"]+)"/g)].map(m => m[1]);
+        expect(order.indexOf('admin')).toBeGreaterThan(-1);
+        expect(order.at(-1)).toBe('library');
+        expect(order.indexOf('library')).toBe(order.indexOf('admin') + 1);
+    });
 });

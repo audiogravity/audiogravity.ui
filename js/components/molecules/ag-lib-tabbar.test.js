@@ -56,7 +56,7 @@ function labels(el) {
 describe('ag-lib-tabbar — a source is only offered what it can serve', () => {
     it('shows the five tabs when no restriction is given', async () => {
         const el = await mount('browse');
-        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Library', 'Radio']);
+        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio']);
         el.remove();
     });
 
@@ -65,7 +65,7 @@ describe('ag-lib-tabbar — a source is only offered what it can serve', () => {
         // and /library/search?source_id=src_radio answers 400. The radio's own
         // catalogue is on its own screen, with its own filters.
         const el = await mount('radio', ['queue', 'library', 'radio']);
-        expect(labels(el)).toEqual(['Queue', 'Library', 'Radio']);
+        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio']);
         el.remove();
     });
 
@@ -88,7 +88,34 @@ describe('ag-lib-tabbar', () => {
     it('renders one labelled tab per destination, radio included', async () => {
         el = await mount();
         const labels = [...el.querySelectorAll('.lib-tab span')].map(s => s.textContent);
-        expect(labels).toEqual(['Browse', 'Search', 'Queue', 'Library', 'Radio']);
+        expect(labels).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio']);
+    });
+
+    it('names the sources view Sources — Library is the tab it lives in', async () => {
+        // Called Library, it read twice in the tab menu, right under the Library entry.
+        el = await mount('library');
+        expect(el.querySelector('.lib-tab.on').textContent.trim()).toBe('Sources');
+        expect(labels(el)).not.toContain('Library');
+    });
+
+    it('sizes its icons by attributes, which a stylesheet can override', async () => {
+        // An inline style outranks every stylesheet: the tab menu could not draw them
+        // smaller, and the page's own size would have been written twice.
+        el = await mount();
+        const svg = el.querySelector('.lib-tab svg');
+        expect(svg.getAttribute('style')).toBeNull();
+        expect(svg.getAttribute('width')).toBe('22');
+        expect(svg.getAttribute('height')).toBe('22');
+    });
+
+    it('tells a screen reader which view is shown, and only that one', async () => {
+        // The mark is drawn; this is the same thing said aloud.
+        el = await mount('queue');
+        const current = [...el.querySelectorAll('.lib-tab')].filter(b => b.getAttribute('aria-current') === 'page');
+        expect(current.map(b => b.textContent.trim())).toEqual(['Queue']);
+        el.tab = '';
+        await el.updateComplete;
+        expect(el.querySelector('.lib-tab[aria-current]')).toBeNull();
     });
 
     it('marks only the active tab', async () => {
@@ -99,7 +126,7 @@ describe('ag-lib-tabbar', () => {
     });
 
     it('announces every tap, including one on the tab already highlighted', async () => {
-        // Several views map onto a tab they are not — outputs shows Library selected,
+        // Several views map onto a tab they are not — outputs shows Sources selected,
         // and the artist / Roon / UPnP browsers all show Browse. Tapping the highlighted
         // tab is how you get back out of them, so the tap has to be announced even when
         // the key has not changed. Swallowing it left a named, selected, dead control.
