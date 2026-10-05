@@ -44,7 +44,8 @@
 
 /**
  * @variant .badge.warning
- * @description Orange warning badge, used for 'critical' or 'attention' states.
+ * @description Orange warning badge, for an 'attention' state. A trait shown beside
+ * buttons, such as CRITICAL, adds .subtle: outlined, it passes for one of them.
  */
 .badge.warning {
     border-color: var(--color-warning);
@@ -135,8 +136,13 @@
 
 /**
  * @variant .badge.subtle
- * @description Variation with a light background color (alpha-based).
+ * @description Variation with a light background color (alpha-based) and no frame: a
+ * trait read in passing, which must not pass for a button. Outlined, a badge has the
+ * shape of the buttons beside it (CRITICAL next to EDIT CONFIG read as a second
+ * button); tinted, it reads like the RUNNING / STOPPED tags of the same cards. The
+ * border stays, transparent, so the badge keeps its height and the row does not move.
  */
+.badge.subtle { border-color: transparent; }
 .badge.subtle.success { background: var(--color-success-bg); }
 .badge.subtle.error   { background: var(--color-error-bg); }
 .badge.subtle.warning { background: var(--color-warning-bg); }

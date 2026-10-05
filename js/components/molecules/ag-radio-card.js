@@ -149,7 +149,7 @@ export class AgRadioCard extends LitElement {
                     <button class="action-btn secondary" @click=${this._onEditTap}>Edit station</button>
                 ` : nothing}
                 ${this.inLibrary ? html`
-                    <button class="action-btn error" @click=${this._onRemoveTap}>Remove from My Live Radio</button>
+                    <button class="action-btn warning" @click=${this._onRemoveTap}>Remove from My Live Radio</button>
                 ` : nothing}
             </div>
         `;

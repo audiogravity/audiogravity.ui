@@ -272,8 +272,9 @@
     line-height: 1;
 }
 
+/* Orange, like every control that deletes (user decision: one colour for what destroys). */
 .passkey-chip-delete:hover {
-    color: var(--color-error-text);
+    color: var(--color-warning-text);
 }
 
 /* Passkeys section (legacy, kept for safety) */

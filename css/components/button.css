@@ -236,11 +236,21 @@ a.action-btn:hover {
     color: var(--bg-primary);
 }
 
-.action-btn.warning { border-color: var(--color-warning); }
+/* The variant of every button that deletes or removes (user decision: one colour for
+   what destroys). The label carries the orange too, as on .btn-action.warning: the
+   amber border alone reads at 2.1:1 on a light page, under the 3:1 a control's edge
+   owes, where the red it replaced read at 3.8:1. */
+.action-btn.warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning-text);
+}
 
-.action-btn.warning:hover {
+/* On the amber fill the label takes --text-on-warning, the token made for it. The page
+   background it used before is white in the light themes, and read at 2.2:1 there. Not
+   on a disabled button: "Deleting…" filled orange as if it could still be pressed. */
+.action-btn.warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--color-warning);
-    color: var(--bg-primary);
+    color: var(--text-on-warning);
 }
 
 .action-btn.error { border-color: var(--color-error); }

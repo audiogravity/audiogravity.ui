@@ -724,8 +724,9 @@ body.no-animations .animate-stagger {
     transition: color var(--transition-fast);
 }
 
+/* Orange, like every control that deletes (user decision: one colour for what destroys). */
 .test-history-clear:hover {
-    color: var(--color-error-text);
+    color: var(--color-warning-text);
 }
 
 /* =====================

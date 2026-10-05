@@ -173,7 +173,7 @@ export class AgConfigCard extends LitElement {
                                 @click="${this.handleEdit}">EDIT CONFIG</button>
                         ` : nothing}
                         ${this.service.critical ? html`
-                            <span class="badge warning">CRITICAL</span>
+                            <span class="badge warning subtle">CRITICAL</span>
                         ` : nothing}
                     </div>
                     <button class="tile-action-btn tile-action-btn--icon" ?disabled=${!canDownload}

@@ -269,6 +269,13 @@ describe('ag-playlist-page — the account\'s own playlist', () => {
         expect(dialog.show).toBe(false);
     });
 
+    it('asks with an orange Delete, like every button that deletes', async () => {
+        const el = await mount();
+        el.querySelector('[aria-label="Delete the playlist"]').click();
+        await settle(el);
+        expect(button(el, 'Delete').className).toBe('action-btn warning');
+    });
+
     it('deletes it once confirmed, never retried, and goes back', async () => {
         const el = await mount();
         const deleted = [];

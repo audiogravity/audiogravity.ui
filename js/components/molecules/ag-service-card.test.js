@@ -131,6 +131,19 @@ describe('a figure that was measured', () => {
     });
 });
 
+describe('a critical service', () => {
+    it('is tagged CRITICAL with a tint, the same tag as on the Config and Systemd cards', () => {
+        // Outlined, it had the shape of START, RESTART and the ENABLED toggle beside it.
+        const el = card(ALL_MEASURED);
+        el.service = { ...el.service, critical: true };
+        expect(flat(el.render())).toContain('<span class="badge warning subtle">CRITICAL</span>');
+    });
+
+    it('is not tagged when the chain can do without it', () => {
+        expect(flat(card(ALL_MEASURED).render())).not.toContain('CRITICAL');
+    });
+});
+
 describe('a failed service', () => {
     it('reads FAILED in red, as a failed profile does', () => {
         expect(serviceStatus('failed', false)).toEqual({ statusClass: 'error', statusText: 'FAILED' });

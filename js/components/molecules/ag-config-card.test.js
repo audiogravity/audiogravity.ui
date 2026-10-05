@@ -117,6 +117,18 @@ const GONE = { isInstalled: false, fileExists: false, fileMtime: null, backupCou
 /** The class that drives the greyed-out CSS, as written on the tile itself. */
 const TILE_UNAVAILABLE = /class="config-tile[^"]*\bunavailable\b/;
 
+describe('critical service', () => {
+    it('is tagged CRITICAL with a tint, not an outline shaped like EDIT CONFIG beside it', () => {
+        // Outlined, the badge read as a second button next to EDIT CONFIG; the tint
+        // without a frame is .badge.subtle (css/components/badge.css).
+        expect(renderCard({ critical: true })).toContain('<span class="badge warning subtle">CRITICAL</span>');
+    });
+
+    it('is not tagged when the chain can do without it', () => {
+        expect(renderCard()).not.toContain('CRITICAL');
+    });
+});
+
 describe('missing package', () => {
     it('greys the tile out, like the Services and Profiles tabs do', () => {
         // Matched on the tile's own class list: a bare toContain('unavailable')

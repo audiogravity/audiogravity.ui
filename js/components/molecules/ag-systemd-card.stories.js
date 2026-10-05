@@ -33,3 +33,10 @@ export const Failed = Template.bind({});
 Failed.args = {
     service: { ...serviceMock, active: 'failed', substate: 'exited' }
 };
+
+/** A service the audio chain depends on: CRITICAL, a tint without a frame, the same tag
+ *  as on the Services and Config cards. */
+export const Critical = Template.bind({});
+Critical.args = {
+    service: { ...serviceMock, name: 'HQPlayer NAA', systemd_unit: 'networkaudiod.service', critical: true }
+};

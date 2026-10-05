@@ -155,10 +155,18 @@ describe('the unfolded actions', () => {
         expect(el.querySelector('.lib-radio-more-actions')).toBeNull();
     });
 
+    it('Remove is orange, like every button that deletes', async () => {
+        const { el } = await card({ editable: true, inLibrary: true });
+        await unfold(el);
+        const remove = [...el.querySelectorAll('.lib-radio-more-actions button')]
+            .find((b) => b.textContent.includes('Remove from My Live Radio'));
+        expect(remove.className).toBe('action-btn warning');
+    });
+
     it('Remove takes the station out of My Live Radio, folds the actions, and plays nothing', async () => {
         const { el, fired } = await card({ editable: true, inLibrary: true });
         await unfold(el);
-        el.querySelector('.lib-radio-more-actions .action-btn.error').click();
+        el.querySelector('.lib-radio-more-actions .action-btn.warning').click();
         await el.updateComplete;
         expect(fired).toEqual([['radio-library-toggle', { station: STATION, in_library: false }]]);
         expect(el.querySelector('.lib-radio-more-actions')).toBeNull();

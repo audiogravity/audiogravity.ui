@@ -138,7 +138,7 @@ export class AgPasskeyManager extends LitElement {
                                         <span class="passkey-date">Added ${this._formatDate(c.created_at)}</span>
                                     </div>
                                     <button
-                                        class="btn-action compact error"
+                                        class="btn-action compact warning"
                                         aria-label="Remove passkey"
                                         @click=${() => this._handleDelete(c.credential_id, c.device_name)}>
                                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg>
