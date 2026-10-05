@@ -156,16 +156,15 @@ describe('ag-tabs — no connected-users counter', () => {
 describe('ag-tabs — Manual at the foot of the column', () => {
     const css = () => readStylesheet('css', 'layout.css');
 
-    it('takes the foot where the column has no Switch button — a phone', () => {
-        // Switch is only rendered where the reader may choose the orientation, so its
-        // absence is the column the app imposes.
-        expect(cssRuleBody(css(), '.tabs--vertical:not(:has(.tab-orientation-btn)) .tab-manual-btn'))
-            .toMatch(/margin-top:\s*auto/);
+    it('takes the foot, on a phone and on a computer alike', () => {
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn')).toMatch(/margin-top:\s*auto/);
     });
 
-    it('and leaves the foot to Switch elsewhere: two automatic margins would share it', () => {
+    it('with Switch right under it where there is one: two automatic margins would share the room', () => {
+        // Switch pushes itself down on its own, for a column without Manual; after
+        // Manual, it gives that up.
         expect(cssRuleBody(css(), '.tabs--vertical .tab-orientation-btn')).toMatch(/margin-top:\s*auto/);
-        expect(css()).not.toMatch(/\.tabs--vertical\s+\.tab-manual-btn\s*\{[^}]*margin-top/);
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn')).toMatch(/margin-top:\s*0/);
     });
 });
 
