@@ -95,6 +95,7 @@
 @import 'systemd.css';
 @import 'performance.css';
 @import 'system.css';
+@import 'pipeline.css';
 @import 'config.css';
 @import 'audio-stack.css';
 @import 'validation.css';

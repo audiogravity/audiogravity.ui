@@ -14,7 +14,8 @@
  * deferred or module script runs after the page is drawn, which is the whole
  * problem it exists to solve.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { deviceAppearance } from './test-utils.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +26,7 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 const BOOT = read('public', 'theme-boot.js');
 const CONFIG = read('js', 'core', 'config.js');
 const COMMON = read('js', 'common.js');
+const APPEARANCE = read('js', 'appearance.js');
 
 /** The pages that must run it before painting. */
 const PAGES = ['index.html', 'login.html'];
@@ -76,9 +78,20 @@ describe('theme boot — its copies match their source', () => {
 
     it('reads the keys common.js and the config panel write', () => {
         expect(COMMON).toMatch(/MemoryCache\.get\('theme'/);
-        expect(COMMON).toMatch(/MemoryCache\.get\('darkMode'/);
         expect(BOOT).toContain("stored('theme')");
-        expect(BOOT).toContain("stored('darkMode')");
+        // The appearance: the setting, and the old switch it replaced (appearance.js).
+        expect(COMMON).toMatch(/appearancePreference\(\)/);
+        for (const key of ['appearance', 'darkMode']) {
+            expect(APPEARANCE).toContain(`stored('${key}')`);
+            expect(BOOT).toContain(`stored('${key}')`);
+        }
+    });
+
+    it('knows the same appearances as appearance.js', () => {
+        const source = APPEARANCE.match(/APPEARANCES = Object\.freeze\(\[([^\]]+)\]\)/)[1];
+        const booted = BOOT.match(/var APPEARANCES = \[([^\]]+)\]/)[1];
+        const names = (list) => list.split(',').map(s => s.trim().replace(/'/g, ''));
+        expect(names(booted)).toEqual(names(source));
     });
 
     it('paints the browser chrome the colours updateThemeColorMeta would', () => {
@@ -151,8 +164,13 @@ describe('theme boot — reachable from the interface, and safe there', () => {
     beforeEach(() => {
         localStorage.clear();
         delete window.agApplyAppearance;
+        delete window.MemoryCache;
         document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
         document.documentElement.classList.remove('dark-mode');
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
     });
 
     it('exposes the routine the appearance switch calls', () => {
@@ -164,6 +182,39 @@ describe('theme boot — reachable from the interface, and safe there', () => {
         boot();
         window.agApplyAppearance('gravity', true);
         expect(document.querySelector('meta[name="theme-color"]').content).toBe('#12141C');
+        expect(document.documentElement.classList.contains('dark-mode')).toBe(true);
+    });
+
+    it('decides the palette as appearance.js decides it, in every case', async () => {
+        // Its copy of the decision runs before the first paint; the application's runs
+        // after. Were they to disagree, the page would open in one palette and switch
+        // to the other a moment later — the flash this file exists to prevent.
+        const { appearancePreference, isDarkFor } = await import('./appearance.js');
+        const disagreements = [];
+        for (const appearance of [null, 'auto', 'light', 'dark', 'sepia']) {
+            for (const darkMode of [null, 'true', 'false']) {
+                for (const system of ['dark', 'light', 'unknown']) {
+                    localStorage.clear();
+                    if (appearance !== null) localStorage.setItem('appearance', appearance);
+                    if (darkMode !== null) localStorage.setItem('darkMode', darkMode);
+                    vi.unstubAllGlobals();
+                    if (system !== 'unknown') {
+                        deviceAppearance(system === 'dark');
+                    }
+                    document.documentElement.classList.remove('dark-mode');
+                    boot();
+                    const booted = document.documentElement.classList.contains('dark-mode');
+                    const decided = isDarkFor(appearancePreference());
+                    if (booted !== decided) disagreements.push({ appearance, darkMode, system, booted, decided });
+                }
+            }
+        }
+        expect(disagreements).toEqual([]);
+    });
+
+    it('opens a device that never chose in its own appearance', () => {
+        deviceAppearance(true);
+        boot();
         expect(document.documentElement.classList.contains('dark-mode')).toBe(true);
     });
 

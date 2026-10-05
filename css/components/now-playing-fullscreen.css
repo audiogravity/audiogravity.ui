@@ -134,6 +134,13 @@ body:not(.npfs-open) .topbar {
     gap: 12px;
 }
 
+/* Everything beside the cover. On a phone held upright it is no box at all: its parts
+   stack under the cover as the column's own, centred. A wide landscape screen makes it
+   the column beside the cover (below). */
+.npfs-info {
+    display: contents;
+}
+
 /* ── Cover ── */
 .npfs-cover-wrap {
     width: 100%;
@@ -424,7 +431,7 @@ body:not(.npfs-open) .topbar {
 }
 
 /* Scoped: the bare element selector would leak to the mini player which also uses ag-progress-bar. */
-.npfs-scroll > ag-progress-bar {
+.npfs-info > ag-progress-bar {
     display: block;
     width: 100%;
     max-width: 340px;
@@ -678,4 +685,59 @@ body:not(.npfs-open) .topbar {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ── Wide, landscape screens: two columns ──
+   The single column scattered on a computer: a 340px cover centred, the title flush
+   left, the signal path flush right 1,400px away, the four format cells stretched
+   across the screen. Here the cover takes the left, as large as the height allows,
+   and everything else stacks in one column beside it.
+
+   The column beside it is one block (.npfs-info), centred on the cover whatever it
+   holds — "Next" comes and goes. It was six grid rows between two empty ones, and a
+   seventh part would have fallen below the bottom one (review, 2026-10-04). A large
+   phone turned on its side is wider than 900px (932 for an iPhone Pro Max) and takes
+   this layout too: a smaller cover, the column beside it — better than one column it
+   must scroll through. */
+@media (width >= 900px) and (orientation: landscape) {
+    .npfs-scroll {
+        display: grid;
+        grid-template-columns: min(500px, 42vw, calc(100dvh - 180px)) minmax(300px, 520px);
+
+        /* One row, the screen's height or the column's if taller: it scrolls then. */
+        grid-template-rows: 1fr;
+        align-items: center;
+        justify-content: center;
+        column-gap: calc(var(--spacing-xl) * 2);
+    }
+
+    .npfs-scroll > .npfs-cover-wrap {
+        grid-column: 1;
+        max-width: none;
+        margin: 0;
+    }
+
+    .npfs-info {
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    /* Above the phone's own caps — the progress bar's 340px among them. */
+    .npfs-scroll > .npfs-info > * {
+        max-width: none;
+    }
+
+    /* A `display: contents` element makes no flex item: the strip's cells would be
+       laid out on their own. */
+    .npfs-info > ag-format-strip {
+        display: block;
+    }
+
+    /* Left-aligned with the title under it, not pushed to the column's far edge. */
+    .npfs-source-row .npfs-signal-path {
+        margin-left: 0;
+        justify-content: flex-start;
+    }
 }

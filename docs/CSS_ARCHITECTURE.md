@@ -107,6 +107,7 @@ css/
     ├── config-editor.css      # JSON/CodeMirror editor (mobile responsive)
     ├── login.css              # Login page
     ├── performance.css        # Performance page
+    ├── pipeline.css           # Pipeline page, computer view: the diagram and the column beside it
     ├── profiles.css           # Profiles page
     ├── services.css           # Services page
     ├── system.css             # System page
@@ -192,6 +193,7 @@ css/
 @import 'systemd.css';
 @import 'performance.css';
 @import 'system.css';
+@import 'pipeline.css';
 @import 'config.css';
 @import 'validation.css';
 @import 'login.css';

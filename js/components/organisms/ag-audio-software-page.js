@@ -35,7 +35,7 @@ import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import './ag-card-grid.js';
-import { packageIsInstalled } from '../molecules/ag-package-card.js';
+import { packageIsInstalled, updateDecision } from '../molecules/ag-package-card.js';
 import '../molecules/ag-package-install-dialog.js';
 import '../molecules/ag-package-uninstall-dialog.js';
 import '../molecules/ag-package-web-password-dialog.js';
@@ -47,6 +47,20 @@ import '../molecules/ag-package-web-password-dialog.js';
  */
 const hasUpdates = pkg => Boolean(pkg.installed_version && pkg.available_version
     && pkg.installed_version !== pkg.available_version);
+
+/**
+ * Whether a package's service runs on its old files once an install or update of it
+ * went through, until it is restarted — the card's "Restart required". Not for one the
+ * core starts or restarts itself (`restarts_after_install`): the badge said so about
+ * HQPlayer Embedded seconds after the core had restarted it, and a click cut the music
+ * for nothing. When that restart fails, the action's result says so (`restart_needed`).
+ * @param {Object} pkg - Package payload as returned by GET /packages/.
+ * @returns {boolean}
+ */
+const restartOwedAfterInstall = pkg => Boolean(pkg.service_id && !pkg.restarts_after_install);
+
+/** What each action is called while it runs: `${Action}ing` said "Updateing". */
+const ACTION_RUNNING = { install: 'Installing', update: 'Updating', uninstall: 'Uninstalling' };
 
 export class AgAudioSoftwarePage extends LitElement {
     static properties = {
@@ -312,16 +326,13 @@ export class AgAudioSoftwarePage extends LitElement {
 
         const pkgIndex = this.packages.findIndex(p => p.id === pkg.id);
         if (pkgIndex !== -1) {
-            const prevStatus = this.packages[pkgIndex].status;
-            const justInstalled = ['installing', 'updating'].includes(prevStatus) && pkg.status === 'installed';
-            // Not for a package the core itself starts or restarts once it is
-            // installed (`restarts_after_install`): the badge said "Restart
-            // required" about HQPlayer Embedded seconds after the core had
-            // restarted it, and a click cut the music for nothing. When that
-            // restart fails, the action's result says so (`restart_needed`).
-            if (justInstalled && pkg.service_id && !pkg.restarts_after_install) {
-                this._markRestartNeeded(pkg.id);
-            } else if (pkg.status === 'not_installed') {
+            // "Restart required" is lit from an action's result (_runPackageAction),
+            // never from "installing/updating" turning to "installed" here: a
+            // simulation, and an update the box refused, end on that change too with
+            // nothing installed, and an operation run from another device lit the
+            // badge on this one — a second press restarted the service again, cutting
+            // the music for nothing (review, 2026-10-04).
+            if (pkg.status === 'not_installed') {
                 this._restartNeeded.delete(pkg.id);
                 MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
             }
@@ -330,9 +341,10 @@ export class AgAudioSoftwarePage extends LitElement {
             this._updateGlobalUpdateBadge();
         }
 
-        // If the logs modal is open for this package, update it
+        // If the logs modal is open for this package, update it — for this package
+        // only: another one's operation, from another device, moved its bar.
         const modal = document.getElementById('agLogsModal');
-        if (modal && modal.isOpen) {
+        if (modal && modal.isOpen && pkg.id === this._logCursor.packageId) {
             this._updateLogsModal(pkg);
 
             // A state change is the one moment the browser is told the operation
@@ -470,33 +482,6 @@ export class AgAudioSoftwarePage extends LitElement {
     }
 
     /**
-     * Decide what an UPDATE press means for one package.
-     *
-     * Some vendors publish no version at all — Roon's installer points at a
-     * fixed filename and ships no version file, so there is nothing to compare
-     * against. Updating one means re-running its installer, which always
-     * fetches the current build; refusing on the grounds that no number could
-     * be shown left those packages with no way to update from here at all. A
-     * package that *should* have a version and has none is a different matter:
-     * that is a symptom, and a blind reinstall would hide it.
-     *
-     * `installer_type === 'script'` stands in for "publishes no version",
-     * which is true of every script package in the registry — none declares a
-     * version check. The day one does, its check failing would look the same
-     * from here, and the distinction would have to come from the core, which is
-     * the only side that knows whether a check was configured or merely failed.
-     *
-     * @param {Object} pkg - Package as returned by the core.
-     * @returns {'proceed'|'reinstall'|'up-to-date'|'no-version'} What to do.
-     */
-    _decideUpdate(pkg) {
-        if (!pkg.available_version) {
-            return pkg.installer_type === 'script' ? 'reinstall' : 'no-version';
-        }
-        return pkg.available_version === pkg.installed_version ? 'up-to-date' : 'proceed';
-    }
-
-    /**
      * Warn that an operation will interrupt whatever is playing through it.
      *
      * Updating a package restarts the service it drives — the package's own
@@ -537,15 +522,13 @@ export class AgAudioSoftwarePage extends LitElement {
 
     async _handleAction(e) {
         const { packageId, action } = e.detail;
-        const pkgIndex = this.packages.findIndex(p => p.id === packageId);
-        if (pkgIndex === -1) return;
-        const pkg = this.packages[pkgIndex];
+        const pkg = this.packages.find(p => p.id === packageId);
+        if (!pkg) return;
 
         // Installing goes through its own dialog rather than a yes/no box: the
         // package may carry a licence the noninteractive install would skip
         // (both Signalyst packages do), and may let the operator choose which
         // major line to install. The dialog asks the core what this one has.
-        // Before the update checks below, which have nothing to say about it.
         if (action === 'install') {
             this._installDialogFor = pkg;
             return;
@@ -557,62 +540,33 @@ export class AgAudioSoftwarePage extends LitElement {
             return;
         }
 
-        let reinstallOnly = false;
+        // The card offers UPDATE only when a press does something (updateDecision): a
+        // version to move to, or the installer of a vendor that publishes no version
+        // to run again. Its "checking…", "no version" and "up to date" answers here
+        // could no longer be reached.
+        const reinstallOnly = action === 'update' && updateDecision(pkg) === 'reinstall';
 
-        if (action === 'update') {
-            // A package whose vendor publishes no version has nothing to fetch:
-            // asking anyway cost a round-trip and put "checking for available
-            // updates…" on screen a moment before a dialogue that says there is
-            // nothing to compare.
-            if (!pkg.available_version && this._decideUpdate(pkg) !== 'reinstall') {
-                showToast('info', 'Checking Version', 'Checking for available updates...');
-                try {
-                    const latestPkg = await apiGet(`/packages/${packageId}`);
-                    // update it in state
-                    this.packages[pkgIndex] = { ...pkg, ...latestPkg };
-                    this.requestUpdate();
-                    this._updateGlobalUpdateBadge();
-                } catch (error) {
-                    showToast('error', 'Check Failed', 'Failed to check available version');
-                    return;
-                }
-            }
-
-            const decision = this._decideUpdate(this.packages[pkgIndex]);
-            if (decision === 'no-version') {
-                showToast('warning', 'No Version Info', 'Unable to determine available version');
-                return;
-            }
-            if (decision === 'up-to-date') {
-                const upToDate = this.packages[pkgIndex];
-                showToast('info', 'Already Up-to-Date', `${upToDate.label} is already at version ${upToDate.installed_version}`);
-                return;
-            }
-            reinstallOnly = decision === 'reinstall';
-        }
-
-        const currentPkg = this.packages[pkgIndex];
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
-        const label = escapeHtml(currentPkg.label);
+        const label = escapeHtml(pkg.label);
 
         // Escaped: showConfirm renders this through unsafeHTML, and both the
         // label and the version can carry vendor text — a version string is read
         // straight out of a file the vendor's installer wrote.
         let confirmMessage = `Are you sure you want to ${action} ${label}?`;
         if (action === 'update' && reinstallOnly) {
-            const installed = currentPkg.installed_version
-                ? ` You currently have ${escapeHtml(currentPkg.installed_version)}.` : '';
+            const installed = pkg.installed_version
+                ? ` You currently have ${escapeHtml(pkg.installed_version)}.` : '';
             confirmMessage = `${label} publishes no version number, so there is nothing to compare against. Reinstall it from the vendor's latest published build?${installed}`;
-        } else if (action === 'update' && currentPkg.available_version) {
+        } else if (action === 'update' && pkg.available_version) {
             // The installed version can be absent — a failed install leaves the
             // card in error with nothing on disk — and printing it unguarded
             // offered to update "from version null".
-            confirmMessage = currentPkg.installed_version
-                ? `${currentPkg.available_is_older ? 'Switch' : 'Update'} ${label} from version ${escapeHtml(currentPkg.installed_version)} to ${escapeHtml(currentPkg.available_version)}?`
-                : `Install ${label} version ${escapeHtml(currentPkg.available_version)}?`;
+            confirmMessage = pkg.installed_version
+                ? `${pkg.available_is_older ? 'Switch' : 'Update'} ${label} from version ${escapeHtml(pkg.installed_version)} to ${escapeHtml(pkg.available_version)}?`
+                : `Install ${label} version ${escapeHtml(pkg.available_version)}?`;
         }
 
-        confirmMessage += this._playbackWarning(currentPkg, action);
+        confirmMessage += this._playbackWarning(pkg, action);
 
         const confirmed = await showConfirm(
             `${actionLabel} Package`,
@@ -621,7 +575,7 @@ export class AgAudioSoftwarePage extends LitElement {
 
         if (!confirmed) return;
 
-        await this._runPackageAction(currentPkg, action);
+        await this._runPackageAction(pkg, action);
     }
 
     /**
@@ -650,8 +604,10 @@ export class AgAudioSoftwarePage extends LitElement {
         const packageId = pkg.id;
         const currentPkg = pkg;
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+        // Read once: the switch can be flipped while the action runs.
+        const simulated = this.dryRun;
 
-        this._openLogsModal(currentPkg, action);
+        this._openLogsModal(currentPkg, action, simulated);
         this._startPolling(packageId);
 
         try {
@@ -659,11 +615,28 @@ export class AgAudioSoftwarePage extends LitElement {
             const acceptParam = acceptNotices ? '&accept_notices=true' : '';
             const purgeParam = purge ? '&purge=true' : '';
             const result = await apiPost(
-                `/packages/${packageId}/${action}?dry_run=${this.dryRun}${versionParam}${acceptParam}${purgeParam}`,
+                `/packages/${packageId}/${action}?dry_run=${simulated}${versionParam}${acceptParam}${purgeParam}`,
                 webPassword ? { web_password: webPassword } : {});
 
-            if (result.restart_needed) this._markRestartNeeded(packageId);
-            if (result.success && result.warning) {
+            // From what was done — see _handlePackageStateUpdate.
+            if (result.restart_needed || (!simulated && result.success && action !== 'uninstall'
+                    && restartOwedAfterInstall(currentPkg))) {
+                this._markRestartNeeded(packageId);
+            }
+            if (simulated) {
+                // Its own words: shown as the real action's, SIMULATE ended on
+                // "Install Successful" for nothing installed.
+                this._closeSimulationLog(packageId, result.success);
+                addToHistory('software', `Simulate ${action} ${currentPkg.label}`, result.success);
+                if (result.success) {
+                    showToast('info', `${actionLabel} Simulated`,
+                        `Nothing was changed: the steps to ${action} ${currentPkg.label}`
+                        + `${purge ? ' and delete its settings and data' : ''} went through.`);
+                } else {
+                    showToast('error', `${actionLabel} Simulation Failed`,
+                        result.message || `The simulation could not ${action} ${currentPkg.label}`);
+                }
+            } else if (result.success && result.warning) {
                 // Installed (or updated), but a step after it was not done —
                 // its web password, its log space, its restart. The core's
                 // message says what is left; "Install Failed" used to say it
@@ -686,6 +659,7 @@ export class AgAudioSoftwarePage extends LitElement {
             }
         } catch (error) {
             console.error('[Audio Software] Error:', error);
+            if (simulated) this._closeSimulationLog(packageId, false);
             addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
             showToast('error', 'Error', error.message);
         }
@@ -869,22 +843,34 @@ export class AgAudioSoftwarePage extends LitElement {
         if (!confirmed) return;
 
         const pkgIds = updates.map(p => p.id);
-        
+        // Read once: the switch can be flipped while the updates run.
+        const simulated = this.dryRun;
+
         // Use the logs modal for the first package or a generic one?
         // Let's use a generic toast for now, or we could open the logs modal for the first one.
         // For simplicity, let's start them and reload once done.
-        
-        showToast('info', 'Updating All', 'Starting bulk update process...');
+
+        showToast('info', 'Updating All', simulated ? 'Simulating the updates...' : 'Starting bulk update process...');
 
         try {
-            const results = await apiPost(`/packages/update_all?dry_run=${this.dryRun}`, pkgIds);
+            const results = await apiPost(`/packages/update_all?dry_run=${simulated}`, pkgIds);
 
-            results.filter(r => r.restart_needed).forEach(r => this._markRestartNeeded(r.package_id));
+            // From what was done, as for a single update (_runPackageAction).
+            const updated = new Map(updates.map(pkg => [pkg.id, pkg]));
+            results.filter(r => r.restart_needed || (!simulated && r.success
+                    && restartOwedAfterInstall(updated.get(r.package_id) || {})))
+                .forEach(r => this._markRestartNeeded(r.package_id));
             const incomplete = results.filter(r => r.success && r.warning);
             const successCount = results.filter(r => r.success).length;
             const failCount = results.length - successCount;
 
-            if (failCount === 0 && incomplete.length === 0) {
+            if (simulated && failCount === 0) {
+                // Not "Successfully updated": nothing was (see _runPackageAction).
+                showToast('info', 'Updates Simulated',
+                    `Nothing was changed: the steps to update ${successCount} packages went through.`);
+            } else if (simulated) {
+                showToast('warning', 'Simulation Found Errors', `${successCount} would update, ${failCount} failed`);
+            } else if (failCount === 0 && incomplete.length === 0) {
                 showToast('success', 'All Updates Complete', `Successfully updated ${successCount} packages`);
             } else if (failCount === 0) {
                 // Updated, but a step after it was left — the core's message says
@@ -903,13 +889,19 @@ export class AgAudioSoftwarePage extends LitElement {
         }
     }
 
-    _openLogsModal(pkg, action) {
+    /**
+     * Open the log window on an operation about to start.
+     *
+     * @param {Object} pkg - The package the operation is on.
+     * @param {'install'|'update'|'uninstall'} action - The operation.
+     * @param {boolean} [simulated] - A simulation (SIMULATE): the window ends on its
+     *   verdict (_closeSimulationLog) rather than on the package's state.
+     */
+    _openLogsModal(pkg, action, simulated = false) {
         const modal = document.getElementById('agLogsModal');
         if (!modal) return;
 
-        const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
-
-        modal.title = `${actionLabel}ing ${pkg.label}...`;
+        modal.title = `${ACTION_RUNNING[action]} ${pkg.label}${simulated ? ' (simulation)' : ''}...`;
         modal.clearLogs();
         modal.progress = 0;
         modal.statusText = 'Starting...';
@@ -922,12 +914,39 @@ export class AgAudioSoftwarePage extends LitElement {
         // on this package and would be rendered as if it were the new one. The first
         // `package-state-update` (INSTALLING/…) is published after the server clears
         // the buffer, and that handler fetches — early enough to miss nothing.
-        this._logCursor = { packageId: pkg.id, lastSeq: 0 };
+        this._logCursor = { packageId: pkg.id, lastSeq: 0, simulated };
+    }
+
+    /**
+     * End a simulation's log window on how it went.
+     *
+     * Not on the state its package ends in: the core gives back the one the card
+     * showed, so the window ended on "Installed" after a simulated update that failed,
+     * and on "Not installed" after a simulated install that went through (review,
+     * 2026-10-04). That state may reach the page before or after the answer:
+     * `_updateLogsModal` leaves a simulation's window alone once its operation is over.
+     *
+     * @param {string} packageId - The package simulated.
+     * @param {boolean} passed - Whether its steps went through.
+     */
+    _closeSimulationLog(packageId, passed) {
+        const modal = document.getElementById('agLogsModal');
+        if (!modal || !modal.isOpen || this._logCursor.packageId !== packageId) return;
+        modal.progress = 100;
+        modal.isActive = false;
+        modal.showCancel = false;
+        modal.statusText = passed ? 'Simulated: nothing was changed'
+            : 'Simulation failed: nothing was changed';
     }
 
     _updateLogsModal(pkg, logsResponse) {
         const modal = document.getElementById('agLogsModal');
         if (!modal) return;
+        // Over: a simulation's window ends on its verdict (_closeSimulationLog).
+        if (this._logCursor.simulated
+                && !['installing', 'updating', 'uninstalling'].includes(pkg.status)) {
+            return;
+        }
 
         // Map each status to a meaningful progress percentage
         const progressMap = {
@@ -1056,12 +1075,14 @@ export class AgAudioSoftwarePage extends LitElement {
                     <!-- While a refresh runs, it is announced unavailable and a press does nothing.
                          It is not made disabled: a disabled button throws the focus off itself, and
                          a keyboard or screen-reader user loses their place (measured in Chromium). -->
+                    <!-- Each icon carries a word: two black squares side by side said nothing
+                         of what they do. The aria-label keeps the full sentence. -->
                     <button class="badge warning plain-btn ${this._isRefreshing ? 'animate-pulse' : 'clickable'}"
                           aria-label="Refresh package config (re-probe sources)" aria-disabled=${this._isRefreshing ? 'true' : 'false'}
-                          @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg></button>
+                          @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> REFRESH</button>
                     <button class="badge neutral clickable plain-btn"
                           aria-label="Download resolved configuration"
-                          @click=${this._downloadConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></button>
+                          @click=${this._downloadConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> DOWNLOAD</button>
                     <button class="badge success clickable plain-btn ${this.isCheckingAll ? 'animate-pulse' : ''}"
                           @click=${this._checkAllUpdates}>
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
@@ -1072,14 +1093,16 @@ export class AgAudioSoftwarePage extends LitElement {
                     ` : ''}
                     ` : ''}
                     ${isAdmin() ? html`
-                    <!-- Admin-only: a catalog-validation tool (command preview + config check),
-                         not a dependency-resolving simulation — kept out of the regular User UI. -->
+                    <!-- Admin-only: walks an action's steps without changing anything (command
+                         preview + config check). It resolves no dependency, so a simulation
+                         that passes does not prove the real action will — kept out of the
+                         regular User UI. -->
                     <div class="dry-run-toggle">
                         <label class="switch">
                             <input type="checkbox" .checked=${this.dryRun} @change=${this._toggleDryRun}>
                             <span class="slider"></span>
                         </label>
-                        <span class="dry-run-label">DRY-RUN</span>
+                        <span class="dry-run-label">SIMULATE</span>
                     </div>
                     ` : ''}
                 </div>

@@ -910,6 +910,8 @@ A package with **`web_credentials`** (HQPlayer Embedded) needs the password of i
 
 `POST /packages/{package_id}/uninstall?purge=true` also deletes the package's configuration and data — for HQPlayer, every filter and modulator choice. Off by default, and deliberately a separate request: a plain uninstall is reversible, a purge is not.
 
+**Simulation** — `install`, `update`, `uninstall` and `update_all` take **`?dry_run=true`**: the operation walks its steps and changes nothing on the box. No command runs: `success` says the steps went through — the URLs it would download from answer — not that the real operation will, since no dependency is resolved. `message` says it was a simulation and, for a purge, what it would have deleted; the operation log ends on that same sentence. The package keeps the status it had — the `package_state` events go to the in-progress status and back — and `restart_needed` is never set: nothing was installed, so nothing needs a restart.
+
 `GET /packages/{package_id}/logs?after_seq=<n>` → `{ package_id, status, entries: [{ timestamp, level, message, seq }], last_seq }`. Log lines are pushed live as `package_log` SSE events; this route exists so a client that **missed** some — a reconnect, a backgrounded tab, a slow consumer — can recover them instead of staying stuck on the last line it received. `seq` is monotonic **per package and never restarts**, including across operations, so a client holding a stale cursor is never wrongly told it is up to date; pass the highest `seq` held as `after_seq` to fetch only what is missing. `last_seq` is the highest value held server-side, which tells a caught-up client where it stands even when `entries` comes back empty. The buffer holds the **last 500 lines** and is cleared when a new operation starts on that package — so do not call this before the operation has been POSTed, or the previous operation's log is returned. **404** on an unknown package id. `level` is one of `debug`, `info`, `success`, `warning`, `error`; output relayed from apt/dpkg is always `info` (its wording is third-party and says nothing about severity — the verdict is the operation's own result line).
 
 ### License — `/license/*`
@@ -1001,7 +1003,7 @@ surfaces this — it performs no version comparison and downloads nothing on its
 ### Output steering — `/steering/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/steering/status` | Which service drives which ALSA device |
+| GET | `/steering/status` | Which service drives which ALSA device — for MPD on several outputs, the one it has enabled, not the first of its configuration |
 | GET | `/steering/outputs` | Outputs a service can be switched to |
 | POST | `/steering/switch-output` | Point a service at another output. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else the NAA (`naa`) |
 
@@ -1016,7 +1018,7 @@ across both layouts instead. A service the core does not know has no editable co
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry) |
+| GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry). `audio_output` is the device each one plays on — for MPD on several outputs, the one it has enabled |
 | GET | `/audio_app_config/{service_id}/config` | Read the config file (`?type=raw` for the file itself) |
 | POST | `/audio_app_config/{service_id}/config` | Write it back; optionally restart the service |
 | GET | `/audio_app_config/{service_id}/backups` | List the timestamped copies kept before each save |
@@ -1099,7 +1101,7 @@ The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 | Event type | Payload |
 |---|---|
 | `now_playing` | Current track, source, format |
-| `audio_pipeline` | Full pipeline topology update — same node shape as `GET /audio_pipeline/current`, `unmatched_outputs` included |
+| `audio_pipeline` | Full pipeline topology update — same node shape as `GET /audio_pipeline/current`, `unmatched_outputs` included. Published when the pipeline changes and right after a command or an output switch, changed or not; a client joining the stream receives the last one published as its first event. `timestamp` is when it was computed, in universal time with its offset — `…Z` from `GET /audio_pipeline/current`, `…+00:00` on the stream: order two pipelines by the instant it names, never by its text |
 | `services_metrics` | CPU/memory/IO per service. Five figures can be `null` — **absent, not zero** — for a **running** service whose counter is off: `memory_mb` when the kernel exposes no memory cgroup controller (the event's `memory_accounting` flag says which case the box is in), and `io_read_rate` / `io_write_rate` / `network_rx_rate` / `network_tx_rate` until *IO Accounting* / *IP Accounting* are enabled on the unit. `cpu_percent` and `tasks` are always measured. A **stopped** unit reports `0` for all of them — that silence is real. |
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network. **`cpu_throttled`**: one flag per entry of `cpu_per_core`, true when that CPU was slowed down since the previous event — for heat (Intel's throttle counters), or on a Raspberry Pi for an under-powered supply, which marks every core. `null` when the box measures neither, or on a Pi while its supply is fine: not measured, never "not throttled" |

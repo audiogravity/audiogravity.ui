@@ -6,6 +6,10 @@
  * (2026-07-27) that endpoint costs ~570 ms of server time, so an open tab burned
  * roughly seven minutes of CPU per hour on the machine that plays the music
  * (CLAUDE.md rule 12). Reintroducing a poll on that endpoint has to fail here.
+ *
+ * The steering went the same way: polled every 15 s, it followed this list onto the
+ * computer beside the diagram. It is read again when the pipeline moves a service to
+ * another output, and never on a timer.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -18,6 +22,15 @@ vi.mock('lit', () => ({
     nothing: null,
 }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }));
+// The page's newest pipeline (pipeline-state.js) holds what earlier tests sent: each
+// reading here asks apiGet, and is counted as the request it makes. The ordering is real.
+vi.mock('../../core/pipeline-state.js', async (importOriginal) => {
+    const { apiGet } = await import('../../api.js');
+    return {
+        ...(await importOriginal()),
+        currentPipeline: vi.fn(() => apiGet('/audio_pipeline/current')),
+    };
+});
 vi.mock('../../ag-icons.js', () => ({
     iconSmartphone: '', iconServer: '', iconCpu: '', iconAudioWaveform: '',
     iconAudioLines: '', iconVolume: '', iconMusicNote: '', iconDatabase: '',
@@ -38,8 +51,10 @@ vi.mock('../../library-store.js', () => ({
 }));
 
 import { apiGet } from '../../api.js';
+import { currentPipeline } from '../../core/pipeline-state.js';
+import { flat } from '../../test-utils.js';
 import { subscribePlayerState } from '../../library-store.js';
-import { AgMobilePipeline } from './ag-mobile-pipeline.js';
+import { AgMobilePipeline, outputsSignature } from './ag-mobile-pipeline.js';
 
 const PIPELINE = '/audio_pipeline/current';
 const STEERING = '/steering/status';
@@ -47,10 +62,14 @@ const STEERING = '/steering/status';
 /** Count the calls made to one endpoint. */
 const callsTo = (path) => apiGet.mock.calls.filter(([p]) => p === path).length;
 
+/** The lists of a test, disconnected after it: one left listening answers the next test's events. */
+const made = [];
+
 function makeEl() {
     const el = new AgMobilePipeline();
     // customElements.define ran at import time; the lifecycle is driven by hand here.
     AgMobilePipeline._injectStyles = vi.fn();
+    made.push(el);
     return el;
 }
 
@@ -62,6 +81,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    for (const el of made.splice(0)) el.disconnectedCallback();
     vi.useRealTimers();
 });
 
@@ -72,6 +92,16 @@ describe('ag-mobile-pipeline data acquisition', () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(callsTo(PIPELINE)).toBe(1);
+    });
+
+    it('reads it from the page\'s newest pipeline, which the diagram beside it shares', async () => {
+        // On a computer the list sits beside the diagram, and both read the pipeline as
+        // the page opens: ~570 ms of server time each, unless they share one reading.
+        const el = makeEl();
+        el.connectedCallback();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(currentPipeline).toHaveBeenCalledOnce();
     });
 
     it('never polls the pipeline endpoint again, however long the tab stays open', async () => {
@@ -95,12 +125,48 @@ describe('ag-mobile-pipeline data acquisition', () => {
         expect(callsTo(PIPELINE)).toBe(1);  // the event costs no request
     });
 
-    it('still polls steering, which has no event on the dashboard channel', async () => {
+    it('never polls the steering, however long the tab stays open', async () => {
+        // It did, every 15 s: 240 requests an hour to the box for an open tab, hidden
+        // or not — on a computer too, once the list sat beside the diagram.
         const el = makeEl();
         el.connectedCallback();
-        await vi.advanceTimersByTimeAsync(45_000);
+        await vi.advanceTimersByTimeAsync(5 * 60_000);
 
-        expect(callsTo(STEERING)).toBe(4);  // once on connect, then every 15 s
+        expect(callsTo(STEERING)).toBe(1);  // once on connect
+    });
+
+    it('reads the steering again when a service moves to another output — and only then', async () => {
+        // Whoever made the switch — this list, the diagram, another device — the core
+        // publishes the pipeline that follows it, and the pills follow at once.
+        const at = (time, output) => ({
+            timestamp: `2026-10-04T13:${time}`,
+            nodes: [{ id: 'streamer_01', type: 'device',
+                internal_services: [{ id: 'mpd', current_output: output }] }],
+        });
+        apiGet.mockImplementation(async (path) => (path === PIPELINE ? at('39:58', 'usb') : {}));
+        const el = makeEl();
+        el.connectedCallback();
+        await vi.advanceTimersByTimeAsync(0);
+        const send = (pipeline) => window.dispatchEvent(new CustomEvent('audio-pipeline-update', { detail: pipeline }));
+
+        send(at('40:01', 'usb'));
+        send(at('40:31', 'usb'));          // published again, nothing moved (a command)
+        expect(callsTo(STEERING)).toBe(1);
+
+        send(at('40:35', 'toslink'));      // MPD switched to the optical output
+        expect(callsTo(STEERING)).toBe(2);
+    });
+
+    it('keeps the newer pipeline when an older one comes after it', () => {
+        // The offline replay of a saved pipeline, or a reading that came back late.
+        const el = makeEl();
+        el.connectedCallback();
+        const send = (pipeline) => window.dispatchEvent(new CustomEvent('audio-pipeline-update', { detail: pipeline }));
+
+        send({ timestamp: '2026-10-04T13:40:04', nodes: [] });
+        send({ timestamp: '2026-10-04T13:40:01', nodes: [] });
+
+        expect(el._pipeline.timestamp).toBe('2026-10-04T13:40:04');
     });
 
     it('stops listening and polling once disconnected', async () => {
@@ -130,22 +196,6 @@ describe('ag-mobile-pipeline data acquisition', () => {
 });
 
 describe('an empty signal path explains itself', () => {
-    /**
-     * Flatten the nested template objects the lit mock produces into plain text.
-     * @param {*} node
-     * @returns {string}
-     */
-    function text(node) {
-        if (node === null || node === undefined || node === false) return '';
-        if (Array.isArray(node)) return node.map(text).join('');
-        if (typeof node === 'object' && node.strings) {
-            return node.strings
-                .map((s, i) => s + (i < node.values.length ? text(node.values[i]) : ''))
-                .join('');
-        }
-        return String(node);
-    }
-
     function withPipeline(pipeline) {
         const el = Object.create(AgMobilePipeline.prototype);
         el._pipeline = pipeline;
@@ -155,7 +205,7 @@ describe('an empty signal path explains itself', () => {
     it('names the output it found when the described chain does not mention it', () => {
         // Measured on a box: a HiFiBerry HAT playing, a chain describing USB and
         // optical, every device inactive — and a blank space where the path goes.
-        const out = text(withPipeline({
+        const out = flat(withPipeline({
             nodes: [{
                 type: 'device',
                 device_type: 'streamer',
@@ -173,7 +223,7 @@ describe('an empty signal path explains itself', () => {
     it('puts what is playing next to what is declared', () => {
         // Which of the two has to change is the whole question, and reading them
         // side by side answers it without knowing how the matching works.
-        const out = text(withPipeline({
+        const out = flat(withPipeline({
             nodes: [{
                 type: 'device',
                 device_type: 'streamer',
@@ -187,7 +237,7 @@ describe('an empty signal path explains itself', () => {
     });
 
     it('names the box, not the whole chain, when its outputs are missing', () => {
-        const out = text(withPipeline({
+        const out = flat(withPipeline({
             nodes: [{ type: 'device', device_type: 'streamer', outputs: [], metadata: {} }],
         })._renderNoChain());
 
@@ -199,7 +249,7 @@ describe('an empty signal path explains itself', () => {
         // reported undeclared — but the port never lit, because the activity
         // matcher works from the card's name. "Nothing is flowing" would be
         // flatly false while music plays.
-        const out = text(withPipeline({
+        const out = flat(withPipeline({
             nodes: [{ type: 'device', device_type: 'streamer', outputs: [{ id: 'rca', label: 'Analog Out' }], metadata: {} }],
         })._renderNoChain({ playing: true }));
 
@@ -210,7 +260,7 @@ describe('an empty signal path explains itself', () => {
     });
 
     it('says something plain when everything matches but nothing is playing', () => {
-        const out = text(withPipeline({
+        const out = flat(withPipeline({
             nodes: [{ type: 'device', device_type: 'streamer', outputs: [], metadata: {} }],
         })._renderNoChain());
 
@@ -231,23 +281,11 @@ describe('an empty signal path explains itself', () => {
         });
         el._getActiveStreams = () => [{ id: 'src_mpd', label: 'MPD', color: 'mpd' }];
 
-        expect(text(el._renderChain())).toContain('Signal chain');
+        expect(flat(el._renderChain())).toContain('Signal chain');
     });
 });
 
 describe('what the panel says is declared', () => {
-    /** Flatten the mocked lit templates into plain text. */
-    function flat(node) {
-        if (node === null || node === undefined || node === false) return '';
-        if (Array.isArray(node)) return node.map(flat).join('');
-        if (typeof node === 'object' && node.strings) {
-            return node.strings
-                .map((s, i) => s + (i < node.values.length ? flat(node.values[i]) : ''))
-                .join('');
-        }
-        return String(node);
-    }
-
     function view(nodes) {
         const el = Object.create(AgMobilePipeline.prototype);
         el._pipeline = { nodes };
@@ -425,5 +463,27 @@ describe('reading the player stream costs the box nothing', () => {
         el.disconnectedCallback();
 
         expect(playerSubs.length).toBe(0);
+    });
+});
+
+describe('where the services play', () => {
+    it('changes with a service\'s output, on any device', () => {
+        const pipeline = (output) => ({ nodes: [
+            { id: 'streamer_01', internal_services: [{ id: 'mpd', current_output: output }, { id: 'airplay', current_output: 'usb' }] },
+            { id: 'dac_01' },
+        ] });
+        expect(outputsSignature(pipeline('usb'))).not.toBe(outputsSignature(pipeline('toslink')));
+        expect(outputsSignature(pipeline('usb'))).toBe(outputsSignature(pipeline('usb')));
+    });
+
+    it('does not depend on the order the core lists them in', () => {
+        const a = { id: 'streamer_01', internal_services: [{ id: 'mpd', current_output: 'usb' }] };
+        const b = { id: 'server_01', internal_services: [{ id: 'roon', current_output: 'net' }] };
+        expect(outputsSignature({ nodes: [a, b] })).toBe(outputsSignature({ nodes: [b, a] }));
+    });
+
+    it('is empty for a pipeline without services, or none', () => {
+        expect(outputsSignature({ nodes: [{ id: 'dac_01' }] })).toBe('');
+        expect(outputsSignature(null)).toBe('');
     });
 });

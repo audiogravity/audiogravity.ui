@@ -21,6 +21,7 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 }));
 
 import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
+import { updateDecision } from '../molecules/ag-package-card.js';
 
 /**
  * Replicate the escapeHtml logic used in the component (same as common.js)
@@ -110,17 +111,13 @@ describe('Bulk-update confirm dialog — XSS prevention via escapeHtml', () => {
  * from years back. "Update" there means re-running the vendor's installer,
  * which always fetches the current build.
  *
- * Exercises the component's own method: a local re-implementation would keep
- * passing while the shipped decision drifted away from it.
+ * Exercises the shipped decision — the card offers UPDATE on it, and the page
+ * words its confirmation on it: a local re-implementation would keep passing
+ * while the shipped decision drifted away from it.
  */
 describe('Update of a package that publishes no version', () => {
-    /** @returns {Object} A bare instance, enough to call the decision method. */
-    function page() {
-        return Object.create(AgAudioSoftwarePage.prototype);
-    }
-
     it('offers a reinstall for a vendor that publishes no version', () => {
-        expect(page()._decideUpdate({
+        expect(updateDecision({
             installer_type: 'script',
             installed_version: '1.8 (build 1125) stable',
             available_version: null,
@@ -130,7 +127,7 @@ describe('Update of a package that publishes no version', () => {
     it('still refuses when a package that should have a version has none', () => {
         // An apt package with no candidate means something is wrong; offering a
         // blind reinstall there would hide it.
-        expect(page()._decideUpdate({
+        expect(updateDecision({
             installer_type: 'apt_simple',
             installed_version: '0.24.5-1',
             available_version: null,
@@ -138,7 +135,7 @@ describe('Update of a package that publishes no version', () => {
     });
 
     it('keeps the up-to-date shortcut for packages that do publish one', () => {
-        expect(page()._decideUpdate({
+        expect(updateDecision({
             installer_type: 'apt_deb',
             installed_version: '6.1.4-71',
             available_version: '6.1.4-71',
@@ -146,7 +143,7 @@ describe('Update of a package that publishes no version', () => {
     });
 
     it('goes ahead when the published version differs', () => {
-        expect(page()._decideUpdate({
+        expect(updateDecision({
             installer_type: 'apt_deb',
             installed_version: '5.1.5-67',
             available_version: '6.1.4-71',

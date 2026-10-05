@@ -29,11 +29,14 @@ const sysinfoMock = {
             { name: 'wlan0', ip: '192.168.1.16', speed: '300Mb/s', status: 'up' }
         ]
     },
-    cpu: { 
+    cpu: {
         model: 'ARMv8 Processor rev 3 (v8l)',
         physical_cores: 4,
         logical_cores: 4
     },
+    // The total the Memory tile's "used / total" line is built from. It comes with the
+    // status, as the core sends it; the live metrics carry only the percentage.
+    memory: { total: 4096 * 1024 * 1024 },
     boot_time: '2026-03-01T08:00:24.000Z'
 };
 
@@ -46,8 +49,6 @@ const metricsMock = {
     cpu_percent: 12.5,
     load_avg: [0.45, 0.32, 0.28],
     memory_percent: 35.8,
-    memory_used: 1536 * 1024 * 1024,
-    memory_total: 4096 * 1024 * 1024,
     disk_usage_percent: 22.1,
     disk_used_gb: 14.5,
     disk_total_gb: 64.0,

@@ -77,8 +77,18 @@ export class AgSystemTile extends LitElement {
     _maxCaption() {
         const values = (this.sparklineData || []).filter(isMeasured);
         if (!values.length) return '';
-        const unit = !this.unit ? '' : this.unit === '%' ? '%' : ` ${this.unit}`;
-        return `max ${safeToFixed(Math.max(...values), 1)}${unit}`;
+        return `max ${safeToFixed(Math.max(...values), 1)}${this._unitSuffix()}`;
+    }
+
+    /**
+     * The unit as it is written after a number: "%" against it, any other unit
+     * after a space — "34.2%", "65.3 °C". The reading and its chart caption both
+     * write it, so they write it the same way.
+     * @returns {string} '' when the tile has no unit.
+     */
+    _unitSuffix() {
+        if (!this.unit) return '';
+        return this.unit === '%' ? '%' : ` ${this.unit}`;
     }
 
     /**
@@ -126,7 +136,7 @@ export class AgSystemTile extends LitElement {
         if (this.type === 'connection') {
             return html`
                 <div class="system-tile">
-                    <h3>${this._renderIcon(this.icon || 'icon-wifi')} ${this.title || 'SSE Stream'}</h3>
+                    <h3>${this._renderIcon(this.icon || 'icon-wifi')} ${this.title || 'Live updates'}</h3>
                     <div class="connection-status-large">
                         <div class="connection-dot-large ${this.connected ? 'connected' : ''}"></div>
                         <div class="connection-text-large">${this.connected ? 'Connected' : 'Disconnected'}</div>
@@ -139,9 +149,11 @@ export class AgSystemTile extends LitElement {
         return html`
             <div class="system-tile">
                 <h3>${this._renderIcon(this.icon)} ${this.title}</h3>
-                <div class="metric-large">${this.value}</div>
-                <div class="metric-unit">${this.unit}</div>
-                
+                <!-- Number and unit on one line, the unit smaller beside it: as two
+                     blocks, "12.4" then "%" alone on the line below. No whitespace
+                     between the two spans — the suffix carries its own space. -->
+                <div class="metric-reading"><span class="metric-large">${this.value}</span>${this.unit ? html`<span class="metric-unit">${this._unitSuffix()}</span>` : nothing}</div>
+
                 ${this.sparklineColor ? html`
                     <div class="sparkline-container">
                         <ag-sparkline

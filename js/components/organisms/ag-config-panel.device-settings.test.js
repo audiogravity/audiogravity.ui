@@ -16,6 +16,7 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 }));
 
 import { AppState, MemoryCache } from '../../common.js';
+import { deviceAppearance } from '../../test-utils.js';
 import './ag-config-panel.js';
 import './ag-top-bar.js';
 import './ag-log-viewer.js';
@@ -161,6 +162,115 @@ describe('Settings — Portrait Lock', () => {
         expect(panel.lockPortrait).toBe(false);
         expect(AppState.lockPortrait).toBe(false);
         expect(localStorage.getItem('lockPortrait')).toBe('false');
+    });
+});
+
+describe('Settings — Appearance', () => {
+    /** The Appearance menu of a panel. */
+    const menuOf = (panel) => panel.querySelector('#config-appearance');
+
+    /** Pick a choice the way a finger does: through the menu. */
+    async function choose(panel, value) {
+        const menu = menuOf(panel);
+        menu.value = value;
+        menu.dispatchEvent(new Event('change', { bubbles: true }));
+        await panel.updateComplete;
+    }
+
+    /** A device that never chose, in the light palette. */
+    function reset() {
+        for (const key of ['appearance', 'darkMode']) {
+            localStorage.removeItem(key);
+            MemoryCache._cache.delete(key);
+        }
+        AppState.appearance = 'auto';
+        AppState.darkMode = false;
+        document.documentElement.classList.remove('dark-mode');
+        document.body.classList.remove('dark-mode');
+    }
+
+    beforeEach(reset);
+    afterEach(reset);
+
+    it('offers Automatic, Light and Dark — Automatic on a device that never chose', async () => {
+        const menu = menuOf(await mount('ag-config-panel'));
+        expect([...menu.options].map(o => o.textContent.trim())).toEqual(['Automatic', 'Light', 'Dark']);
+        expect(menu.value).toBe('auto');
+        expect(menu.labels[0].textContent.trim()).toBe('Appearance');
+    });
+
+    it('replaces the light/dark switch', async () => {
+        expect(switchOf(await mount('ag-config-panel'), 'Light/Dark Mode')).toBeUndefined();
+    });
+
+    it('set to Dark, is remembered on this device and applied', async () => {
+        const panel = await mount('ag-config-panel');
+
+        await choose(panel, 'dark');
+
+        expect(localStorage.getItem('appearance')).toBe('dark');
+        expect(AppState.appearance).toBe('dark');
+        expect(AppState.darkMode).toBe(true);
+        expect(document.body.classList.contains('dark-mode')).toBe(true);
+        expect(document.documentElement.classList.contains('dark-mode')).toBe(true);
+    });
+
+    it('set to Automatic, takes the device\'s palette', async () => {
+        deviceAppearance(true);
+        const panel = await mount('ag-config-panel');
+        await choose(panel, 'light');
+        expect(document.body.classList.contains('dark-mode')).toBe(false);
+
+        await choose(panel, 'auto');
+
+        expect(localStorage.getItem('appearance')).toBe('auto');
+        expect(document.body.classList.contains('dark-mode')).toBe(true);
+    });
+
+    it('shows the setting of this device when the panel opens', async () => {
+        const panel = await mount('ag-config-panel');
+        AppState.appearance = 'dark';   // set elsewhere — another open of the panel
+
+        panel.active = true;
+        await panel.updateComplete;
+
+        expect(menuOf(panel).value).toBe('dark');
+    });
+});
+
+describe('Settings — Appearance across a reload', () => {
+    // As for Top Bar Metrics below: the API key must be in storage for a reload. And a
+    // page starts without the MemoryCache of the one before: the reloads of this file
+    // share a window, where the last one left its cache — and the settings it read.
+    beforeEach(() => {
+        localStorage.setItem('apiKey', 'test-key');
+        delete window.MemoryCache;
+        vi.resetModules();
+    });
+
+    afterEach(() => {
+        for (const key of ['apiKey', 'appearance', 'darkMode']) localStorage.removeItem(key);
+        document.documentElement.classList.remove('dark-mode');
+        document.body.classList.remove('dark-mode');
+    });
+
+    it('comes back dark on a device whose old switch was on', async () => {
+        localStorage.setItem('darkMode', 'true');
+
+        const { AppState: reloaded } = await import('../../common.js');
+
+        expect(reloaded.appearance).toBe('dark');
+        expect(reloaded.darkMode).toBe(true);
+        expect(document.body.classList.contains('dark-mode')).toBe(true);
+    });
+
+    it('comes back Automatic, in the device\'s palette, everywhere else', async () => {
+        deviceAppearance(true);
+
+        const { AppState: reloaded } = await import('../../common.js');
+
+        expect(reloaded.appearance).toBe('auto');
+        expect(reloaded.darkMode).toBe(true);
     });
 });
 

@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaBlock } from './test-utils.js';
 
 const CSS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'css');
 const LAYOUT = fs.readFileSync(path.join(CSS_DIR, 'layout.css'), 'utf8');
@@ -31,25 +32,6 @@ function allCss() {
     };
     walk(CSS_DIR);
     return out;
-}
-
-/**
- * Body of the first `@media` block whose prelude matches `prelude`, braces balanced.
- *
- * @param {string} css - Stylesheet source.
- * @param {RegExp} prelude - Pattern for the `@media (...)` prelude.
- * @returns {string} The text between the block's braces, or '' when there is none.
- */
-function mediaBlock(css, prelude) {
-    const start = css.search(prelude);
-    if (start < 0) return '';
-    const open = css.indexOf('{', start);
-    let depth = 0;
-    for (let i = open; i < css.length; i++) {
-        if (css[i] === '{') depth++;
-        else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
-    }
-    return '';
 }
 
 describe('the banner reserves its height wherever content starts under the topbar', () => {

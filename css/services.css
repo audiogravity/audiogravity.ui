@@ -166,11 +166,6 @@
 /* Handled by components/metrics.css */
 
 @media (width <= 480px) {
-    .services-zone {
-        padding: var(--spacing-md);
-        border-radius: var(--radius-md);
-    }
-
     .service-metrics {
         grid-template-columns: repeat(4, 1fr);
         gap: 4px;

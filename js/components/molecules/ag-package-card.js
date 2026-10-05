@@ -33,6 +33,35 @@ export function packageIsInstalled(pkg) {
     return pkg.status === 'installed' || (pkg.status === 'error' && Boolean(pkg.installed_version));
 }
 
+/**
+ * What an UPDATE press would do for one package — whether the card offers it, and how
+ * the page acts on it (ag-audio-software-page.js).
+ *
+ * Some vendors publish no version at all — Roon's installer points at a fixed filename
+ * and ships no version file, so there is nothing to compare against. Updating one means
+ * re-running its installer, which always fetches the current build; refusing on the
+ * grounds that no number could be shown left those packages with no way to update from
+ * here at all. A package that *should* have a version and has none is a different
+ * matter: that is a symptom, and a blind reinstall would hide it.
+ *
+ * `installer_type === 'script'` stands in for "publishes no version", which is true of
+ * every script package in the registry — none declares a version check. The day one
+ * does, its check failing would look the same from here, and the distinction would have
+ * to come from the core, which is the only side that knows whether a check was
+ * configured or merely failed.
+ *
+ * @param {Object} pkg - Package payload as returned by GET /packages/.
+ * @returns {'proceed'|'reinstall'|'up-to-date'|'no-version'} What to do: update to the
+ *   version offered (newer, or older to bring a held package back in line), re-run a
+ *   versionless vendor's installer, nothing, or nothing until a check says.
+ */
+export function updateDecision(pkg) {
+    if (!pkg.available_version) {
+        return pkg.installer_type === 'script' ? 'reinstall' : 'no-version';
+    }
+    return pkg.available_version === pkg.installed_version ? 'up-to-date' : 'proceed';
+}
+
 export class AgPackageCard extends LitElement {
     static properties = {
         pkg: { type: Object },
@@ -192,9 +221,9 @@ export class AgPackageCard extends LitElement {
 
     _renderActions() {
         // `is_supported` gates INSTALL only. An installed package must keep its
-        // UPDATE and UNINSTALL buttons whatever the verdict says: a box that
-        // ended up with two conflicting products would otherwise have no way to
-        // remove either — the very situation the conflict rule exists to avoid.
+        // actions whatever the verdict says: a box that ended up with two
+        // conflicting products would otherwise have no way to remove either —
+        // the very situation the conflict rule exists to avoid.
         if (!this.pkg.is_supported && this.pkg.status === 'not_installed') {
             return html`<button class="tile-action-btn start" disabled><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> INSTALL</button>`;
         }
@@ -234,8 +263,17 @@ export class AgPackageCard extends LitElement {
                     ? html`<button class="tile-action-btn start" @click=${() => this._handleAction('install')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> REPAIR</button>`
                     : nothing;
 
+            // UPDATE only when pressing it would do something (updateDecision). It
+            // showed on every installed package — 5.5.2 installed, 5.5.2 available —
+            // and a press only answered "Already Up-to-Date". A version not checked
+            // yet offers "Check updates" above instead.
+            const decision = updateDecision(this.pkg);
+            const update = decision === 'proceed' || decision === 'reinstall'
+                ? html`<button class="tile-action-btn secondary" @click=${() => this._handleAction('update')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> UPDATE</button>`
+                : nothing;
+
             return html`
-                <button class="tile-action-btn secondary" @click=${() => this._handleAction('update')}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> UPDATE</button>
+                ${update}
                 ${secondAction}
             `;
         }

@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Simulate the _onState auto-follow logic from ag-now-playing.js
@@ -492,5 +493,48 @@ describe('the playback bar leaves the playback modes to the fullscreen player', 
 
         const phone = css.slice(css.search(/@media\s*\(width\s*<=\s*768px\)/));
         expect(phone.slice(0, phone.indexOf('\n}'))).toMatch(/min-height:\s*66px/);
+    });
+});
+
+/**
+ * A narrow bar gives the title its room.
+ *
+ * On an iPhone the title and the artist shared one line, in the 115px the four
+ * buttons left, and had to scroll to be read. On a bar under 480px — the bar's own
+ * width, a container query, so a tablet keeps everything — Previous leaves (the
+ * fullscreen player keeps it) and title and artist take a line each. Volume stays:
+ * asked for explicitly. Pinned from the source, as above: the component is not mounted.
+ */
+describe('a narrow bar gives the title its room', () => {
+    /**
+     * The narrow-bar container query of now-playing.css, cut the way the height test
+     * above cuts the phone block: up to the first brace closing at column 0.
+     * @returns {string} the block's text
+     */
+    const narrowBlock = () => mediaBlock(readStylesheet('css', 'components', 'now-playing.css'),
+        /@container\s*\(width\s*<\s*480px\)/);
+
+    it('marks Previous so the narrow bar can let it go', () => {
+        const source = readFileSync(
+            path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing.js'), 'utf8');
+        expect(source).toMatch(/class="np-btn np-btn--prev"\s+aria-label="Previous"/);
+    });
+
+    it('lets Previous go, and keeps the volume', () => {
+        const block = narrowBlock();
+        expect(cssRuleBody(block, '.np-btn--prev')).toMatch(/display:\s*none/);
+        expect(block).not.toMatch(/ag-volume-popover|avp-/);
+    });
+
+    it('gives title and artist a line each, cut with an ellipsis', () => {
+        const block = narrowBlock();
+        expect(cssRuleBody(block, '.np-track')).toMatch(/flex-direction:\s*column/);
+        expect(cssRuleBody(block, '.np-track .ag-tm-artist')).toMatch(/text-overflow:\s*ellipsis/);
+    });
+
+    it('switches the marquee off, whatever was decided for a wider bar', () => {
+        // The marquee is decided on render; a bar narrowed since — a rotation, a
+        // resize — would keep sliding the stacked lines by a distance measured wide.
+        expect(cssRuleBody(narrowBlock(), '.np-track.np-text--scroll')).toMatch(/animation:\s*none/);
     });
 });

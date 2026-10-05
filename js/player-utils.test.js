@@ -44,6 +44,30 @@ describe('isDsd', () => {
     });
 });
 
+import { isLiveStream } from './player-utils.js';
+
+describe('isLiveStream', () => {
+    it('is a radio station with no duration', () => {
+        expect(isLiveStream({ origin: 'radio', duration: 0 })).toBe(true);
+        expect(isLiveStream({ origin: 'radio' })).toBe(true);
+        expect(isLiveStream({ origin: 'radio', duration: null })).toBe(true);
+    });
+    it('is not a radio item that carries a duration', () => {
+        expect(isLiveStream({ origin: 'radio', duration: 1830 })).toBe(false);
+    });
+    it('is not a track waiting for its duration', () => {
+        // MPD learns a stream's length by decoding it: a Qobuz track has none for a
+        // moment, and must not read "live" meanwhile.
+        expect(isLiveStream({ origin: 'qobuz', duration: 0 })).toBe(false);
+        expect(isLiveStream({ origin: 'library' })).toBe(false);
+    });
+    it('is not anything when nothing plays', () => {
+        expect(isLiveStream(null)).toBe(false);
+        expect(isLiveStream(undefined)).toBe(false);
+        expect(isLiveStream({})).toBe(false);
+    });
+});
+
 describe('isSelfManagedDriver', () => {
     it('true for the HQPlayer driver (control_id)', () => {
         expect(isSelfManagedDriver({ control_id: 'src_hqplayer', source_id: 'src_hqplayer' })).toBe(true);

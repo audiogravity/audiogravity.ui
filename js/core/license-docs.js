@@ -22,7 +22,7 @@ export const LICENSE_TERMS_HTML = `
     <ul style="margin:.4em 0;padding-left:1.4em">
         <li><strong>Profiles</strong> — one-click switching between pre-configured audio chain scenarios; activates required services and stops conflicting ones automatically</li>
         <li><strong>Services</strong> — real-time monitoring and control of audio services (start / stop / restart / enable at boot) with live CPU, memory and I/O metrics, each with a sparkline of its recent values</li>
-        <li><strong>Software</strong> — install, update and remove audio packages with dry-run simulation before committing changes</li>
+        <li><strong>Software</strong> — install, update and remove audio packages, with a simulation before committing changes</li>
         <li><strong>System</strong> — hardware dashboard: CPU, temperature, memory, disk and network at a glance; full audio device inventory (ALSA cards, USB interfaces, subdevices)</li>
         <li><strong>Users</strong> — role-based access management (Admin, User, Guest) with WebAuthn / passkeys login</li>
         <li><strong>Push notifications</strong> — iOS, Android and desktop alerts when a service goes down, the processor overheats, a software update is available or a profile is activated</li>

@@ -14,6 +14,10 @@
  *     the PREVIOUS account could, however the reader came back to it.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flat, cssRuleBody, readStylesheet } from '../../test-utils.js';
+
+/** The page's source: LIB_STYLES is module-private, so its rules are read from here. */
+const LIB_STYLES_TEXT = () => readStylesheet('js', 'components', 'organisms', 'ag-library-page.js');
 
 vi.mock('lit', () => ({
     LitElement: class {},
@@ -677,6 +681,50 @@ describe('ag-library-page — what the second review caught', () => {
 
         expect(el._view).toBe('queue');
         expect(el._pendingSource).toBeNull();
+    });
+});
+
+describe('ag-library-page — the list views keep to a reading width', () => {
+    // On a 1440px screen a station's name and its buttons sat 1,300px apart. The list
+    // views keep to a centred column; the album grids keep the whole width they fill.
+
+    /** Each view's component, mapped to whether its view carries the list class. */
+    function listFlags() {
+        const el = makeEl({ _sourceId: 'src_mpd' });
+        const markup = flat(el.render());
+        const flags = {};
+        for (const part of markup.split('<div class="lib-view').slice(1)) {
+            const component = part.match(/<(ag-library-[a-z-]+)/)?.[1];
+            if (component) flags[component] = /^ lib-view--list\b/.test(part);
+        }
+        return flags;
+    }
+
+    it('marks the queue, the sources, the outputs and the radio', () => {
+        const flags = listFlags();
+        for (const view of ['ag-library-queue', 'ag-library-sources', 'ag-library-outputs', 'ag-library-radio']) {
+            expect(flags[view], view).toBe(true);
+        }
+    });
+
+    it('leaves the album grids and the browsers their whole width', () => {
+        const flags = listFlags();
+        for (const view of ['ag-library-browse', 'ag-library-search', 'ag-library-roon-browser', 'ag-library-upnp-browser']) {
+            expect(flags[view], view).toBe(false);
+        }
+    });
+
+    it('gives the content of the marked views a centred reading width', () => {
+        const rule = cssRuleBody(LIB_STYLES_TEXT(), '.lib-view.lib-view--list > .lib-body');
+        expect(rule).toMatch(/max-width:\s*900px/);
+        expect(rule).toMatch(/margin-inline:\s*auto/);
+    });
+
+    it('leaves the tab bar where every view has it, so it does not move between views', () => {
+        // Centred with the list, the tab bar moved 266px at each switch between an album
+        // grid and a list: the tab just clicked left from under the pointer.
+        expect(cssRuleBody(LIB_STYLES_TEXT(), '.lib-view.lib-view--list')).toBeNull();
+        expect(LIB_STYLES_TEXT()).not.toMatch(/lib-view--list[^{]*lib-topbar[^{]*\{/);
     });
 });
 

@@ -246,6 +246,42 @@ describe('colours — text on a fill, not on the page', () => {
     }
 });
 
+describe("colours — the browser's own controls take the theme's", () => {
+    // Left unset, every native check box and radio button the app does not draw
+    // itself took the browser's blue — a colour found nowhere else in AG (the
+    // network test's choice of tool, the install dialogs). One declaration on body,
+    // inherited by all of them.
+
+    it('gives the controls the text colour, from body', () => {
+        const base = strip(fs.readFileSync(path.join(CSS_ROOT, 'base.css'), 'utf8'));
+        const body = base.match(/(?:^|\n)body\s*\{([^}]*)\}/)?.[1] ?? '';
+        expect(body).toMatch(/accent-color:\s*var\(--text-primary\)/);
+    });
+
+    it('draws them in the palette in force — light, and dark under .dark-mode', () => {
+        // Without color-scheme the browser drew them light in the dark palette: an
+        // unchecked box was a white square, a checked one white with a dark tick.
+        const base = strip(fs.readFileSync(path.join(CSS_ROOT, 'base.css'), 'utf8'));
+        const html = base.match(/(?:^|\n)html\s*\{([^}]*)\}/)?.[1] ?? '';
+        const dark = base.match(/(?:^|\n)html\.dark-mode\s*\{([^}]*)\}/)?.[1] ?? '';
+        expect(html).toMatch(/color-scheme:\s*light/);
+        expect(dark).toMatch(/color-scheme:\s*dark/);
+        // theme-boot.js stamps the class on that element before the first paint.
+        const boot = fs.readFileSync(path.join(ROOT, 'public', 'theme-boot.js'), 'utf8');
+        expect(boot).toMatch(/document\.documentElement[\s\S]*classList\.toggle\('dark-mode'/);
+    });
+
+    it('lets no component set a colour of its own on them', () => {
+        // A second accent-color is a control that disagrees with the rest — the
+        // one that existed (a restart check box) is now covered by body's.
+        const offenders = COMPONENTS
+            .filter((f) => path.basename(f) !== 'base.css')
+            .filter((f) => /accent-color\s*:/.test(strip(fs.readFileSync(f, 'utf8'))))
+            .map((f) => path.relative(ROOT, f));
+        expect(offenders).toEqual([]);
+    });
+});
+
 describe('colours — components read roles, never values (règle 6)', () => {
     it('declares no colour literal as a var() fallback', () => {
         // `var(--x, #hex)` renders the literal when --x resolves nowhere, so a
@@ -335,6 +371,20 @@ describe('colours — components read roles, never values (règle 6)', () => {
             }
         }
         expect(offenders, `valeurs sans explication :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('fades nothing that is read at rest', () => {
+        // Three fades took text under the 4.5:1 floor, measured on the pixels
+        // (2026-10-04): a stopped service's card at 70 % (2.8–3.5:1) — a service at
+        // rest, not a disabled one —, the date under a config file (2.87:1) and the
+        // PERSIST label of a user card (3.44:1). Dimming is for what cannot be used.
+        const tile = fs.readFileSync(path.join(CSS_ROOT, 'components', 'tile.css'), 'utf8');
+        expect(tile).not.toMatch(/\.service-tile\.stopped\s*\{[^}]*opacity/);
+        const config = fs.readFileSync(path.join(CSS_ROOT, 'config.css'), 'utf8');
+        expect(config.match(/\.config-file-mtime\s*\{([^}]*)\}/)[1]).not.toMatch(/opacity/);
+        const card = fs.readFileSync(path.join(ROOT, 'js', 'components', 'molecules', 'ag-user-card.js'), 'utf8');
+        const persist = card.match(/<span[^>]*>PERSIST<\/span>/)[0];
+        expect(persist).not.toMatch(/opacity/);
     });
 
     it('paints text with a text-safe token, never a base semantic one', () => {

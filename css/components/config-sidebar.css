@@ -10,11 +10,10 @@
     width: 280px;
     height: auto;
     max-height: calc(100dvh - var(--topbar-height) - env(safe-area-inset-top, 0px) - var(--spacing-lg));
+
+    /* Opaque, not frosted. At 40% the page showed through, blurred, under the
+       settings — coloured smudges and stray words between the switches. */
     background: var(--bg-secondary);
-    background: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
-    backdrop-filter: blur(10px);
-    /* stylelint-disable-next-line property-no-vendor-prefix */
-    -webkit-backdrop-filter: blur(10px);
     box-shadow: var(--shadow-xl);
     border-left: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
     border-bottom: 2px solid color-mix(in srgb, var(--border-color) 40%, transparent);

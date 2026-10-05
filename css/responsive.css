@@ -33,13 +33,6 @@
     }
 }
 
-/* Dark mode support (system preference) */
-@media (prefers-color-scheme: dark) {
-    /* Note: Dark mode is handled by body.dark-mode class in themes.css */
-
-    /* This is just a fallback for system preference detection */
-}
-
 /* =====================
    RESPONSIVE BREAKPOINTS
    ===================== */

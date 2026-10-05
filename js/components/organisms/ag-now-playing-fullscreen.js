@@ -29,7 +29,7 @@ import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, isLiveStream } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
@@ -967,6 +967,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                 .duration=${s?.duration ?? 0}
                 ?can-seek=${s?.can_seek ?? false}
                 ?playing=${s?.playing ?? false}
+                ?live=${isLiveStream(s)}
                 .title=${s?.title ?? ''}
                 @seek=${(e) => this._control('seek', e.detail.secs)}
             ></ag-progress-bar>
@@ -1085,30 +1086,35 @@ export class AgNowPlayingFullscreen extends LitElement {
 
                 <div class="npfs-scroll">
                     ${this._renderCover(s)}
-                    ${this._renderMeta(s)}
-                    <ag-format-strip .format=${s?.format ?? null}></ag-format-strip>
-                    <div class="npfs-controls-row">
-                        <ag-playback-controls
-                            ?playing=${s?.playing ?? false}
-                            ?can-next=${s?.can_next ?? false}
-                            ?can-prev=${s?.can_prev ?? false}
-                            ?repeat=${s?.repeat ?? false}
-                            ?shuffle=${s?.shuffle ?? false}
-                            @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
-                        ></ag-playback-controls>
-                        ${s?.can_set_volume && (!isDsd(s?.format) || isSelfManagedDriver(s)) ? html`
-                            <div class="npfs-controls-vol">
-                                <ag-volume-popover
-                                    .volume=${s.volume ?? 0}
-                                    @volume-change=${(e) => this._control('set_volume', e.detail.volume)}
-                                ></ag-volume-popover>
-                            </div>
-                        ` : nothing}
-                        ${isDsd(s?.format) && !isSelfManagedDriver(s) ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
+                    <!-- Everything beside the cover, in one block: nothing on a phone held
+                         upright (display: contents), a column a wide landscape screen
+                         centres beside the cover, whatever it holds. -->
+                    <div class="npfs-info">
+                        ${this._renderMeta(s)}
+                        <ag-format-strip .format=${s?.format ?? null}></ag-format-strip>
+                        <div class="npfs-controls-row">
+                            <ag-playback-controls
+                                ?playing=${s?.playing ?? false}
+                                ?can-next=${s?.can_next ?? false}
+                                ?can-prev=${s?.can_prev ?? false}
+                                ?repeat=${s?.repeat ?? false}
+                                ?shuffle=${s?.shuffle ?? false}
+                                @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
+                            ></ag-playback-controls>
+                            ${s?.can_set_volume && (!isDsd(s?.format) || isSelfManagedDriver(s)) ? html`
+                                <div class="npfs-controls-vol">
+                                    <ag-volume-popover
+                                        .volume=${s.volume ?? 0}
+                                        @volume-change=${(e) => this._control('set_volume', e.detail.volume)}
+                                    ></ag-volume-popover>
+                                </div>
+                            ` : nothing}
+                            ${isDsd(s?.format) && !isSelfManagedDriver(s) ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
+                        </div>
+                        ${this._renderProgress(s)}
+                        ${this._renderUpNext()}
+                        ${this._renderOutputBar(s)}
                     </div>
-                    ${this._renderProgress(s)}
-                    ${this._renderUpNext()}
-                    ${this._renderOutputBar(s)}
                 </div>
             </div>
         `;

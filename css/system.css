@@ -178,6 +178,13 @@
     font-size: var(--font-size-xxl);
 }
 
+/* The unit sits on the number's line, smaller and quieter (ag-system-tile). */
+.system-tile .metric-unit {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
 /* Rest handled by components/metrics.css (.metric-large alias) */
 
 .system-tile .metric-detail {

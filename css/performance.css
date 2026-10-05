@@ -45,11 +45,12 @@
     border: 1px solid var(--border-color);
 }
 
+/* A value is written as it is written: "x86_64", "Intel(R) Core(TM) i5", "MHz".
+   Capitals belong to the label above it — forced on the value, they turned the
+   unit into "MHZ", which is no unit. */
 .cpu-general-info .cpu-stat-value {
     font-size: var(--font-size-xs);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     color: var(--text-primary);
     line-height: normal;
     white-space: nowrap;

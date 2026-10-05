@@ -204,24 +204,28 @@ export class AgTopBar extends LitElement {
 
                 <!-- Kept when empty: it is the flexible middle that holds the Library
                      and Settings buttons at the right-hand end. -->
+                <!-- Each figure has its label: inline ("CPU: 12%") wherever there is room,
+                     over the figure on a phone under 430px; it used to be hidden under
+                     1025px, which left three numbers nobody could name (layout.css). Short
+                     words, for the phone's width. -->
                 <div class="system-metrics">
                     ${this.showMetrics ? html`
-                    <div class="metric">
-                        <span class="metric-label">Uptime:</span>
+                    <div class="metric metric--uptime">
+                        <span class="metric-label">Uptime</span>
                         <span class="metric-value topbar-value">
                             ${this.metrics.uptime !== undefined ? formatUptime(this.metrics.uptime) : '--'}
                         </span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">CPU:</span>
+                        <span class="metric-label">CPU</span>
                         <span class=${cpuClass}>${this._formatMetricValue(this.metrics.cpu_percent, '%')}</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Temp:</span>
+                        <span class="metric-label">Temp</span>
                         <span class=${tempClass}>${this._formatMetricValue(this.metrics.temp, '°C')}</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Memory:</span>
+                        <span class="metric-label">RAM</span>
                         <span class=${memClass}>${this._formatMetricValue(this.metrics.memory_percent, '%')}</span>
                     </div>` : ''}
                 </div>

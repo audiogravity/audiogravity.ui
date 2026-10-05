@@ -71,6 +71,28 @@ describe('ag-theme-toggle', () => {
         expect(document.body.classList.contains('dark-mode')).toBe(false);
     });
 
+    it('follows the page when Automatic turns it dark under the form', async () => {
+        // The device changed its appearance: the icon must offer the way back, not the
+        // palette already in force.
+        const el = await mount(false);
+        window.dispatchEvent(new CustomEvent('appearance-changed', { detail: { darkMode: true } }));
+        await el.updateComplete;
+        expect(el.querySelector('button').getAttribute('aria-label')).toMatch(/light/i);
+    });
+
+    it('stops following once gone', async () => {
+        const el = await mount(false);
+        el.remove();
+        window.dispatchEvent(new CustomEvent('appearance-changed', { detail: { darkMode: true } }));
+        expect(el.darkMode).toBe(false);
+    });
+
+    it('stores a palette of its own choosing, which leaves Automatic', async () => {
+        const el = await mount(false);
+        el.querySelector('button').click();
+        expect(localStorage.getItem('appearance')).toBe('dark');
+    });
+
     it('announces the change to whoever is listening', async () => {
         const el = await mount(false);
         const seen = [];

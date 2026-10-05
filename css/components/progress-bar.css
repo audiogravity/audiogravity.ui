@@ -80,3 +80,29 @@ ag-progress-bar { display: block; }
     color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
 }
+
+/* A live broadcast: no end, no position. The bar gives way to a marker, centred
+   under the transport like the bar it replaces. The dot keeps the text's colour —
+   red, orange and green mean something in AG, and "live" is not an alarm — and
+   dims with the word while the stream is paused. */
+.ag-pb-live {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+}
+
+.ag-pb-live--paused { color: var(--text-secondary); }
+
+.ag-pb-live-dot {
+    width: var(--size-xxs);
+    height: var(--size-xxs);
+    border-radius: var(--radius-full);
+    background: currentcolor;
+}

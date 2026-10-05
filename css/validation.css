@@ -289,15 +289,6 @@
 }
 
 /* =====================
-   DARK MODE ADJUSTMENTS
-   ===================== */
-
-/* DARK MODE: the CSS variables adapt automatically through the themes */
-@media (prefers-color-scheme: dark) {
-    /* The colours are driven by the themes' --color-*-bg variables */
-}
-
-/* =====================
    ANIMATIONS
    ===================== */
 

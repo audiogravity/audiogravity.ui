@@ -6,6 +6,35 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { vi } from 'vitest';
+
+/**
+ * Put the page on a device in its light or dark appearance, as `matchMedia` reports it.
+ *
+ * jsdom has no matchMedia. Any other query — a panel asks whether the pointer is coarse —
+ * is answered no. Undone by `vi.unstubAllGlobals()`.
+ *
+ * @param {boolean} dark - Whether the device is in its dark appearance.
+ * @returns {{query: object, flip: (dark: boolean) => void}} The query the page gets, and
+ *   a way to change the device's appearance under it, as the system would.
+ */
+export function deviceAppearance(dark) {
+    const listeners = [];
+    const query = {
+        matches: dark,
+        addEventListener: vi.fn((type, fn) => { if (type === 'change') listeners.push(fn); }),
+    };
+    vi.stubGlobal('matchMedia', (text) => (text === '(prefers-color-scheme: dark)'
+        ? query
+        : { matches: false, addEventListener() {} }));
+    return {
+        query,
+        flip(next) {
+            query.matches = next;
+            for (const fn of listeners) fn({ matches: next });
+        },
+    };
+}
 
 /**
  * Read one of the app's stylesheets as text, for a guard jsdom cannot give: it lays
@@ -34,6 +63,27 @@ export function readStylesheet(...parts) {
 export function cssRuleBody(css, selector) {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? null;
+}
+
+/**
+ * The body of the first block — `@media`, `@container` — whose prelude matches, braces
+ * balanced: the rules a screen of that size gets, for cssRuleBody to read.
+ *
+ * @param {string} css - A stylesheet's text (see readStylesheet).
+ * @param {RegExp} prelude - Pattern for the block's prelude, e.g.
+ *   `/@media\s*\(width\s*<=\s*768px\)/`.
+ * @returns {string} The text between the block's braces, or '' when there is none.
+ */
+export function mediaBlock(css, prelude) {
+    const start = css.search(prelude);
+    if (start < 0) return '';
+    const open = css.indexOf('{', start);
+    let depth = 0;
+    for (let i = open; i < css.length; i++) {
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
+    }
+    return '';
 }
 
 /**

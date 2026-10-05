@@ -5,6 +5,7 @@ import { AppState, EventEmitter } from '../../common.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { FetchController } from '../../core/FetchController.js';
 import { formatUptime } from '../../utils.js';
+import { formatMemory } from '../utils-lit.js';
 import { iconInfo, iconConnection, iconMusicNote } from '../../ag-icons.js';
 import '../molecules/ag-audio-card.js';
 import './ag-card-grid.js';
@@ -12,6 +13,25 @@ import '../molecules/ag-network-card.js';
 import '../molecules/ag-system-info.js';
 import '../molecules/ag-system-tile.js';
 import { SYSTEM_METRICS_WINDOW, isMeasured, appendSample, appendSampleTime, isPause, spanOfLast } from '../../core/metrics-window.js';
+
+/**
+ * The memory in use over the total, under the Memory tile: "2.4 GB / 3.7 GB".
+ *
+ * The live metrics carry only the share in use, as a percentage; the total comes from
+ * the status the page reads once (`/sysinfo/status` → `memory.total`, in bytes). The
+ * amount in use is that share of the total, so the line always says what the
+ * percentage above it says. It read "0.0 GB / 0.0 GB" on every box: it was built from
+ * two fields the core never sends.
+ *
+ * @param {number|null|undefined} percent - Share of the memory in use, 0–100.
+ * @param {number|null|undefined} totalBytes - Total memory, in bytes.
+ * @returns {string} The line, or '' while the total is not known.
+ */
+export function memoryDetail(percent, totalBytes) {
+    if (!(totalBytes > 0) || !Number.isFinite(percent)) return '';
+    const totalMb = totalBytes / (1024 * 1024);
+    return `${formatMemory(totalMb * percent / 100)} / ${formatMemory(totalMb)}`;
+}
 
 /**
  * System Dashboard Web Component
@@ -33,8 +53,6 @@ export class AgSystemDashboard extends LitElement {
             cpu_percent: 0,
             load_avg: [0, 0, 0],
             memory_percent: 0,
-            memory_used: 0,
-            memory_total: 0,
             disk_usage_percent: 0,
             disk_used_gb: 0,
             disk_total_gb: 0,
@@ -147,8 +165,6 @@ export class AgSystemDashboard extends LitElement {
         else if (data.load_1min !== undefined) updated.load_avg = [data.load_1min, data.load_5min, data.load_15min];
 
         if (data.memory_percent !== undefined) updated.memory_percent = data.memory_percent;
-        if (data.memory_used !== undefined) updated.memory_used = data.memory_used;
-        if (data.memory_total !== undefined) updated.memory_total = data.memory_total;
 
         if (data.disk_usage_percent !== undefined) updated.disk_usage_percent = data.disk_usage_percent;
         if (data.disk_used_gb !== undefined) updated.disk_used_gb = data.disk_used_gb;
@@ -206,9 +222,6 @@ export class AgSystemDashboard extends LitElement {
     }
 
     render() {
-        const memTotalGB = (this.metrics.memory_total / (1024 * 1024 * 1024)).toFixed(1);
-        const memUsedGB = (this.metrics.memory_used / (1024 * 1024 * 1024)).toFixed(1);
-
         const sysinfo = this.statusFetch.data;
         const interfaces = sysinfo?.system?.network_interfaces || [];
         const audioDevices = this.audioFetch.data?.cards || [];
@@ -225,10 +238,11 @@ export class AgSystemDashboard extends LitElement {
                     </ag-system-info>
                 </div>
 
-                <!-- Connection Tile -->
-                <ag-system-tile 
-                    type="connection" 
-                    heading="SSE Stream" 
+                <!-- Connection Tile — named for what it tells, not for the protocol (it
+                     read "SSE Stream", a word only a developer knows). -->
+                <ag-system-tile
+                    type="connection"
+                    heading="Live updates"
                     icon="icon-wifi"
                     ?connected=${this.isConnected}
                     connection-id=${AppState.connectionId || ''}>
@@ -266,8 +280,8 @@ export class AgSystemDashboard extends LitElement {
                 <ag-system-tile 
                     heading="Memory" 
                     icon="icon-memory" 
-                    unit="%" 
-                    detail="${memUsedGB} GB / ${memTotalGB} GB"
+                    unit="%"
+                    detail=${memoryDetail(this.metrics.memory_percent, sysinfo?.memory?.total)}
                     .value=${this.metrics.memory_percent.toFixed(1)}
                     .sparklineData=${this._historyStore.memory}
                     .sparklineSpan=${this._spanOf('memory')}
@@ -305,10 +319,11 @@ export class AgSystemDashboard extends LitElement {
                 </ag-system-tile>
                 
                 <!-- Uptime Tile -->
-                <ag-system-tile 
-                    heading="Uptime" 
-                    icon="icon-clock" 
-                    unit="Session" 
+                <!-- No unit: the duration carries its own ("4d 16h"). "Session" stood
+                     where units go, and beside the number it would read "4d 16h Session". -->
+                <ag-system-tile
+                    heading="Uptime"
+                    icon="icon-clock"
                     detail="Since last boot"
                     .value=${formatUptime(this.metrics.uptime || 0)}>
                 </ag-system-tile>

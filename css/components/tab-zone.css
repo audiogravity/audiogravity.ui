@@ -59,11 +59,24 @@
     .tab-title-container {
         flex-wrap: wrap;
     }
+
+    /* Wrapped, a badge can start a line: its margin, on top of the row's gap, then set
+       it 6px right of the title. And it costs width — on a 375px phone the three Audio
+       Software actions missed their line by the 8px their margins took (327px for 319,
+       measured 2026-10-04). The row's gap spaces them. */
+    .tab-zone .tab-title-container .badge {
+        margin-left: 0;
+    }
 }
 
+/* On a phone every tab's title, and the cards under it, start 6px clear of the
+   edge tab (18px wide): 12px of content-grid + 12px here = 24px. This was 8px —
+   off the spacing scale — for six tabs, while Profiles, Services and Admin each
+   overrode it to 12px: those six titles sat 2px from the tab, and no two pages
+   lined up. One value, for all of them. */
 @media (width <= 480px) {
     .tab-zone {
-        padding: 8px;
+        padding: var(--spacing-md);
         border-radius: var(--radius-md);
     }
 }

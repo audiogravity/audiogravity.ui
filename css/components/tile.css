@@ -59,7 +59,8 @@
     border-color: var(--text-primary);
     opacity: 1;
 
-    /* Restore full opacity for stopped services on hover */
+    /* Full opacity under the pointer for a tile faded at rest — a profile being
+       switched (.pending). An unavailable tile keeps its fade (its own :hover rule). */
     transform: translateY(-4px);
     box-shadow: 0 8px 16px var(--shadow-color);
 }
@@ -114,11 +115,12 @@
 
 /**
  * @state .stopped
- * @description State for stopped or inactive services.
+ * @description A stopped service is NOT dimmed. At 70% every word of the card fell to
+ * 2.8–3.5:1, under the 4.5:1 floor (measured on the pixels, both themes), and a stopped
+ * service is not disabled: its figures are real and its buttons work. The grey dot and
+ * the word IDLE say it is at rest. Dimming belongs to what cannot be used — see
+ * .unavailable below.
  */
-.service-tile.stopped {
-    opacity: 0.7;
-}
 
 /**
  * @state .unavailable

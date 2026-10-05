@@ -22,8 +22,9 @@
  * it runs, which is what the theme rules scoped to `body.dark-mode` need.
  *
  * The theme list and the chrome colours are duplicated from js/core/config.js
- * and js/common.js. They have to be: this file runs before any module and can
- * import nothing. js/theme-boot.test.js fails the build if the copies drift.
+ * and js/common.js, and the choice of palette from js/appearance.js. They have
+ * to be: this file runs before any module and can import nothing.
+ * js/theme-boot.test.js fails the build if the copies drift.
  */
 (function () {
     'use strict';
@@ -59,11 +60,32 @@
         }
     }
 
+    /** The appearance choices, mirroring APPEARANCES in js/appearance.js. */
+    var APPEARANCES = ['auto', 'light', 'dark'];
+
+    /**
+     * Whether the dark palette applies, decided as js/appearance.js decides it: the
+     * stored choice; else the old light/dark switch (`darkMode`), Dark for on and
+     * Light for off; else Automatic — the device's own appearance.
+     * @returns {boolean}
+     */
+    function storedDark() {
+        var chosen = stored('appearance');
+        if (APPEARANCES.indexOf(chosen) === -1) {
+            var legacy = stored('darkMode');
+            chosen = legacy === true ? 'dark' : (legacy === false ? 'light' : 'auto');
+        }
+        if (chosen !== 'auto') return chosen === 'dark';
+        return typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     /**
      * Stamp an appearance on the root element and repaint the browser chrome.
      *
-     * Called once before the first paint, and again by <ag-theme-toggle> every time
-     * someone flips the palette — the runtime case is why the full Safari remedy below
+     * Called once before the first paint, and again by js/appearance.js every time the
+     * palette changes on the login page — the card's button, or the device turning dark
+     * under an Automatic setting. The runtime case is why the full Safari remedy below
      * is here rather than only in updateThemeColorMeta().
      *
      * @param {string} theme A theme name; anything unknown falls back to the default.
@@ -112,12 +134,12 @@
     var theme = String(stored('theme') || DEFAULT_THEME).toLowerCase().trim();
     if (THEMES.indexOf(theme) === -1) theme = DEFAULT_THEME;
 
-    applyAppearance(theme, stored('darkMode') === true);
+    applyAppearance(theme, storedDark());
 
-    // Exposed for <ag-theme-toggle>, which flips the appearance after this has run.
-    // The toggle owns the storage and the class on <body>; the chrome colours belong
-    // here, and copying them a third time is exactly what js/theme-boot.test.js
-    // exists to prevent. A page that somehow loaded without this file still works —
-    // the toggle treats the hook as optional.
+    // Exposed for js/appearance.js, which changes the appearance after this has run.
+    // It owns the storage and the class on <body>; the chrome colours belong here, and
+    // copying them a third time is exactly what js/theme-boot.test.js exists to
+    // prevent. A page that somehow loaded without this file still works — appearance.js
+    // treats the hook as optional.
     window.agApplyAppearance = applyAppearance;
 })();

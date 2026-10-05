@@ -52,13 +52,6 @@
 
 /* Status indicator styles → components/status-indicator.css */
 
-@media (width <= 480px) {
-    .profiles-zone {
-        padding: var(--spacing-md);
-        border-radius: var(--radius-md);
-    }
-}
-
 
 /* Profile name — clickable to open detail modal */
 .profile-name-clickable {

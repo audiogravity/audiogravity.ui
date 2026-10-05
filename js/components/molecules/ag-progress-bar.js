@@ -21,6 +21,10 @@
  *                                  remaining times row AND the position knob
  *                                  (the bar stays scrubbable — the dragging
  *                                  highlight on the track is the only visual).
+ * @attr {boolean} live          - A live broadcast: no end to count down to and
+ *                                  no position to seek to, so the bar gives way
+ *                                  to a "Live" marker (its dot dims when paused)
+ *                                  and nothing ticks. See `isLiveStream()`.
  *
  * Seek interaction: pointer-events based. Tap the track to jump to that
  * position; press-and-drag to scrub (touch + mouse). The local elapsed mirrors
@@ -48,6 +52,7 @@ export class AgProgressBar extends LitElement {
         playing:       { type: Boolean },
         title:         { type: String },
         compact:       { type: Boolean },
+        live:          { type: Boolean },
         _elapsed:      { state: true },
         _dragging:     { state: true },
     };
@@ -62,6 +67,7 @@ export class AgProgressBar extends LitElement {
         this.playing       = false;
         this.title         = '';
         this.compact       = false;
+        this.live          = false;
         this._elapsed      = 0;
         this._dragging     = false;
         this._seekPending  = false;
@@ -96,6 +102,15 @@ export class AgProgressBar extends LitElement {
     }
 
     updated(changed) {
+        // First, before the new-track branch below returns: a station giving way to a
+        // track changes the title AND turns `live` off in the same update, and a
+        // track can start playing as its title changes — either way the ticker has
+        // to (re)start. It only arms or clears an interval, so running it before the
+        // position is reconciled changes nothing else.
+        if (changed.has('playing') || changed.has('live')) {
+            this._syncTicker();
+        }
+
         if (changed.has('title')) {
             const trackChanged = this._prevTitle !== null && this.title !== this._prevTitle;
             this._prevTitle = this.title;
@@ -124,14 +139,11 @@ export class AgProgressBar extends LitElement {
             // When serverElapsed is 0 (AirPlay) and _elapsed > 0:
             // keep the locally interpolated value — never reset to 0.
         }
-
-        if (changed.has('playing')) {
-            this._syncTicker();
-        }
     }
 
     _syncTicker() {
-        if (this.playing) {
+        // A live broadcast shows no time: nothing to tick.
+        if (this.playing && !this.live) {
             if (!this._ticker) {
                 this._ticker = setInterval(() => {
                     if (this._dragging) return;
@@ -189,6 +201,13 @@ export class AgProgressBar extends LitElement {
     }
 
     render() {
+        if (this.live) {
+            return html`
+                <div class="ag-pb-live ${this.playing ? '' : 'ag-pb-live--paused'}">
+                    <span class="ag-pb-live-dot" aria-hidden="true"></span>Live
+                </div>
+            `;
+        }
         const pct = this._pct();
         const dur = this.duration;
         return html`

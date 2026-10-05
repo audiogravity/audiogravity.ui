@@ -23,6 +23,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaBlock } from './test-utils.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
@@ -50,24 +51,6 @@ function allSources() {
     walk('css');
     walk('js');
     return out;
-}
-
-/**
- * Body of the first `@media` block whose prelude matches, braces balanced.
- * @param {string} css
- * @param {RegExp} prelude
- * @returns {string}
- */
-function mediaBlock(css, prelude) {
-    const start = css.search(prelude);
-    if (start < 0) return '';
-    const open = css.indexOf('{', start);
-    let depth = 0;
-    for (let i = open; i < css.length; i++) {
-        if (css[i] === '{') depth++;
-        else if (css[i] === '}' && --depth === 0) return css.slice(open + 1, i);
-    }
-    return '';
 }
 
 /**

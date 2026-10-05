@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readStylesheet, cssRuleBody } from '../../test-utils.js';
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Simulate the _applyState auto-follow logic from ag-now-playing-fullscreen.js
@@ -827,5 +827,105 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
             sourceId: 'src_highresaudio', itemType: 'track', itemId: 't1_a1',
             title: 'Tukuman', subtitle: 'Enzo Favata · Ritornare', coverToken: 'url:x',
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// A wide, landscape screen: the cover on the left, everything else beside it
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — two columns on a wide screen', () => {
+    // On a computer the single column scattered: a small cover centred, the title flush
+    // left, the signal path flush right, the format cells stretched across. jsdom lays
+    // nothing out, so the layout contract is read from the stylesheet.
+
+    /** The two-column block of the stylesheet. */
+    const wideBlock = () => mediaBlock(readStylesheet('css', 'components', 'now-playing-fullscreen.css'),
+        /@media\s*\(width\s*>=\s*900px\)\s*and\s*\(orientation:\s*landscape\)/);
+
+    it('lays the player out as a grid of a cover column and a column beside it', () => {
+        const scroll = cssRuleBody(wideBlock(), '.npfs-scroll');
+        expect(scroll).toMatch(/display:\s*grid/);
+        expect(scroll).toMatch(/grid-template-columns:/);
+    });
+
+    it('gives the cover the left column, centred on the height', () => {
+        const block = wideBlock();
+        expect(cssRuleBody(block, '.npfs-scroll > .npfs-cover-wrap')).toMatch(/grid-column:\s*1/);
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/align-items:\s*center/);
+    });
+
+    it('puts everything else in one block in the right column, the format strip included', () => {
+        const block = wideBlock();
+        const info = cssRuleBody(block, '.npfs-info');
+        expect(info).toMatch(/grid-column:\s*2/);
+        expect(info).toMatch(/display:\s*flex/);
+        expect(info).toMatch(/flex-direction:\s*column/);
+        // A display: contents element makes no flex item.
+        expect(cssRuleBody(block, '.npfs-info > ag-format-strip')).toMatch(/display:\s*block/);
+        // The column's full width, over the phone's caps: `.npfs-info > ag-progress-bar`
+        // weighs more than `.npfs-info > *`, and kept the bar to 340px of 520 (measured).
+        expect(cssRuleBody(block, '.npfs-scroll > .npfs-info > *')).toMatch(/max-width:\s*none/);
+    });
+
+    it('centres that column on the cover whatever it holds — no count of rows', () => {
+        // Six rows between two empty ones: a seventh part fell below the bottom one, and
+        // the column rose off-centre (measured in Chromium, review 2026-10-04).
+        const block = wideBlock();
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/grid-template-rows:\s*1fr;/);
+        expect(block).not.toMatch(/repeat\(/);
+        expect(block).not.toMatch(/::before|::after/);
+    });
+
+    it('leaves a phone held upright as it was: the block is no box', () => {
+        const sheet = readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+        expect(cssRuleBody(sheet, '.npfs-info')).toMatch(/display:\s*contents/);
+    });
+
+    it('holds every part beside the cover in that block, and not the cover', () => {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: { source_id: 'src_mpd', title: 'So What', artist: 'Miles Davis',
+                playing: true, elapsed: 120, duration: 545, can_seek: true },
+            _rendererActive: false, _nextTrack: { title: 'Freddie Freeloader', artist: 'Miles Davis' },
+            _sources: [],
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        const scroll = host.querySelector('.npfs-scroll');
+        const info = scroll.querySelector(':scope > .npfs-info');
+        expect([...scroll.children].map((c) => c.className.split(' ')[0])).toEqual(
+            ['npfs-cover-wrap', 'npfs-info']);
+        for (const part of ['.npfs-meta', 'ag-format-strip', '.npfs-controls-row', 'ag-progress-bar']) {
+            expect(info.querySelector(`:scope > ${part}`), part).not.toBeNull();
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// A station plays live: the progress bar gives way to a "Live" marker
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — a live station has no progress to show', () => {
+    /** Render the progress block of a state and return its bar. */
+    function progressBar(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        const host = document.createElement('div');
+        litRender(el._renderProgress(state), host);
+        return host.querySelector('ag-progress-bar');
+    }
+
+    it('turns the bar into a Live marker for a radio station', () => {
+        // The bar showed its knob stuck at the start, the time listened on one side
+        // and "−0:00" on the other.
+        const bar = progressBar({ origin: 'radio', duration: 0, title: 'Ma Benz', playing: true });
+        expect(bar.hasAttribute('live')).toBe(true);
+    });
+
+    it('keeps the bar for a track', () => {
+        const bar = progressBar({ origin: 'qobuz', duration: 545, title: 'So What', playing: true });
+        expect(bar.hasAttribute('live')).toBe(false);
     });
 });

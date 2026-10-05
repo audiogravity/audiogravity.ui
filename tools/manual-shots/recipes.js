@@ -358,7 +358,8 @@ export const RECIPES = {
         tab: 'profiles', settle: 6000,
         async run(page) {
             await page.evaluate(() => { document.querySelector('ag-config-panel').active = true; });
-            // The panel is translucent: the page behind it showed through, text included.
+            // The panel is opaque now, but its box ends on a fraction of a pixel and the
+            // clip takes the next row: the page below printed a line of its text there.
             await page.evaluate(() => {
                 document.querySelectorAll('ag-profiles-page').forEach((el) => { el.style.visibility = 'hidden'; });
             });

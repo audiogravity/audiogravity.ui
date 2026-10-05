@@ -17,15 +17,18 @@ import { setDarkMode } from '../../appearance.js';
  * Written for the login page, which has no configuration panel and where the choice
  * used to be unreachable: someone signing in at night got the light palette full in the
  * face until they were through the form. It is deliberately NOT imported by js/main.js —
- * the application already offers the same switch inside <ag-config-panel>, and importing
- * it there would ship a second control nothing renders.
+ * the application offers the Appearance setting inside <ag-config-panel>, and importing
+ * it there would ship a second control nothing renders. A tap picks Light or Dark, and so
+ * leaves Automatic.
  *
  * The state is read off the document rather than kept here, so a page that arrives
  * already dark (public/theme-boot.js stamps it before the first paint) shows the right
- * icon immediately, with no flash and no second source of truth.
+ * icon immediately, with no flash and no second source of truth — and it follows the
+ * page through 'appearance-changed', since under Automatic the device can turn it dark
+ * while the form is open.
  *
  * Applying the choice is not this component's own business: it calls appearance.js, the
- * same function the panel's switch calls, so the two controls cannot drift apart.
+ * module the panel's setting calls, so the two controls cannot drift apart.
  *
  * @element ag-theme-toggle
  * @fires ag-change - {detail: {darkMode: boolean}} after the appearance has changed.
@@ -42,6 +45,7 @@ export class AgThemeToggle extends LitElement {
     constructor() {
         super();
         this.darkMode = false;
+        this._onAppearance = (e) => { this.darkMode = e.detail.darkMode; };
     }
 
     createRenderRoot() {
@@ -51,6 +55,12 @@ export class AgThemeToggle extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this.darkMode = document.documentElement.classList.contains('dark-mode');
+        window.addEventListener('appearance-changed', this._onAppearance);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('appearance-changed', this._onAppearance);
     }
 
     /**

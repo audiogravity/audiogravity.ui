@@ -38,11 +38,12 @@
     font-family: var(--font-mono);
 }
 
+/* Quiet by its colour alone: the tertiary text token clears 4.5:1 on its own; an
+   extra 70% opacity took the date to 2.9:1. */
 .config-file-mtime {
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     margin-top: var(--spacing-xs);
-    opacity: 0.7;
 }
 
 /* Says why the tile is empty and where to install the package. Sits outside
@@ -592,11 +593,11 @@
     user-select: none;
 }
 
+/* Its colour comes from the whole document's accent-color (base.css). */
 .restart-toggle input[type="checkbox"] {
     width: 14px;
     height: 14px;
     cursor: pointer;
-    accent-color: var(--text-primary);
     flex-shrink: 0;
 }
 
