@@ -526,6 +526,15 @@ body.is-offline {
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
+/* Where the column is imposed — a phone, or any screen whose short side is 768px or
+   less — it has no Switch button, and Manual takes the foot of the column alone: it is
+   the app's documentation, not a place in it, so it stands apart from the tabs. Kept off
+   the column that has Switch: two automatic margins would share the free space, and
+   leave Manual floating halfway down. */
+.tabs--vertical:not(:has(.tab-orientation-btn)) .tab-manual-btn {
+    margin-top: auto;
+}
+
 /* Logo bar: logo on the left, connectivity indicator on the right */
 .tabs-logo-bar {
     display: none;

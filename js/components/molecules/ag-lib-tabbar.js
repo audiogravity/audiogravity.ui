@@ -1,7 +1,7 @@
 /**
  * @module AgLibTabbar
  * @description Inner navigation tabbar for the library player overlay.
- * Renders five tabs: Browse, Search, Queue, Library, Radio.
+ * Renders five tabs: Browse, Search, Queue, Sources, Radio.
  *
  * @element ag-lib-tabbar
  *
@@ -13,15 +13,18 @@
  *
  * @fires lib-tab-change - Bubbles. detail: { tab: string }
  */
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { keepInView } from '../../core/keep-in-view.js';
 import { iconQueue, iconSearch, iconQueuePlay, iconLibraryGrid, iconRadio } from '../../ag-icons.js';
 
+// The 'library' tab opens the list of sources to browse, and says so: called Library,
+// it read twice in the tab menu, right under the Library entry it belongs to. The key
+// stays, since the page's views are named after it.
 const TABS = [
     { key: 'browse',  label: 'Browse',  icon: iconQueue       },
     { key: 'search',  label: 'Search',  icon: iconSearch      },
     { key: 'queue',   label: 'Queue',   icon: iconQueuePlay   },
-    { key: 'library', label: 'Library', icon: iconLibraryGrid },
+    { key: 'library', label: 'Sources', icon: iconLibraryGrid },
     { key: 'radio',   label: 'Radio',   icon: iconRadio       },
 ];
 
@@ -61,7 +64,7 @@ export class AgLibTabbar extends LitElement {
      * visible, not the tab just changed.
      *
      * The library page renders one bar per view inside display:none containers,
-     * and several views share a highlighted tab (outputs shows Library; the
+     * and several views share a highlighted tab (outputs shows Sources; the
      * artist, Roon and UPnP browsers show Browse). Switching between them
      * changes no `tab` attribute, so updated() never fires — and any scroll
      * that ran while the bar was display:none had no layout box and silently
@@ -79,7 +82,7 @@ export class AgLibTabbar extends LitElement {
      *
      * It used to return early when the key matched, which looked like sensible
      * de-duplication and was not: several views map onto a tab they are not — outputs
-     * shows Library highlighted, and the artist, Roon and UPnP browsers all show
+     * shows Sources highlighted, and the artist, Roon and UPnP browsers all show
      * Browse. Tapping that highlighted tab is the obvious way back out of those views,
      * and it did nothing at all. Harmless while the labels were hidden on a phone; a
      * visibly named, visibly selected, completely dead control once they were shown.
@@ -98,6 +101,14 @@ export class AgLibTabbar extends LitElement {
         }));
     }
 
+    /**
+     * The icons are sized by attributes, not by an inline style: an inline style outranks
+     * every stylesheet, and the copy of this bar in the tab menu draws them smaller
+     * (LIB_STYLES, `.lib-menu`). The page's size is in LIB_STYLES too; the attributes
+     * only hold it where those styles are not loaded.
+     *
+     * @returns {import('lit').TemplateResult}
+     */
     render() {
         return html`
             <div class="lib-nav">
@@ -106,8 +117,9 @@ export class AgLibTabbar extends LitElement {
                         class="lib-tab ${this.tab === t.key ? 'on' : ''}"
                         @click=${() => this._select(t.key)}
                         aria-label=${t.label}
+                        aria-current=${this.tab === t.key ? 'page' : nothing}
                     >
-                        <svg viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0"
+                        <svg viewBox="0 0 24 24" width="22" height="22"
                             stroke="currentColor" fill="none"
                             stroke-width="${this.tab === t.key ? '2.2' : '1.7'}"
                             stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>

@@ -7,7 +7,12 @@
  *
  * Active source and zone are restored from /player/state/snapshot on connect.
  *
+ * Opened from elsewhere through the window event 'lib-goto' (see _onLibGoto). The tab
+ * menu carries a copy of the page's tab bar, kept in step by 'lib-nav-changed'.
+ *
  * @element ag-library-page
+ *
+ * @fires lib-nav-changed - On window, when the tab bar's state changes. detail: navState
  *
  * @dependency ag-library-browse
  * @dependency ag-library-search
@@ -212,17 +217,18 @@ ag-lib-tabbar {
    Sentence case, and that IS a deliberate exception to the rule that a short label is
    set in capitals — noted here rather than left to be "tidied" later. It is what makes
    the labels fit at all: measured against Inter's own metrics, the five labels in
-   capitals with the 0.08em tracking come to 313px, where sentence case comes to 275px.
-   The tracking and the capitals alone cost 38px. It also happens to be the right
-   register: this is a tab bar people navigate with a thumb, not a column heading in a
-   console.
+   capitals with the 0.08em tracking came to 313px, where sentence case came to 275px —
+   with Library as the fourth; Sources, its name since, takes 7px more (measured
+   2026-10-05). The tracking and the capitals alone cost 38px. It also happens to be
+   the right register: this is a tab bar people navigate with a thumb, not a column
+   heading in a console.
 
    Set at xs, not xxs. These labels are READ — they are the whole of the navigation on a
    phone since the rule that hid them was removed — and xxs is reserved for what is
    identified at a glance: a badge, a unit, a format tag. They only fit at xs because two
    other things were fixed: the source badge left this bar for the content, and the bar
    stopped spending 64px of a 390px screen on its own gutter. 366px of bar, less 80px for
-   the action, leaves 286px for 275px of labels. */
+   the action, leaves 286px for 282px of labels. */
 .lib-tab {
     display: flex;
     flex-direction: column;
@@ -246,6 +252,61 @@ ag-lib-tabbar {
     flex-shrink: 0;
 }
 .lib-tab.on svg { stroke-width: 2.2; }
+
+/* The same bar, carried by the tab menu (ag-tabs) under its Library entry, wherever the
+   tabs are a column. There it is a part of Library, not a row of tabs of its own, and it
+   has to look it: at the page's size its icons (22px) outweighed Library's (about 11px),
+   and nothing tied them to it. So it sits in a tinted tray, set in from the column's
+   edge, with smaller icons.
+
+   The rest follows from the column: 225px wide, and never scrolled sideways — its own
+   touch handler cancels every move, and a sideways swipe closes it:
+   - the bar keeps its own height. The page's bar grows to fill its row (flex: 1 above),
+     and in the column's flex box that made it swallow every free pixel under it — 250px
+     on a 390x844 phone (measured 2026-10-05);
+   - the tabs share the tray's width instead of keeping the page's spacing: five labelled
+     tabs need 282px at that spacing, and the tray has 206px on a phone. Shared, the words
+     keep 2.4px from the edges of their tab, and the whole tray answers a tap (same
+     measure);
+   - they wrap rather than scroll, so a reader who enlarges Safari's text gets a second
+     line instead of a tab cut off where no finger can reach it. And since nothing scrolls,
+     nothing clips the focus ring either: the 5px the page's bar keeps above and below its
+     tabs for it, and takes back with a negative margin, go. Kept here, they stuck out of
+     the tray over the bottom of the Library entry and took its taps (measured). */
+ag-lib-tabbar.lib-menu {
+    display: block;
+    flex: none;
+    width: calc(100% - var(--spacing-md));
+    margin-left: var(--spacing-md);
+    background: var(--color-neutral-bg);
+    border-radius: var(--radius-md);
+}
+.lib-menu .lib-nav {
+    flex-wrap: wrap;
+    overflow: visible;
+    padding-block: 0;
+    margin-block: 0;
+}
+.lib-menu .lib-tab {
+    flex: 1 1 auto;
+    padding-inline: 0;
+}
+.lib-menu .lib-tab svg {
+    width: var(--size-sm);
+    height: var(--size-sm);
+}
+
+/* The view shown, marked the way the column marks the tab a swipe is about to open
+   (.tab-btn.preview, layout.css): an amber tint and a bar — under the tab here, the row
+   being horizontal. A darker word alone did not stand out from the tray. The bar takes
+   the amber made for text: the bright one came to 1.74-1.90:1 on the tray in the three
+   light themes, under the 3:1 a mark that says something needs; this one 4.36-5.02:1,
+   and the same as the bright one in dark (measured 2026-10-05). */
+.lib-menu .lib-tab.on {
+    background: var(--color-warning-bg);
+    box-shadow: inset 0 -3px 0 var(--color-warning-text);
+    border-radius: var(--radius-md);
+}
 
 /* Per-organism CSS now lives in frontend/css/components/library-*.css :
    - library-search.css, library-queue.css, library-sources.css,
@@ -364,6 +425,8 @@ export class AgLibraryPage extends LitElement {
         this._pendingSource   = null;
         /** Source GROUP the reader waved away; not rendered, so not a Lit property. */
         this._dismissedGroup  = null;
+        /** What the tab menu was last told (_announceNav); not rendered either. */
+        this._navKey          = null;
         this._outputsSourceId = '';
         this._artistId        = '';
         this._artistName      = '';
@@ -767,11 +830,28 @@ export class AgLibraryPage extends LitElement {
         this._view       = 'browse';
     }
 
+    /**
+     * Open the library from elsewhere in the app, on a view or on a tab.
+     *
+     * A `tab` is a tap on the library's own bar made from outside the page — the copy
+     * of that bar the tab menu carries — so it does exactly what the same tap does on
+     * the page: no reload of the browse, and the banner left as it stands. Sent as a
+     * `view`, Browse reloaded its grid on every tap (`_navigate`), which a tab switch
+     * must never do, and the banner vanished until the next player state put it back.
+     *
+     * @param {CustomEvent<{view?: string, source_id?: string, tab?: string}>} e -
+     *   'lib-goto'. `view` (with an optional `source_id`) navigates; `tab` is a tap.
+     * @returns {Promise<void>}
+     */
     async _onLibGoto(e) {
-        this._pendingSource = null;
-        const { view, source_id } = e.detail ?? {};
-        if (!view) return;
+        const { view, source_id, tab } = e.detail ?? {};
+        if (!tab) this._pendingSource = null;
+        if (!tab && !view) return;
         document.querySelector('ag-tabs')?.selectTab('library');
+        if (tab) {
+            this._onTabChange({ detail: { tab } });
+            return;
+        }
         // Honour an explicit source_id passed by the caller — today that is the
         // fullscreen player opening the OUTPUTS view for the source it is showing,
         // which may differ from the library's. What it hands over is a TRANSPORT
@@ -835,6 +915,17 @@ export class AgLibraryPage extends LitElement {
     get _sourceTabs() {
         const kind = this._rawSources?.find(s => s.source_id === this._sourceId)?.kind;
         return kind === 'radio' ? ['queue', 'library', 'radio'] : null;
+    }
+
+    /**
+     * Where the library's tab bar stands — what the copy of it in the tab menu shows.
+     *
+     * @returns {{tab: string, tabs: (Array<string>|null)}} The tab highlighted, and the
+     *   tabs the browsed source offers (null for all of them): what this page hands its
+     *   own `ag-lib-tabbar`.
+     */
+    get navState() {
+        return { tab: VIEW_TAB[this._view] ?? 'browse', tabs: this._sourceTabs };
     }
 
     _onSourceChange(e) {
@@ -983,8 +1074,29 @@ export class AgLibraryPage extends LitElement {
      * @returns {void}
      */
     updated(changed) {
+        this._announceNav();
         if (!changed.has('_view')) return;
         this.querySelector('.lib-view.active ag-lib-tabbar')?.syncScroll?.();
+    }
+
+    /**
+     * Tell the tab menu where the library's tab bar stands, when that has changed.
+     *
+     * Two things move it: the view shown, and the browsed source — the radio offers
+     * three tabs, every other source five. Compared before sending, because this runs
+     * after every render, and every player state renders the page (`_onPlayerState`
+     * replaces `_sources`) — about every three seconds while something plays. None of
+     * those may cost the menu a render of its own.
+     *
+     * @fires lib-nav-changed - On window. detail: {@link AgLibraryPage#navState}.
+     * @returns {void}
+     */
+    _announceNav() {
+        const state = this.navState;
+        const key = `${state.tab}|${state.tabs?.join(',') ?? '*'}`;
+        if (key === this._navKey) return;
+        this._navKey = key;
+        window.dispatchEvent(new CustomEvent('lib-nav-changed', { detail: state }));
     }
 
     render() {
@@ -1178,7 +1290,7 @@ export class AgLibraryPage extends LitElement {
                         <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
                         <div class="lib-topbar-right">
                             <button class="lib-action" @click=${() => this._navigate('library')}
-                                    aria-label="Back to library">
+                                    aria-label="Back to sources">
                                 <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
                                      stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                     ${iconBack}
