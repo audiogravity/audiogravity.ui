@@ -153,9 +153,12 @@ function outranks(a, b) {
  *
  * @param {string} theme
  * @param {"light"|"dark"} mode
+ * @param {string} [values] - Pattern of the values kept: hex colours by default; the
+ *   tints are written `rgb(r g b / alpha)`.
  * @returns {Record<string,string>}
  */
-function resolve(theme, mode) {
+function resolve(theme, mode, values = '#[0-9a-fA-F]{6}') {
+    const declaration = new RegExp(`(--[\\w-]+)\\s*:\\s*(${values})\\s*;`, 'g');
     const best = {};
     let order = 0;
     for (const file of ['themes.css', path.join('themes', `${theme}.css`)]) {
@@ -174,7 +177,7 @@ function resolve(theme, mode) {
                 if (named.length && !named.includes(theme)) continue;
 
                 const weight = [...specificity(selector), order];
-                for (const [, k, v] of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)) {
+                for (const [, k, v] of body.matchAll(declaration)) {
                     const prev = best[k];
                     if (!prev || outranks(weight, prev.weight)) best[k] = { weight, value: v };
                 }
@@ -216,6 +219,50 @@ describe('colours — every text token clears the floor (règle 8)', () => {
             }
         }
     });
+});
+
+/**
+ * A tint laid over an opaque ground, as the browser composites it.
+ * @param {string} tint - `rgb(r g b / alpha)`, as the --color-*-bg tokens write it.
+ * @param {string} ground - Hex colour.
+ * @returns {string} The hex colour seen.
+ */
+function over(tint, ground) {
+    // Read strictly: a shape this does not know (no alpha, a percentage, a hex tint)
+    // would come out NaN, and NaN < 4.5 is false — the check would pass on anything.
+    const m = tint.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)\s*[/,]\s*([\d.]+)(%?)\s*\)$/);
+    if (!m || !/^#[0-9a-fA-F]{6}$/.test(ground)) {
+        throw new Error(`cannot lay ${tint} over ${ground}`);
+    }
+    const [r, g, b] = [m[1], m[2], m[3]].map(Number);
+    const alpha = Number(m[4]) / (m[5] ? 100 : 1);
+    const under = [0, 2, 4].map(i => parseInt(ground.slice(1 + i, 3 + i), 16));
+    return '#' + [r, g, b].map((c, i) => Math.round(c * alpha + under[i] * (1 - alpha))
+        .toString(16).padStart(2, '0')).join('');
+}
+
+describe('colours — text on its own tint, as a tag sits on a card (règle 8)', () => {
+    // A tag is a semantic colour's tint with its text on top: CRITICAL, FAILED, RUNNING.
+    // The -text tokens cleared 4.5:1 on the page's grounds, some by a hair, and the tint
+    // under them took the red of FAILED to 4.1:1 in Slate and 4.3:1 in Minimal
+    // (measured in Chromium, 2026-10-05). The cards are drawn on --bg-secondary.
+    for (const theme of THEMES) {
+        for (const mode of ['light', 'dark']) {
+            it(`${theme} ${mode}`, () => {
+                const tokens = resolve(theme, mode, '#[0-9a-fA-F]{6}|rgba?\\([^)]*\\)');
+                const card = tokens['--bg-secondary'];
+                const failing = [];
+                for (const n of SEMANTIC) {
+                    const text = tokens[`--color-${n}-text`];
+                    const tint = tokens[`--color-${n}-bg`];
+                    expect(tint, `${theme} ${mode} : --color-${n}-bg manquant`).toBeDefined();
+                    const ratio = contrast(text, over(tint, card));
+                    if (ratio < 4.5) failing.push(`--color-${n}-text=${text} ${ratio.toFixed(2)}:1`);
+                }
+                expect(failing, `sous 4,5:1 sur la teinte : ${failing.join(' · ')}`).toEqual([]);
+            });
+        }
+    }
 });
 
 /** Fills that carry text, and the token that writes on each. */

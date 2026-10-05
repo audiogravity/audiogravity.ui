@@ -114,6 +114,12 @@ describe('ag-package-card — availability', () => {
         expect(badges).toContain('Not Supported');
     });
 
+    it('draws Not Supported and Test Package as tints, beside the buttons of the same row', async () => {
+        el = await mount({ ...basePkg, is_supported: false, availability: 'available', is_test_package: true });
+        const tinted = [...el.querySelectorAll('.software-meta span.badge.subtle')].map(b => b.textContent.trim());
+        expect(tinted).toEqual(['Test Package', 'Not Supported']);
+    });
+
     it('falls back to a generic sentence when the core sends no reason', async () => {
         el = await mount({ ...basePkg, is_supported: false, availability: 'unknown' });
         expect(el.querySelector('.software-availability').textContent)
@@ -363,6 +369,18 @@ describe('ag-package-card — configuration state', () => {
     it('says so when AG has not written the configuration', async () => {
         el = await mountInstalled({}, { configuredByAg: false });
         expect(badges(el)).toContain('Not configured');
+    });
+
+    it('says it as a tint, unlike the badges beside it that are buttons', async () => {
+        // Outlined, it had the shape of "Set web password" and "Restart required",
+        // buttons drawn as badges, and read as one of them.
+        el = await mountInstalled({ web_credentials: { username: 'mpd', port: 8080, already_set: false } },
+            { configuredByAg: false });
+        const notConfigured = [...el.querySelectorAll('.software-meta .badge')]
+            .find(b => b.textContent.trim() === 'Not configured');
+        expect(notConfigured.tagName).toBe('SPAN');
+        expect(notConfigured.classList.contains('subtle')).toBe(true);
+        expect(el.querySelector('.web-password-badge').classList.contains('subtle')).toBe(false);
     });
 
     it('says nothing once it is configured', async () => {

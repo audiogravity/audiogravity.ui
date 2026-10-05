@@ -273,6 +273,26 @@ export function isDsd(fmtOrSourceFormat) {
 }
 
 /**
+ * The hi-res label a format earns: its DSD level, MQA, or "Hi·Res" from 88.2 kHz.
+ * Read by the format strip, which highlights its cells, and by the full player's badge,
+ * which each wrote the same test of their own.
+ *
+ * A lossy stream earns none, whatever its rate: an AAC decoded at 96 kHz is still lossy,
+ * and its FORMAT, from the core, reads "Lossy" — a "Hi·Res" badge beside it contradicted it.
+ *
+ * @param {{format?: string|null, sample_rate?: string|null}|null|undefined} fmt - FormatInfo.
+ * @returns {string|null} The label, or null when the format is not hi-res.
+ */
+export function hiResLabel(fmt) {
+    if (!fmt) return null;
+    const f = (fmt.format || '').toUpperCase();
+    if (f === 'LOSSY') return null;
+    if (f.includes('DSD')) return fmt.format;
+    if (f.includes('MQA')) return 'MQA';
+    return parseFloat(fmt.sample_rate || '0') >= 88.2 ? 'Hi·Res' : null;
+}
+
+/**
  * Whether what plays is a live broadcast: a radio stream, with no end to count
  * down to and no position to seek to. A progress bar there showed its knob
  * stuck at the start, the time listened on one side and "−0:00" on the other.

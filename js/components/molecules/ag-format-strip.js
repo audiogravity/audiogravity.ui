@@ -2,8 +2,8 @@
  * @module AgFormatStrip
  * @description Audio format strip molecule.
  * Renders four cells: FORMAT, SAMPLE, BITRATE, CODEC from a FormatInfo object.
- * Hi-res cells (DSD, MQA, sample rate ≥ 88.2 kHz) are highlighted with the
- * accent colour. Renders nothing when all fields are absent.
+ * Hi-res cells (DSD, MQA, sample rate ≥ 88.2 kHz, never a lossy stream) are
+ * highlighted with the accent colour. Renders nothing when all fields are absent.
  *
  * @element ag-format-strip
  *
@@ -12,6 +12,7 @@
  * @dependency css/components/format-strip.css
  */
 import { LitElement, html, nothing } from 'lit';
+import { hiResLabel } from '../../player-utils.js';
 
 export class AgFormatStrip extends LitElement {
     static properties = {
@@ -25,17 +26,10 @@ export class AgFormatStrip extends LitElement {
         this.format = null;
     }
 
-    _isHiRes(fmt) {
-        if (!fmt) return false;
-        const f  = (fmt.format || '').toUpperCase();
-        const sr = parseFloat(fmt.sample_rate || '0');
-        return f.includes('DSD') || f.includes('MQA') || sr >= 88.2;
-    }
-
     render() {
         const fmt = this.format;
         if (!fmt || (!fmt.format && !fmt.sample_rate && !fmt.bitrate && !fmt.codec)) return nothing;
-        const hi = this._isHiRes(fmt);
+        const hi = hiResLabel(fmt) !== null;
         return html`
             <div class="ag-fms-strip">
                 <div class="ag-fms-cell ${hi ? 'hi' : ''}">

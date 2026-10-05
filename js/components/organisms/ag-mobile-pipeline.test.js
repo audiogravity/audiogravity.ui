@@ -487,3 +487,42 @@ describe('where the services play', () => {
         expect(outputsSignature(null)).toBe('');
     });
 });
+
+describe('a card writes the format MPD plays', () => {
+    /** The card's format for a pipeline whose MPD node and streamer say what it plays. */
+    function formatOf({ sourceFormat, np = {} }) {
+        const el = makeEl();
+        el.connectedCallback();
+        el._pipeline = {
+            nodes: [
+                {
+                    type: 'device', device_type: 'streamer', status: 'active',
+                    internal_services: [{ id: 'mpd', label: 'MPD' }],
+                    metadata: { service_now_playing: { mpd: { title: 'Nawwâr', state: 'playing', ...np } } },
+                },
+                { type: 'service', id: 'src_mpd', name: 'MPD', status: 'active',
+                  metadata: { service_id: 'mpd', source_format: sourceFormat } },
+            ],
+        };
+        return el._getActiveStreams()[0].format;
+    }
+
+    it('shows the line the core composed, the one the player shows', () => {
+        // A lossy codec has no bit depth: the core writes its bitrate in its place.
+        expect(formatOf({ sourceFormat: 'MP3 | 128kbps | 44.1kHz',
+                          np: { format: 'MP3', sample_bits: null, sample_rate: 44100, bitrate: 128 } }))
+            .toBe('MP3 | 128kbps | 44.1kHz');
+    });
+
+    it('names a CD, which the streamer block could not: it has no codec', () => {
+        expect(formatOf({ sourceFormat: 'PCM | 16bit | 44.1kHz',
+                          np: { format: null, sample_bits: 16, sample_rate: 44100 } }))
+            .toBe('PCM | 16bit | 44.1kHz');
+    });
+
+    it('writes it from the streamer block when the core composed none', () => {
+        expect(formatOf({ sourceFormat: undefined,
+                          np: { format: 'FLAC', sample_bits: 24, sample_rate: 96000 } }))
+            .toBe('FLAC | 24bit | 96kHz');
+    });
+});
