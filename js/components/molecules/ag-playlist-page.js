@@ -417,7 +417,7 @@ export class AgPlaylistPage extends LitElement {
                 .footerTemplate=${html`
                     <button class="action-btn secondary" ?disabled=${this._deleting}
                         @click=${() => { this._confirmingDelete = false; }}>Cancel</button>
-                    <button class="action-btn error" ?disabled=${this._deleting}
+                    <button class="action-btn warning" ?disabled=${this._deleting}
                         @click=${() => this._delete()}>${this._deleting ? 'Deleting…' : 'Delete'}</button>
                 `}
                 @modal-close=${() => { if (!this._deleting) this._confirmingDelete = false; }}>

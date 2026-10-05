@@ -77,3 +77,12 @@ export const InstalledWithoutConfigFile = Template.bind({});
 InstalledWithoutConfigFile.args = {
     service: { ...serviceMock, fileMtime: null, backupCount: 0, fileExists: false }
 };
+
+/** A service the audio chain depends on. CRITICAL is a tint without a frame: outlined,
+ *  it had the shape of EDIT CONFIG beside it and read as a second button. */
+export const Critical = Template.bind({});
+Critical.args = {
+    service: { ...serviceMock, id: 'naa', displayName: 'HQPlayer NAA',
+               path: '/etc/networkaudiod/networkaudiod.xml', status: 'inactive',
+               audioOutput: null, backupCount: 1, critical: true }
+};

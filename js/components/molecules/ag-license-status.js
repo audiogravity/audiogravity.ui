@@ -326,7 +326,7 @@ export class AgLicenseStatus extends LitElement {
             return html`
                 <div style="margin-top: var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-sm);">
                     <div>
-                        <button class="btn-action btn-action--error compact"
+                        <button class="btn-action warning compact"
                                 ?disabled=${this._deleting}
                                 @click=${this._handleDeleteLicense}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg>
@@ -369,7 +369,7 @@ export class AgLicenseStatus extends LitElement {
                             ${this._uploading ? 'Uploading…' : 'Upload new license'}
                         </button>
                         <div style="margin-left: auto;">
-                            <button class="btn-action btn-action--error compact"
+                            <button class="btn-action warning compact"
                                     ?disabled=${this._deleting}
                                     @click=${this._handleDeleteLicense}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg>

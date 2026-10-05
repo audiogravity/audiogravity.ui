@@ -196,6 +196,41 @@ describe('the purchase sentence when the licence server gives no price', () => {
 });
 
 /**
+ * Deleting the licence was the only red one among the buttons that delete; the user
+ * chose orange for all of them (2026-10-05). Both states that offer it are checked:
+ * the button is written twice in the template.
+ */
+describe('the button that deletes the licence', () => {
+    /**
+     * Render the panel and return the class lists of its "Delete license" buttons.
+     * @param {Object} status Licence status the core would report.
+     */
+    async function deleteButtonClasses(status) {
+        api.status = status;
+        api.config = {};
+        const el = document.createElement('ag-license-status');
+        document.body.appendChild(el);
+        await new Promise(r => setTimeout(r, 0));
+        await el.updateComplete;
+        const classes = [...el.querySelectorAll('button')]
+            .filter(b => b.textContent.includes('Delete license'))
+            .map(b => b.className);
+        el.remove();
+        return classes;
+    }
+
+    it('is orange on a lifetime licence', async () => {
+        expect(await deleteButtonClasses({ status: 'lifetime', device_id: 'abc' }))
+            .toEqual(['btn-action warning compact']);
+    });
+
+    it('is orange on a licence that has ended', async () => {
+        expect(await deleteButtonClasses({ status: 'expired', device_id: 'abc', expires_at: '2026-01-01' }))
+            .toEqual(['btn-action warning compact']);
+    });
+});
+
+/**
  * The trial tile used to say the same number three times — the badge, a sentence
  * relayed from the core, and the bar's caption — and the sentence was built from a
  * template, so it read "27 day(s) remaining".

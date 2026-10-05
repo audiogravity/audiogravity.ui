@@ -456,7 +456,7 @@ export class AgServiceCard extends LitElement {
 
                         ${!isInstalled ? html`<span class="badge error">NOT INSTALLED</span>` : ''}
                         ${this.service.state === 'failed' ? html`<span class="badge error">FAILED</span>` : ''}
-                        ${this.service.critical ? html`<span class="badge warning">Critical</span>` : ''}
+                        ${this.service.critical ? html`<span class="badge warning subtle">CRITICAL</span>` : ''}
                     </div>
 
                     ${this._lastActionTime ? html`

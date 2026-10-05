@@ -332,8 +332,9 @@
     transition: color var(--transition-fast);
 }
 
+/* Orange, like every control that deletes (user decision: one colour for what destroys). */
 .ag-nmf-remove:hover {
-    color: var(--color-error-text);
+    color: var(--color-warning-text);
 }
 
 .ag-nmf-remove svg {
