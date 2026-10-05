@@ -136,10 +136,11 @@
 
 /**
  * @variant .badge.subtle
- * @description Variation with a light background color (alpha-based) and no frame: a
- * trait read in passing, which must not pass for a button. Outlined, a badge has the
- * shape of the buttons beside it (CRITICAL next to EDIT CONFIG read as a second
- * button); tinted, it reads like the RUNNING / STOPPED tags of the same cards. The
+ * @description Variation with a light background color (alpha-based) and no frame, for
+ * a badge that sits among buttons without being one. Outlined, it has their shape:
+ * CRITICAL next to EDIT CONFIG read as a second button, and so did FAILED beside START,
+ * UNAVAILABLE beside ACTIVATE, Not configured beside the badges that are buttons on a
+ * software card. Tinted, it reads like the RUNNING / STOPPED tags of the same cards. The
  * border stays, transparent, so the badge keeps its height and the row does not move.
  */
 .badge.subtle { border-color: transparent; }
@@ -153,7 +154,9 @@
  * @section Aliases (Backward Compatibility)
  */
 
-/* log-badges are now mapped to subtle badges */
+/* log-badges are now mapped to subtle badges.
+   BACKLOG: they read under 4.5:1 in four theme modes, on the log's ground — see
+   audiogravity.ops/BACKLOG.md, « Les étiquettes du journal se lisent sous 4,5:1 ». */
 .log-badge {
     padding: 1px 4px; border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs); font-weight: 700; text-transform: uppercase;

@@ -44,7 +44,7 @@ describe('isDsd', () => {
     });
 });
 
-import { isLiveStream } from './player-utils.js';
+import { isLiveStream, hiResLabel } from './player-utils.js';
 
 describe('isLiveStream', () => {
     it('is a radio station with no duration', () => {
@@ -394,5 +394,23 @@ describe('applyVolumeGuard', () => {
         const s = state({ volume: 47 });
         applyVolumeGuard(s, pending(), NOW);
         expect(s.volume).toBe(47);
+    });
+});
+
+describe('hiResLabel', () => {
+    it('labels DSD by its level, MQA, and a rate from 88.2 kHz', () => {
+        expect(hiResLabel({ format: 'DSD128', sample_rate: '5.6MHz' })).toBe('DSD128');
+        expect(hiResLabel({ format: 'MQA', sample_rate: '44.1kHz' })).toBe('MQA');
+        expect(hiResLabel({ format: '24bit', sample_rate: '96kHz' })).toBe('Hi·Res');
+    });
+
+    it('labels nothing under 88.2 kHz, or without a format', () => {
+        expect(hiResLabel({ format: '16bit', sample_rate: '44.1kHz' })).toBeNull();
+        expect(hiResLabel(null)).toBeNull();
+    });
+
+    it('never labels a lossy stream, whatever its rate', () => {
+        // An AAC decoded at 96 kHz is still lossy: "Hi·Res" beside "Lossy" contradicted it.
+        expect(hiResLabel({ format: 'Lossy', sample_rate: '96kHz', codec: 'AAC' })).toBeNull();
     });
 });

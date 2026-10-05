@@ -405,11 +405,14 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
                 || (matchedSvc ? serviceNowPlaying[matchedSvc.id] : null)
                 || null;
 
-            let format = null;
-            if (np?.format && np?.sample_bits && np?.sample_rate) {
+            // MPD's line comes composed by the core, the one the player shows: the codec,
+            // then the bit depth — or the bitrate of a lossy codec, which has none — and
+            // the rate; PCM for a CD. The other players are written from their block.
+            let format = svc.metadata?.service_id === 'mpd' ? (svc.metadata.source_format || null) : null;
+            if (!format && np?.format && np?.sample_bits && np?.sample_rate) {
                 const khz = (np.sample_rate / 1000).toFixed(np.sample_rate % 1000 === 0 ? 0 : 1);
                 format = `${np.format} | ${np.sample_bits}bit | ${khz}kHz`;
-            } else if (np?.format) {
+            } else if (!format && np?.format) {
                 // AirPlay 1 (shairport-sync) doesn't report sample_rate/bits —
                 // ALAC over AirPlay 1 is always 16bit/44.1kHz
                 if (np.format === 'ALAC') {

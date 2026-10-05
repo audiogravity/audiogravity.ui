@@ -144,6 +144,21 @@ describe('a critical service', () => {
     });
 });
 
+describe('the badges beside START and RESTART', () => {
+    // Outlined, they had the shape of the buttons beside them, as CRITICAL had.
+    it('says FAILED as a tint', () => {
+        const el = card(ALL_MEASURED);
+        el.service = { ...el.service, state: 'failed' };
+        expect(flat(el.render())).toContain('<span class="badge error subtle">FAILED</span>');
+    });
+
+    it('says NOT INSTALLED as a tint', () => {
+        const el = card(ALL_MEASURED);
+        el.service = { ...el.service, is_installed: false };
+        expect(flat(el.render())).toContain('<span class="badge error subtle">NOT INSTALLED</span>');
+    });
+});
+
 describe('a failed service', () => {
     it('reads FAILED in red, as a failed profile does', () => {
         expect(serviceStatus('failed', false)).toEqual({ statusClass: 'error', statusText: 'FAILED' });

@@ -19,7 +19,8 @@ vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 vi.mock('../../auth.js', () => ({ isGuest: () => false }));
 vi.mock('../utils-lit.js', () => ({ formatTimestamp: () => '' }));
 
-import { profileStatus } from './ag-profile-card.js';
+import { AgProfileCard, profileStatus } from './ag-profile-card.js';
+import { flat } from '../../test-utils.js';
 
 describe('profileStatus', () => {
     it('reads FAILED, in red, for a profile in error', () => {
@@ -34,5 +35,37 @@ describe('profileStatus', () => {
         for (const state of ['inactive', 'partial', 'unknown', undefined]) {
             expect(profileStatus(state)).toEqual({ statusClass: 'down', statusText: 'IDLE', isPending: false });
         }
+    });
+});
+
+
+/**
+ * A badge beside the ACTIVATE button that is not a button: a tint without a frame.
+ * Outlined, UNAVAILABLE and "n failed" had the shape of the button beside them.
+ */
+describe('the badges beside ACTIVATE', () => {
+    /** Render a tile for a profile, with the metrics the page hands it. */
+    function renderTile(profile, metrics = null) {
+        const el = Object.create(AgProfileCard.prototype);
+        el.profile = { id: 'upnp', name: 'UPnP Renderer', state: 'idle', start: [], stop: [], ...profile };
+        el.isActive = false;
+        el.profileMetrics = metrics;
+        el.servicesConfig = {};
+        el.pipelineOutputs = {};
+        return flat(el.render());
+    }
+
+    it('says UNAVAILABLE as a tint', () => {
+        expect(renderTile({ is_available: false })).toContain('<span class="badge error subtle">UNAVAILABLE</span>');
+    });
+
+    it('counts the failed services as a tint', () => {
+        expect(renderTile({}, { services_failed: 2 })).toContain('<span class="badge error subtle">2 failed</span>');
+    });
+
+    it('shows neither for an available profile with nothing failed', () => {
+        const out = renderTile({});
+        expect(out).not.toContain('UNAVAILABLE');
+        expect(out).not.toContain('failed</span>');
     });
 });

@@ -202,9 +202,11 @@
        cannot satisfy all three — a red dark enough to read is too dark for the
        border it was chosen for. These are the reading variants, same hue, and
        the only ones a `color:` declaration may use. Values that already cleared
-       the floor are repeated verbatim so every theme states its own. */
+       the floor are repeated verbatim so every theme states its own. They clear it
+       on their own tint too, laid on a card (--bg-secondary), where the tags such as
+       FAILED are drawn — checked there by js/colors.test.js, and only there. */
     --color-success-text: #157B3B;
-    --color-error-text: #D91313;
+    --color-error-text: #CF1212;
     --color-warning-text: #945F06;
     --color-info-text: #000000;
 

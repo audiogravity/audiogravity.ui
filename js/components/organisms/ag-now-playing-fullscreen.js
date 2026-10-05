@@ -29,7 +29,7 @@ import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, isLiveStream } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
@@ -525,19 +525,6 @@ export class AgNowPlayingFullscreen extends LitElement {
     }
 
 
-    // ------------------------------------------------------------------
-    // Hi-res label helper
-    // ------------------------------------------------------------------
-
-    _hiResLabel(fmt) {
-        if (!fmt) return null;
-        const f  = (fmt.format || '').toUpperCase();
-        const sr = parseFloat(fmt.sample_rate || '0');
-        if (f.includes('DSD')) return fmt.format;
-        if (f.includes('MQA')) return 'MQA';
-        if (sr >= 88.2) return 'Hi·Res';
-        return null;
-    }
 
     // ------------------------------------------------------------------
     // Transport
@@ -826,7 +813,7 @@ export class AgNowPlayingFullscreen extends LitElement {
 
         const dur         = s?.duration ?? 0;
         const tn          = s?.track_number;
-        const hiLabel     = this._hiResLabel(s?.format);
+        const hiLabel     = hiResLabel(s?.format);
         const tnLabel     = tn
             ? `A${Math.ceil(parseInt(tn) / 10)} · TRACK ${tn.toString().padStart(2, '0')}`
             : null;

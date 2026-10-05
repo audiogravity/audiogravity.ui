@@ -30,6 +30,31 @@ const _truncate = (text, max, fallback = '') =>
     !text ? fallback : text.length > max ? text.slice(0, max - 1) + '…' : text;
 
 /**
+ * The format of what a service plays, as a service row of the diagram writes it:
+ * codec, then bit depth / sample rate — "FLAC 24/96k". A lossy codec comes without a
+ * bit depth (the core sends none for MP3, AAC, Ogg or Opus): its bitrate stands in
+ * its place — "MP3 128k/44.1k".
+ *
+ * @param {{format?: string, sample_bits?: number|null, sample_rate?: number, bitrate?: number}|null} snp -
+ *   The service's now-playing block, from the streamer's `service_now_playing`.
+ * @returns {string|null} The label, or null when nothing is known.
+ */
+export function serviceFormatLabel(snp) {
+    const rate = snp?.sample_rate;
+    const khz = rate ? `${(rate / 1000).toFixed(rate % 1000 === 0 ? 0 : 1)}k` : null;
+    const codec = snp?.format || null;
+    if (codec && snp?.sample_bits && khz) return `${codec} ${snp.sample_bits}/${khz}`;
+    if (codec && snp?.sample_bits) return `${codec} ${snp.sample_bits}b`;
+    if (codec && snp?.bitrate && khz) return `${codec} ${snp.bitrate}k/${khz}`;
+    if (codec && khz) return `${codec} ${khz}`;
+    if (codec && snp?.bitrate) return `${codec} ${snp.bitrate}k`;
+    if (codec) return codec;
+    if (snp?.sample_bits && khz) return `${snp.sample_bits}/${khz}`;
+    if (snp?.bitrate) return `${snp.bitrate}k`;
+    return null;
+}
+
+/**
  * @module AgPipelineNode
  * @description Functional atom for rendering a pipeline node within an SVG.
  * Supports both standard software nodes and physical 'device' nodes with ports.
@@ -260,19 +285,7 @@ export const renderPipelineNode = (node) => {
                         const snpTitle = _truncate(snp?.title, 22);
                         const snpArtist = _truncate(snp?.artist, 22);
                         const snpColor = snpStateInk || 'var(--text-tertiary)';
-                        const snpSR = snp?.sample_rate;
-                        const snpSRStr = snpSR ? `${(snpSR / 1000).toFixed(snpSR % 1000 === 0 ? 0 : 1)}k` : null;
-                        const snpCodec = snp?.format || null;
-                        const snpFmt = (() => {
-                            if (snpCodec && snp?.sample_bits && snpSRStr) return `${snpCodec} ${snp.sample_bits}/${snpSRStr}`;
-                            if (snpCodec && snp?.sample_bits) return `${snpCodec} ${snp.sample_bits}b`;
-                            if (snpCodec && snpSRStr) return `${snpCodec} ${snpSRStr}`;
-                            if (snpCodec && snp?.bitrate) return `${snpCodec} ${snp.bitrate}k`;
-                            if (snpCodec) return snpCodec;
-                            if (snp?.sample_bits && snpSRStr) return `${snp.sample_bits}/${snpSRStr}`;
-                            if (snp?.bitrate) return `${snp.bitrate}k`;
-                            return null;
-                        })();
+                        const snpFmt = serviceFormatLabel(snp);
                         const snpVol = snp?.volume != null ? `${snp.volume}%` : null;
                         return svg`
                             <g class="internal-service ${isActiveSvc ? 'active' : 'inactive'}">
@@ -319,18 +332,8 @@ export const renderPipelineNode = (node) => {
                         // Same split: the disc, then its label.
                         const npFill = isPlaying ? 'var(--color-success)' : 'var(--color-warning)';
                         const npInk = isPlaying ? 'var(--color-success-text)' : 'var(--color-warning-text)';
-                        const npSR = nowPlaying.sample_rate;
-                        const npSRStr = npSR ? `${(npSR / 1000).toFixed(npSR % 1000 === 0 ? 0 : 1)}k` : null;
-                        const npCodec = nowPlaying.format || null;
-                        const npBits = nowPlaying.sample_bits;
-                        const npFmt = (() => {
-                            if (npCodec && npBits && npSRStr) return `${npCodec} ${npBits}/${npSRStr}`;
-                            if (npCodec && npBits) return `${npCodec} ${npBits}b`;
-                            if (npCodec && npSRStr) return `${npCodec} ${npSRStr}`;
-                            if (npCodec) return npCodec;
-                            if (npBits && npSRStr) return `${npBits}/${npSRStr}`;
-                            return null;
-                        })();
+                        // Same label as a service row: the server's block has the same fields.
+                        const npFmt = serviceFormatLabel(nowPlaying);
                         const npVol = nowPlaying.volume != null ? `${nowPlaying.volume}%` : null;
                         const npRight = [npFmt, npVol].filter(Boolean).join('  ');
                         const npTitle = _truncate(nowPlaying.title, 24, '—') || '—';
