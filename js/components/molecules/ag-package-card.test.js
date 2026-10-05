@@ -116,7 +116,7 @@ describe('ag-package-card — availability', () => {
 
     it('draws Not Supported and Test Package as tints, beside the buttons of the same row', async () => {
         el = await mount({ ...basePkg, is_supported: false, availability: 'available', is_test_package: true });
-        const tinted = [...el.querySelectorAll('.software-meta span.badge.subtle')].map(b => b.textContent.trim());
+        const tinted = [...el.querySelectorAll('.software-meta span.badge:not(.clickable)')].map(b => b.textContent.trim());
         expect(tinted).toEqual(['Test Package', 'Not Supported']);
     });
 
@@ -379,8 +379,10 @@ describe('ag-package-card — configuration state', () => {
         const notConfigured = [...el.querySelectorAll('.software-meta .badge')]
             .find(b => b.textContent.trim() === 'Not configured');
         expect(notConfigured.tagName).toBe('SPAN');
-        expect(notConfigured.classList.contains('subtle')).toBe(true);
-        expect(el.querySelector('.web-password-badge').classList.contains('subtle')).toBe(false);
+        // A tag is a <span>, which badge.css draws without a frame; the badge you can
+        // press is a <button>, which keeps it.
+        expect(notConfigured.classList.contains('clickable')).toBe(false);
+        expect(el.querySelector('.web-password-badge').tagName).toBe('BUTTON');
     });
 
     it('says nothing once it is configured', async () => {

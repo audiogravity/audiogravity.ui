@@ -124,13 +124,23 @@
 
 /**
  * @state .unavailable
- * @description Package not installed — service/profile/config tiles are greyed out and non-interactive.
+ * @description Package not installed — service and profile tiles are greyed out, dashed.
+ * The fade covers the tile's inert part only, as on a config tile below: under it no text
+ * reaches the floor, and the badge saying why the tile is grey — NOT INSTALLED,
+ * UNAVAILABLE — read at that. The header (name, state) and the footer (that badge, and
+ * buttons already shown disabled by their own style) stay out of it — all but the list of
+ * critical services a profile's footer carries, which is as inert as its body.
  */
 .service-tile.unavailable,
 .profile-tile.unavailable {
+    border-style: dashed;
+}
+
+.service-tile.unavailable > :not(.service-header, .service-footer),
+.profile-tile.unavailable > :not(.profile-header, .profile-footer),
+.profile-tile.unavailable > .profile-footer > .profile-critical-services {
     opacity: 0.45;
     filter: grayscale(60%);
-    border-style: dashed;
 }
 
 /**
@@ -155,16 +165,10 @@
     filter: grayscale(60%);
 }
 
+/* Hover suppressed, with no opacity: the fade lives on the children of these tiles,
+   and restating it here would put the name and the badge back under it. */
 .services-grid .service-tile.unavailable:hover,
-.profiles-grid .profile-tile.unavailable:hover {
-    transform: none;
-    box-shadow: none;
-    border-color: var(--border-color);
-    opacity: 0.45;
-}
-
-/* Same hover suppression, minus the opacity: on a config tile the fade lives on
-   the children, and restating it here would put the hint back under it. */
+.profiles-grid .profile-tile.unavailable:hover,
 .config-selector-grid .config-tile.unavailable:hover {
     transform: none;
     box-shadow: none;
@@ -173,18 +177,22 @@
 
 /**
  * @state .unavailable (systemd)
- * @description Package not installed — lighter opacity and dashed border, hover lift suppressed.
+ * @description Package not installed — dashed border, hover lift suppressed, and the
+ * lighter fade on the properties only: the header keeps the name and NOT INSTALLED
+ * readable, the actions their own disabled style.
  */
 .systemd-tile.unavailable {
-    opacity: 0.55;
     border-style: dashed;
+}
+
+.systemd-tile.unavailable > :not(.systemd-header, .systemd-actions) {
+    opacity: 0.55;
 }
 
 .systemd-grid .systemd-tile.unavailable:hover {
     transform: none;
     box-shadow: none;
     border-color: var(--border-color);
-    opacity: 0.55;
 }
 
 /* Profile tiles do not clip their content */

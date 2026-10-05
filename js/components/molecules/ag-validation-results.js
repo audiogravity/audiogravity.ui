@@ -76,7 +76,7 @@ export class AgValidationResults extends LitElement {
                 <div class="validation-header error">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconClose}</svg>
                     <strong>${this.errorTitle}</strong>
-                    <span class="badge badge-error">${errors.length}</span>
+                    <span class="badge error">${errors.length}</span>
                 </div>
                 <ul class="validation-list">
                     ${errors.map(error => {
@@ -103,7 +103,7 @@ export class AgValidationResults extends LitElement {
                 <div class="validation-header warning">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconWarning}</svg>
                     <strong>Warnings</strong>
-                    <span class="badge badge-warning">${warnings.length}</span>
+                    <span class="badge warning">${warnings.length}</span>
                 </div>
                 <ul class="validation-list">
                     ${warnings.map(warning => html`

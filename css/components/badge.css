@@ -44,8 +44,8 @@
 
 /**
  * @variant .badge.warning
- * @description Orange warning badge, for an 'attention' state. A trait shown beside
- * buttons, such as CRITICAL, adds .subtle: outlined, it passes for one of them.
+ * @description Orange warning badge, for an 'attention' state. Outlined only when it
+ * can be pressed: see the rule "A frame says the badge can be pressed" below.
  */
 .badge.warning {
     border-color: var(--color-warning);
@@ -81,7 +81,7 @@
     border-color: var(--color-warning);
     color: var(--color-warning-text);
     background: transparent;
-    animation: pulse 2s ease-in-out infinite;
+    animation: badgeFramePulse 2s ease-in-out infinite;
 }
 
 /**
@@ -92,7 +92,7 @@
     border-color: var(--color-success);
     color: var(--color-success-text);
     background: transparent;
-    animation: pulse 2s ease-in-out infinite;
+    animation: badgeFramePulse 2s ease-in-out infinite;
 }
 
 /**
@@ -103,7 +103,7 @@
     border-color: var(--color-error);
     color: var(--color-error-text);
     background: transparent;
-    animation: pulse 2s ease-in-out infinite;
+    animation: badgeFramePulse 2s ease-in-out infinite;
 }
 
 /**
@@ -135,51 +135,89 @@
 }
 
 /**
- * @variant .badge.subtle
- * @description Variation with a light background color (alpha-based) and no frame, for
- * a badge that sits among buttons without being one. Outlined, it has their shape:
- * CRITICAL next to EDIT CONFIG read as a second button, and so did FAILED beside START,
- * UNAVAILABLE beside ACTIVATE, Not configured beside the badges that are buttons on a
- * software card. Tinted, it reads like the RUNNING / STOPPED tags of the same cards. The
- * border stays, transparent, so the badge keeps its height and the row does not move.
+ * @rule A frame says the badge can be pressed (user rule, 2026-10-05)
+ * @description A badge that is not a button — not a <button>, not .clickable — is a
+ * tag: a tint, no frame. Outlined, it had the shape of the buttons beside it (CRITICAL
+ * next to EDIT CONFIG read as a second button, FAILED beside START), and the same state
+ * looked one way in a row of buttons and another in a card's header. A badge that can be
+ * pressed keeps the outline of its variant, above; a filled one keeps its fill. The
+ * border stays, transparent, so a tag keeps its height and its row does not move.
+ * A tag without a colour of its own takes the neutral tint, translucent like the others:
+ * an opaque --bg-tertiary vanished on the cards drawn in it (the guided configuration's).
  */
-.badge.subtle { border-color: transparent; }
-.badge.subtle.success { background: var(--color-success-bg); }
-.badge.subtle.error   { background: var(--color-error-bg); }
-.badge.subtle.warning { background: var(--color-warning-bg); }
-.badge.subtle.info    { background: var(--color-info-bg); }
-.badge.subtle.neutral { background: var(--bg-tertiary); }
+.badge:not(button, .clickable, .filled) {
+    border-color: transparent;
+    background: var(--color-neutral-bg);
+}
+
+.badge:not(button, .clickable, .filled):is(.success, .success-pulse) { background: var(--color-success-bg); }
+.badge:not(button, .clickable, .filled):is(.error, .error-pulse) { background: var(--color-error-bg); }
+.badge:not(button, .clickable, .filled):is(.warning, .critical) { background: var(--color-warning-bg); }
+.badge:not(button, .clickable, .filled).info { background: var(--color-info-bg); }
+
+/**
+ * @rule A pulse never fades a badge's words (2026-10-05)
+ * @description The pulse took the whole badge to half its opacity, its words with it: at
+ * the bottom of the beat they read 2.1 to 4.1:1, under the floor for every colour in every
+ * theme mode but one (computed from the tokens). What breathes now is the colour around the words — a tag's tint, a
+ * button's frame — and the words keep their contrast at every moment. The beat itself,
+ * its duration and its count, still come from the rule that starts it: the variants
+ * above, or .animate-pulse (components/animations.css), whose `pulse` fades the whole
+ * element and stays as it is for what carries no words.
+ */
+@keyframes badgeTintPulse {
+    50% { background-color: transparent; }
+}
+
+@keyframes badgeFramePulse {
+    50% { border-color: transparent; }
+}
+
+.badge.animate-pulse {
+    animation-name: badgeFramePulse;
+}
+
+.badge:not(button, .clickable, .filled):is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+    animation-name: badgeTintPulse;
+}
+
+/* A filled badge does not pulse: its words sit on the fill, and nothing around them can
+   breathe without taking them along — its frame is the fill's colour, so a beat there
+   would only repaint, unseen. */
+.badge.filled:is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+    animation: none;
+}
 
 /**
  * @section Aliases (Backward Compatibility)
  */
 
-/* log-badges are now mapped to subtle badges.
-   BACKLOG: they read under 4.5:1 in four theme modes, on the log's ground — see
-   audiogravity.ops/BACKLOG.md, « Les étiquettes du journal se lisent sous 4,5:1 ». */
+/* The log's level, as a word in its colour, with no tint. Under it lay the row's own
+   tint (system.css), and two layers of tint took the level — and the time beside it —
+   under 4.5:1 in four theme modes (measured as drawn, 2026-10-05). An error or a
+   warning row is now marked by a stripe; on the log's plain ground, every text token
+   clears the floor (js/colors.test.js). */
 .log-badge {
     padding: 1px 4px; border-radius: var(--radius-xs);
     font-size: var(--font-size-xxs); font-weight: 700; text-transform: uppercase;
 }
 
 .log-badge-info {
-    background: var(--color-info-bg);
     color: var(--color-info-text);
 }
 
 .log-badge-warning {
-    background: var(--color-warning-bg);
     color: var(--color-warning-text);
 }
 
 .log-badge-error {
-    background: var(--color-error-bg);
     color: var(--color-error-text);
 }
 
+/* The grey DEBUG was written in, a theme token since retired, was never a text colour:
+   1.5 to 3.6:1 on the log's ground. */
 .log-badge-debug {
-    background: var(--color-debug-bg);
-    color: var(--color-debug);
+    color: var(--text-secondary);
 }
 
 .health-badge {

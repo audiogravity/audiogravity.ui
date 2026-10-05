@@ -18,6 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { appSources, filesUnder } from './test-utils.js';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,45 +45,15 @@ const TEXT_TOKENS = [
 ];
 
 /**
- * List every .css file under a directory, recursively.
- * @param {string} dir
- * @returns {string[]} absolute paths
- */
-function listCss(dir) {
-    const out = [];
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) out.push(...listCss(full));
-        else if (entry.name.endsWith('.css')) out.push(full);
-    }
-    return out;
-}
-
-/**
- * List every source .js file under a directory, tests and stories excluded.
- * @param {string} dir
- * @returns {string[]} absolute paths
- */
-function listJs(dir) {
-    const out = [];
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) out.push(...listJs(full));
-        else if (/\.js$/.test(entry.name) && !/\.(test|stories)\.js$/.test(entry.name)) out.push(full);
-    }
-    return out;
-}
-
-/**
  * Everything outside the theme layer that may name a colour: the component
  * stylesheets, and the JavaScript that carries stylesheets of its own. Roughly a
  * fifth of this interface's colour declarations live in template literals inside
  * .js — a sweep of css/ alone reports a clean bill on a file it never opened.
  */
 const COMPONENTS = [
-    ...listCss(CSS_ROOT).filter(f => !path.relative(ROOT, f).startsWith(path.join('css', 'themes'))),
-    ...listJs(path.join(ROOT, 'js')),
-];
+    ...filesUnder('css', /\.css$/).filter(f => !f.startsWith(path.join('css', 'themes'))),
+    ...appSources().filter(f => f.endsWith('.js')),
+].map(f => path.join(ROOT, f));
 
 /**
  * Strip comments so prose naming a forbidden pattern does not read as one.
@@ -265,6 +236,31 @@ describe('colours — text on its own tint, as a tag sits on a card (règle 8)',
     }
 });
 
+describe('colours — a grey tag shows its box and reads, on every ground (règle 8)', () => {
+    // A tag without a colour of its own took --bg-tertiary, opaque: on the cards drawn in
+    // that same grey — the guided configuration's — it had no box at all (review,
+    // 2026-10-05). Its tint is translucent now, like the semantic ones, and has to show,
+    // and carry --text-secondary, on each of the three grounds.
+    for (const theme of THEMES) {
+        for (const mode of ['light', 'dark']) {
+            it(`${theme} ${mode}`, () => {
+                const tokens = resolve(theme, mode, '#[0-9a-fA-F]{6}|rgba?\\([^)]*\\)');
+                const tint = tokens['--color-neutral-bg'];
+                expect(tint, `${theme} ${mode}: --color-neutral-bg missing`).toBeDefined();
+                const failing = [];
+                for (const ground of ['--bg-primary', '--bg-secondary', '--bg-tertiary']) {
+                    const box = over(tint, tokens[ground]);
+                    const shows = contrast(box, tokens[ground]);
+                    const reads = contrast(tokens['--text-secondary'], box);
+                    if (shows < 1.1) failing.push(`${ground}: box ${shows.toFixed(2)}`);
+                    if (reads < 4.5) failing.push(`${ground}: text ${reads.toFixed(2)}:1`);
+                }
+                expect(failing, failing.join(' · ')).toEqual([]);
+            });
+        }
+    }
+});
+
 /** Fills that carry text, and the token that writes on each. */
 const ON_FILL = [
     ['--color-error', '--text-on-error'],
@@ -425,10 +421,17 @@ describe('colours — components read roles, never values (règle 6)', () => {
         // (2026-10-04): a stopped service's card at 70 % (2.8–3.5:1) — a service at
         // rest, not a disabled one —, the date under a config file (2.87:1) and the
         // PERSIST label of a user card (3.44:1). Dimming is for what cannot be used.
+        // Two more once tags became tints (computed from the tokens, 2026-10-05): the
+        // number of backups at 70 % (3.1–4.4:1 in every mode) and the card of a package
+        // that is not installed at 90 % — one INSTALL away — whose badge saying why it
+        // cannot be installed fell to 4.3:1.
         const tile = fs.readFileSync(path.join(CSS_ROOT, 'components', 'tile.css'), 'utf8');
         expect(tile).not.toMatch(/\.service-tile\.stopped\s*\{[^}]*opacity/);
         const config = fs.readFileSync(path.join(CSS_ROOT, 'config.css'), 'utf8');
         expect(config.match(/\.config-file-mtime\s*\{([^}]*)\}/)[1]).not.toMatch(/opacity/);
+        expect(strip(config)).not.toMatch(/\.config-backup-badge\s*\{[^}]*opacity/);
+        const software = fs.readFileSync(path.join(CSS_ROOT, 'audio-software.css'), 'utf8');
+        expect(software.match(/\.software-card\.not-installed\s*\{([^}]*)\}/)[1]).not.toMatch(/opacity/);
         const card = fs.readFileSync(path.join(ROOT, 'js', 'components', 'molecules', 'ag-user-card.js'), 'utf8');
         const persist = card.match(/<span[^>]*>PERSIST<\/span>/)[0];
         expect(persist).not.toMatch(/opacity/);

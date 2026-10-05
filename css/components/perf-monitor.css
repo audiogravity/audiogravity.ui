@@ -97,7 +97,9 @@
     background: var(--bg-tertiary);
     color: var(--text-secondary);
     margin: 2px;
-    border: 1px solid var(--border-color);
+
+    /* A tag: no frame (components/badge.css). */
+    border: 1px solid transparent;
 }
 
 @media (width <= 480px) {

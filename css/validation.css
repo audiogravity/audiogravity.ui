@@ -114,6 +114,14 @@
     color: var(--color-info-text);
 }
 
+/* The count in a header that is already a tint sits on the card's own ground: a second
+   tint on top took its number under 4.5:1 in six cases out of twelve, down to 3.9:1
+   (computed from the tokens, 2026-10-05) — the trap the log's level tags fell into. */
+.validation-header.error .badge.error,
+.validation-header.warning .badge.warning {
+    background: var(--bg-secondary);
+}
+
 .validation-header .icon-cross,
 .validation-header .icon-warning,
 .validation-header [class^="icon-"] {
@@ -218,24 +226,24 @@
     font-size: var(--font-size-sm);
     font-weight: 600;
     white-space: nowrap;
+
+    /* A tag: no frame (components/badge.css). */
+    border: 1px solid transparent;
 }
 
 .validation-badge.success {
     background: var(--color-success-bg);
     color: var(--color-success-text);
-    border: 1px solid var(--validation-success-border);
 }
 
 .validation-badge.warning {
     background: var(--color-warning-bg);
     color: var(--color-warning-text);
-    border: 1px solid var(--validation-warning-border);
 }
 
 .validation-badge.error {
     background: var(--color-error-bg);
     color: var(--color-error-text);
-    border: 1px solid var(--validation-error-border);
 }
 
 .validation-badge [class^="icon-"] {

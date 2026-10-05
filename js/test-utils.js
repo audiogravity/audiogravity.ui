@@ -3,7 +3,7 @@
  * @description Helpers shared by the unit tests. Not loaded by the application.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { vi } from 'vitest';
@@ -66,8 +66,9 @@ export function cssRuleBody(css, selector) {
 }
 
 /**
- * The body of the first block — `@media`, `@container` — whose prelude matches, braces
- * balanced: the rules a screen of that size gets, for cssRuleBody to read.
+ * The body of the first block — `@media`, `@container`, `@keyframes` — whose prelude
+ * matches, braces balanced: the rules a screen of that size gets, for cssRuleBody to read,
+ * or the steps of an animation.
  *
  * @param {string} css - A stylesheet's text (see readStylesheet).
  * @param {RegExp} prelude - Pattern for the block's prelude, e.g.
@@ -114,18 +115,40 @@ export function flat(node) {
 }
 
 /**
+ * Every file under a directory of the repository whose name matches, recursively, with
+ * node_modules left out: the one walker the guards share.
+ *
+ * @param {string} dir - Directory under the repository root, e.g. 'css'.
+ * @param {RegExp} pattern - Tested on the file name, e.g. `/\.css$/`.
+ * @returns {string[]} Paths relative to the repository root.
+ */
+export function filesUnder(dir, pattern) {
+    return readdirSync(path.join(process.cwd(), dir), { withFileTypes: true }).flatMap((entry) => {
+        const rel = path.join(dir, entry.name);
+        if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : filesUnder(rel, pattern);
+        return pattern.test(entry.name) ? [rel] : [];
+    });
+}
+
+/**
  * The application's own sources, for the guards that read markup: every .js under js/
  * except the tests and the stories, and the two HTML pages.
  *
  * @returns {string[]} Paths relative to the repository root.
  */
 export function appSources() {
-    const walk = (dir) => readdirSync(path.join(process.cwd(), dir)).flatMap((name) => {
-        const rel = path.join(dir, name);
-        if (statSync(path.join(process.cwd(), rel)).isDirectory()) return walk(rel);
-        return /\.js$/.test(name) && !/\.(test|stories)\.js$/.test(name) ? [rel] : [];
-    });
-    return [...walk('js'), 'index.html', 'login.html'];
+    return [...filesUnder('js', /\.js$/).filter((f) => !/\.(test|stories)\.js$/.test(f)), 'index.html', 'login.html'];
+}
+
+/**
+ * The selectors of a selector list, split on its top-level commas only — inside `:not()`
+ * or `:is()` a comma separates arguments, not selectors — trimmed, whitespace collapsed.
+ *
+ * @param {string} list - A rule's selector list, as written before its `{`.
+ * @returns {string[]}
+ */
+export function selectorList(list) {
+    return list.split(/,(?![^(]*\))/).map((s) => s.trim().replace(/\s+/g, ' '));
 }
 
 /**

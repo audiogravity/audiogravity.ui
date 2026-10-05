@@ -81,9 +81,12 @@
     border-left-color: var(--color-success);
 }
 
+/* Not faded: a package that is not installed is one INSTALL away, nothing on its card is
+   out of use. At 90 %, the badge saying why a package cannot be installed fell under
+   4.5:1 in four theme modes, once tags became tints (computed from the tokens,
+   2026-10-05). The grey edge and NOT INSTALLED say what the fade said. */
 .software-card.not-installed {
     border-left-color: var(--border-color);
-    opacity: 0.9;
 }
 
 .software-card.installing,
@@ -320,10 +323,11 @@
     color: var(--text-tertiary);
 }
 
-/* Restart required — clickable badge button */
+/* Restart required — clickable badge button. It keeps the frame of its variant: a frame
+   says a badge can be pressed (components/badge.css), and this one was the only button
+   among the badges drawn without one. */
 .restart-badge {
     cursor: pointer;
-    border: none;
     font-family: inherit;
     display: inline-flex;
     align-items: center;

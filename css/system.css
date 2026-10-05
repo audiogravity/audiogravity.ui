@@ -559,12 +559,15 @@
     border-bottom: none;
 }
 
+/* An error or a warning row is marked by a stripe, not a tint: on the tint, the time and
+   the level fell under 4.5:1 in every theme, and halving it was not enough (measured,
+   2026-10-05). The stripe is drawn inside the row, so rows of every level line up. */
 .log-entry.log-level-error {
-    background: var(--color-error-bg);
+    box-shadow: inset 3px 0 0 var(--color-error);
 }
 
 .log-entry.log-level-warning {
-    background: var(--color-warning-bg);
+    box-shadow: inset 3px 0 0 var(--color-warning);
 }
 
 .log-time {

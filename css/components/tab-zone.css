@@ -35,13 +35,15 @@
     line-height: 1.2;
 }
 
+/* Shape only: a badge in a title keeps the look of its kind (components/badge.css), a
+   tag's tint or a button's frame. Painted here in the info colour, every one of them —
+   LIVE beside NEW USER, REFRESH beside CHECK UPDATES — looked the same, so nothing said
+   which could be pressed; and --bg-primary on --color-info read 3.5:1 in Slate light and
+   2.5:1 in Gravity light (computed from the tokens, 2026-10-05). */
 .tab-zone .tab-title-container .badge {
     margin-left: var(--spacing-sm);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background: var(--color-info);
-    border-color: var(--color-info);
-    color: var(--bg-primary);
     border-radius: var(--radius-md);
     padding: 2px 10px;
     font-weight: 600;

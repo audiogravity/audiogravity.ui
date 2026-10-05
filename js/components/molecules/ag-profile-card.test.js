@@ -56,11 +56,11 @@ describe('the badges beside ACTIVATE', () => {
     }
 
     it('says UNAVAILABLE as a tint', () => {
-        expect(renderTile({ is_available: false })).toContain('<span class="badge error subtle">UNAVAILABLE</span>');
+        expect(renderTile({ is_available: false })).toContain('<span class="badge error">UNAVAILABLE</span>');
     });
 
     it('counts the failed services as a tint', () => {
-        expect(renderTile({}, { services_failed: 2 })).toContain('<span class="badge error subtle">2 failed</span>');
+        expect(renderTile({}, { services_failed: 2 })).toContain('<span class="badge error">2 failed</span>');
     });
 
     it('shows neither for an available profile with nothing failed', () => {

@@ -430,11 +430,11 @@ export class AgPackageCard extends LitElement {
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCpu}</svg>
                             <span>${this.pkg.arch_support ? this.pkg.arch_support.join(', ') : 'Unknown'}</span>
                         </span>
-                        ${this.pkg.is_test_package ? html`<span class="badge warning subtle">Test Package</span>` : ''}
+                        ${this.pkg.is_test_package ? html`<span class="badge warning">Test Package</span>` : ''}
                         ${!this.pkg.is_supported && !this._showsAvailabilityBanner()
-                            ? html`<span class="badge error subtle">Not Supported</span>` : ''}
+                            ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this._needsConfiguring() ? html`
-                            <span class="badge warning subtle">Not configured</span>` : ''}
+                            <span class="badge warning">Not configured</span>` : ''}
                         ${this._needsWebPassword() ? html`
                             <button class="badge warning web-password-badge" @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg> Set web password

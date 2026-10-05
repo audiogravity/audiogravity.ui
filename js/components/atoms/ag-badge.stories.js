@@ -43,7 +43,7 @@ SuccessPulsing.args = {
     type: 'success',
     label: 'LIVE',
     pill: true,
-    filled: true,
+    filled: false,
     pulse: true,
     clickable: false
 };

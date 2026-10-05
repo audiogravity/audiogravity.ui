@@ -65,16 +65,18 @@ ag-mobile-pipeline .amp-streams { display: flex; flex-direction: column; gap: 10
 ag-mobile-pipeline .amp-np-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; }
 ag-mobile-pipeline .amp-source-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm); margin-bottom: 12px; }
 /* BACKLOG: still a pill beside the origin badge, which minimal now draws at 2px — see BACKLOG.md. */
-ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
+/* A tag: a tint, no frame (css/components/badge.css) — the border stays, transparent, for the box. */
+ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--radius-full); padding: 3px 10px; border: 1px solid transparent; font-size: var(--font-size-xxs); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
 /* The origin badge is a shared atom sized for the players (--font-size-xs).
    Here it sits against the transport pill, which is one step down, and two pills
    of different sizes on one row read as an accident. Same closed scale, one step
    — not a value of its own (UI rule 6). */
 ag-mobile-pipeline .amp-source-row .ag-source-badge { font-size: var(--font-size-xxs); }
-ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--color-info-text); }
-ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--color-warning-text); }
-ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); border: 1px solid var(--accent-primary); color: var(--accent-primary); }
-ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success-text); }
+ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); color: var(--color-info-text); }
+ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); color: var(--color-warning-text); }
+/* BACKLOG: MPD writes in the accent, under 4.5:1 in Slate and Gravity light — see BACKLOG.md. */
+ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary); }
+ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); color: var(--color-success-text); }
 /* The pulse animates the dot's COLOUR, not its opacity or its scale — deliberately.
  *
  * opacity and transform are the two properties a browser animates without repainting,

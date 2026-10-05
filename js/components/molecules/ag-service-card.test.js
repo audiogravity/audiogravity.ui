@@ -136,7 +136,7 @@ describe('a critical service', () => {
         // Outlined, it had the shape of START, RESTART and the ENABLED toggle beside it.
         const el = card(ALL_MEASURED);
         el.service = { ...el.service, critical: true };
-        expect(flat(el.render())).toContain('<span class="badge warning subtle">CRITICAL</span>');
+        expect(flat(el.render())).toContain('<span class="badge warning">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {
@@ -149,13 +149,13 @@ describe('the badges beside START and RESTART', () => {
     it('says FAILED as a tint', () => {
         const el = card(ALL_MEASURED);
         el.service = { ...el.service, state: 'failed' };
-        expect(flat(el.render())).toContain('<span class="badge error subtle">FAILED</span>');
+        expect(flat(el.render())).toContain('<span class="badge error">FAILED</span>');
     });
 
     it('says NOT INSTALLED as a tint', () => {
         const el = card(ALL_MEASURED);
         el.service = { ...el.service, is_installed: false };
-        expect(flat(el.render())).toContain('<span class="badge error subtle">NOT INSTALLED</span>');
+        expect(flat(el.render())).toContain('<span class="badge error">NOT INSTALLED</span>');
     });
 });
 
