@@ -27,7 +27,7 @@ function renderCard(overrides = {}) {
 
 describe('critical service', () => {
     it('is tagged CRITICAL with a tint, the same tag as on the Services and Config cards', () => {
-        expect(renderCard({ critical: true })).toContain('<span class="badge warning subtle">CRITICAL</span>');
+        expect(renderCard({ critical: true })).toContain('<span class="badge warning">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {

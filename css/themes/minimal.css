@@ -176,9 +176,8 @@
     /* Misc */
     --bg-hover: var(--bg-tertiary);
 
-    /* Debug/Log Colors */
-    --color-debug: #888888;
-    --color-debug-bg: rgb(136 136 136 / 0.15);
+    /* Neutral tint: a grey tag's ground, translucent so it shows on --bg-tertiary too */
+    --color-neutral-bg: rgb(136 136 136 / 0.15);
 
     /* Spinner */
     --spinner-track: rgb(255 255 255 / 0.3);
@@ -353,9 +352,8 @@
     /* Misc — Dark Mode */
     --bg-hover: var(--bg-tertiary);
 
-    /* Debug/Log Colors — Dark Mode */
-    --color-debug: #777777;
-    --color-debug-bg: rgb(119 119 119 / 0.2);
+    /* Neutral tint — Dark Mode */
+    --color-neutral-bg: rgb(119 119 119 / 0.2);
 
     /* Spinner — Dark Mode */
     --spinner-track: rgb(255 255 255 / 0.3);

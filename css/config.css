@@ -70,10 +70,9 @@
     flex-shrink: 0;
 }
 
-.config-backup-badge {
-    /* Size and padding come from .badge; the 1px 5px declared here never applied. */
-    opacity: 0.7;
-}
+/* .config-backup-badge takes everything from .badge. It was faded to 70 %, and the
+   number of backups — read, not decoration — fell under 4.5:1 in every theme mode on its
+   neutral tint, in four without it (computed from the tokens, 2026-10-05). */
 
 .tile-action-btn--icon {
     padding: 0 var(--spacing-xs);

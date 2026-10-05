@@ -232,7 +232,11 @@
     border-radius: var(--radius-xs);
     background: var(--color-warning-bg);
     color: var(--color-warning-text);
-    border: 1px solid var(--color-warning);
+
+    /* A tag, not a button: no frame, and the tint blinks rather than the word
+       (components/badge.css, both rules). The border stays, transparent, so the
+       header keeps its height. */
+    border: 1px solid transparent;
     font-size: var(--font-size-xxs);
     font-weight: 700;
 
@@ -241,12 +245,7 @@
     font-family: var(--font-family);
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    animation: blinkWarning 1s ease-in-out 3;
-}
-
-@keyframes blinkWarning {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    animation: badgeTintPulse 1s ease-in-out 3;
 }
 
 /* Stagger indices for animations */
@@ -566,37 +565,37 @@ body.no-animations .animate-stagger {
     min-width: 85px;
     text-align: center;
     box-sizing: border-box;
+
+    /* The button's box, not its frame: beside START, a framed state read as a second
+       button. A frame says a badge can be pressed (components/badge.css); the border
+       stays, transparent, so the pair keeps one height. */
+    border: 1px solid transparent;
 }
 
 .service-status-badge.active {
     background: var(--color-success-bg);
     color: var(--color-success-text);
-    border: 1px solid var(--color-success);
 }
 
+/* The neutral tint, not --chart-bg: at 3 to 5 %, that one left no box once the frame
+   went, and the word floated beside START. On the tint, --text-secondary reads; the
+   tertiary grey would not. */
 .service-status-badge.inactive,
 .service-status-badge.unknown {
-    background: var(--chart-bg);
-    color: var(--text-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--color-neutral-bg);
+    color: var(--text-secondary);
 }
 
 .service-status-badge.failed {
     background: var(--color-error-bg);
     color: var(--color-error-text);
-    border: 1px solid var(--color-error);
 }
 
+/* The tint blinks, not the word (components/badge.css). */
 .service-status-badge.loading {
     background: var(--color-info-bg);
     color: var(--color-info-text);
-    border: 1px solid var(--color-info);
-    animation: blinkInfo 1.5s infinite;
-}
-
-@keyframes blinkInfo {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    animation: badgeTintPulse 1.5s infinite;
 }
 
 /* =====================
@@ -711,7 +710,9 @@ body.no-animations .animate-stagger {
     text-transform: uppercase;
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    border: 1px solid var(--border-color);
+
+    /* A tag: no frame (components/badge.css). */
+    border: 1px solid transparent;
 }
 
 .test-history-clear {
@@ -786,24 +787,24 @@ body.no-animations .animate-stagger {
     text-transform: uppercase;
     letter-spacing: 0.3px;
     white-space: nowrap;
+
+    /* A tag: no frame (components/badge.css). */
+    border: 1px solid transparent;
 }
 
 .rt-badge.rt {
     background: var(--color-success-bg);
     color: var(--color-success-text);
-    border: 1px solid var(--color-success);
 }
 
 .rt-badge.non-rt {
     background: var(--color-error-bg);
     color: var(--color-error-text);
-    border: 1px solid var(--color-error);
 }
 
 .rt-badge.stopped {
     background: var(--bg-tertiary);
     color: var(--text-tertiary);
-    border: 1px solid var(--border-color);
 }
 
 .rt-monitor-hint {

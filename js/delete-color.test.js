@@ -1,6 +1,6 @@
 /**
- * Guards the colour of what destroys — one colour, orange (user decision, 2026-10-05) —
- * and the tag that must not pass for a button.
+ * Guards the colour of what destroys — one colour, orange (user decision, 2026-10-05).
+ * The badges that must not pass for buttons are guarded in js/badge-frame.test.js.
  *
  * Deleting the licence was red, deleting a user, a package or an override orange; the
  * user chose orange for all of them. Both sides are read here: the screens' code, where
@@ -103,13 +103,5 @@ describe('the controls that delete', () => {
         // "Deleting…" filled orange as if it could still be pressed.
         expect(cssRuleBody(readStylesheet('css', 'components', 'button.css'), '.action-btn.warning:hover'))
             .toBeNull();
-    });
-});
-
-describe('a tinted badge', () => {
-    it('has no frame, so it does not pass for the buttons beside it', () => {
-        // Transparent rather than none: the badge keeps its height, and its row stays put.
-        expect(cssRuleBody(readStylesheet('css', 'components', 'badge.css'), '.badge.subtle'))
-            .toMatch(/border-color:\s*transparent/);
     });
 });

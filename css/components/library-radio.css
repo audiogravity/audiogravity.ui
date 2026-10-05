@@ -224,6 +224,15 @@
     .lib-radio-card:hover { background: var(--bg-secondary); }
 }
 
+/* A station's codec, on the card: the connector badge's opaque --bg-tertiary is made for
+   the mini player's row, and on this card's ground it barely showed once tags lost their
+   frame (1.04:1 in Slate light, measured as drawn, 2026-10-05). The translucent neutral
+   tint shows on every ground; on it the secondary grey reads, the tertiary would not. */
+.lib-radio-card ag-connector-badge {
+    color: var(--text-secondary);
+    background: var(--color-neutral-bg);
+}
+
 .lib-radio-col {
     display: flex;
     flex-direction: column;

@@ -96,8 +96,9 @@
 
     /* Misc */
     --bg-hover: #f1f5f9;
-    --color-debug: #64748b;
-    --color-debug-bg: rgb(100 116 139 / 0.1);
+
+    /* Neutral tint: a grey tag's ground, translucent so it shows on --bg-tertiary too */
+    --color-neutral-bg: rgb(100 116 139 / 0.1);
     --spinner-track: rgb(0 0 0 / 0.1);
 
     /* Core Grouping */
@@ -212,8 +213,7 @@
     --syntax-null: #94a3b8;
     --syntax-selection: rgb(0 242 254 / 0.2);
     --bg-hover: #1a1d28;
-    --color-debug: #475569;
-    --color-debug-bg: rgb(71 85 105 / 0.2);
+    --color-neutral-bg: rgb(71 85 105 / 0.2);
     --spinner-track: rgb(255 255 255 / 0.1);
 
     /* Component Speficic: Audio Pipeline (Dark Mode) */

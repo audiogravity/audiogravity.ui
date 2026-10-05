@@ -16,25 +16,18 @@
  * diagram's legibility depend on a decision taken for tables.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
-import { resolve, join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { filesUnder } from './test-utils.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const read = rel => readFileSync(join(ROOT, rel), 'utf8');
 
-/** @param {string} dir @param {RegExp} ext @returns {string[]} repo-relative paths */
-function walk(dir, ext) {
-    return readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap(e => {
-        const rel = `${dir}/${e.name}`;
-        if (e.isDirectory()) return e.name === 'node_modules' ? [] : walk(rel, ext);
-        return ext.test(e.name) && !/\.test\.js$/.test(e.name) ? [rel] : [];
-    });
-}
-
 /** The two atoms that draw the pipeline, whose text lives inside an SVG viewBox. */
 const SVG_ATOMS = /ag-pipeline-(node|link)\.js$/;
 
-const SOURCES = [...walk('css', /\.css$/), ...walk('js', /\.js$/)].filter(f => !SVG_ATOMS.test(f));
+const SOURCES = [...filesUnder('css', /\.css$/), ...filesUnder('js', /\.js$/)]
+    .filter(f => !/\.test\.js$/.test(f) && !SVG_ATOMS.test(f));
 
 const THEMES = read('css/themes.css');
 

@@ -210,7 +210,7 @@ export class AgProfileCard extends LitElement {
     _renderFailedBadge() {
         const failed = this.profileMetrics?.services_failed;
         if (!failed) return html``;
-        return html`<span class="badge error subtle">${failed} failed</span>`;
+        return html`<span class="badge error">${failed} failed</span>`;
     }
 
     render() {
@@ -257,7 +257,7 @@ export class AgProfileCard extends LitElement {
                         </button>
                         ` : nothing}
                     </div>
-                    ${!isAvailable ? html`<span class="badge error subtle">UNAVAILABLE</span>` : ''}
+                    ${!isAvailable ? html`<span class="badge error">UNAVAILABLE</span>` : ''}
                     ${this._renderFailedBadge()}
                     ${this._renderCriticalServicesList()}
                 </div>

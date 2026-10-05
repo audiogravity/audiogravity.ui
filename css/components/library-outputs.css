@@ -88,22 +88,25 @@
     font-size: var(--font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.04em;
-    border: 1px solid;
+
+    /* A tag: a tint, no frame (components/badge.css). The card around it is what is
+       pressed; framed, ACTIVE and READY read as buttons of their own. */
+    border: 1px solid transparent;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
 }
 
 .lib-out-badge.ok {
-    border-color: var(--color-success);
+    background: var(--color-success-bg);
     color: var(--color-success-text);
 }
 
 .lib-out-badge.neutral {
-    border-color: var(--text-primary);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
 }
 
 .lib-out-badge.line {
-    border-color: var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-secondary);
 }

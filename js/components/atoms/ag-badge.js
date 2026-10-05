@@ -14,8 +14,10 @@ import { classMap } from 'lit/directives/class-map.js';
  * @attr {string} type - Variant type: 'info', 'success', 'warning', 'error', 'neutral', 'critical' (default: 'info')
  * @attr {string} label - Text to display inside the badge
  * @attr {boolean} pill - If true, displays as a fully rounded pill
- * @attr {boolean} filled - If true, uses solid background instead of outline
- * @attr {boolean} pulse - If true, adds a pulse animation
+ * @attr {boolean} filled - If true, uses a solid background instead of the tint of a tag
+ *   (or the outline of a clickable badge)
+ * @attr {boolean} pulse - If true, the tint (or the outline) breathes; the label never
+ *   fades. No effect on a filled badge, whose label sits on the fill.
  * @attr {boolean} clickable - If true, adds hover effects and cursor pointer
  *
  * @dependency css/components/badge.css - Classes .badge, .info, .success, etc.
@@ -23,7 +25,7 @@ import { classMap } from 'lit/directives/class-map.js';
  *
  * @example
  * <ag-badge type="success" label="Active"></ag-badge>
- * <ag-badge type="error" label="Failed" filled pulse></ag-badge>
+ * <ag-badge type="info" label="LIVE" pulse></ag-badge>
  */
 export class AgBadge extends LitElement {
     static properties = {
