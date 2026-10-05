@@ -49,6 +49,11 @@ import { gestures } from './gestures.js';
 // =====================
 import './core/app-context-provider.js';
 
+// The audio pipeline the page knows, held from the start: the core hands the last one to a
+// screen joining its stream, and the Pipeline tab, whose components load on demand, opened on
+// a reading of the core instead — a build of the pipeline on the box (core/pipeline-state.js).
+import './core/pipeline-state.js';
+
 // Lit Web Components (Phase 3)
 // Atoms
 import './components/atoms/ag-stat-box.js';

@@ -22,7 +22,8 @@
  * integrity hash. They are npm dependencies now, and the second half of this file keeps
  * it that way — no tag, element, precached URL or CSP source pointing elsewhere — and
  * holds the trap that move came with: bundled naively, the three would add some 200 KB
- * compressed to every start, for screens most sessions never open.
+ * compressed to every start, for screens most sessions never open. The last case holds
+ * the reverse: a module that must be on the start, and was not.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -253,5 +254,17 @@ describe('the libraries stay off the startup', () => {
         for (const [file, pattern] of Object.entries(sources)) {
             expect(code(read(file)), file).toMatch(pattern);
         }
+    });
+});
+
+describe('the pipeline is held from the start', () => {
+    // The core hands the last audio pipeline to a screen joining its stream, once. Its
+    // holder was imported only by the Pipeline tab's components, which load on demand: the
+    // pipeline went by unheard, and the tab opened on a reading of the core — a build of
+    // the pipeline on the box (measured in Chromium, 2026-10-05).
+    it('js/main.js reaches js/core/pipeline-state.js statically', () => {
+        const { modules } = startupGraph(join('js', 'main.js'));
+        expect(modules.size, 'the import graph was not followed').toBeGreaterThan(50);
+        expect(modules.has(join('js', 'core', 'pipeline-state.js'))).toBe(true);
     });
 });
