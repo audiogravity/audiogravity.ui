@@ -1,5 +1,6 @@
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
+import { currentPipeline, isNewerPipeline } from '../../core/pipeline-state.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { originBadge, originBadgeName } from '../library-constants.js';
 import { iconSmartphone, iconServer, iconCpu, iconAudioWaveform, iconAudioLines, iconVolume, iconMusicNote as iconFileMusic, iconDatabase, iconConnection } from '../../ag-icons.js';
@@ -17,11 +18,30 @@ const PLAYER_SOURCE_ALIAS = {
 };
 
 /**
- * Mobile-optimized read-only view of the active audio pipeline.
+ * Where each service of the pipeline is set to play: changes when an output is switched,
+ * from this list, from the diagram, from another device or another app.
+ *
+ * @param {{nodes?: object[]}|null} pipeline - A pipeline from the core.
+ * @returns {string} Each device's services and their output, in a stable order.
+ */
+export function outputsSignature(pipeline) {
+    const parts = [];
+    for (const node of pipeline?.nodes ?? []) {
+        for (const svc of node.internal_services ?? []) {
+            parts.push(`${node.id}/${svc.id}=${svc.current_output ?? ''}`);
+        }
+    }
+    return parts.sort().join('|');
+}
+
+/**
+ * Mobile-optimized read-only view of the active audio pipeline — and, on a computer, the
+ * column beside the diagram.
  * Shows one "now playing" card per active stream + the full signal chain below.
- * The state is read once from /audio_pipeline/current, then kept up to date by the
- * 'audio-pipeline-update' SSE event — the core publishes it only when the pipeline
- * actually changes, so the tab costs nothing while it sits open.
+ * The state comes from pipeline-state.js — the newest pipeline the page knows, read from
+ * /audio_pipeline/current only when it knows none — then from the 'audio-pipeline-update'
+ * SSE event, which the core publishes at every change, and hands a screen joining the
+ * stream as its first event.
  */
 export class AgMobilePipeline extends LitElement {
     static properties = {
@@ -148,16 +168,15 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         this._loading = true;
         this._steering = null;
         this._switching = false;
-        this._steeringInterval = null;
+        /** Where the services were set to play in the last pipeline (outputsSignature). */
+        this._outputs = null;
         /** @type {Object<string, {origin: string, name: string}>} source id → badge input */
         this._origins = {};
         this._unsubscribeState = null;
 
         // No throttle here, unlike ag-audio-pipeline: that one guards a heavy SVG
-        // redraw, this one renders a short list. And the core already publishes only
-        // when the pipeline actually CHANGES — it hashes the payload and skips
-        // identical ones — so there is nothing to debounce on this path.
-        this._onPipelineUpdate = (e) => { this._pipeline = e.detail; };
+        // redraw, this one renders a short list.
+        this._onPipelineUpdate = (e) => this._takePipeline(e.detail);
     }
 
     connectedCallback() {
@@ -171,12 +190,13 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         // returns ~15 KB, so an open pipeline tab cost roughly seven minutes of CPU per
         // hour — on the machine that plays the music (CLAUDE.md rule 12).
         //
-        // The core already computes this and publishes it on the dashboard channel, but
-        // only WHEN IT CHANGES, with a 30 s safety refresh. Polling made it redo the
-        // whole computation twelve times a minute whether anything had changed or not.
+        // The core already computes this and publishes it on the dashboard channel, at
+        // every change — and hands the last one to a screen joining the stream. Polling
+        // made it redo the whole computation twelve times a minute whether anything had
+        // changed or not.
         window.addEventListener('audio-pipeline-update', this._onPipelineUpdate);
         this._fetch();          // initial state, once
-        this._fetchSteering();
+        this._fetchSteering();  // then again when the pipeline's outputs change
 
         // Where the audio COMES FROM is not in the pipeline payload: its
         // now-playing block carries the track and the format, and the card could
@@ -189,18 +209,11 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         // holds this stream open, and library-store multiplexes subscribers onto
         // the one connection (CLAUDE.md rule 12).
         this._unsubscribeState = subscribePlayerState(s => this._onPlayerState(s));
-
-        // Steering has no event on the dashboard channel (it publishes on its own
-        // channel, which the UI does not subscribe to) and costs ~5 ms, so it stays
-        // polled — at a third of the previous rate, since it only changes on a user
-        // action.
-        this._steeringInterval = setInterval(() => this._fetchSteering(), 15000);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('audio-pipeline-update', this._onPipelineUpdate);
-        clearInterval(this._steeringInterval);
         if (this._unsubscribeState) {
             this._unsubscribeState();
             this._unsubscribeState = null;
@@ -230,9 +243,32 @@ ag-mobile-pipeline .amp-output-pill.active .amp-pill-dot { background: var(--col
         if (!same) this._origins = next;
     }
 
+    /**
+     * Show a pipeline, unless it is older than the one shown (pipeline-state.js), and
+     * read the steering again when it moved a service to another output.
+     *
+     * Steering has no event of its own on the dashboard channel, and was polled every
+     * 15 s — on a computer too once this list sat beside the diagram, 240 requests an
+     * hour to the box for an open tab, hidden or not. But a switch of output changes
+     * the pipeline, which the core then publishes: whoever made it — this list, the
+     * diagram, another device — the pills follow at once, and nothing is asked while
+     * nothing changes.
+     *
+     * @param {object|null} pipeline - A pipeline from the core.
+     */
+    _takePipeline(pipeline) {
+        if (!isNewerPipeline(pipeline, this._pipeline)) return;
+        this._pipeline = pipeline;
+        const outputs = outputsSignature(pipeline);
+        if (this._outputs !== null && outputs !== this._outputs) this._fetchSteering();
+        this._outputs = outputs;
+    }
+
     async _fetch() {
         try {
-            this._pipeline = await apiGet('/audio_pipeline/current');
+            // The newest pipeline the page knows, read from the core only when it knows
+            // none — one reading for this list and the diagram beside it.
+            this._takePipeline(await currentPipeline());
         } catch (e) {
             // silently ignore
         } finally {

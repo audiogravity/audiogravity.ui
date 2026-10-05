@@ -102,7 +102,7 @@ describe('opening the modal', () => {
         // holds the previous operation on this package — fetching here would render
         // that old log as if it belonged to the operation just started.
         expect(apiGet).not.toHaveBeenCalled();
-        expect(page._logCursor).toEqual({ packageId: 'airplay', lastSeq: 0 });
+        expect(page._logCursor).toEqual({ packageId: 'airplay', lastSeq: 0, simulated: false });
     });
 });
 

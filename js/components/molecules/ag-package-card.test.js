@@ -278,6 +278,51 @@ describe('ag-package-card — actions', () => {
     });
 });
 
+describe('ag-package-card — UPDATE only when it would do something', () => {
+    // It showed on every installed package — 5.5.2 installed, 5.5.2 available — and a
+    // press only answered "Already Up-to-Date" (user's choice, 2026-10-04).
+    let el;
+
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { el?.remove(); });
+
+    const APT = { ...basePkg, id: 'shairport-sync', label: 'Shairport Sync', installer_type: 'apt_simple', status: 'installed' };
+    const labels = () => [...el.querySelectorAll('.software-actions button')].map(b => b.textContent.trim()).join(' ');
+
+    it('is not offered on a package already at the version available', async () => {
+        el = await mount({ ...APT, installed_version: '5.5.2', available_version: '5.5.2' });
+        expect(labels()).not.toContain('UPDATE');
+        expect(labels()).toContain('UNINSTALL');
+    });
+
+    it('is offered when a newer version exists', async () => {
+        el = await mount({ ...APT, installed_version: '5.5.2', available_version: '5.6.0' });
+        expect(labels()).toContain('UPDATE');
+    });
+
+    it('is offered for the older version the core proposes, to bring a held package back in line', async () => {
+        el = await mount({ ...APT, installed_version: '5.1', available_version: '4.9', available_is_older: true });
+        expect(labels()).toContain('UPDATE');
+    });
+
+    it('waits for a check when the version available is not known yet', async () => {
+        el = await mount({ ...APT, installed_version: '5.5.2', available_version: null });
+        expect(labels()).not.toContain('UPDATE');
+        expect(el.querySelector('.software-version .btn-link').textContent).toContain('Check updates');
+    });
+
+    it('stays for a vendor that publishes no version — its installer is run again', async () => {
+        // Roon: nothing to compare against, and no other way to move to its latest build.
+        el = await mount({ ...basePkg, status: 'installed', installed_version: '2.0.12', available_version: null });
+        expect(labels()).toContain('UPDATE');
+    });
+
+    it('leaves a required package that is up to date with no action at all', async () => {
+        el = await mount({ ...APT, required: true, installed_version: '0.24.5', available_version: '0.24.5' });
+        expect(labels()).toBe('');
+    });
+});
+
 /**
  * "Installed" is not "configured".
  *

@@ -13,6 +13,7 @@
  *    unavailable and ignores a press, and it stays a focusable button
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 
 vi.mock('../../common.js', () => ({
     apiGet: vi.fn(),
@@ -64,6 +65,27 @@ describe('the actions of the Audio Software title', () => {
         const actions = [...page.querySelectorAll('.tab-title-container .badge')];
         expect(actions.map((a) => a.localName)).toEqual(['button', 'button', 'button', 'button']);
         expect(actions.at(-1).textContent.trim()).toBe('UPDATE ALL');
+    });
+
+    it('say what they do in a word, the icons included', async () => {
+        // Two black squares side by side said nothing of what they do (2026-10-04).
+        const page = await mountPage([MPD]);
+        const words = [...page.querySelectorAll('.tab-title-container .badge')].map((a) => a.textContent.trim());
+        expect(words).toEqual(['REFRESH', 'DOWNLOAD', 'CHECK UPDATES', 'UPDATE ALL']);
+        expect(page.querySelector('button[aria-label="Download resolved configuration"]')).not.toBeNull();
+    });
+
+    it('fit on one line on a 375px phone: no margin of their own once the row wraps', () => {
+        // Each carried 6px of margin on top of the row's 6px gap: 327px for the 319 a
+        // 375px phone has, and CHECK UPDATES went to a line of its own (measured).
+        const phone = mediaBlock(readStylesheet('css', 'components', 'tab-zone.css'),
+            /@media\s*\(width\s*<=\s*768px\)/);
+        expect(cssRuleBody(phone, '.tab-zone .tab-title-container .badge')).toMatch(/margin-left:\s*0/);
+    });
+
+    it('offer the admin a SIMULATE switch, not a "dry-run" one', async () => {
+        const page = await mountPage([]);
+        expect(page.querySelector('.dry-run-label').textContent.trim()).toBe('SIMULATE');
     });
 
     it('hold the refresh while a refresh runs, and only then, without disabling it', async () => {

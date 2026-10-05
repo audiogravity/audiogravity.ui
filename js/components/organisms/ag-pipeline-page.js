@@ -6,12 +6,12 @@ import { isGuest } from '../../auth.js';
 import { validateTopologyConfig, showValidationModal } from '../../validation.js';
 import '../atoms/ag-badge.js';
 import './ag-history-panel.js';
-// ag-mobile-pipeline est chargé dynamiquement via lazyLoadTabContent (common.js)
+// ag-audio-pipeline and ag-mobile-pipeline load with the tab (lazyModules, common.js).
+// css/pipeline.css lays out the right-hand column of the computer view.
 
 export class AgPipelinePage extends LitElement {
     static properties = {
         _isActive: { type: Boolean, state: true },
-        _eventsCollapsed: { type: Boolean, state: true },
         _isMobile: { type: Boolean, state: true },
     };
 
@@ -26,7 +26,6 @@ export class AgPipelinePage extends LitElement {
     constructor() {
         super();
         this._isActive = false;
-        this._eventsCollapsed = false;
         this._isMobile = window.matchMedia('(max-width: 768px)').matches;
         this._handleTabChange = this._handleTabChange.bind(this);
         this._handleResize = () => {
@@ -157,8 +156,6 @@ export class AgPipelinePage extends LitElement {
     render() {
         if (!this._isActive) return html``;
 
-        const gridStyle = this._eventsCollapsed ? 'grid-template-columns: 1fr 32px' : '';
-
         if (this._isMobile) {
             // The chain drawn below is only as good as the description of your
             // hi-fi it is drawn from, and that description had no way in from a
@@ -181,8 +178,13 @@ export class AgPipelinePage extends LitElement {
             `;
         }
 
+        // Beside the diagram, the phone's reading of the same chain. Opened whole, the
+        // diagram draws its labels a few pixels high; the list says at a glance what
+        // plays and through what, and the diagram stays there to explore. The events
+        // follow under the list. They could fold into a 32 px strip, which now would
+        // fold the list with them: they no longer fold.
         return html`
-            <div class="content-grid" style="${gridStyle}">
+            <div class="content-grid">
                 <!-- Visualizer Zone -->
                 <div class="pipeline-zone tab-zone">
                     <div class="tab-title-container">
@@ -194,14 +196,10 @@ export class AgPipelinePage extends LitElement {
                     <ag-audio-pipeline></ag-audio-pipeline>
                 </div>
 
-                <!-- Events Zone -->
-                <ag-history-panel
-                    type="audio_pipeline"
-                    heading="AUDIO EVENTS"
-                    collapsible
-                    @panel-collapse=${() => { this._eventsCollapsed = true; }}
-                    @panel-expand=${() => { this._eventsCollapsed = false; }}>
-                </ag-history-panel>
+                <div class="pipeline-side">
+                    <ag-mobile-pipeline></ag-mobile-pipeline>
+                    <ag-history-panel type="audio_pipeline" heading="AUDIO EVENTS"></ag-history-panel>
+                </div>
             </div>
         `;
     }

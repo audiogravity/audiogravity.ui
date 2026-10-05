@@ -849,25 +849,58 @@ describe('AgNowPlayingFullscreen — two columns on a wide screen', () => {
         expect(scroll).toMatch(/grid-template-columns:/);
     });
 
-    it('gives the cover the whole height of the left column', () => {
-        const cover = cssRuleBody(wideBlock(), '.npfs-scroll > .npfs-cover-wrap');
-        expect(cover).toMatch(/grid-column:\s*1/);
-        expect(cover).toMatch(/grid-row:\s*1\s*\/\s*-1/);
+    it('gives the cover the left column, centred on the height', () => {
+        const block = wideBlock();
+        expect(cssRuleBody(block, '.npfs-scroll > .npfs-cover-wrap')).toMatch(/grid-column:\s*1/);
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/align-items:\s*center/);
     });
 
-    it('puts everything else in the right column, the format strip included', () => {
+    it('puts everything else in one block in the right column, the format strip included', () => {
         const block = wideBlock();
-        expect(cssRuleBody(block, '.npfs-scroll > :not(.npfs-cover-wrap)')).toMatch(/grid-column:\s*2/);
-        // A display: contents element makes no grid item.
-        expect(cssRuleBody(block, '.npfs-scroll > ag-format-strip')).toMatch(/display:\s*block/);
+        const info = cssRuleBody(block, '.npfs-info');
+        expect(info).toMatch(/grid-column:\s*2/);
+        expect(info).toMatch(/display:\s*flex/);
+        expect(info).toMatch(/flex-direction:\s*column/);
+        // A display: contents element makes no flex item.
+        expect(cssRuleBody(block, '.npfs-info > ag-format-strip')).toMatch(/display:\s*block/);
+        // The column's full width, over the phone's caps: `.npfs-info > ag-progress-bar`
+        // weighs more than `.npfs-info > *`, and kept the bar to 340px of 520 (measured).
+        expect(cssRuleBody(block, '.npfs-scroll > .npfs-info > *')).toMatch(/max-width:\s*none/);
     });
 
-    it('centres that column on the cover, with an empty row above and below', () => {
+    it('centres that column on the cover whatever it holds — no count of rows', () => {
+        // Six rows between two empty ones: a seventh part fell below the bottom one, and
+        // the column rose off-centre (measured in Chromium, review 2026-10-04).
         const block = wideBlock();
-        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/grid-template-rows:\s*1fr repeat\(6, auto\) 1fr/);
-        // Read whole: cssRuleBody would stop at the rule the two pseudo-elements share.
-        expect(block).toMatch(/\.npfs-scroll::before\s*\{\s*grid-row:\s*1;\s*\}/);
-        expect(block).toMatch(/\.npfs-scroll::after\s*\{\s*grid-row:\s*-2;\s*\}/);
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/grid-template-rows:\s*1fr;/);
+        expect(block).not.toMatch(/repeat\(/);
+        expect(block).not.toMatch(/::before|::after/);
+    });
+
+    it('leaves a phone held upright as it was: the block is no box', () => {
+        const sheet = readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+        expect(cssRuleBody(sheet, '.npfs-info')).toMatch(/display:\s*contents/);
+    });
+
+    it('holds every part beside the cover in that block, and not the cover', () => {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: { source_id: 'src_mpd', title: 'So What', artist: 'Miles Davis',
+                playing: true, elapsed: 120, duration: 545, can_seek: true },
+            _rendererActive: false, _nextTrack: { title: 'Freddie Freeloader', artist: 'Miles Davis' },
+            _sources: [],
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        const scroll = host.querySelector('.npfs-scroll');
+        const info = scroll.querySelector(':scope > .npfs-info');
+        expect([...scroll.children].map((c) => c.className.split(' ')[0])).toEqual(
+            ['npfs-cover-wrap', 'npfs-info']);
+        for (const part of ['.npfs-meta', 'ag-format-strip', '.npfs-controls-row', 'ag-progress-bar']) {
+            expect(info.querySelector(`:scope > ${part}`), part).not.toBeNull();
+        }
     });
 });
 

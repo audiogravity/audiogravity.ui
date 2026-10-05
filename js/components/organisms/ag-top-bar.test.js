@@ -21,6 +21,7 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 
 import { AppState, EventEmitter } from '../../common.js';
 import { handleWorkerMessage, updateConnectionStatus, updateSystemMetrics } from '../../sse.js';
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 import './ag-top-bar.js';
 
 const READING = { uptime: 7200, cpu_percent: 12.5, cpu_temp: 45.2, memory_percent: 35.8 };
@@ -113,6 +114,64 @@ describe('ag-top-bar — machine metrics', () => {
         const [, cpu, temp, memory] = el.querySelectorAll('.system-metrics .metric-value');
         expect([cpu, temp, memory].map(v => [...v.classList].find(c => c.startsWith('activity-'))))
             .toEqual(['activity-high', 'activity-low', 'activity-medium']);
+    });
+
+    it('names each figure, in words short enough for a phone', async () => {
+        // A narrow screen hid the names, which left numbers no one could name.
+        const el = await mount();
+        const labels = [...el.querySelectorAll('.system-metrics .metric-label')].map(l => l.textContent.trim());
+        expect(labels).toEqual(['Uptime', 'CPU', 'Temp', 'RAM']);
+        expect(el.querySelector('.system-metrics .metric').classList.contains('metric--uptime')).toBe(true);
+    });
+});
+
+describe('ag-top-bar — how the figures read (layout.css)', () => {
+    const CSS = readStylesheet('css', 'layout.css');
+
+
+    it('gives a figure in its normal range no colour — it comes past a threshold', () => {
+        // Green on all three figures all the time told nothing (user's choice, 2026-10-04).
+        const low = cssRuleBody(CSS, '.topbar .metric-value.activity-low');
+        expect(low).toMatch(/color:\s*var\(--text-primary\)/);
+        expect(low).not.toMatch(/background/);
+        // Nor does the chip the three bands share: orange and red bring their own.
+        expect(CSS.match(/\.topbar \.metric-value\.activity-low,[^{]*\{([^}]*)\}/)[1]).not.toMatch(/background/);
+    });
+
+    it('reads each name inline on a computer: "CPU: 12%"', () => {
+        expect(cssRuleBody(CSS, '.topbar .system-metrics .metric-label::after')).toMatch(/content:\s*':'/);
+    });
+
+    it('puts each name over its figure on a phone under 430px, without the colon', () => {
+        // Inline, the three figures take 246px of the 246 to 252px a 375 or 390px
+        // phone leaves between the menu and the buttons (measured, 2026-10-04).
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        expect(cssRuleBody(phone, '.system-metrics .metric')).toMatch(/flex-direction:\s*column/);
+        expect(cssRuleBody(phone, '.topbar .system-metrics .metric-label::after')).toMatch(/content:\s*none/);
+        expect(cssRuleBody(phone, '.system-metrics .metric-label')).not.toMatch(/display:\s*none/);
+    });
+
+    it('reads them inline wherever there is room: a large phone, a tablet, a computer', () => {
+        // Measured in Chromium (2026-10-04), the menu shown and the widest figures:
+        // from 430px, 11px to spare each side; from 481px, where the dot comes back,
+        // 27px; from 769px, where the words come back as well, 68px.
+        const narrow = mediaBlock(CSS, /@media\s*\(width\s*<=\s*1024px\)/);
+        expect(narrow).not.toMatch(/flex-direction:\s*column/);
+        expect(narrow).not.toMatch(/metric-label[^{]*\{[^}]*display:\s*none/);
+    });
+
+    it('keeps the dot without its words on a phone layout, and neither under 481px', () => {
+        // With the words, "Connecting..." sat on "CPU:" from 481 to 520px and squeezed
+        // the menu button to 8px (measured, 2026-10-04).
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<=\s*768px\)/);
+        expect(cssRuleBody(phone, '.connection-status > span')).toMatch(/display:\s*none/);
+        const small = mediaBlock(CSS, /@media\s*\(width\s*<=\s*480px\)/);
+        expect(cssRuleBody(small, '.connection-status span')).toMatch(/display:\s*none/);
+    });
+
+    it('keeps on a phone the three figures that can call for attention', () => {
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<=\s*768px\)/);
+        expect(cssRuleBody(phone, '.system-metrics .metric--uptime')).toMatch(/display:\s*none/);
     });
 });
 

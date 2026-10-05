@@ -12,7 +12,7 @@ if (!window.AppState) {
     };
 }
 
-// Render as admin so admin-only controls (the DRY-RUN toggle) are visible in stories.
+// Render as admin so admin-only controls (the SIMULATE toggle) are visible in stories.
 AuthState.isAuthenticated = true;
 AuthState.user = { role: 'admin' };
 

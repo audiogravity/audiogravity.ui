@@ -59,6 +59,14 @@
     .tab-title-container {
         flex-wrap: wrap;
     }
+
+    /* Wrapped, a badge can start a line: its margin, on top of the row's gap, then set
+       it 6px right of the title. And it costs width — on a 375px phone the three Audio
+       Software actions missed their line by the 8px their margins took (327px for 319,
+       measured 2026-10-04). The row's gap spaces them. */
+    .tab-zone .tab-title-container .badge {
+        margin-left: 0;
+    }
 }
 
 /* On a phone every tab's title, and the cards under it, start 6px clear of the

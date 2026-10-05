@@ -1,9 +1,76 @@
 import { LitElement, html, css, svg } from 'lit';
-import { apiGet, apiPost } from '../../api.js';
+import { apiPost } from '../../api.js';
+import { currentPipeline, isNewerPipeline } from '../../core/pipeline-state.js';
+import { latestThrottle } from '../../core/latest-throttle.js';
 import { iconMusicNote, iconCrosshair, iconZoomIn, iconZoomOut } from '../../ag-icons.js';
 import { renderPipelineNode } from '../atoms/ag-pipeline-node.js';
 import { renderPipelineLink } from '../atoms/ag-pipeline-link.js';
 
+/**
+ * Whether a node of the pipeline is a player that is playing right now.
+ *
+ * Only a service node plays — MPD, AirPlay, Roon, HQPlayer, the UPnP bridge. The
+ * devices carry the sound of one (streamer, DAC, amplifier, speakers) or stand in the
+ * diagram whether anything plays or not (turntable, tuner, CD player, the phone that
+ * controls the box). A player that reports its state is read from it, so a paused one
+ * still holding the sound card is not playing; one that reports nothing plays while
+ * the core marks it active.
+ *
+ * @param {object|undefined} node - A node of the `audio_pipeline` payload.
+ * @returns {boolean} True when the node is a player and it plays.
+ */
+export function isPlayingNode(node) {
+    if (node?.type !== 'service') return false;
+    const reported = node.metadata?.playback_status;
+    if (reported) return reported === 'Playing';
+    return node.status === 'active';
+}
+
+/**
+ * The lines the Audio events panel records for the change from one pipeline to the next.
+ *
+ * A line says what a player did — started, stopped, moved on to another track — read
+ * from its state in the two pipelines. It used to be read from the list of nodes: any
+ * node missing from the previous pipeline was announced as a source that "started
+ * playback". The first pipeline the diagram receives was compared with the empty one
+ * it starts from whenever the diagram's own first reading had failed or not yet come
+ * back, and the speakers, the turntable, the tuner, the CD player and the phone all
+ * "started playback" though nothing had played.
+ *
+ * A player whose report went missing, or came back, has not changed state or track: it
+ * did not answer once. MPD asked while the sound card it paused on was still held is
+ * read as active — the core keeps that reading 30 s — and, without its report, "started
+ * playback"; answering again, it announced its track a second time (review, 2026-10-04).
+ *
+ * @param {{nodes?: object[]}} previous - The pipeline shown until now.
+ * @param {{nodes?: object[]}} next - The pipeline just received.
+ * @returns {string[]} The lines to record, oldest first; none when either pipeline
+ *   carries no node list.
+ */
+export function playbackEvents(previous, next) {
+    if (!Array.isArray(previous?.nodes) || !Array.isArray(next?.nodes)) return [];
+    const before = new Map(previous.nodes.map((node) => [node.id, node]));
+    const reports = (node) => Boolean(node?.metadata?.playback_status);
+    const lines = [];
+    for (const node of next.nodes) {
+        const old = before.get(node.id);
+        before.delete(node.id);
+        const playing = isPlayingNode(node);
+        const wasPlaying = isPlayingNode(old);
+        const comparable = !old || reports(node) === reports(old);
+        if (comparable && playing && !wasPlaying) lines.push(`Source '${node.name}' started playback`);
+        if (comparable && !playing && wasPlaying) lines.push(`Source '${node.name}' stopped playback`);
+        const title = node.metadata?.title;
+        if (comparable && playing && title && title !== old?.metadata?.title) {
+            lines.push(`Now playing on '${node.name}': ${node.metadata.artist || 'Unknown'} - ${title}`);
+        }
+    }
+    // A player gone from the pipeline while it played: its service has stopped.
+    for (const old of before.values()) {
+        if (isPlayingNode(old)) lines.push(`Source '${old.name}' stopped playback`);
+    }
+    return lines;
+}
 
 /**
  * @module AgAudioPipeline
@@ -43,6 +110,9 @@ export class AgAudioPipeline extends LitElement {
     constructor() {
         super();
         this.pipeline = { nodes: [], links: [] };
+        // Whether `pipeline` came from the core yet: until it has, there is nothing
+        // to compare a live update with (playbackEvents).
+        this._pipelineKnown = false;
         this.showAnalogSources = false;
         this.showControllers = false;
         this.zoom = 0.8;
@@ -67,16 +137,12 @@ export class AgAudioPipeline extends LitElement {
         this._mouseDownPos = { x: 0, y: 0 };
         this._mouseDownTarget = null;
 
-        // Throttled bound handler — max 1 re-render/500ms même si le backend envoie plus vite
-        const handler = this._handleUpdate.bind(this);
-        let _lastCall = 0;
-        this._boundHandleUpdate = (e) => {
-            const now = Date.now();
-            if (now - _lastCall >= 500) {
-                _lastCall = now;
-                handler(e);
-            }
-        };
+        // At most one redraw per 500 ms, and never without the last update: the first
+        // of a burst passes, the latest of the rest follows when the 500 ms are up. It
+        // used to drop the rest, the final state included, and the diagram could sit on
+        // the one before last until the next change — beside a list that took them all.
+        this._updates = latestThrottle((e) => this._handleUpdate(e), 500);
+        this._boundHandleUpdate = (e) => this._updates.push(e);
 
         // OPTIMIZATION: Intersection Observer for animation pause
         this._observer = null;
@@ -1349,6 +1415,7 @@ export class AgAudioPipeline extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('audio-pipeline-update', this._boundHandleUpdate);
+        this._updates.cancel();
 
         // OPTIMIZATION: Cleanup observer
         if (this._observer) {
@@ -1358,48 +1425,33 @@ export class AgAudioPipeline extends LitElement {
     }
 
     _handleUpdate(e) {
-        const oldPipeline = this.pipeline;
-        const newPipeline = e.detail;
-        this.pipeline = newPipeline;
+        // A pipeline older than the one shown — the offline replay of a saved one —
+        // changes nothing, and records nothing (pipeline-state.js).
+        if (this._pipelineKnown && !isNewerPipeline(e.detail, this.pipeline)) return;
+        // The first pipeline from the core is where the record starts, not a change.
+        const previous = this._pipelineKnown ? this.pipeline : null;
+        this.pipeline = e.detail;
+        this._pipelineKnown = true;
 
-        // Change detection for history
-        if (oldPipeline && newPipeline && oldPipeline.nodes && newPipeline.nodes) {
-            import('../../history.js').then(m => {
-                const oldNodes = oldPipeline.nodes;
-                const newNodes = newPipeline.nodes;
-
-                newNodes.forEach(node => {
-                    const oldNode = oldNodes.find(on => on.id === node.id);
-                    if (!oldNode) {
-                        m.addToHistory('audio_pipeline', `Source '${node.name}' started playback`, true);
-                    } else if (node.metadata?.title && node.metadata?.title !== oldNode.metadata?.title) {
-                        m.addToHistory('audio_pipeline', `Now playing on '${node.name}': ${node.metadata.artist || 'Unknown'} - ${node.metadata.title}`, true);
-                    }
-                });
-
-                oldNodes.forEach(node => {
-                    if (!newNodes.some(nn => nn.id === node.id)) {
-                        m.addToHistory('audio_pipeline', `Source '${node.name}' stopped playback`, true);
-                    }
-                });
-            }).catch(err => console.error('History import failed:', err));
-        }
+        const lines = previous ? playbackEvents(previous, e.detail) : [];
+        if (lines.length === 0) return;
+        import('../../history.js').then(m => {
+            for (const line of lines) m.addToHistory('audio_pipeline', line, true);
+        }).catch(err => console.error('History import failed:', err));
     }
 
     async _fetchInitialState() {
         try {
-            const data = await apiGet('/audio_pipeline/current');
-            if (data) {
+            // The newest pipeline the page knows, read from the core only when it knows
+            // none — one reading for the diagram and the list beside it.
+            const data = await currentPipeline();
+            // A live update may have brought a newer one while it was on its way.
+            if (data && (!this._pipelineKnown || isNewerPipeline(data, this.pipeline))) {
+                // Recorded as nothing: what already plays did not just start. (It
+                // announced the nodes of type 'source' as "already active", and the
+                // core sends no such type, so that line was never written.)
                 this.pipeline = data;
-                
-                // Also record initial active sources in history if any
-                if (data.nodes && data.nodes.length > 0) {
-                    import('../../history.js').then(m => {
-                        data.nodes.filter(n => n.type === 'source').forEach(node => {
-                            m.addToHistory('audio_pipeline', `Source '${node.name}' is already active`, true);
-                        });
-                    });
-                }
+                this._pipelineKnown = true;
             }
         } catch (error) {
             console.error('Failed to fetch initial pipeline state:', error);

@@ -161,6 +161,25 @@ InstalledNotConfigured.args = {
     isGuest: false
 };
 
+/**
+ * Up to date: no UPDATE, since a press could only answer "Already Up-to-Date". A
+ * version not checked yet offers "Check updates" in its place.
+ */
+export const InstalledUpToDate = Template.bind({});
+InstalledUpToDate.args = {
+    pkg: {
+        ...pkgMock,
+        id: 'shairport-sync',
+        label: 'Shairport Sync',
+        description: 'AirPlay audio player',
+        installer_type: 'apt_simple',
+        installed_version: '4.3.7-1',
+        available_version: '4.3.7-1'
+    },
+    isChecking: false,
+    isGuest: false
+};
+
 /** A failed install leaves nothing on disk: the way out is to try again. */
 export const FailedInstall = Template.bind({});
 FailedInstall.args = {

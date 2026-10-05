@@ -6,7 +6,9 @@
  * install of a package with terms without it, because the dialog is not the
  * only way in. And one thing must come back to the screen: WHY an install was
  * turned down ("needs libgmpris, which no configured source provides"), which
- * a bare "Failed to install" used to hide.
+ * a bare "Failed to install" used to hide. An UPDATE press is confirmed in words
+ * that say what it does — the version it moves to, an older one it switches to,
+ * a versionless vendor's installer run again — without asking the core first.
  *
  * Kept apart from ag-audio-software-page.test.js because it replaces
  * common.js's network and toast functions, which the other file uses for real.
@@ -15,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Hoisted: vi.mock factories run before the module body, so anything they
 // reference has to exist by then.
-const { apiPost, showToast } = vi.hoisted(() => ({ apiPost: vi.fn(), showToast: vi.fn() }));
+const { apiPost, showToast, addToHistory, showConfirm } = vi.hoisted(() => ({ apiPost: vi.fn(), showToast: vi.fn(), addToHistory: vi.fn(), showConfirm: vi.fn() }));
 
 // Partial, as in ag-audio-software-page.test.js: common.js calls initAuth as it
 // loads and throws unless requireAuth says the session is logged in.
@@ -29,7 +31,8 @@ vi.mock(import('../../common.js'), async (importOriginal) => ({
     ...(await importOriginal()),
     apiPost,
     showToast,
-    addToHistory: vi.fn(),
+    addToHistory,
+    showConfirm,
 }));
 
 import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
@@ -166,6 +169,120 @@ describe('installing from the dialog', () => {
             'HQPlayer Embedded updated successfully',
             'HQPlayer Embedded uninstalled successfully',
         ]);
+    });
+});
+
+describe('simulating', () => {
+    beforeEach(() => {
+        apiPost.mockReset();
+        showToast.mockReset();
+        addToHistory.mockReset();
+    });
+
+    /** A page with SIMULATE on. */
+    const simulating = () => Object.assign(page(), { dryRun: true });
+
+    it('says nothing was changed, where it said "Install Successful"', async () => {
+        apiPost.mockResolvedValue({ success: true, message:
+            'Simulation: the steps to install HQPlayer Embedded went through — nothing was changed' });
+        await simulating()._runPackageAction(HQPLAYERD, 'install');
+
+        expect(apiPost.mock.calls[0][0]).toContain('dry_run=true');
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('info', 'Install Simulated',
+            'Nothing was changed: the steps to install HQPlayer Embedded went through.');
+        expect(addToHistory).toHaveBeenCalledExactlyOnceWith('software', 'Simulate install HQPlayer Embedded', true);
+    });
+
+    it('says a simulation failed as a simulation, with the core\'s reason', async () => {
+        apiPost.mockResolvedValue({ success: false, message: 'needs libgmpris' });
+        await simulating()._runPackageAction(HQPLAYERD, 'update');
+
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('error', 'Update Simulation Failed', 'needs libgmpris');
+        expect(addToHistory).toHaveBeenCalledExactlyOnceWith('software', 'Simulate update HQPlayer Embedded', false);
+    });
+
+    it('keeps the setting it started with, if the switch is flipped meanwhile', async () => {
+        let answer;
+        apiPost.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+        const el = simulating();
+        const running = el._runPackageAction(HQPLAYERD, 'install');
+        el.dryRun = false;
+        answer({ success: true });
+        await running;
+
+        expect(showToast.mock.calls[0][1]).toBe('Install Simulated');
+    });
+
+    it('says the updates of a batch were simulated, not made', async () => {
+        const el = simulating();
+        el.packages = [{ ...HQPLAYERD, installed_version: '5.1', available_version: '5.2' }];
+        window.showConfirm = vi.fn(async () => true);
+        el._loadPackages = vi.fn();
+        apiPost.mockResolvedValue([{ package_id: 'hqplayerd', success: true }]);
+
+        await el._handleUpdateAll();
+
+        expect(apiPost.mock.calls[0][0]).toContain('dry_run=true');
+        expect(showToast).toHaveBeenLastCalledWith('info', 'Updates Simulated',
+            'Nothing was changed: the steps to update 1 packages went through.');
+    });
+
+    it('says a simulated uninstall would delete the settings too, when that was ticked', async () => {
+        apiPost.mockResolvedValue({ success: true });
+        await simulating()._runPackageAction(HQPLAYERD, 'uninstall', null, false, null, true);
+
+        expect(apiPost.mock.calls[0][0]).toContain('purge=true');
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('info', 'Uninstall Simulated',
+            'Nothing was changed: the steps to uninstall HQPlayer Embedded and delete its '
+            + 'settings and data went through.');
+    });
+});
+
+describe('the update confirmation', () => {
+    beforeEach(() => {
+        apiPost.mockReset();
+        showConfirm.mockReset();
+    });
+
+    /** Press UPDATE on a card holding `pkg`, declining the confirmation. */
+    async function pressUpdate(pkg) {
+        const el = page();
+        el.packages = [pkg];
+        showConfirm.mockResolvedValue(false);
+        await el._handleAction({ detail: { packageId: pkg.id, action: 'update' } });
+        return showConfirm.mock.calls[0][1];
+    }
+
+    it('offers to run again the installer of a vendor that publishes no version', async () => {
+        const asked = await pressUpdate({ id: 'roon', label: 'Roon Bridge', installer_type: 'script',
+            installed_version: '1.8 (build 1125) stable', available_version: null });
+        expect(asked).toContain('Roon Bridge publishes no version number');
+        expect(asked).toContain('You currently have 1.8 (build 1125) stable.');
+    });
+
+    it('names the version an update moves to', async () => {
+        const asked = await pressUpdate({ ...HQPLAYERD, installer_type: 'apt_deb',
+            installed_version: '5.1.5-67', available_version: '5.1.6-70' });
+        expect(asked).toMatch(/^Update HQPlayer Embedded from version 5\.1\.5-67 to 5\.1\.6-70\?/);
+    });
+
+    it('says "Switch" for the older version the core proposes', async () => {
+        const asked = await pressUpdate({ ...HQPLAYERD, installer_type: 'apt_deb',
+            installed_version: '6.1.4-71', available_version: '5.1.6-70', available_is_older: true });
+        expect(asked).toMatch(/^Switch HQPlayer Embedded from version 6\.1\.4-71 to 5\.1\.6-70\?/);
+    });
+
+    it('updates once it is confirmed, asking the core nothing before', async () => {
+        apiPost.mockResolvedValue({ success: true });
+        const el = page();
+        el.packages = [{ ...HQPLAYERD, installer_type: 'apt_deb',
+            installed_version: '5.1.5-67', available_version: '5.1.6-70' }];
+        showConfirm.mockResolvedValue(true);
+
+        await el._handleAction({ detail: { packageId: 'hqplayerd', action: 'update' } });
+
+        expect(apiPost).toHaveBeenCalledOnce();
+        expect(apiPost.mock.calls[0][0]).toMatch(/^\/packages\/hqplayerd\/update\?dry_run=false/);
     });
 });
 

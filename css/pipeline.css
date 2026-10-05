@@ -1,0 +1,45 @@
+/**
+ * @module PipelinePage
+ * @description The pipeline page on a computer: the diagram's card, and the right-hand
+ * column, which holds the phone's reading of the chain and the audio events under it
+ * (ag-pipeline-page.js).
+ */
+
+.pipeline-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* The column is often taller than the diagram — twenty events under the list — and a
+   grid row stretches its items to the tallest: the diagram's card grew to 1222 px for a
+   drawing that stays 271 px high, and its minimap sank below the screen (measured at
+   1440 × 900). The card keeps its own height. */
+.content-grid > .pipeline-zone {
+    align-self: start;
+}
+
+/* The phone's view fills its screen (min-height: 100%, ag-mobile-pipeline.js); here it
+   shares the column, and filling it would push the events below the diagram's height. */
+.pipeline-side ag-mobile-pipeline {
+    min-height: 0;
+}
+
+/* A phone scrolls its output pills sideways with a finger, the scrollbar hidden. In this
+   350 px column a mouse cannot — the wheel scrolls the page — and the second output was
+   cut off: here they wrap. */
+.pipeline-side ag-mobile-pipeline .amp-output-switcher {
+    flex-wrap: wrap;
+    overflow-x: visible;
+}
+
+/* Under 1201 px the page is a single column (.content-grid, layout.css) and the diagram
+   takes its width: the list and the events share the row under it. Stretched across the
+   screen alone, the list put each device's badge a screen's width from its name. */
+@media (width < 1201px) {
+    .pipeline-side {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+}
