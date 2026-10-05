@@ -16,7 +16,10 @@
  * Every pipeline carries the moment the core started computing it, `timestamp`: a
  * pipeline older than the one already held changes nothing. This module holds the newest
  * one for the page, also while no component shows it, and reads the core only when it
- * holds none — the core hands the last pipeline to a screen joining its stream, too.
+ * holds none — the core hands the last pipeline to a screen joining its stream, too. It
+ * is loaded at startup (main.js) for that one: imported only by the components, which
+ * load with the Pipeline tab, it was not there yet to hear it (measured in Chromium,
+ * 2026-10-05).
  */
 import { apiGet } from '../api.js';
 
