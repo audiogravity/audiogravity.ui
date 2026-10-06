@@ -196,6 +196,39 @@ describe('the purchase sentence when the licence server gives no price', () => {
 });
 
 /**
+ * The header carried an EDITIONS & LICENSE button that opened a hand-kept copy of the
+ * editions and of the EULA. The editions are in the manual (01-introduction.md,
+ * "Editions"), and the EULA is linked from the sign-in page and the footer; the user
+ * chose to drop the button (2026-10-06).
+ */
+describe('the panel\'s header', () => {
+    /**
+     * Render the panel and return the labels of the buttons in its header.
+     * @param {Object} status Licence status the core would report.
+     */
+    async function headerButtons(status) {
+        api.status = status;
+        api.config = {};
+        const el = document.createElement('ag-license-status');
+        document.body.appendChild(el);
+        await new Promise(r => setTimeout(r, 0));
+        await el.updateComplete;
+        const labels = [...el.querySelectorAll('.tab-title-container button')]
+            .map(b => b.textContent.trim());
+        el.remove();
+        return labels;
+    }
+
+    it.each([
+        ['a running trial', { status: 'trial', days_remaining: 2, trial_days_total: 30, device_id: 'abc' }],
+        ['Starter', { status: 'starter', days_remaining: 0, trial_days_total: 30, device_id: 'abc' }],
+        ['a lifetime licence', { status: 'lifetime', device_id: 'abc' }],
+    ])('offers the licence key alone on %s', async (_, status) => {
+        expect(await headerButtons(status)).toEqual(['LICENSE KEY']);
+    });
+});
+
+/**
  * Deleting the licence was the only red one among the buttons that delete; the user
  * chose orange for all of them (2026-10-05). Both states that offer it are checked:
  * the button is written twice in the template.

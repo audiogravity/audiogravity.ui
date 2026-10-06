@@ -24,7 +24,6 @@ watchStaleChunks();
 
 // Utilities and components (no dependencies)
 import './utils.js';
-import './ui-components.js';
 
 // Authentication and common functions (base dependencies)
 import './auth.js';

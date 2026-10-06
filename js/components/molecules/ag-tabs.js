@@ -51,8 +51,10 @@ const TAB_SVG_ICONS = {
  * `config` is deliberately absent: editing a service's own configuration file
  * is not a licensed feature, and its endpoints (`/audio_app_config/*`) carry no
  * licence gate either — keeping the tab grey would have blocked something the
- * backend allows. Guided provisioning stays out of reach: `/audio-stack/*` is
- * licence- AND admin-gated on the server. */
+ * backend allows. Guided provisioning, in the same tab, is admin-gated on the
+ * server but not licence-gated: `/audio-stack/*` (core
+ * modules/audio_app_config/router.py, create_provision_router). The manual's
+ * table of editions (01-introduction.md, "Editions") follows this set. */
 const GATED_TABS = new Set(['systemd', 'performance', 'pipeline', 'library']);
 
 /** The id of the library's bar the column unfolds under Library (aria-controls). */
