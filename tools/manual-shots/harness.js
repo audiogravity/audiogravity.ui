@@ -280,6 +280,26 @@ export function union(...boxes) {
 }
 
 /**
+ * Where a figure framed down to a box ends: `margin` below it, or halfway to the box that
+ * follows when that one is closer — a row that sits under the last box (a radio's format,
+ * under its title on the Pipeline card) is left out rather than cut in two.
+ *
+ * @param {{y: number, height: number}} above - The last box the figure holds.
+ * @param {?{y: number}} below - The box that follows it, or null when nothing does.
+ * @param {number} margin - CSS pixels left under `above` when nothing is closer.
+ * @returns {number} The figure's bottom, in CSS pixels.
+ * @throws {Error} When `below` starts inside `above`: it does not follow it — a box taken
+ *   from another card or row — and halfway to it would cut the figure's own subject.
+ */
+export function endBefore(above, below, margin) {
+    const end = above.y + above.height;
+    if (below && below.y < end) {
+        throw new Error(`endBefore(): the next box starts at ${below.y}, before the last one ends (${end})`);
+    }
+    return below ? Math.min(end + margin, (end + below.y) / 2) : end + margin;
+}
+
+/**
  * A clip widened to whole CSS pixels, so the figure is an exact multiple of the density
  * and nothing of the box is cut.
  *

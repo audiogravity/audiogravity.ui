@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import {
-    PHONE, firstLanIPv4, fitClip, forgeToken, instanceUrls, lanAddress, manualFigures,
+    PHONE, endBefore, firstLanIPv4, fitClip, forgeToken, instanceUrls, lanAddress, manualFigures,
     parseEnv, readSessionSecrets, roundClip, sessionStorageItems, toImageBox, union,
 } from '../tools/manual-shots/harness.js';
 import { PLAYBACK, RECIPES, needsPlayback, selectRecipes } from '../tools/manual-shots/recipes.js';
@@ -214,6 +214,27 @@ describe('geometry', () => {
         expect(union({ x: 10, y: 20, width: 30, height: 40 }, null, { x: 0, y: 50, width: 100, height: 20 }))
             .toEqual({ x: 0, y: 20, width: 100, height: 50 });
         expect(() => union(null)).toThrow();
+    });
+
+    it('ends a figure the margin below its last box, or halfway to a row that comes sooner', () => {
+        const title = { x: 0, y: 50, width: 300, height: 14 };
+        expect(endBefore(title, null, 22)).toBe(86);
+        // A radio's format row 13 px under its title: the figure stops halfway, before it.
+        expect(endBefore(title, { y: 77 }, 22)).toBe(70.5);
+        // A row further away than twice the margin leaves the margin as it was.
+        expect(endBefore(title, { y: 200 }, 22)).toBe(86);
+    });
+
+    it('ends a figure on its last box when the next one touches it, or when the margin is none', () => {
+        const title = { x: 0, y: 50, width: 300, height: 14 };
+        expect(endBefore(title, { y: 64 }, 22)).toBe(64);
+        expect(endBefore(title, null, 0)).toBe(64);
+    });
+
+    it('refuses a next box that starts inside the last one: it would cut the figure\'s subject', () => {
+        const title = { x: 0, y: 50, width: 300, height: 14 };
+        expect(() => endBefore(title, { y: 60 }, 22)).toThrow(/before the last one ends/);
+        expect(() => endBefore(title, { y: 40 }, 22)).toThrow();
     });
 
     it('widens a clip to whole CSS pixels, cutting nothing', () => {

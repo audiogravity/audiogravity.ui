@@ -46,7 +46,7 @@
  */
 
 import process from 'node:process';
-import { union } from './harness.js';
+import { endBefore, union } from './harness.js';
 
 /** Tells capture.js to leave a recipe out unless --playback is given. */
 export const PLAYBACK = 'playback';
@@ -68,6 +68,21 @@ async function boxOf(locator, { scroll = false } = {}) {
     const box = await locator.boundingBox();
     if (!box) throw new Error(`nothing rendered for ${locator}`);
     return box;
+}
+
+/**
+ * The box of an element a page may or may not show, or null when it shows none.
+ *
+ * For a row a live card can drop between two readings: boxOf() would wait the page's
+ * whole timeout for it and fail the figure, where its absence only means there is
+ * nothing to frame around.
+ *
+ * @param {import('playwright').Locator} locator - The element.
+ * @returns {Promise<?Clip>}
+ */
+async function boxIfShown(locator) {
+    if (!(await locator.count())) return null;
+    return locator.first().boundingBox({ timeout: 1000 }).catch(() => null);
 }
 
 /**
@@ -444,10 +459,21 @@ export const RECIPES = {
     'origin-badge': {
         tab: 'pipeline', needs: [PLAYBACK, 'a radio playing'],
         async run(page) {
-            const card = await box(page, '.amp-np-card');
-            const title = await box(page, '.amp-np-card .amp-np-title');
-            // The card down to its title: the badge beside the transport is the subject.
-            return { clip: { x: card.x, y: card.y, width: card.width, height: title.y + title.height + 22 - card.y } };
+            // The card of the stream that names what plays — with several streams on
+            // the page, every box below comes from that one card.
+            const card = page.locator('.amp-np-card', { has: page.locator('.amp-np-title') }).first();
+            const frame = await boxOf(card);
+            // The card down to its text, its artist and album lines whole: the badge
+            // beside the transport is the subject. A radio whose format is known carries
+            // it in a row under the text, and 22 px below the title cut that row in two:
+            // the figure stops before it.
+            const text = union(
+                await boxOf(card.locator('.amp-np-title')),
+                await boxIfShown(card.locator('.amp-np-artist')),
+                await boxIfShown(card.locator('.amp-np-album')),
+            );
+            const format = await boxIfShown(card.locator('.amp-format-bar'));
+            return { clip: { x: frame.x, y: frame.y, width: frame.width, height: endBefore(text, format, 22) - frame.y } };
         },
     },
     fullscreen: {
