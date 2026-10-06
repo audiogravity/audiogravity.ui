@@ -70,6 +70,11 @@ and writes nothing to the core:
 
 - `license` — a trial, 22 days of 30 left, with the synthetic Device ID of the component's
   story: restoring a real trial would mean deleting the licence.
+- `license-activation`, `license-activated`, `license-verify` — the licence window with an
+  example key that belongs to no order, the same synthetic Device ID, and the licence
+  server's answer rewritten (a key free to activate, then one already active). The
+  activated step is set in the component: a real activation would bind a licence to the
+  box. The hostname, filled in with the lab box's own, is replaced by `living-room`.
 - `update-banner` — an update to the release the running version leads to (0.9.62-dev →
   0.9.62).
 - `hqplayer-output` — *Use as output* switched on: for real, it would send every play of
