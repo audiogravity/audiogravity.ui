@@ -118,9 +118,13 @@ body:has(.tabs--vertical) .nav-menu {
     flex-wrap: nowrap;
 }
 
+/* A name and its figure share one baseline: centred, the smaller name sat 2px above
+   its figure (measured in Chromium, 2026-10-06). The gap, with the chip's padding
+   below, puts 8px between a name and its figure and 16px between two pairs, so each
+   figure reads with its own name and not the next one. */
 .metric {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: var(--spacing-xs);
     font-size: var(--font-size-sm);
     white-space: nowrap;
@@ -130,11 +134,11 @@ body:has(.tabs--vertical) .nav-menu {
    components/metrics.css. A rule here asked for --font-size-xs and never applied:
    `body.compact-mode .metric-value` weighed one element more. */
 
-/* Activity indicators (shared with components/metrics.css) */
-.topbar .metric-value.activity-low,
-.topbar .metric-value.activity-medium,
-.topbar .metric-value.activity-high {
-    padding: 2px 6px;
+/* Activity indicators (shared with components/metrics.css). Every figure carries the
+   chip's padding, the uptime too, which has no bands: without it the uptime sat 4px
+   from its name and the other three 10px. */
+.topbar .topbar-value {
+    padding: 2px var(--spacing-xs);
     border-radius: var(--radius-chip);
 }
 
@@ -151,6 +155,12 @@ body:has(.tabs--vertical) .nav-menu {
    inline: "CPU: 12%". */
 .topbar .system-metrics .metric-label::after {
     content: ':';
+}
+
+/* components/metrics.css gives a label 2px under it, for a label over its figure in a
+   card; beside its figure it lifted the name off the line. */
+.topbar .system-metrics .metric-label {
+    margin: 0;
 }
 
 /* OFFLINE BANNER */
@@ -796,30 +806,33 @@ body.dark-mode .logo-dark {
 
 /* .content-grid media query moved to top as part of mobile-first strategy */
 
-@media (width <=1024px) {
-    .system-metrics {
-        gap: var(--spacing-sm);
-    }
-}
-
 /* Too narrow to read inline: the label sits over its figure, small. It used to be
    hidden under 1025px, which left three numbers no one could name. Measured with the
    real bar (2026-10-04): inline, the three figures take 246px of the 246 to 252px a
    375 or 390px phone leaves between the menu and the buttons — touching both, and a
    longer value would spill over. Wider, they read inline, as on a computer. */
 @media (width < 430px) {
+    /* Stacked, the figures keep the spacing they had before the inline pairs were
+       evened out (2026-10-06): 4px between columns, the chip's 6px each side. */
+    .system-metrics {
+        gap: var(--spacing-xs);
+    }
+
     .system-metrics .metric {
         flex-direction: column;
 
-        /* In a column, centred under its label — not the row's vertical centring. */
+        /* In a column, centred under its label — not the row's shared baseline. */
         align-items: center;
         gap: 0;
+    }
+
+    .topbar .system-metrics .topbar-value {
+        padding-inline: var(--spacing-sm);
     }
 
     /* Small already: components/metrics.css sets --font-size-xxs up to 768px. */
     .system-metrics .metric-label {
         line-height: 1.1;
-        margin: 0;
     }
 
     .topbar .system-metrics .metric-label::after {
@@ -837,10 +850,6 @@ body.dark-mode .logo-dark {
         --title-bar-height: 0px;
         --topbar-height: 44px;
         --tabs-height: 42px;
-    }
-
-    .system-metrics {
-        gap: var(--spacing-sm);
     }
 
     /* A phone keeps the three figures that can call for attention; the uptime stays on
@@ -1036,19 +1045,13 @@ body.dark-mode .logo-dark {
 }
 
 @media (width <=480px) {
-    .system-metrics {
-        gap: var(--spacing-xs);
-    }
-
+    /* No gap here for the figures: inline from 430px they keep a computer's spacing,
+       and under it the stacked layout sets its own. */
     .metric-value {
         min-width: auto;
 
         /* No font-size: it reads --font-size-sm at every width. This block asked for
            --font-size-xs and never applied — body.compact-mode outranked it. */
-    }
-
-    .metric {
-        gap: 2px;
     }
 
     /* Every span, the dot's included: a phone's bar shows neither — as it always has. */
