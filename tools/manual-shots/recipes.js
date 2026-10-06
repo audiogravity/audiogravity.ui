@@ -160,6 +160,43 @@ const TRIAL_LICENCE = Object.freeze({
     issued: null,
 });
 
+/** A key of the right shape that belongs to no one: the figures never show a real one. */
+const EXAMPLE_KEY = 'AG-7Q4M-K2XD-9PLW-3HTR';
+
+/** Longer than the stepper bars' colour transition (--transition-normal, 250ms). */
+const STEP_TRANSITION_MS = 600;
+
+/**
+ * Stage the licence figures: this box reports the trial's synthetic Device ID and, when
+ * `check` is given, the licence server's answer to a key check is that — the example key
+ * matches no order. The fields are those the core's CheckKeyResponse carries.
+ *
+ * @param {import('playwright').Page} page - The Admin tab.
+ * @param {?object} [check] - What /license/check answers, over a valid lifetime licence.
+ * @returns {Promise<void>}
+ */
+async function stageLicence(page, check = null) {
+    await page.route(/\/license\/status(\?|$)/, (route) => route.fulfill({ json: TRIAL_LICENCE }));
+    if (!check) return;
+    await page.route(/\/license\/check(\?|$)/, (route) => route.fulfill({
+        json: { valid: true, key: EXAMPLE_KEY, plan: 'lifetime', expires_at: null, ...check },
+    }));
+}
+
+/**
+ * Open the licence window with its LICENSE KEY button, and wait for its Device ID.
+ *
+ * @param {import('playwright').Page} page - The Admin tab.
+ * @returns {Promise<import('playwright').Locator>} The activation steps.
+ */
+async function openLicenceWindow(page) {
+    await page.locator('ag-license-status button', { hasText: 'LICENSE KEY' }).click();
+    const activation = page.locator('ag-license-activation');
+    await activation.waitFor({ timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector('ag-license-activation')?._deviceId);
+    return activation;
+}
+
 /** Where "Release notes" points in the staged update — not visible in the figure. */
 const RELEASE_NOTES_URL = 'https://audiogravity.app/releases';
 
@@ -407,7 +444,7 @@ export const RECIPES = {
     license: {
         tab: 'admin', height: 1400,
         async stage(page) {
-            await page.route(/\/license\/status(\?|$)/, (route) => route.fulfill({ json: TRIAL_LICENCE }));
+            await stageLicence(page);
         },
         async run(page) {
             await page.locator('ag-license-status ag-license-badge').first().waitFor({ timeout: 15000 });
@@ -424,6 +461,57 @@ export const RECIPES = {
                 clip: await box(page, 'ag-license-status'),
                 blur: [await licenceValue(page, 'Device ID'), await licenceValue(page, 'Order ID')],
             };
+        },
+    },
+    'license-activation': {
+        tab: 'admin', height: 1400,
+        async stage(page) {
+            await stageLicence(page, { status: 'available', activations_remaining: 1 });
+        },
+        async run(page) {
+            const activation = await openLicenceWindow(page);
+            await activation.locator('input').first().fill(EXAMPLE_KEY);
+            await activation.getByRole('button', { name: /check key/i }).click();
+            await activation.getByText('Key validated').waitFor({ timeout: 10000 });
+            // The field is filled with the box's own name on the network: the lab's.
+            const hostname = activation.getByPlaceholder(/audiogravity-server/);
+            await hostname.fill('living-room');
+            await hostname.blur();
+            await page.waitForTimeout(STEP_TRANSITION_MS);
+            return { clip: await boxOf(activation) };
+        },
+    },
+    'license-activated': {
+        tab: 'admin', height: 1400,
+        async stage(page) {
+            await stageLicence(page);
+        },
+        async run(page) {
+            const activation = await openLicenceWindow(page);
+            // Set in the component: a real activation would bind a licence to this box.
+            await page.evaluate(async (key) => {
+                const el = document.querySelector('ag-license-activation');
+                el._key = key;
+                el._result = { license_key: key, activated_at: '2026-10-06', plan: 'lifetime', version_scope: '1' };
+                el._step = 3;
+                await el.updateComplete;
+            }, EXAMPLE_KEY);
+            await page.waitForTimeout(STEP_TRANSITION_MS);
+            return { clip: await boxOf(activation) };
+        },
+    },
+    'license-verify': {
+        tab: 'admin', height: 1400,
+        async stage(page) {
+            await stageLicence(page, { status: 'already_activated', activations_remaining: 0 });
+        },
+        async run(page) {
+            await openLicenceWindow(page);
+            const verify = page.locator('ag-license-verify');
+            await verify.locator('input').first().fill(EXAMPLE_KEY);
+            await verify.getByRole('button', { name: /verify/i }).click();
+            await verify.locator('.badge', { hasText: 'ACTIVE' }).waitFor({ timeout: 10000 });
+            return { clip: await boxOf(verify, { scroll: true }) };
         },
     },
     'update-banner': {

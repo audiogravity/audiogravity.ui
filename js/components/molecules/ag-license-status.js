@@ -7,7 +7,6 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiCall, apiUpload } from '../../api.js';
-import { LICENSE_TERMS_TITLE, LICENSE_TERMS_HTML } from '../../core/license-docs.js';
 import { showPasswordConfirm, showToast, copyToClipboard, getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-license-badge.js';
 import { iconTrash, iconCreditCard, iconExternalLink, iconDownload, iconUpload, iconCopy } from '../../ag-icons.js';
@@ -301,11 +300,6 @@ export class AgLicenseStatus extends LitElement {
             </ol>`;
     }
 
-    /** Show the combined license options + EULA modal. */
-    _showLicenseTerms() {
-        window.UIComponents?.InfoModal?.show(LICENSE_TERMS_TITLE, LICENSE_TERMS_HTML);
-    }
-
     /** Render a "Need help?" contact line, or nothing if no contact email is configured. */
     _renderContactHelp() {
         if (!this._contactEmail) return nothing;
@@ -484,13 +478,10 @@ export class AgLicenseStatus extends LitElement {
         return html`
             <div class="tab-title-container">
                 <h2>LICENSE</h2>
-                <div style="margin-left:auto;display:flex;gap:var(--spacing-sm)">
-                    <button class="btn-action btn-action--ghost compact" @click=${this._showLicenseTerms}>EDITIONS & LICENSE</button>
-                    <button class="btn-action compact"
-                            @click=${() => this.dispatchEvent(new CustomEvent('license-key-click', { bubbles: true }))}>
-                        LICENSE KEY
-                    </button>
-                </div>
+                <button class="btn-action compact" style="margin-left:auto"
+                        @click=${() => this.dispatchEvent(new CustomEvent('license-key-click', { bubbles: true }))}>
+                    LICENSE KEY
+                </button>
             </div>
         `;
     }

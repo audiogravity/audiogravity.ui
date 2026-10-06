@@ -657,8 +657,11 @@
     font-weight: 500;
 }
 
+/* The 64-character Device ID has nowhere to break (the key breaks at its hyphens):
+   without this it ran past the certificate's edge on a phone. */
 .lic-act__cert-value.mono {
     font-family: var(--font-mono);
+    overflow-wrap: anywhere;
 }
 
 .lic-act__spinner-wrap {
