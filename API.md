@@ -382,6 +382,11 @@ card on this, never on `origin_name`: two media servers may share a friendly nam
 matching on it lights both of their cards. It appears on the player state and on the
 `sources[]` entries that are playing, beside `origin`.
 
+**`title` of a radio station.** The song the station names in its stream; when it names
+none, the station's name — as the radio list knows it, else as the stream announces itself
+(MPD's `Name` tag). A title of dashes alone counts as none. The same holds for the rows of
+`GET /library/queue` and for the MPD entry of the pipeline's `service_now_playing`.
+
 `content_item_id` is the playing track's id on its streaming service — for HIGHRESAUDIO
 and Qobuz, the id `POST /library/playlists/add` takes. It is set only for a track the box streams
 from Qobuz, Tidal or HIGHRESAUDIO, whatever plays it (MPD, HQPlayer, a network renderer),
