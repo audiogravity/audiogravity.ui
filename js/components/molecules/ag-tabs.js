@@ -20,7 +20,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { keepInView } from '../../core/keep-in-view.js';
-import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload, iconManual } from '../../ag-icons.js';
+import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload, iconManual, iconChevronDown } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -55,6 +55,9 @@ const TAB_SVG_ICONS = {
  * licence- AND admin-gated on the server. */
 const GATED_TABS = new Set(['systemd', 'performance', 'pipeline', 'library']);
 
+/** The id of the library's bar the column unfolds under Library (aria-controls). */
+const LIBRARY_VIEWS_ID = 'tab-library-views';
+
 export class AgTabs extends LitElement {
     static properties = {
         activeTab: { type: String, attribute: 'active-tab' },
@@ -75,6 +78,7 @@ export class AgTabs extends LitElement {
         _updateMandatory: { type: Boolean, state: true },
         _animationsEnabled: { type: Boolean, state: true },
         _libNav: { type: Object, state: true }, // The library's tab bar: { tab, tabs }
+        _libOpen: { type: Boolean, state: true }, // That bar unfolded under Library, in the column
     };
 
     constructor() {
@@ -107,6 +111,8 @@ export class AgTabs extends LitElement {
         this._animationsEnabled = window.AppState?.animationsEnabled ?? true;
         // Until the library page says otherwise: every tab offered, none highlighted.
         this._libNav = { tab: '', tabs: null };
+        // Folded: a tap on Library unfolds it (_onTabClick).
+        this._libOpen = false;
 
         // Touch gesture state
         this._touchStartX = 0;
@@ -274,6 +280,25 @@ export class AgTabs extends LitElement {
         this._fetchLicenseStatus();
     }
 
+    /**
+     * Fold the library's bar whenever the column closes, or the tabs change layout, by
+     * whatever path — a tab chosen, the toggle, a swipe: the column always opens on
+     * Library folded. Folded too while Library cannot unfold (locked, hidden), so it
+     * does not come back unfolded with no tap once it can again.
+     *
+     * The first render is not a change of layout: a state set before it is kept.
+     *
+     * @param {Map<string, unknown>} changedProperties
+     * @returns {void}
+     */
+    willUpdate(changedProperties) {
+        if ((changedProperties.has('_sidebarHidden') && this._sidebarHidden)
+            || (changedProperties.has('_vertical') && changedProperties.get('_vertical') !== undefined)
+            || !this._libraryUnfolds()) {
+            this._libOpen = false;
+        }
+    }
+
     updated(changedProperties) {
         if (changedProperties.has('_vertical')) {
             this.classList.toggle('tabs--vertical', this._vertical);
@@ -288,6 +313,12 @@ export class AgTabs extends LitElement {
                 const configPanel = document.querySelector('ag-config-panel');
                 if (configPanel?.active) configPanel.active = false;
             }
+        }
+
+        // Library is the last tab: on a short screen its unfolded views can land below
+        // the column's visible part, and the tap would seem to do nothing.
+        if (changedProperties.has('_libOpen') && this._libOpen) {
+            keepInView(this.querySelector('ag-lib-tabbar.lib-menu'));
         }
 
         if (changedProperties.has('activeTab')) {
@@ -774,16 +805,18 @@ export class AgTabs extends LitElement {
 
             const locked = this._isLocked(tab.id);
             if (locked) btnClasses['tab-btn--locked'] = true;
+            const unfolds = tab.id === 'library' && this._libraryUnfolds();
 
             return html`
                     <button class=${classMap(btnClasses)}
                             data-tab="${tab.id}"
                             role="tab"
                             aria-selected="${isActive ? 'true' : 'false'}"
-                            aria-controls="${tab.id}"
+                            aria-controls="${unfolds && this._libOpen ? LIBRARY_VIEWS_ID : tab.id}"
+                            aria-expanded=${unfolds ? String(this._libOpen) : nothing}
                             id="tab-${tab.id}"
                             tabindex="${isActive ? '0' : '-1'}"
-                            @click=${() => this.selectTab(tab.id)}>
+                            @click=${() => this._onTabClick(tab.id)}>
                         ${TAB_SVG_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24">${TAB_SVG_ICONS[tab.id]}</svg></span>` : TAB_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[tab.id]}</svg></span>` : ''}
                         ${tab.label}
                         ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
@@ -797,8 +830,9 @@ export class AgTabs extends LitElement {
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`
                         }</span>` : ''}
+                        ${unfolds ? html`<svg class="tab-unfold ${this._libOpen ? 'open' : ''}" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconChevronDown}</svg>` : ''}
                     </button>
-                    ${tab.id === 'library' ? this._libraryRow(isActive, locked, tab.hidden) : nothing}
+                    ${unfolds ? this._libraryRow(isActive) : nothing}
                 `;
         })}
             <button class="tab-btn tab-manual-btn"
@@ -817,23 +851,52 @@ export class AgTabs extends LitElement {
     }
 
     /**
-     * The library's tab bar, under the Library entry — in the column only.
+     * Whether a tap on Library unfolds the library's bar rather than opening the page.
      *
-     * The horizontal bar does not carry it: there, the page's own bar sits right under
-     * the Library tab whenever it is open. Not offered either when Library is hidden,
-     * or locked, where every tap would only lead to the licence prompt. It highlights a
-     * tab only while Library is the tab shown: elsewhere, a highlight would claim the
-     * reader is somewhere they are not.
+     * In the column only, and not while the licence keeps Library closed — there the tap
+     * leads to the licence prompt, as on every locked tab — nor while Library is hidden.
+     * The horizontal bar opens the page: its own bar sits right under the Library tab
+     * there. The one rule for the chevron, what Library announces and the bar itself.
+     *
+     * @returns {boolean}
+     */
+    _libraryUnfolds() {
+        const library = (this.tabs || []).find((t) => t.id === 'library');
+        return Boolean(library) && !library.hidden && this._vertical && !this._isLocked('library');
+    }
+
+    /**
+     * A tap on a tab: open its page — or, on Library in the column, unfold or fold the
+     * library's bar, the column left open so a view can be chosen from it.
+     *
+     * A swipe and an arrow key still open the page (they call `selectTab`): only the
+     * tap on Library changes.
+     *
+     * @param {string} tabId - The tab tapped.
+     * @returns {void}
+     */
+    _onTabClick(tabId) {
+        if (tabId === 'library' && this._libraryUnfolds()) {
+            this._libOpen = !this._libOpen;
+            return;
+        }
+        this.selectTab(tabId);
+    }
+
+    /**
+     * The library's tab bar, under the Library entry — in the column, once a tap on
+     * Library has unfolded it (the caller checks `_libraryUnfolds`).
+     *
+     * It highlights a tab only while Library is the tab shown: elsewhere, a highlight
+     * would claim the reader is somewhere they are not.
      *
      * @param {boolean} isActive - Whether Library is the tab shown.
-     * @param {boolean} locked - Whether the licence keeps Library closed.
-     * @param {boolean} hidden - Whether the Library tab itself is hidden.
      * @returns {import('lit').TemplateResult|typeof nothing}
      */
-    _libraryRow(isActive, locked, hidden) {
-        if (!this._vertical || locked || hidden) return nothing;
+    _libraryRow(isActive) {
+        if (!this._libOpen) return nothing;
         return html`
-            <ag-lib-tabbar class="lib-menu"
+            <ag-lib-tabbar class="lib-menu" id=${LIBRARY_VIEWS_ID}
                 .tab=${isActive ? this._libNav.tab : ''}
                 .tabs=${this._libNav.tabs}
                 @lib-tab-change=${this._onLibraryTab}></ag-lib-tabbar>`;
@@ -842,16 +905,24 @@ export class AgTabs extends LitElement {
     /**
      * Open the library on the tab tapped in the column's copy of its bar.
      *
-     * Handed over as a tab rather than a view, so the tap does what the same tap does
-     * on the page's own bar (ag-library-page `_onLibGoto`). The column is closed here
-     * because `selectTab` only closes it on a CHANGE of tab: with Library already
-     * shown, the column stayed open over the page that had just moved.
+     * From another tab, the view the page was left on brings the page back as it was
+     * left — the album or the artist still open: a tap on Library used to, and the bar
+     * is now the only way to the page from the column. Any other view, or a tap made
+     * with Library shown, is handed over as a tab rather than a view, so it does what
+     * the same tap does on the page's own bar (ag-library-page `_onLibGoto`). The column
+     * is closed here because `selectTab` only closes it on a CHANGE of tab: with Library
+     * already shown, the column stayed open over the page that had just moved.
      *
      * @param {CustomEvent<{tab: string}>} e - 'lib-tab-change' from that bar.
      * @returns {void}
      */
     _onLibraryTab(e) {
-        window.dispatchEvent(new CustomEvent('lib-goto', { detail: { tab: e.detail.tab } }));
+        const { tab } = e.detail;
+        if (this.activeTab !== 'library' && tab === this._libNav.tab) {
+            this.selectTab('library');
+        } else {
+            window.dispatchEvent(new CustomEvent('lib-goto', { detail: { tab } }));
+        }
         this.closeSidebar();
     }
 

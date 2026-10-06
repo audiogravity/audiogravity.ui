@@ -207,6 +207,28 @@ export const RECIPES = {
             return { clip: await box(page, 'ag-audio-stack-provisioning') };
         },
     },
+    'tab-menu': {
+        // The tab menu of a phone, Library unfolded into its views. Five of them unless
+        // the library's source is the radio, which has no albums to browse: three.
+        tab: 'library', needs: ['a source other than the radio in the library'],
+        async run(page) {
+            await page.evaluate(() => { document.querySelector('ag-tabs')._sidebarHidden = false; });
+            await page.waitForTimeout(800);
+            // Unfolded by a tap, as a reader would — the column opens on Library folded.
+            await page.locator('ag-tabs .tab-btn[data-tab="library"]').click();
+            await page.waitForTimeout(800);
+            const column = await box(page, 'ag-tabs');
+            const views = await box(page, 'ag-tabs ag-lib-tabbar.lib-menu');
+            // The pointer left on the entry would keep it under its hover tint. It moves
+            // to the empty column under the views, not out of it: leaving the column
+            // closes it half a second later (ag-tabs, mouseleave).
+            await page.mouse.move(column.x + column.width / 2, views.y + views.height + 60);
+            await page.waitForTimeout(400);
+            // The column down to the library's views: below them it is empty down to
+            // Manual, at its foot.
+            return { clip: { x: column.x, y: column.y, width: column.width, height: views.y + views.height + 16 - column.y } };
+        },
+    },
     outputs: {
         tab: 'library', height: 1400,
         async run(page) {
