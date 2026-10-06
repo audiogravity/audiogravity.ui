@@ -459,6 +459,19 @@ body.is-offline {
     opacity: 1;
 }
 
+/* Library's chevron in the column: a tap there unfolds the library's views instead of
+   opening a page, and the chevron turns over once they show. */
+.tab-unfold {
+    margin-left: auto;
+    flex-shrink: 0;
+    opacity: 0.75;
+    transition: transform var(--transition-fast);
+}
+
+.tab-unfold.open {
+    transform: rotate(180deg);
+}
+
 /* rule 12 exception — em, not a step: this is a glyph beside a label and has to scale
    with it. A fixed step detaches the two the moment the label changes. */
 .tab-icon {

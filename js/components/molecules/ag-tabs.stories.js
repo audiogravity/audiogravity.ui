@@ -60,10 +60,13 @@ const TABS_WITH_LIBRARY = [
  * The column carries the library page's own tab bar under its Library entry. Its
  * styles come with the library's (LIB_STYLES), hence injectLibStyles().
  *
+ * The bar shows once a tap on Library has unfolded it; a story sets it unfolded.
+ *
  * @param {{tab: string, tabs: (Array<string>|null)}} nav - What the page would announce.
+ * @param {boolean} [unfolded=true] - Whether Library's bar is unfolded.
  * @returns {HTMLElement} The column, open, with Library shown.
  */
-const columnWithLibrary = (nav) => {
+const columnWithLibrary = (nav, unfolded = true) => {
     localStorage.setItem('tabs-orientation', 'vertical');
     localStorage.setItem('tabs-sidebar-hidden', 'false');
     injectLibStyles();
@@ -75,8 +78,16 @@ const columnWithLibrary = (nav) => {
     // Storybook's fetch answers no licence, which locks Library — and a locked Library
     // carries no bar. The story keeps the licence it was given.
     tabs._fetchLicenseStatus = async () => {};
+    tabs._libOpen = unfolded;
     return tabs;
 };
+
+// As the column opens: Library folded, its chevron saying a tap unfolds it.
+export const VerticalWithLibraryFolded = () => html`
+  <div style="position: relative; height: 560px; overflow: hidden;">
+    ${columnWithLibrary({ tab: 'queue', tabs: null }, false)}
+  </div>
+`;
 
 // Every source but the radio: the five tabs, the one shown highlighted.
 export const VerticalWithLibrary = () => html`
