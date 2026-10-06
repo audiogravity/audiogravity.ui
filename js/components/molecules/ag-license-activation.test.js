@@ -21,6 +21,7 @@ vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn() }));
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 
 import { asNetworkError } from '../../net-errors.js';
+import { flat, readStylesheet, cssRuleBody } from '../../test-utils.js';
 import { AgLicenseActivation } from './ag-license-activation.js';
 
 const STORAGE_KEY = 'ag_pending_license_key';
@@ -113,5 +114,42 @@ describe('step 1 says what the licence server said', () => {
         await AgLicenseActivation.prototype._handleCheck.call(el);
 
         expect(el._checkError).toContain('Could not reach the license server');
+    });
+});
+
+/**
+ * The stepper's three labels, each as 'done', 'current' or 'to come', read from the colour
+ * the template gives it.
+ * @param {number} step - The step the panel is on.
+ */
+function stepStates(step) {
+    const el = makeEl();
+    el._step = step;
+    const markup = flat(el._renderStepper());
+    return [...markup.matchAll(/color:(var\([^)]+\))">\s*0\d/g)].map(([, color]) => ({
+        'var(--color-success-text)': 'done',
+        'var(--text-primary)': 'current',
+        'var(--text-secondary)': 'to come',
+    })[color] ?? color);
+}
+
+describe('the stepper', () => {
+    it('marks the step in progress, the ones before it done', () => {
+        expect(stepStates(1)).toEqual(['current', 'to come', 'to come']);
+        expect(stepStates(2)).toEqual(['done', 'current', 'to come']);
+    });
+
+    it('marks all three done once the licence is active', () => {
+        // Step 3 is reached only after a successful activation; it read as a step still
+        // to take, black under "Activation successful" (seen by the user, 2026-10-06).
+        expect(stepStates(3)).toEqual(['done', 'done', 'done']);
+    });
+});
+
+describe('the activated licence\'s certificate (system.css)', () => {
+    it('lets the Device ID break inside it', () => {
+        // 64 characters with nowhere to break: the ID ran past the edge on a phone.
+        expect(cssRuleBody(readStylesheet('css', 'system.css'), '.lic-act__cert-value.mono'))
+            .toMatch(/overflow-wrap:\s*anywhere/);
     });
 });

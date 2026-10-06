@@ -334,8 +334,11 @@ export class AgLicenseActivation extends LitElement {
         return html`
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--spacing-sm);margin-bottom:var(--spacing-md)">
                 ${steps.map(({ n, label }) => {
-                    const done    = this._step > n;
-                    const current = this._step === n;
+                    // The last step is reached only once the licence is active: it shows
+                    // the result, so it is done as soon as it is shown. It read as a step
+                    // still to take, black under a green "Activation successful".
+                    const done    = this._step > n || this._step === steps.length;
+                    const current = !done && this._step === n;
                     const color   = done ? 'var(--color-success-text)' : current ? 'var(--text-primary)' : 'var(--text-secondary)';
                     const barBg   = done ? 'var(--color-success)' : current ? 'var(--text-primary)' : 'var(--border-color)';
                     return html`
