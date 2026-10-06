@@ -61,7 +61,7 @@ describe('the theme entries that replaced literal radii', () => {
 
     it('are the only radius the converted elements read', () => {
         const uses = [
-            ['css/layout.css', '.topbar .metric-value.activity-high', '--radius-chip'],
+            ['css/layout.css', '.topbar .topbar-value', '--radius-chip'],
             ['css/components/now-playing.css', '.np-cover--placeholder', '--radius-cover'],
             ['css/components/toast.css', '.toast', '--radius-toast'],
         ];

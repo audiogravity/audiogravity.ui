@@ -134,8 +134,50 @@ describe('ag-top-bar — how the figures read (layout.css)', () => {
         const low = cssRuleBody(CSS, '.topbar .metric-value.activity-low');
         expect(low).toMatch(/color:\s*var\(--text-primary\)/);
         expect(low).not.toMatch(/background/);
-        // Nor does the chip the three bands share: orange and red bring their own.
-        expect(CSS.match(/\.topbar \.metric-value\.activity-low,[^{]*\{([^}]*)\}/)[1]).not.toMatch(/background/);
+        // Nor does the chip every figure carries: orange and red bring their own.
+        expect(cssRuleBody(CSS, '.topbar .topbar-value')).not.toMatch(/background/);
+    });
+
+    it('lays each name on its figure\'s line, not centred against it', () => {
+        // Centred, the smaller name sat 2px above its figure; its card margin from
+        // components/metrics.css lifted it too (measured in Chromium, 2026-10-06).
+        expect(cssRuleBody(CSS, '.metric')).toMatch(/align-items:\s*baseline/);
+        expect(cssRuleBody(CSS, '.topbar .system-metrics .metric-label')).toMatch(/margin:\s*0/);
+        // Only the stacked phone layout centres a figure, under its name.
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        expect(CSS.replace(phone, '')).not.toMatch(/\.metric\s*\{[^}]*align-items:\s*center/);
+    });
+
+    it('puts the same space between every name and its figure, the uptime included', async () => {
+        // The chip's padding sat on the three banded figures only: 10px from their
+        // names, 4px for the uptime's.
+        const el = await mount();
+        expect(figures(el)).toHaveLength(4);
+        for (const figure of el.querySelectorAll('.system-metrics .metric-value')) {
+            expect(figure.classList.contains('topbar-value')).toBe(true);
+        }
+        expect(cssRuleBody(CSS, '.topbar .topbar-value')).toMatch(/padding:\s*2px var\(--spacing-xs\)/);
+        expect(cssRuleBody(CSS, '.metric')).toMatch(/gap:\s*var\(--spacing-xs\)/);
+        // At every inline width: a small-phone block had cut it to 2px.
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        const gaps = [...CSS.replace(phone, '').matchAll(/(?:^|[\s}])\.metric\s*\{([^}]*)\}/g)]
+            .filter(([, body]) => /gap:/.test(body));
+        expect(gaps).toHaveLength(1);
+    });
+
+    it('keeps two pairs further apart than a name from its figure, at every inline width', () => {
+        // 8px inside a pair, 16px between two: the phone and tablet blocks had cut
+        // the second to 8 and 10px, so a figure read with the next name.
+        expect(cssRuleBody(CSS, '.system-metrics')).toMatch(/gap:\s*var\(--spacing-md\)/);
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        const inline = CSS.replace(phone, '');
+        expect(inline.match(/(^|[\s}])\.system-metrics\s*\{/g)).toHaveLength(1);
+    });
+
+    it('keeps the stacked phone layout\'s spacing', () => {
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        expect(cssRuleBody(phone, '.system-metrics')).toMatch(/gap:\s*var\(--spacing-xs\)/);
+        expect(cssRuleBody(phone, '.topbar .system-metrics .topbar-value')).toMatch(/padding-inline:\s*var\(--spacing-sm\)/);
     });
 
     it('reads each name inline on a computer: "CPU: 12%"', () => {
@@ -154,10 +196,13 @@ describe('ag-top-bar — how the figures read (layout.css)', () => {
     it('reads them inline wherever there is room: a large phone, a tablet, a computer', () => {
         // Measured in Chromium (2026-10-04), the menu shown and the widest figures:
         // from 430px, 11px to spare each side; from 481px, where the dot comes back,
-        // 27px; from 769px, where the words come back as well, 68px.
-        const narrow = mediaBlock(CSS, /@media\s*\(width\s*<=\s*1024px\)/);
-        expect(narrow).not.toMatch(/flex-direction:\s*column/);
-        expect(narrow).not.toMatch(/metric-label[^{]*\{[^}]*display:\s*none/);
+        // 27px; from 769px, where the words come back as well, 68px. With the pairs
+        // evened out (2026-10-06), 3.8px at 430px — three figures at 100 — then 24px
+        // from 481px and 81px from 769px.
+        const phone = mediaBlock(CSS, /@media\s*\(width\s*<\s*430px\)/);
+        const elsewhere = CSS.replace(phone, '');
+        expect(elsewhere).not.toMatch(/\.metric\s*\{[^}]*flex-direction:\s*column/);
+        expect(elsewhere).not.toMatch(/metric-label[^{]*\{[^}]*display:\s*none/);
     });
 
     it('keeps the dot without its words on a phone layout, and neither under 481px', () => {
