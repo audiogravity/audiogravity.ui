@@ -13,6 +13,7 @@ import { appearancePreference, isDarkFor, applyStoredAppearance } from './appear
 import { escapeHtml } from './core/escape-html.js';
 import { parseStoredValue } from './core/stored-value.js';
 import { applyUpdates } from './core/sw-update.js';
+import { skipNextSplash } from './splash-screen.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
@@ -188,6 +189,8 @@ document.addEventListener('logout-click', async () => {
     } catch (e) {
         console.error('Logout failed:', e);
     }
+    // The same opening of the app: the sign-in page shows no splash screen.
+    skipNextSplash();
     window.location.href = 'login.html';
 });
 

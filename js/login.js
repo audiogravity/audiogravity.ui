@@ -3,6 +3,12 @@
  * @description Login page management
  */
 
+// The splash screen is in the markup — a launch with no session lands on this page.
+// Imported first, but run, like everything in a module, once all its imports have
+// loaded: the screen's timing counts from its first animation, not from this call
+// (js/splash-screen.js).
+import { splashScreen, skipNextSplash } from './splash-screen.js';
+splashScreen.init();
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config.js';
 import './components/atoms/ag-license-badge.js';
 import './components/atoms/ag-theme-toggle.js';
@@ -99,7 +105,12 @@ function setLoading(loading, target = 'login') {
  * Redirect to dashboard
  */
 function redirectToDashboard() {
+    // The same opening of the app: no second splash screen once signed in.
+    skipNextSplash();
+
     // Check if there's a saved redirect
+    // BACKLOG: read where js/auth.js requireAuth() and public/session-boot.js never write
+    // (localStorage) — see audiogravity.ops/BACKLOG.md, "redirect_after_login".
     const redirect = sessionStorage.getItem('redirect_after_login');
     sessionStorage.removeItem('redirect_after_login');
 

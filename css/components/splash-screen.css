@@ -1,17 +1,31 @@
 /**
  * @module SplashScreen
- * @description In-app PWA splash screen overlay.
- * Shown during the initial app load when launched in standalone mode (PWA).
- * Complements the native iOS apple-touch-startup-image for Android/Chrome/Desktop PWA.
+ * @description In-app splash screen, shown while an installed app (PWA) loads.
+ *
+ * The app's icon, its name and the landing's line, on a black ground; the three come in
+ * one after the other (~0.7 s), then a wave goes out of the icon — at least once, then
+ * for as long as the app is still loading (user's choice, 2026-10-08; js/splash-screen.js
+ * holds the screen for that first wave). iOS first shows its own launch image, the plain
+ * ground the entrance starts from (scripts/make-launch-images.mjs). It is on index.html
+ * and on login.html, where a launch with no session lands (public/session-boot.js), and
+ * is shown once per opening of the installed app (public/splash-boot.js).
+ *
+ * The motion does not follow the app's Animations setting (body.no-animations): the user
+ * wanted this screen animated whatever the interface does. The device's own Reduce motion
+ * (prefers-reduced-motion) does still it.
  */
 
 /* =====================
    SPLASH SCREEN OVERLAY
    ===================== */
 
-/* Fixed palette on purpose: the splash paints before the theme is applied —
-   it is what the user sees while the interface is still loading, so it can
-   read no token (guidelines, rule 6 exception). */
+/* Minimal dark's colours whatever the user's theme: the markup pins it on the screen
+   (data-theme + dark-mode), because iOS's launch images are painted from it. On the
+   user's theme, a light one, the launch cut from black to white; the app now comes
+   out of black in the fade.
+
+   The gap is the app's 12px, written as a value: login.html redefines --spacing-md for
+   its own page (css/login.css), and the screen has to be the same on both pages. */
 #ag-splash-screen {
     position: fixed;
     inset: 0;
@@ -20,19 +34,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-xl);
-    background: #12141c; /* Match manifest background_color — hardcoded so it appears
-                            before CSS vars are resolved */
-    color: #e8eaf0;
-
-    /* Safe area coverage (iOS notch, Dynamic Island) */
-    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    gap: 12px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
 
     /* Initial state: fully visible */
     opacity: 1;
     transition: opacity 400ms ease-out;
-
-    /* Hardware-accelerated compositing */
     will-change: opacity;
     transform: translateZ(0);
 }
@@ -48,111 +56,212 @@
     display: none;
 }
 
+/* Painted only where public/splash-boot.js said so, before the first paint: in the
+   installed app, once per opening. A browser tab, a reload, the page after a sign-in
+   or a sign-out — or that script not loaded — never show it. */
+html:not(.splash-on) #ag-splash-screen {
+    display: none;
+}
+
 /* =====================
-   LOGO CONTAINER
+   ICON, NAME, LINE
    ===================== */
 
-.splash-logo-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-lg, 24px);
-    animation: splashLogoEnter 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+/* Each animated element names its timing in three custom properties, read by the shared
+   rule under it — so that the one rule exempting this screen from the app's Animations
+   setting (further down) can restore every one of them. */
+
+/* The icon and the wave behind it. 20px under it, on top of the 12px gap: the wave
+   reaches 22px past the icon (scale 1.45 of 96px) and must stop short of the name. */
+.splash-mark {
+    --splash-duration: 450ms;
+    --splash-delay: 0ms;
+
+    position: relative;
+    width: 96px;
+    height: 96px;
+    margin-bottom: 20px;
+    animation-name: splashRise;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: both;
 }
 
-.splash-icon {
-    width: 120px;
-    height: 120px;
-    stroke: #e8eaf0;
-    stroke-width: 1.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-}
-
-/* The application's own icon, beside the wordmark — the lockup the sign-in card uses,
-   under the glyph this screen has always drawn.
- *
- * One thing belongs to this screen and not to .ag-app-icon: the hairline, in the fixed
- * palette rather than in the theme's border colour. This overlay paints its own ground
- * (#12141c, matching the manifest's background_color) whatever the theme, because it is
- * drawn before any theme exists, and the icon is a near-black square that loses its edges
- * on it. So the edge is owed in BOTH appearances, and its value has to be the one that
- * suits this ground rather than the interface's.
- *
- * Selected through the screen's id, and that is the whole point. Written flat,
- * .splash-app-icon weighs (0,1,0) and lost to `.dark-mode .ag-app-icon` at (0,2,0): in a
- * dark appearance the splash took the theme's border instead of its own — measured against
- * this screen's #12141c, 1.21:1 under Gravity, 1.28:1 under Minimal, 1.78:1 under Slate,
- * where the hairline below gives 15.28:1. Chaining the two classes would NOT have fixed
- * it: (0,2,0) ties with the dark rule, and a tie is settled by main.css's import order,
- * which puts app-icon.css after this file. The id takes the rule out of that argument.
- *
- * The size is still NOT set here. It was, briefly, and lost that same tie the other way —
- * measured, 36x36 rendered where 96 was asked. */
+/* Selected through the screen's id: written flat, a rule here weighs (0,1,0) and loses
+   to `.dark-mode .ag-app-icon` (0,2,0), which sets the hairline — and once lost the size
+   too (36x36 rendered where 96 was asked). */
 #ag-splash-screen .splash-app-icon {
-    border: 1px solid rgb(232 234 240 / 0.25);
+    position: relative;
+    z-index: 1;
+    width: 96px;
+    height: 96px;
 }
 
-/* The brand itself comes from css/components/wordmark.css, like everywhere else. What
-   stays here is what belongs to this screen: its size under the 120px glyph, and the
-   fixed colour — this is painted before any theme exists, so it can read no token
-   (guidelines, rule 6 exception). The mark declares no colour of its own, which is
-   what lets it take this one. */
 .splash-wordmark {
+    --splash-duration: 450ms;
+    --splash-delay: 120ms;
+
     font-size: var(--font-size-xxl);
-    color: #e8eaf0;
-    opacity: 0.92;
+    color: var(--text-primary);
+    animation-name: splashLift;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: both;
 }
 
-
-
-/* Same fixed palette as the screen itself: painted before any theme exists
-   (guidelines, rule 6 exception). */
+/* rule 12 exception — the app's 13px (--font-size-md), written as a value: login.html
+   redefines that step for its own page (css/login.css), and the screen has to be the
+   same on both pages. */
 .splash-tagline {
-    font-family: var(--font-family, 'Inter', sans-serif);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: rgb(232 234 240 / 0.4);
+    --splash-duration: 450ms;
+    --splash-delay: 240ms;
+
+    font-family: var(--font-family);
+    font-size: 13px;
+    color: var(--text-secondary);
+    animation-name: splashFade;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+}
+
+/* The wave: a ring of the icon's shape going out and fading, two of them half a cycle
+   apart, from the moment the icon is in place, for as long as the screen stays. */
+.splash-wave {
+    --splash-duration: 1600ms;
+    --splash-delay: 500ms;
+    --splash-count: infinite;
+
     position: absolute;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
-    animation: splashLogoEnter 600ms 200ms ease both;
+    inset: 0;
+    border-radius: 22%; /* the icon's own corner (.ag-app-icon) */
+    border: 1.5px solid var(--text-secondary);
+    opacity: 0;
+    animation-name: splashWave;
+    animation-timing-function: ease-out;
+}
+
+.splash-wave--second {
+    --splash-delay: 1300ms;
 }
 
 /* =====================
-   KEYFRAMES
+   MOTION
    ===================== */
 
-@keyframes splashLogoEnter {
+.splash-mark,
+.splash-wordmark,
+.splash-tagline,
+.splash-wave {
+    animation-duration: var(--splash-duration);
+    animation-delay: var(--splash-delay);
+    animation-iteration-count: var(--splash-count, 1);
+}
+
+@keyframes splashRise {
     from {
         opacity: 0;
-        transform: translateY(12px) scale(0.95);
+        transform: scale(0.92);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: none;
     }
 }
 
+@keyframes splashLift {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
 
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes splashFade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Light only, never size or place: it runs under Reduce motion. */
+@keyframes splashPulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.55;
+    }
+}
+
+@keyframes splashWave {
+    from {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.45);
+    }
+}
+
+/* Out of the app's Animations setting, by the user's choice: `body.no-animations *`
+   (themes.css) shortens every animation to 0.01ms with !important. Restored here with
+   !important and an id, which outweighs it, from the properties each element names. */
+body.no-animations #ag-splash-screen,
+body.no-animations #ag-splash-screen * {
+    animation-duration: var(--splash-duration, 0s) !important;
+    animation-delay: var(--splash-delay, 0s) !important;
+    animation-iteration-count: var(--splash-count, 1) !important;
+}
+
+body.no-animations #ag-splash-screen {
+    transition-duration: 400ms !important;
+}
 
 /* =====================
    REDUCED MOTION
    ===================== */
 
+/* The device's Reduce motion: nothing moves — everything in place at once, no wave. The
+   icon's light pulses instead, slowly, without growing: a dissolve rather than a movement,
+   which is what Apple advises for that setting, and a sign the app is still loading (user's
+   choice, 2026-10-08 — the screen used to stand still, and showed nothing going on).
+   Through the id, with !important: themes.css cuts every animation to 0.01ms under this
+   setting. Its timing in the three custom properties, like every animation here, so that
+   the exemption from the app's Animations setting (above) keeps it too. */
 @media (prefers-reduced-motion: reduce) {
-    .splash-logo-wrapper,
-    .splash-tagline {
-        animation: none;
+    #ag-splash-screen .splash-mark,
+    #ag-splash-screen .splash-wordmark,
+    #ag-splash-screen .splash-tagline {
+        animation: none !important;
         opacity: 1;
         transform: none;
     }
 
+    #ag-splash-screen .splash-wave {
+        display: none;
+    }
 
-    #ag-splash-screen {
-        transition-duration: 150ms;
+    #ag-splash-screen .splash-app-icon {
+        --splash-duration: 1600ms;
+        --splash-delay: 500ms;
+        --splash-count: infinite;
+
+        animation: splashPulse var(--splash-duration) ease-in-out var(--splash-delay) var(--splash-count) !important;
+    }
+
+    /* Both selectors: the exemption above weighs (1,1,1), and this one must win it. */
+    #ag-splash-screen,
+    body.no-animations #ag-splash-screen {
+        transition-duration: 150ms !important;
     }
 }

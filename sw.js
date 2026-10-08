@@ -67,6 +67,12 @@ const CACHE_URLS = [
     // Runs before the first paint; a cache miss here would put the white flash
     // back on exactly the cold loads this file exists to fix.
     '/theme-boot.js',
+    // Runs before the first paint too: it sends a launch with no session to the
+    // sign-in page before the app page draws its splash screen.
+    '/session-boot.js',
+    // Runs before the first paint on both pages: it decides whether the splash
+    // screen is shown at all.
+    '/splash-boot.js',
     // The two files the shell cannot start without, and neither carries a hash,
     // so the Workbox manifest above does not cover them. The cache is named after
     // the version, so a release empties it: without these entries the FIRST launch
@@ -241,7 +247,8 @@ self.addEventListener('fetch', (event) => {
     // at once afterwards, and without the box.
     const isStableStatic = isSameOrigin &&
         (url.pathname.startsWith('/pics/') || url.pathname.startsWith('/docs/manual/')
-            || url.pathname === '/theme-boot.js');
+            || url.pathname === '/theme-boot.js' || url.pathname === '/session-boot.js'
+            || url.pathname === '/splash-boot.js');
 
     const isHashedAsset  = isSameOrigin && url.pathname.startsWith(ASSETS_PREFIX);
     const isNavigation   = request.mode === 'navigate';

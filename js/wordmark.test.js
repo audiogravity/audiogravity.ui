@@ -32,7 +32,8 @@ const CALL_SITES = [
     // Two on the app shell: the splash screen painted before anything else, then the
     // title bar of the interface itself.
     { file: 'index.html', sizes: ['splash-wordmark', 'app-logo'] },
-    { file: 'login.html', sizes: ['login-logo'] },
+    // The sign-in page too, since a launch with no session lands there (2026-10-08).
+    { file: 'login.html', sizes: ['login-logo', 'splash-wordmark'] },
     { file: path.join('js', 'components', 'molecules', 'ag-tabs.js'), sizes: ['tabs-logo'] },
 ];
 
