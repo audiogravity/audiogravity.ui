@@ -38,13 +38,20 @@
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    height: var(--size-sm);
+
+    /* The compact buttons' one height (themes.css), up from 18px (--size-sm): the
+       tiles' Start, Stop, Install, Edit… were the smallest action buttons of the
+       interface (user's choice, 2026-10-06, after trying 20 and 22). */
+    height: var(--button-height-compact);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
     color: var(--text-primary);
     padding: 0 var(--spacing-sm);
-    font-size: var(--font-size-xxs);
+
+    /* 11px, as every compact button — 10px (--font-size-xxs) is for what is
+       identified, a badge or a unit; what is read starts at --font-size-xs. */
+    font-size: var(--font-size-xs);
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -266,15 +273,22 @@ a.action-btn:hover {
 }
 .action-btn:active:not(:disabled) { transform: scale(0.95); }
 
-.action-btn.compact {
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--font-size-xs);
-}
-
+/* A compact button of either system is a tile button in size — height, padding, font,
+   weight, letter spacing, line height, corners (.tile-action-btn above; user's choice,
+   2026-10-06). Both already stood 24px, but with 12px of side padding, and .action-btn
+   at weight 500 with square corners. Colours stay each variant's. performance.css's
+   .service-status-badge copies this box: change both together.
+   BACKLOG: other small buttons keep a size of their own — audiogravity.ops/BACKLOG.md,
+   "D'autres petits boutons n'ont pas encore la taille commune". */
+.action-btn.compact,
 .btn-action.compact {
-    height: unset;
-    padding: var(--spacing-xs) var(--spacing-md);
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
 }
 
 /* =====================

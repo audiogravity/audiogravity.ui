@@ -550,7 +550,10 @@ body.no-animations .animate-stagger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-xs) var(--spacing-md);
+
+    /* The compact button's box (components/button.css, 2026-10-06). */
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     border-radius: var(--radius-xs);
     font-size: var(--font-size-xs);
     font-weight: 700;

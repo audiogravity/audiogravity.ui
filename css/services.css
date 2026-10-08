@@ -114,8 +114,12 @@
    ===================== */
 
 
+/* A badge that works as a button, in the row of the tile's buttons: their height, so
+   the row reads as one — its padding alone left it at 18px beside 24px buttons. */
 .service-enabled-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    height: var(--button-height-compact);
 }
 
 /* Service Metrics */
