@@ -271,10 +271,8 @@ export function showPasswordConfirm(title, message, options = {}) {
         dialog.addEventListener('dialog-cancel', handleCancel);
 
         document.body.appendChild(dialog);
-        setTimeout(() => {
-            dialog.show = true;
-            setTimeout(() => dialog.querySelector(`#${inputId}`)?.focus(), 150);
-        }, TOAST_ANIMATION_DELAY);
+        // The dialog focuses the field itself once shown (ag-confirm-dialog.updated).
+        setTimeout(() => { dialog.show = true; }, TOAST_ANIMATION_DELAY);
     });
 }
 

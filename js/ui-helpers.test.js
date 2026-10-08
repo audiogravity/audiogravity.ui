@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render } from 'lit';
+import { readStylesheet } from './test-utils.js';
 import { getUserFriendlyError, showConfirm, showPasswordConfirm, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
 import { asNetworkError } from './net-errors.js';
 
@@ -166,6 +167,15 @@ describe('a confirmation that deletes — the option reaches the dialog', () => 
         expect(b.destructive).toBe(true);
         for (const d of [a, b]) d.dispatchEvent(new CustomEvent('dialog-cancel'));
         return Promise.all([expect(plain).resolves.toBeNull(), expect(deletes).resolves.toBeNull()]);
+    });
+});
+
+describe('showPasswordConfirm — the focus', () => {
+    it('leaves it to the dialog, which focuses the field once shown: a second timer did it again 50 ms later', () => {
+        const source = readStylesheet('js', 'ui-helpers.js');
+        const start = source.indexOf('export function showPasswordConfirm');
+        const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+        expect(body).not.toMatch(/\.focus\(/);
     });
 });
 

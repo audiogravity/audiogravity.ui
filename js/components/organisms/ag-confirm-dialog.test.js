@@ -112,6 +112,9 @@ describe('the confirmations that delete or remove', () => {
         [['js', 'components', 'molecules', 'ag-network-mount-form.js'], "'Share is busy'"],
         [['js', 'components', 'organisms', 'ag-admin-page.js'], "'Delete User'"],
         [['js', 'components', 'organisms', 'ag-systemd-page.js'], "'Remove Override'"],
+        // Systemd's restore writes the backup over the override and deletes it: the settings in
+        // place are lost. Config's Restore Backup saves them first, and is not destructive.
+        [['js', 'components', 'organisms', 'ag-systemd-page.js'], "'Restore Backup'"],
         [['js', 'components', 'organisms', 'ag-config-editor.js'], "'Unsaved Changes'"],
         [['js', 'components', 'organisms', 'ag-config-editor.js'], "'Cancel Changes'"],
         [['js', 'components', 'organisms', 'ag-config-editor.js'], "'Switch Mode'"],

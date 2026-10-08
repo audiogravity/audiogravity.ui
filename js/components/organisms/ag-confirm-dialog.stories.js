@@ -1,6 +1,11 @@
 import { html } from 'lit';
 import './ag-confirm-dialog.js';
 
+/**
+ * The confirm dialog: Cancel outlined, OK filled — orange when the action deletes or
+ * removes something (`destructive`), in which case Cancel is the button focused on
+ * opening. An information dialog shows OK alone.
+ */
 export default {
     title: 'Organisms/ConfirmDialog',
     component: 'ag-confirm-dialog',
@@ -8,24 +13,23 @@ export default {
         show: { control: 'boolean' },
         title: { control: 'text' },
         message: { control: 'text' },
-        confirmLabel: { control: 'text' },
+        okLabel: { control: 'text' },
         cancelLabel: { control: 'text' },
-        type: {
-            control: 'select',
-            options: ['warning', 'error', 'info']
-        }
+        destructive: { control: 'boolean' },
+        infoMode: { control: 'boolean' },
     },
 };
 
 const Template = (args) => html`
   <div style="height: 300px; padding: 20px;">
-    <ag-confirm-dialog 
+    <ag-confirm-dialog
         ?show="${args.show}"
         .title="${args.title}"
         .message="${args.message}"
-        .confirmLabel="${args.confirmLabel}"
-        .cancelLabel="${args.cancelLabel}"
-        .type="${args.type}"
+        .okLabel="${args.okLabel ?? 'OK'}"
+        .cancelLabel="${args.cancelLabel ?? 'Cancel'}"
+        ?destructive="${args.destructive}"
+        ?info-mode="${args.infoMode}"
         @dialog-confirm="${() => console.log('Confirmed!')}"
         @dialog-cancel="${() => console.log('Cancelled!')}">
     </ag-confirm-dialog>
@@ -33,20 +37,29 @@ const Template = (args) => html`
   </div>
 `;
 
-export const DangerousAction = Template.bind({});
-DangerousAction.args = {
+/** A confirmation that deletes: OK is orange, Cancel is focused on opening. */
+export const Destructive = Template.bind({});
+Destructive.args = {
     show: true,
-    title: 'Factory Reset',
-    message: 'Are you sure you want to erase all settings? This action cannot be undone.',
-    confirmLabel: 'Reset Everything',
-    type: 'error'
+    title: 'Clear History',
+    message: 'Clear config history?',
+    destructive: true,
 };
 
+/** A confirmation that deletes nothing: OK is filled and focused on opening. */
 export const NormalAction = Template.bind({});
 NormalAction.args = {
     show: true,
     title: 'Restart Service',
     message: 'This will temporarily interrupt audio playback.',
-    confirmLabel: 'Restart Now',
-    type: 'warning'
+    okLabel: 'Restart Now',
+};
+
+/** Information only: OK alone. */
+export const Information = Template.bind({});
+Information.args = {
+    show: true,
+    title: 'Validation',
+    message: 'The configuration is valid.',
+    infoMode: true,
 };

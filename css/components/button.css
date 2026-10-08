@@ -14,7 +14,7 @@
  * `.tile-action-btn` is the tiles' name for the same button and shares every rule here;
  * two of its variants have names of their own — `.start` / `.activate` are `.success`,
  * `.stop` / `.deactivate` are `.error`.
- * Follows BEM naming: .btn-action--{modifier}
+ * Variants: `.success`, `.error`, `.warning`, and the modifier `.btn-action--ghost`.
  */
 .btn-action,
 .tile-action-btn {
@@ -230,6 +230,11 @@ ag-badge button.badge,
     letter-spacing: 0.3px;
     line-height: normal;
     border-radius: var(--radius-xs);
+
+    /* One line: the height is fixed, a second line would run out of the frame — "My Live
+       Radio" did at 320px, the queue's "Local Library" at 360px. A row that cannot hold its
+       labels wraps instead (.filter-bar). */
+    white-space: nowrap;
 }
 
 /* The chosen one of a row of selectors — the tabs' and the queue's filters, Library's
@@ -249,7 +254,7 @@ ag-badge button.badge,
    stood 18px (.btn-action), 29px (.action-btn), and 44px on a phone. Each system keeps
    its colours. The touch rule below is undone here: the user capped them. A compact
    button keeps its own size, wherever it sits. */
-.modal-footer :is(.action-btn, .btn-action):not(.compact) {
+.modal-footer :is(.action-btn, .btn-action, .tile-action-btn):not(.compact) {
     height: var(--button-height-medium);
     min-height: 0;
     min-width: 0;

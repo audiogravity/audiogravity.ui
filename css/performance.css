@@ -541,9 +541,9 @@ body.no-animations .animate-stagger {
 }
 
 /* Sits immediately beside a `.btn-action.compact` (the start/stop button), so it takes
-   that button's box: same padding, type size and letter-spacing, and a height derived
-   from the padding rather than the fixed `--size-sm`. It used to be shorter and set in
-   a different family, which made the pair read as two mismatched controls. The family
+   that button's box: the compact height, padding, type size and letter-spacing
+   (components/button.css). It used to be shorter and set in a different family, which
+   made the pair read as two mismatched controls. The family
    is the UI one, not mono: this is an uppercase label, and mono is both wider and
    against the house rule for badges. */
 .service-status-badge {

@@ -267,6 +267,28 @@ export class AgAudioPipeline extends LitElement {
             padding: 4px;
         }
 
+        /* A group that opens a section of the panel: a rule above it, in the theme's border
+           colour — it was white at 10 %, which a light theme did not show (2026-10-08). */
+        .control-group--ruled {
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* RESET, LEGEND, MINIMAP and NETWORK: two equal columns, as a grid — wrapped flex
+           items gave their labels' own widths to the panel, which nearly doubled once the
+           buttons lost the fixed width they used to carry. In a class, not a style
+           attribute: an inline display outranked the collapsed panel's display: none. */
+        .control-group--grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            padding-top: var(--spacing-xs);
+        }
+
+        .control-group--toggles {
+            margin-top: var(--spacing-xs);
+            padding-top: 8px;
+        }
+
         /* The compact buttons' box — height, padding, type, letter spacing (button.css,
            .tile-action-btn; user's choice, 2026-10-08). It stood 28px. The corners stay
            the diagram's, shared with its steering buttons. The face is named: in this
@@ -1662,17 +1684,14 @@ export class AgAudioPipeline extends LitElement {
                         </button>
                     </div>
 
-                    <!-- Two equal columns, as a grid: wrapped flex items gave their labels'
-                         own widths to the panel, which nearly doubled once the buttons lost
-                         the fixed width they used to carry. -->
-                    <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px;">
+                    <div class="control-group control-group--ruled control-group--grid">
                         <button class="zoom-btn" @click=${this._resetLayout}>RESET</button>
                         <button class="zoom-btn" @click=${this._toggleLegend} style="background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
                         <button class="zoom-btn" @click=${this._toggleMinimap} style="background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
                         <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
                     </div>
 
-                    <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 8px;">
+                    <div class="control-group control-group--ruled control-group--toggles">
                         <span class="toggle-label">Analog sources</span>
                         <label class="toggle-switch">
                             <input

@@ -10,6 +10,7 @@
  */
 .filter-bar {
     display: flex;
+    flex-wrap: wrap;    /* its buttons keep their label on one line: the row wraps instead */
     gap: var(--spacing-xs);
     align-items: center;
 }

@@ -84,6 +84,12 @@ describe('the compact buttons', () => {
         for (const declaration of BOX) expect(SHARED.body).toMatch(declaration);
     });
 
+    it('keep their label on one line: the height is fixed, a second line ran out of the frame at 320 and 360px', () => {
+        expect(SHARED.body).toMatch(/white-space:\s*nowrap/);
+        // A row of filters that cannot hold its labels wraps instead (the queue's sources).
+        expect(cssRuleBody(readStylesheet('css', 'components', 'filter-bar.css'), '.filter-bar')).toMatch(/flex-wrap:\s*wrap/);
+    });
+
     it.each(FAMILIES)('— %s — are in that rule, and restate none of it', (_, selector, file, own) => {
         expect(SHARED.selectors).toContain(selector);
         for (const rule of rulesOf(readStylesheet(...file))) {
@@ -159,7 +165,7 @@ describe('what the clean-up took out stays out', () => {
 });
 
 describe('a dialog\'s buttons', () => {
-    const body = cssRuleBody(readStylesheet('css', 'components', 'button.css'), '.modal-footer :is(.action-btn, .btn-action):not(.compact)');
+    const body = cssRuleBody(readStylesheet('css', 'components', 'button.css'), '.modal-footer :is(.action-btn, .btn-action, .tile-action-btn):not(.compact)');
 
     it('take their one height from a single token of the theme: 29px', () => {
         const themes = readStylesheet('css', 'themes.css');
@@ -242,8 +248,20 @@ describe('the selectors that act as filters', () => {
         });
 
         it('lay RESET, LEGEND, MINIMAP and NETWORK on a grid: as wrapped flex items they widened the panel to 272px', () => {
-            const group = openingTags(source).find((t, i, all) => /class="control-group"/.test(t) && /RESET|_resetLayout/.test(all[i + 1] ?? ''));
-            expect(group).toMatch(/display:\s*grid;\s*grid-template-columns:\s*1fr 1fr/);
+            const group = openingTags(source).find((t, i, all) => /class="control-group\b/.test(t) && /RESET|_resetLayout/.test(all[i + 1] ?? ''));
+            expect(group).toMatch(/\bcontrol-group--grid\b/);
+            expect(cssRuleBody(source, '.control-group--grid')).toMatch(/display:\s*grid;\s*grid-template-columns:\s*1fr 1fr/);
+        });
+
+        it('fold away with the panel: no group sets its display in a style attribute, which outranks the collapsed rule', () => {
+            expect(cssRuleBody(source, '.controls.collapsed .control-group')).toMatch(/display:\s*none/);
+            for (const tag of openingTags(source).filter((t) => /class="control-group\b/.test(t))) {
+                expect(tag).not.toMatch(/style=/);
+            }
+        });
+
+        it('rule their sections in the theme\'s border colour — white at 10 % did not show in a light theme', () => {
+            expect(cssRuleBody(source, '.control-group--ruled')).toMatch(/border-top:\s*1px solid var\(--border-color\)/);
         });
     });
 });
