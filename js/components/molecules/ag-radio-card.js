@@ -139,6 +139,9 @@ export class AgRadioCard extends LitElement {
     /**
      * The unfolded "more" actions: Edit for a saved station, removal for one in
      * My Live Radio. Worded, because two icons side by side is what they replace.
+     * Compact, as every action on one item of a list — a tile's Start or Uninstall
+     * (user's choice, 2026-10-08: at 44px on a phone they were the only large
+     * buttons of the Radio view).
      * @param {object} s - The station.
      * @returns {import('lit').TemplateResult}
      */
@@ -146,10 +149,10 @@ export class AgRadioCard extends LitElement {
         return html`
             <div class="lib-radio-more-actions" id="radio-more-${s.uuid}">
                 ${this.editable ? html`
-                    <button class="action-btn secondary" @click=${this._onEditTap}>Edit station</button>
+                    <button class="action-btn compact secondary" @click=${this._onEditTap}>Edit station</button>
                 ` : nothing}
                 ${this.inLibrary ? html`
-                    <button class="action-btn warning" @click=${this._onRemoveTap}>Remove from My Live Radio</button>
+                    <button class="action-btn compact warning" @click=${this._onRemoveTap}>Remove from My Live Radio</button>
                 ` : nothing}
             </div>
         `;

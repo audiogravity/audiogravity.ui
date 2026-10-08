@@ -273,18 +273,38 @@ a.action-btn:hover {
 }
 .action-btn:active:not(:disabled) { transform: scale(0.95); }
 
-/* A compact button of either system is a tile button in size — height, padding, font,
-   weight, letter spacing, line height, corners (.tile-action-btn above; user's choice,
-   2026-10-06). Both already stood 24px, but with 12px of side padding, and .action-btn
-   at weight 500 with square corners. Colours stay each variant's. performance.css's
-   .service-status-badge copies this box: change both together.
-   BACKLOG: other small buttons keep a size of their own — audiogravity.ops/BACKLOG.md,
-   "D'autres petits boutons n'ont pas encore la taille commune". */
+/* A compact button of any of the three systems is a tile button in size — height,
+   padding, font, weight, letter spacing, line height, corners (.tile-action-btn above;
+   user's choice, 2026-10-06). The first two already stood 24px, but with 12px of side
+   padding, and .action-btn at weight 500 with square corners; .clear-btn's Clear of the
+   history panels stood 20px, at weight 500 with square corners (2026-10-08). Colours stay
+   each variant's. performance.css's .service-status-badge copies this box: change both
+   together.
+   BACKLOG: a few buttons keep a size of their own — audiogravity.ops/BACKLOG.md,
+   "Quelques boutons restent hors des deux tailles communes". */
 .action-btn.compact,
+.clear-btn.compact,
 .btn-action.compact {
     height: var(--button-height-compact);
     padding: 0 var(--spacing-sm);
     font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
+}
+
+/* A dialog's buttons are one medium size, on a computer and a phone alike — 29px, 12px
+   type at weight 600, the compact buttons' corners (user's choice, 2026-10-08). They
+   stood 18px (.btn-action), 29px (.action-btn), and 44px on a phone. Each system keeps
+   its colours. The touch rule below is undone here: the user capped them. A compact
+   button keeps its own size, wherever it sits. */
+.modal-footer :is(.action-btn, .btn-action):not(.compact) {
+    height: var(--button-height-medium);
+    min-height: 0;
+    min-width: 0;
+    padding: 0 var(--spacing-md);
+    font-size: var(--font-size-sm);
     font-weight: 600;
     letter-spacing: 0.3px;
     line-height: normal;
@@ -384,10 +404,7 @@ a.action-btn:hover {
     color: var(--bg-primary);
 }
 
-.clear-btn.compact {
-    padding: 2px var(--spacing-sm);
-    font-size: var(--font-size-xs);
-}
+/* .clear-btn.compact is sized with the other systems' compact buttons, above. */
 
 /* =====================
    TOUCH ACCESSIBILITY

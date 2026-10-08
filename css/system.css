@@ -253,12 +253,16 @@
     background: var(--color-error-bg);
 }
 
-/* Compact variant - smaller button */
+/* Compact variant: the compact buttons' box — height, padding, type, letter spacing,
+   corners (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It
+   stood 22px, in 10px type. */
 .event-toggle-btn.compact {
-    padding: 4px var(--spacing-xs);
-    font-size: var(--font-size-xxs);
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
+    font-size: var(--font-size-xs);
     letter-spacing: 0.3px;
-    min-height: 22px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
     min-width: 58px;
     user-select: none;
 }
@@ -512,8 +516,12 @@
     cursor: pointer;
 }
 
+/* The compact buttons' box — height, padding, type, letter spacing, corners
+   (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
+   20px, from its 2px padding. */
 .log-btn {
-    padding: 2px var(--spacing-sm);
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
@@ -523,7 +531,8 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    line-height: normal;
 }
 
 .log-btn:hover {

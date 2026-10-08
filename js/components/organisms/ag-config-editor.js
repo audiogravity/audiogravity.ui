@@ -313,7 +313,8 @@ export class AgConfigEditor extends LitElement {
         if (this.isDirty) {
             window.showConfirm(
                 'Unsaved Changes',
-                'You have unsaved changes. Are you sure you want to go back?'
+                'You have unsaved changes. Are you sure you want to go back?',
+                { destructive: true }
             ).then(confirmed => {
                 if (confirmed) {
                     this.dispatchEvent(new CustomEvent('back'));
@@ -328,7 +329,8 @@ export class AgConfigEditor extends LitElement {
         if (this.isDirty) {
             window.showConfirm(
                 'Switch Mode',
-                'Switching modes will discard unsaved changes. Continue?'
+                'Switching modes will discard unsaved changes. Continue?',
+                { destructive: true }
             ).then(confirmed => {
                 if (confirmed) {
                     this._doToggleMode();
@@ -350,7 +352,8 @@ export class AgConfigEditor extends LitElement {
         if (this.isDirty) {
             window.showConfirm(
                 'Switch Mode',
-                'Switching modes will discard unsaved changes. Continue?'
+                'Switching modes will discard unsaved changes. Continue?',
+                { destructive: true }
             ).then(confirmed => {
                 if (confirmed) this._applyMode(mode);
             });
@@ -423,7 +426,8 @@ export class AgConfigEditor extends LitElement {
         if (this.isDirty) {
             window.showConfirm(
                 'Cancel Changes',
-                'This will discard all unsaved changes. Continue?'
+                'This will discard all unsaved changes. Continue?',
+                { destructive: true }
             ).then(confirmed => {
                 if (confirmed) {
                     this._revertChanges();

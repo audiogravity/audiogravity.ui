@@ -67,7 +67,8 @@ export class AgPasskeyManager extends LitElement {
     async _handleDelete(credentialId, deviceName) {
         const confirmed = await showConfirm(
             'Remove Passkey',
-            `Remove passkey <strong>${deviceName}</strong>? You will no longer be able to sign in with this device.`
+            `Remove passkey <strong>${deviceName}</strong>? You will no longer be able to sign in with this device.`,
+            { destructive: true }
         );
         if (!confirmed) return;
 

@@ -127,11 +127,15 @@ export class AgPackageUninstallDialog extends LitElement {
         `;
     }
 
-    /** @returns {import('lit').TemplateResult} The dialog's buttons, for the modal's footer. */
+    /**
+     * The dialog's buttons, for the modal's footer. Uninstall is orange, as the tile's
+     * UNINSTALL that opens this dialog and every confirmation that deletes (2026-10-08).
+     * @returns {import('lit').TemplateResult}
+     */
     _renderActions() {
         return html`
             <button class="action-btn secondary" @click=${() => this._close()}>Cancel</button>
-            <button class="action-btn primary" @click=${() => this._confirm()}>
+            <button class="action-btn warning" @click=${() => this._confirm()}>
                 ${this._purge && this._offersPurge ? 'Uninstall and delete' : 'Uninstall'}
             </button>
         `;

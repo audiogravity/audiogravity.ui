@@ -216,7 +216,7 @@ export class AgSystemdPage extends LitElement {
         const service = this.services.find(s => s.id === serviceId);
         if (!service) return;
 
-        const confirmed = await showConfirm('Remove Override', html`Restore default settings for "<strong>${service.name}</strong>"? If it is running, it is restarted.`);
+        const confirmed = await showConfirm('Remove Override', html`Restore default settings for "<strong>${service.name}</strong>"? If it is running, it is restarted.`, { destructive: true });
         if (!confirmed) return;
 
         try {

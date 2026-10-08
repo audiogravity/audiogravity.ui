@@ -125,7 +125,9 @@ export function showToast(type, title, message, duration = TOAST_DURATION_DEFAUL
  * Show a confirm dialog using Lit Web Component
  * @param {string} title - Dialog title
  * @param {string|TemplateResult} message - Dialog message (supports HTML or Lit TemplateResult)
- * @param {object|string} options - Options: { isInfo: boolean, okLabel: string, cancelLabel: string } or legacy okLabel
+ * @param {object|string} options - Options: { isInfo: boolean, okLabel: string, cancelLabel: string,
+ *   destructive: boolean } or legacy okLabel. `destructive` — the action deletes or removes
+ *   something, or throws away unsaved changes: OK is orange and Cancel is focused.
  * @param {string} [cancelLabel_legacy] - Legacy cancel label if options was a string
  * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled
  */
@@ -151,6 +153,7 @@ export function showConfirm(title, message, options = {}, cancelLabel_legacy = n
             dialog.messageTemplate = message;
         }
         dialog.infoMode = opts.isInfo || false;
+        dialog.destructive = opts.destructive || false;
         if (opts.okLabel) dialog.okLabel = opts.okLabel;
         if (opts.cancelLabel) dialog.cancelLabel = opts.cancelLabel;
 
@@ -223,13 +226,16 @@ export function showTabHUD(label) {
  *
  * @param {string} title - Dialog title
  * @param {string} message - Dialog message (HTML string)
+ * @param {{destructive?: boolean}} [options] - `destructive`: the action deletes or
+ *   removes something — Confirm is orange (see showConfirm)
  * @returns {Promise<string|null>} Resolves with the entered password, or null if cancelled
  */
-export function showPasswordConfirm(title, message) {
+export function showPasswordConfirm(title, message, options = {}) {
     return new Promise((resolve) => {
         const dialog = document.createElement('ag-confirm-dialog');
         dialog.title = title;
         dialog.okLabel = 'Confirm';
+        dialog.destructive = options.destructive || false;
 
         const inputId = `pwd-confirm-${Date.now()}`;
         dialog.messageTemplate = html`

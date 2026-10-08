@@ -246,7 +246,8 @@ export class AgAdminPage extends LitElement {
         const username = e.detail.username;
         const confirmed = await showConfirm(
             'Delete User',
-            `Are you sure you want to completely delete the user <strong>${escapeHtml(username)}</strong>? This cannot be undone.`
+            `Are you sure you want to completely delete the user <strong>${escapeHtml(username)}</strong>? This cannot be undone.`,
+            { destructive: true }
         );
 
         if (confirmed) {

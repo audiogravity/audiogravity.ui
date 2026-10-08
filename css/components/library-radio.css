@@ -130,18 +130,26 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* The compact buttons' box — height, padding, type, letter spacing, corners
+   (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
+   26px, in 10px type of weight 700, as the views above it did. */
 .lib-radio-add-btn {
     width: 100%;
-    padding: var(--spacing-sm) 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.3px;
+    line-height: normal;
     cursor: pointer;
     transition: color var(--transition-fast), border-color var(--transition-fast);
 }
@@ -318,10 +326,11 @@
     .lib-radio-star.on:hover { color: var(--accent-primary); }
 }
 
-/* The "more" actions, unfolded under their station: worded buttons at finger size
-   (.action-btn grows to 44px under 768px), where the row had a pencil and a check
-   mark. They sit outside the swiped row, so a swipe never drags them along and a
-   tap on them never plays the station. */
+/* The "more" actions, unfolded under their station: worded compact buttons, where the
+   row had a pencil and a check mark. They were at finger size, 44px under 768px, the
+   only large buttons of the view; compact since 2026-10-08 (user's choice), as the
+   actions of a tile. They sit outside the swiped row, so a swipe never drags them along
+   and a tap on them never plays the station. */
 .lib-radio-more-actions {
     display: flex;
     flex-wrap: wrap;
@@ -329,13 +338,6 @@
     padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-primary);
-}
-
-/* Side by side on a phone: with the default 18px sides the pair needed 363px and
-   wrapped onto two lines on a 375px screen; at 12px it is 340px and stays one row.
-   The height — 44px under 768px — is untouched. */
-.lib-radio-more-actions .action-btn {
-    padding-inline: var(--spacing-md);
 }
 
 /* Row and actions read as one block: the row's rule moves under the actions, and

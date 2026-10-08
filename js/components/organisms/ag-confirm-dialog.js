@@ -16,6 +16,9 @@ import './ag-modal.js';
  * @attr {string} message - Dialog message (supports HTML)
  * @attr {boolean} show - Controls visibility
  * @attr {boolean} info-mode - If true, hides cancel button (info modal)
+ * @attr {boolean} destructive - The action deletes or removes something: OK is orange,
+ *   the colour of every button that destroys, and Cancel is the one focused on opening,
+ *   so that Enter does not delete
  * @ok-label {string} - Label for OK button (default: "OK")
  * @cancel-label {string} - Label for Cancel button (default: "Cancel")
  *
@@ -38,6 +41,7 @@ export class AgConfirmDialog extends LitElement {
         messageTemplate: { attribute: false },
         show: { type: Boolean, reflect: true },
         infoMode: { type: Boolean, attribute: 'info-mode' },
+        destructive: { type: Boolean },
         okLabel: { type: String, attribute: 'ok-label' },
         cancelLabel: { type: String, attribute: 'cancel-label' }
     };
@@ -49,6 +53,7 @@ export class AgConfirmDialog extends LitElement {
         this.messageTemplate = null;
         this.show = false;
         this.infoMode = false;
+        this.destructive = false;
         this.okLabel = 'OK';
         this.cancelLabel = 'Cancel';
         this._previousFocus = null;
@@ -65,11 +70,14 @@ export class AgConfirmDialog extends LitElement {
 
     updated(changedProperties) {
         if (changedProperties.has('show') && this.show) {
-            // Focus OK button after animation
+            // After the animation, focus what Enter should do: a field to fill when the
+            // message holds one (a password), else OK — or Cancel when OK destroys. It
+            // looked for `.action-btn.primary`, which the buttons never wore, so nothing
+            // was ever focused.
             setTimeout(() => {
-                // In Light DOM, the primary button is directly inside this element
-                const okBtn = this.querySelector('.action-btn.primary');
-                if (okBtn) okBtn.focus();
+                const target = this.querySelector('.modal-body input, .modal-body textarea, .modal-body select')
+                    ?? this.querySelector(`[data-dialog="${this.destructive && !this.infoMode ? 'cancel' : 'ok'}"]`);
+                target?.focus();
             }, 100);
         }
     }
@@ -112,11 +120,12 @@ export class AgConfirmDialog extends LitElement {
                 `}
                 .footerTemplate=${html`
                     ${!this.infoMode ? html`
-                        <button class="btn-action" @click=${() => this._handleCancel()}>
+                        <button class="action-btn secondary" data-dialog="cancel" @click=${() => this._handleCancel()}>
                             ${this.cancelLabel}
                         </button>
                     ` : ''}
-                    <button class="btn-action" @click=${() => this._handleConfirm()}>
+                    <button class="action-btn ${this.destructive ? 'warning' : 'primary'}" data-dialog="ok"
+                        @click=${() => this._handleConfirm()}>
                         ${this.okLabel}
                     </button>
                 `}>

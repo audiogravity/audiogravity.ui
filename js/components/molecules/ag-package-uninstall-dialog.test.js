@@ -74,6 +74,11 @@ describe('ag-package-uninstall-dialog', () => {
         expect(el.textContent).toContain('Its settings are kept: a reinstall finds them again.');
     });
 
+    it('makes Uninstall orange, as the tile\'s UNINSTALL and every confirmation that deletes', async () => {
+        const el = await open(HQPLAYERD);
+        expect(uninstallButton(el).className).toBe('action-btn warning');
+    });
+
     it('a plain confirmation keeps the settings', async () => {
         const el = await open(HQPLAYERD);
         const seen = listen(el);
