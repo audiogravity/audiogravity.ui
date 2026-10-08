@@ -436,19 +436,22 @@
     gap: 2px;
 }
 
+/* A square as tall as a compact button, in its type (components/button.css,
+   .tile-action-btn; user's choice, 2026-10-08): one letter needs no side padding.
+   It stood 20px, in 10px type of weight 700. */
 .log-filter-btn {
-    width: 20px;
-    height: 20px;
+    width: var(--button-height-compact);
+    height: var(--button-height-compact);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
     opacity: 0.35;
     padding: 0;
-    line-height: 1;
+    line-height: normal;
 }
 
 .log-filter-btn.active {

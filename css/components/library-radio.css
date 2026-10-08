@@ -22,18 +22,27 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* The compact buttons' box — height, padding, type, letter spacing, corners
+   (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
+   26px, in 10px type of weight 700. The custom-station form's Cancel and Save wear
+   this class too. Each still fills its share of the row. */
 .lib-radio-tab {
     flex: 1;
-    padding: var(--spacing-sm) 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.3px;
+    line-height: normal;
     cursor: pointer;
     transition: color var(--transition-fast), background var(--transition-fast);
 }

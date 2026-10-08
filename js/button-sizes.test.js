@@ -7,9 +7,15 @@
  * identical in Chromium on a phone and a computer, property by property. jsdom lays
  * nothing out, so this reads the declarations: one family drifting on its own is what
  * the inventory found.
+ *
+ * The selectors that act as filters followed (2026-10-08): they stood at 18, 20, 26 and
+ * 28px, measured the same way after the change.
  */
 import { describe, it, expect } from 'vitest';
-import { readStylesheet, cssRuleBody } from './test-utils.js';
+import { readStylesheet, cssRuleBody, openingTags } from './test-utils.js';
+
+/** The pipeline diagram's styles live in its component, in a shadow root. */
+const PIPELINE = ['js', 'components', 'organisms', 'ag-audio-pipeline.js'];
 
 /** [what, stylesheet path, selector of the rule that sizes it] */
 const BUTTONS = [
@@ -17,6 +23,15 @@ const BUTTONS = [
     ['both systems\' compact buttons', ['css', 'components', 'button.css'], '.btn-action.compact'],
     ['the filters', ['css', 'components', 'filter-bar.css'], '.filter-btn'],
     ['the badges that are buttons in a tab\'s title', ['css', 'components', 'tab-zone.css'], '.tab-zone .tab-title-container button.badge'],
+    ['Library › Browse\'s pills', ['css', 'components', 'library-album-card.css'], '.lib-pill'],
+    ['Library › Search\'s sources', ['css', 'components', 'library-search.css'], '.lib-src-badge'],
+    ['Library › Radio\'s views, and its form\'s Cancel and Save', ['css', 'components', 'library-radio.css'], '.lib-radio-tab'],
+];
+
+/** [what, stylesheet path, selector] of the buttons that hold one letter or one icon. */
+const SQUARES = [
+    ['the log\'s levels', ['css', 'system.css'], '.log-filter-btn'],
+    ['the pipeline diagram\'s icon buttons', PIPELINE, '.zoom-btn--icon'],
 ];
 
 describe('the compact buttons', () => {
@@ -49,6 +64,57 @@ describe('the compact buttons', () => {
         // A title badge's weight comes from the rule every title badge shares.
         expect(cssRuleBody(readStylesheet('css', 'components', 'tab-zone.css'), '.tab-zone .tab-title-container .badge'))
             .toMatch(/font-weight:\s*600/);
+    });
+
+    it.each([
+        ['Library\'s pills, sources and Radio views', ['css', 'components', 'library-album-card.css'], '.lib-pill'],
+        ['Library\'s pills, sources and Radio views', ['css', 'components', 'library-search.css'], '.lib-src-badge'],
+        ['Library\'s pills, sources and Radio views', ['css', 'components', 'library-radio.css'], '.lib-radio-tab'],
+        ['the log\'s levels', ['css', 'system.css'], '.log-filter-btn'],
+        ['the pipeline diagram\'s buttons', PIPELINE, '.zoom-btn'],
+    ])('— %s — weigh 600: they were 400, 600 and 700', (_, file, selector) => {
+            expect(cssRuleBody(readStylesheet(...file), selector)).toMatch(/font-weight:\s*600/);
+        });
+});
+
+describe('the selectors that act as filters', () => {
+    it.each(SQUARES)('— %s — are squares as tall as a compact button, in its type', (_, file, selector) => {
+        const body = cssRuleBody(readStylesheet(...file), selector);
+        expect(body, `no rule for ${selector}`).toBeTruthy();
+        expect(body).toMatch(/(?:^|[;\s])width:\s*var\(--button-height-compact\)/);
+        expect(body).toMatch(/padding:\s*0;/);
+        if (selector === '.log-filter-btn') {
+            expect(body).toMatch(/(?:^|[;\s])height:\s*var\(--button-height-compact\)/);
+            expect(body).toMatch(/font-size:\s*var\(--font-size-xs\)/);
+        }
+    });
+
+    describe('the pipeline diagram\'s buttons', () => {
+        const source = readStylesheet(...PIPELINE);
+        const body = cssRuleBody(source, '.zoom-btn');
+
+        it('take the compact box — the corners stay the diagram\'s own', () => {
+            expect(body).toMatch(/height:\s*var\(--button-height-compact\)/);
+            expect(body).toMatch(/padding:\s*0 var\(--spacing-sm\)/);
+            expect(body).toMatch(/font-size:\s*var\(--font-size-xs\)/);
+            expect(body).toMatch(/letter-spacing:\s*0\.3px/);
+            expect(body).toMatch(/border-radius:\s*var\(--radius-pipeline\)/);
+        });
+
+        it('name the app\'s face: in a shadow root a button gets the browser\'s (Arial, measured)', () => {
+            expect(body).toMatch(/font-family:\s*var\(--font-family\)/);
+        });
+
+        it('carry no type of their own in the template: a style attribute beats the rule', () => {
+            const tags = openingTags(source).filter((t) => /class="zoom-btn\b/.test(t));
+            expect(tags.length).toBeGreaterThanOrEqual(8);
+            for (const tag of tags) expect(tag).not.toMatch(/font-(?:size|weight)/);
+        });
+
+        it('lay RESET, LEGEND, MINIMAP and NETWORK on a grid: as wrapped flex items they widened the panel to 272px', () => {
+            const group = openingTags(source).find((t, i, all) => /class="control-group"/.test(t) && /RESET|_resetLayout/.test(all[i + 1] ?? ''));
+            expect(group).toMatch(/display:\s*grid;\s*grid-template-columns:\s*1fr 1fr/);
+        });
     });
 });
 
