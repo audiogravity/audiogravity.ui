@@ -267,9 +267,35 @@ export class AgAudioPipeline extends LitElement {
             padding: 4px;
         }
 
+        /* A group that opens a section of the panel: a rule above it, in the theme's border
+           colour — it was white at 10 %, which a light theme did not show (2026-10-08). */
+        .control-group--ruled {
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* RESET, LEGEND, MINIMAP and NETWORK: two equal columns, as a grid — wrapped flex
+           items gave their labels' own widths to the panel, which nearly doubled once the
+           buttons lost the fixed width they used to carry. In a class, not a style
+           attribute: an inline display outranked the collapsed panel's display: none. */
+        .control-group--grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            padding-top: var(--spacing-xs);
+        }
+
+        .control-group--toggles {
+            margin-top: var(--spacing-xs);
+            padding-top: 8px;
+        }
+
+        /* The compact buttons' box — height, padding, type, letter spacing (button.css,
+           .tile-action-btn; user's choice, 2026-10-08). It stood 28px. The corners stay
+           the diagram's, shared with its steering buttons. The face is named: in this
+           shadow root a button gets the browser's own, not the app's. */
         .zoom-btn {
-            width: 28px;
-            height: 28px;
+            height: var(--button-height-compact);
+            padding: 0 var(--spacing-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -278,9 +304,18 @@ export class AgAudioPipeline extends LitElement {
             border-radius: var(--radius-pipeline);
             color: var(--text-primary);
             cursor: pointer;
-            font-size: var(--font-size-lg);
-            font-weight: bold;
+            font-family: var(--font-family);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            line-height: normal;
             transition: all 0.2s;
+        }
+
+        /* An icon alone: a square, as tall as its neighbours. */
+        .zoom-btn--icon {
+            width: var(--button-height-compact);
+            padding: 0;
         }
 
         .zoom-btn:hover {
@@ -1640,23 +1675,23 @@ export class AgAudioPipeline extends LitElement {
                 <div class="controls ${this._controlsCollapsed ? 'collapsed' : ''}">
                     <button class="controls-toggle" @click=${this._toggleControlsCollapsed} aria-label="${this._controlsCollapsed ? 'Expand controls' : 'Collapse controls'}">${this._controlsCollapsed ? '›' : '‹'}</button>
                     <div class="control-group">
-                        <button class="zoom-btn" @click=${this._zoomIn} aria-label="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
+                        <button class="zoom-btn zoom-btn--icon" @click=${this._zoomIn} aria-label="Zoom In"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomIn}</svg></button>
                         <span class="zoom-value">${Math.round(this.zoom * 100)}%</span>
-                        <button class="zoom-btn" @click=${this._zoomOut} aria-label="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
-                        <button class="zoom-btn" @click=${this._zoomToFit} style="font-size: var(--font-size-xxs); font-weight: 700;">FIT</button>
-                        <button class="zoom-btn" @click=${this._resetView} aria-label="Reset Zoom/Pan">
+                        <button class="zoom-btn zoom-btn--icon" @click=${this._zoomOut} aria-label="Zoom Out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconZoomOut}</svg></button>
+                        <button class="zoom-btn" @click=${this._zoomToFit}>FIT</button>
+                        <button class="zoom-btn zoom-btn--icon" @click=${this._resetView} aria-label="Reset Zoom/Pan">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconCrosshair}</svg>
                         </button>
                     </div>
 
-                    <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; flex-wrap: wrap; gap: 2px;">
-                        <button class="zoom-btn" @click=${this._resetLayout} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs);">RESET</button>
-                        <button class="zoom-btn" @click=${this._toggleLegend} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
-                        <button class="zoom-btn" @click=${this._toggleMinimap} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
-                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="flex: 1 1 calc(50% - 1px); font-size: var(--font-size-xxs); background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
+                    <div class="control-group control-group--ruled control-group--grid">
+                        <button class="zoom-btn" @click=${this._resetLayout}>RESET</button>
+                        <button class="zoom-btn" @click=${this._toggleLegend} style="background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
+                        <button class="zoom-btn" @click=${this._toggleMinimap} style="background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
+                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
                     </div>
 
-                    <div class="control-group" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 8px;">
+                    <div class="control-group control-group--ruled control-group--toggles">
                         <span class="toggle-label">Analog sources</span>
                         <label class="toggle-switch">
                             <input

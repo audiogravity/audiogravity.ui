@@ -263,6 +263,19 @@
    /* Input heights, icon buttons */
    --size-xxl: 60px;
 
+   /* The one height of a compact button (2026-10-06): the tiles' buttons, the filters,
+      the badges that are buttons in a tab's title and both systems' .compact buttons
+      share it, with the same padding, type and corners (js/button-sizes.test.js). 24px
+      is also WCAG 2.2's minimum target (2.5.8). Not on the --size-* steps: 20 and 28
+      are taken. */
+   --button-height-compact: 24px;
+
+   /* The one height of a dialog's buttons (2026-10-08), on a computer and a phone alike:
+      every .action-btn of a modal's footer, with the compact buttons' weight and corners
+      (components/button.css). 29px was the medium .action-btn on a computer already;
+      the user capped a dialog's buttons at it rather than the 44px of the touch rule. */
+   --button-height-medium: 29px;
+
    /* Chart heights */
 
 

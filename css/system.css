@@ -221,19 +221,14 @@
     color: var(--text-primary);
 }
 
-/* Event Toggle Button */
+/* Event Toggle Button — always .compact, sized by the compact box (components/button.css) */
 .event-toggle-btn {
-    padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .event-toggle-btn:hover {
@@ -253,12 +248,9 @@
     background: var(--color-error-bg);
 }
 
-/* Compact variant - smaller button */
+/* Compact variant: sized by the compact box (components/button.css; user's choice,
+   2026-10-08). */
 .event-toggle-btn.compact {
-    padding: 4px var(--spacing-xs);
-    font-size: var(--font-size-xxs);
-    letter-spacing: 0.3px;
-    min-height: 22px;
     min-width: 58px;
     user-select: none;
 }
@@ -436,19 +428,22 @@
     gap: 2px;
 }
 
+/* A square as tall as a compact button, in its type (components/button.css,
+   .tile-action-btn; user's choice, 2026-10-08): one letter needs no side padding.
+   It stood 20px, in 10px type of weight 700. */
 .log-filter-btn {
-    width: 20px;
-    height: 20px;
+    width: var(--button-height-compact);
+    height: var(--button-height-compact);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
     opacity: 0.35;
     padding: 0;
-    line-height: 1;
+    line-height: normal;
 }
 
 .log-filter-btn.active {
@@ -509,18 +504,14 @@
     cursor: pointer;
 }
 
+/* Sized by the compact box (components/button.css; user's choice, 2026-10-08). */
 .log-btn {
-    padding: 2px var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .log-btn:hover {

@@ -216,7 +216,7 @@ export class AgSystemdPage extends LitElement {
         const service = this.services.find(s => s.id === serviceId);
         if (!service) return;
 
-        const confirmed = await showConfirm('Remove Override', html`Restore default settings for "<strong>${service.name}</strong>"? If it is running, it is restarted.`);
+        const confirmed = await showConfirm('Remove Override', html`Restore default settings for "<strong>${service.name}</strong>"? If it is running, it is restarted.`, { destructive: true });
         if (!confirmed) return;
 
         try {
@@ -235,7 +235,10 @@ export class AgSystemdPage extends LitElement {
         const service = this.services.find(s => s.id === serviceId);
         if (!service) return;
 
-        const confirmed = await showConfirm('Restore Backup', html`Restore previous configuration for "<strong>${service.name}</strong>"? If it is running, it is restarted.`);
+        const confirmed = await showConfirm('Restore Backup', html`Restore previous configuration for "<strong>${service.name}</strong>"? If it is running, it is restarted.`,
+            // Destructive: the backup replaces the current override, then is deleted —
+            // the settings in place are gone (core services/service.py, restore_service_backup).
+            { destructive: true });
         if (!confirmed) return;
 
         try {

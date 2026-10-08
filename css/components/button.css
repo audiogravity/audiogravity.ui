@@ -9,82 +9,40 @@
 
 /**
  * @component .btn-action
- * @description Base class for action buttons used in tiles and cards.
- * Follows BEM naming: .btn-action--{modifier}
+ * @description Action button of the tiles, cards and panels: always compact (its size is
+ * the shared compact box, further down), or in a dialog's footer (the medium box).
+ * `.tile-action-btn` is the tiles' name for the same button and shares every rule here;
+ * two of its variants have names of their own — `.start` / `.activate` are `.success`,
+ * `.stop` / `.deactivate` are `.error`.
+ * Variants: `.success`, `.error`, `.warning`, and the modifier `.btn-action--ghost`.
  */
-.btn-action {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    height: var(--size-sm);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
-    color: var(--text-primary);
-    padding: 0 var(--spacing-sm);
-    font-size: var(--font-size-xxs);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    white-space: nowrap;
-    gap: var(--spacing-xs);
-}
-
-/* Legacy aliases for backward compatibility */
+.btn-action,
 .tile-action-btn {
-    /* Inherit all styles from .btn-action */
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    height: var(--size-sm);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     color: var(--text-primary);
-    padding: 0 var(--spacing-sm);
-    font-size: var(--font-size-xxs);
-    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
     white-space: nowrap;
     gap: var(--spacing-xs);
 }
 
 /* Not on an unavailable button — here and in the variants' :hover rules below. In
    :where() so each keeps its weight, and the variants still win over this one as before. */
-.btn-action:hover:where(:not(:disabled, [aria-disabled="true"])) {
+:is(.btn-action, .tile-action-btn):hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--bg-hover);
     border-color: var(--text-tertiary);
     transform: translateY(-1px) scale(1.02);
     box-shadow: var(--shadow-sm);
 }
-
-/* Legacy hover states */
-.tile-action-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--text-tertiary);
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: var(--shadow-sm);
-}
-
-
 
 /* `aria-disabled` is the unavailable state that keeps the focus (a disabled button throws
    it off itself): it must read as unavailable all the same. */
-.btn-action:disabled,
-.btn-action[aria-disabled="true"] {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-/* Legacy disabled states */
-.tile-action-btn:disabled {
+:is(.btn-action, .tile-action-btn):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
@@ -97,25 +55,19 @@
 
 /* Success variant */
 .btn-action.success,
-.tile-action-btn.start,
-.tile-action-btn.activate {
+.tile-action-btn:is(.start, .activate) {
     border-color: var(--color-success);
     color: var(--color-success-text);
 }
 
-/* Error variant: .btn-action--error */
-.btn-action--error,
+/* Error variant */
 .btn-action.error,
-.tile-action-btn.stop,
-.tile-action-btn.deactivate {
+.tile-action-btn:is(.stop, .deactivate) {
     border-color: var(--color-error);
     color: var(--color-error-text);
 }
 
-.btn-action--error:hover:where(:not(:disabled, [aria-disabled="true"])),
-.btn-action.error:hover:where(:not(:disabled, [aria-disabled="true"])),
-.tile-action-btn.stop:hover,
-.tile-action-btn.deactivate:hover {
+:is(.btn-action.error, .tile-action-btn:is(.stop, .deactivate)):hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--color-error-bg, var(--btn-error-hover-bg));
     border-color: var(--color-error);
     transform: translateY(-1px) scale(1.05);
@@ -123,43 +75,26 @@
 }
 
 /* Warning variant */
-.btn-action.warning,
-.tile-action-btn.warning {
+:is(.btn-action, .tile-action-btn).warning {
     border-color: var(--color-warning);
     color: var(--color-warning-text);
 }
 
-.btn-action.warning:hover:where(:not(:disabled, [aria-disabled="true"])),
-.tile-action-btn.warning:hover {
+:is(.btn-action, .tile-action-btn).warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--color-warning-bg, var(--btn-warning-hover-bg));
     border-color: var(--color-warning);
     transform: translateY(-1px) scale(1.05);
     box-shadow: 0 0 8px var(--color-warning-bg, var(--btn-warning-hover-shadow));
 }
 
-/* Info variant */
-.btn-action.info {
-    border-color: var(--color-info);
-    color: var(--color-info-text);
-}
-
-.btn-action.info:hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--color-info-bg);
-    border-color: var(--color-info);
-    transform: translateY(-1px) scale(1.05);
-    box-shadow: 0 0 8px var(--color-info-bg);
-}
-
 /* Ghost variant: .btn-action--ghost — neutral/secondary, transparent with dim border */
-.btn-action--ghost,
-.btn-action.ghost {
+.btn-action--ghost {
     background: transparent;
     border-color: var(--border-color);
     color: var(--text-secondary);
 }
 
-.btn-action--ghost:hover:where(:not(:disabled, [aria-disabled="true"])),
-.btn-action.ghost:hover:where(:not(:disabled, [aria-disabled="true"])) {
+.btn-action--ghost:hover:where(:not(:disabled, [aria-disabled="true"])) {
     background: var(--bg-tertiary);
     border-color: var(--text-primary);
     color: var(--text-primary);
@@ -266,15 +201,69 @@ a.action-btn:hover {
 }
 .action-btn:active:not(:disabled) { transform: scale(0.95); }
 
-.action-btn.compact {
-    padding: var(--spacing-xs) var(--spacing-md);
+/* The compact box — one height, padding, type, weight, letter spacing, line height and
+   corners for every small button of the interface (user's choice, 2026-10-06, then
+   2026-10-08 for the selectors and the small actions). Declared here only: each family
+   keeps, in its own file, its colours and its layout, never these seven. js/button-sizes
+   .test.js holds every family to this list. Two keep a copy, and say why: the Pipeline
+   diagram's buttons (a shadow root this file does not reach) and performance.css's
+   .service-status-badge (a status beside a button, at weight 700).
+   BACKLOG: a few buttons keep a size of their own — audiogravity.ops/BACKLOG.md,
+   "Quelques boutons restent hors des deux tailles communes". */
+.btn-action,
+.tile-action-btn,
+.action-btn.compact,
+.filter-btn,
+.tab-zone .tab-title-container button.badge,
+ag-badge button.badge,
+.lib-pill,
+.lib-src-badge,
+.lib-radio-tab,
+.lib-radio-add-btn,
+.lib-queue-action,
+.event-toggle-btn.compact,
+.log-btn {
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
     font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
+
+    /* One line: the height is fixed, a second line would run out of the frame — "My Live
+       Radio" did at 320px, the queue's "Local Library" at 360px. A row that cannot hold its
+       labels wraps instead (.filter-bar). */
+    white-space: nowrap;
 }
 
-.btn-action.compact {
-    height: unset;
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--font-size-xs);
+/* The chosen one of a row of selectors — the tabs' and the queue's filters, Library's
+   Browse pills, Search sources and Radio views — is filled with the text colour (user's
+   choice, 2026-10-08): the filters showed it in a light grey, the Library in black.
+   Declared once, hover included: a family's own :hover, read later, would otherwise
+   darken the label into its fill. */
+:is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on),
+:is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on):hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* A dialog's buttons are one medium size, on a computer and a phone alike — 29px, 12px
+   type at weight 600, the compact buttons' corners (user's choice, 2026-10-08). They
+   stood 18px (.btn-action), 29px (.action-btn), and 44px on a phone. Each system keeps
+   its colours. The touch rule below is undone here: the user capped them. A compact
+   button keeps its own size, wherever it sits. */
+.modal-footer :is(.action-btn, .btn-action, .tile-action-btn):not(.compact) {
+    height: var(--button-height-medium);
+    min-height: 0;
+    min-width: 0;
+    padding: 0 var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
 }
 
 /* =====================
@@ -351,40 +340,15 @@ a.action-btn:hover {
 }
 
 /* =====================
-   CLEAR BUTTONS
-   ===================== */
-.clear-btn {
-    padding: var(--spacing-xs) var(--spacing-md);
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--text-primary);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-transform: uppercase;
-}
-
-.clear-btn:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
-}
-
-.clear-btn.compact {
-    padding: 2px var(--spacing-sm);
-    font-size: var(--font-size-xs);
-}
-
-/* =====================
    TOUCH ACCESSIBILITY
    ===================== */
 @media (width <= 768px) {
-    .action-btn, .tab-btn, .clear-btn, .icon-btn, .btn-action, .service-status-badge {
+    .action-btn, .tab-btn, .icon-btn {
         min-height: 44px;
         min-width: 44px;
     }
 
-    .action-btn.compact, .clear-btn.compact, .btn-action.compact, .service-status-badge {
+    .action-btn.compact {
         min-height: unset; min-width: unset;
     }
 }

@@ -630,7 +630,7 @@ function initApp() {
     // Handle history clear events from ag-history-panel components
     document.addEventListener('clear-history', async (e) => {
         const { type } = e.detail;
-        const confirmed = await window.showConfirm('Clear History', `Clear ${type} history?`);
+        const confirmed = await window.showConfirm('Clear History', `Clear ${type} history?`, { destructive: true });
         if (confirmed) {
             clearHistory(type);
         }

@@ -22,31 +22,27 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Sized by the compact box (components/button.css; user's choice, 2026-10-08). The
+   custom-station form's Cancel and Save wear this class too. Each still fills its
+   share of the row. */
 .lib-radio-tab {
     flex: 1;
-    padding: var(--spacing-sm) 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
     cursor: pointer;
     transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.lib-radio-tab.on {
-    color: var(--bg-primary);
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-}
-
+/* .lib-radio-tab.on: the chosen look every row of selectors shares (components/button.css),
+   its hover included. */
 @media (hover: hover) {
     .lib-radio-tab:hover { color: var(--text-primary); }
-    .lib-radio-tab.on:hover { color: var(--bg-primary); }
 }
 
 /* ─── Search filters ─── */
@@ -121,18 +117,18 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Sized by the compact box (components/button.css; user's choice, 2026-10-08), as the
+   views above it. */
 .lib-radio-add-btn {
     width: 100%;
-    padding: var(--spacing-sm) 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
-    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
     cursor: pointer;
     transition: color var(--transition-fast), border-color var(--transition-fast);
 }
@@ -309,10 +305,11 @@
     .lib-radio-star.on:hover { color: var(--accent-primary); }
 }
 
-/* The "more" actions, unfolded under their station: worded buttons at finger size
-   (.action-btn grows to 44px under 768px), where the row had a pencil and a check
-   mark. They sit outside the swiped row, so a swipe never drags them along and a
-   tap on them never plays the station. */
+/* The "more" actions, unfolded under their station: worded compact buttons, where the
+   row had a pencil and a check mark. They were at finger size, 44px under 768px, the
+   only large buttons of the view; compact since 2026-10-08 (user's choice), as the
+   actions of a tile. They sit outside the swiped row, so a swipe never drags them along
+   and a tap on them never plays the station. */
 .lib-radio-more-actions {
     display: flex;
     flex-wrap: wrap;
@@ -320,13 +317,6 @@
     padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-primary);
-}
-
-/* Side by side on a phone: with the default 18px sides the pair needed 363px and
-   wrapped onto two lines on a 375px screen; at 12px it is 340px and stays one row.
-   The height — 44px under 768px — is untouched. */
-.lib-radio-more-actions .action-btn {
-    padding-inline: var(--spacing-md);
 }
 
 /* Row and actions read as one block: the row's rule moves under the actions, and

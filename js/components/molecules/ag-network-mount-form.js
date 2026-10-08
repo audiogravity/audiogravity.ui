@@ -144,7 +144,7 @@ export class AgNetworkMountForm extends LitElement {
                 ? ' MPD currently uses it as the music library — playback and the '
                   + 'library view will break until you pick another source.'
                 : ''),
-            { okLabel: 'Remove' }
+            { okLabel: 'Remove', destructive: true }
         );
         if (!sure) return;
         this._busy = true;
@@ -175,7 +175,7 @@ export class AgNetworkMountForm extends LitElement {
             const force = await showConfirm(
                 'Share is busy',
                 `${getUserFriendlyError(e)} Force-remove it anyway (lazy unmount)?`,
-                { okLabel: 'Force remove' }
+                { okLabel: 'Force remove', destructive: true }
             );
             if (!force) throw e;
             await apiDelete(`/audio-stack/mounts/${slug}?force=true`);

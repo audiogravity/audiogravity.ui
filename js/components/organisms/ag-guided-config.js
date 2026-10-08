@@ -189,7 +189,7 @@ export class AgGuidedConfig extends LitElement {
                     + 'Streaming services, AirPlay and the UPnP bridge are unaffected, '
                     + 'and nothing on disk is deleted — you can point it back at a '
                     + 'library later.',
-                    { okLabel: 'Remove' },
+                    { okLabel: 'Remove', destructive: true },
                 );
                 if (!ok) return;
             }

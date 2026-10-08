@@ -222,7 +222,8 @@ export class AgLicenseStatus extends LitElement {
         const password = await showPasswordConfirm(
             'Delete License',
             'This will remove the installed license. Audiogravity will run in Starter Edition. '
-            + 'Enter your password to confirm.'
+            + 'Enter your password to confirm.',
+            { destructive: true }
         );
         if (!password) return;
 

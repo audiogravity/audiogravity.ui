@@ -76,7 +76,7 @@
 
 .tile-action-btn--icon {
     padding: 0 var(--spacing-xs);
-    min-width: var(--size-sm);
+    min-width: var(--button-height-compact); /* square, as tall as its neighbours */
 }
 
 .config-footer-left {

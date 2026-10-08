@@ -10,6 +10,7 @@
  */
 .filter-bar {
     display: flex;
+    flex-wrap: wrap;    /* its buttons keep their label on one line: the row wraps instead */
     gap: var(--spacing-xs);
     align-items: center;
 }
@@ -20,16 +21,15 @@
  * @state .active - Currently selected option.
  */
 .filter-btn {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    padding: 2px var(--spacing-sm);
+    /* Sized by the compact box (components/button.css; user's choice, 2026-10-06).
+       Its colours say it selects. */
+    display: inline-flex;
+    align-items: center;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
-    letter-spacing: 0.05em;
 }
 
 .filter-btn:hover {
@@ -37,8 +37,4 @@
     color: var(--text-primary);
 }
 
-.filter-btn.active {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
+/* .filter-btn.active: the chosen look every row of selectors shares (components/button.css). */

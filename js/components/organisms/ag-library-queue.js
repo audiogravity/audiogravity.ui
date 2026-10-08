@@ -232,9 +232,8 @@ export class AgLibraryQueue extends LitElement {
                     ${activeFilter === ALL_SOURCES
                         ? html`${upNext.length} track${upNext.length !== 1 ? 's' : ''}`
                         : html`${shownNext.length} of ${upNext.length} track${upNext.length !== 1 ? 's' : ''}`}
-                    ·
                     <button class="lib-queue-action" @click=${() => this._load()}>Refresh</button>
-                    ${upNext.length > 0 ? html`·
+                    ${upNext.length > 0 ? html`
                         <button
                             class="lib-queue-action ${this._isRoon() ? 'disabled' : ''}"
                             ?disabled=${this._isRoon()}

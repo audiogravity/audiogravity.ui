@@ -49,6 +49,15 @@
     font-weight: 600;
 }
 
+/* A badge that is a button (Audio Software's REFRESH, DOWNLOAD, CHECK UPDATES, UPDATE
+   ALL) is sized by the compact box (components/button.css; user's choice, 2026-10-06).
+   A badge that only names something keeps the rule above. */
+.tab-zone .tab-title-container button.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
 /* Filter row below tab-title-container — shared across Profiles, Services, Audio Software */
 .tab-filter-row {
     display: flex;

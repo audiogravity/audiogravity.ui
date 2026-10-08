@@ -160,7 +160,15 @@ describe('the unfolded actions', () => {
         await unfold(el);
         const remove = [...el.querySelectorAll('.lib-radio-more-actions button')]
             .find((b) => b.textContent.includes('Remove from My Live Radio'));
-        expect(remove.className).toBe('action-btn warning');
+        expect(remove.className).toBe('action-btn compact warning');
+    });
+
+    it('Edit and Remove are compact buttons, as a tile\'s actions: at 44px they were the view\'s only large buttons', async () => {
+        const { el } = await card({ editable: true, inLibrary: true });
+        await unfold(el);
+        const buttons = [...el.querySelectorAll('.lib-radio-more-actions button')];
+        expect(buttons).toHaveLength(2);
+        for (const b of buttons) expect(b.classList.contains('compact')).toBe(true);
     });
 
     it('Remove takes the station out of My Live Radio, folds the actions, and plays nothing', async () => {

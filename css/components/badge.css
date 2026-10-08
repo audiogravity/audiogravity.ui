@@ -270,6 +270,13 @@
     transform: scale(0.98);
 }
 
+/* A clickable <ag-badge> is sized by the compact box (components/button.css; user's
+   choice, 2026-10-08). Its colours stay the badge's. */
+ag-badge button.badge {
+    display: inline-flex;
+    align-items: center;
+}
+
 /**
  * @variant .badge.pill
  * @description Pill-shaped badge with full border radius.

@@ -367,52 +367,6 @@ body.is-offline {
     color: var(--text-primary);
 }
 
-/* Stats link — admin only, horizontal mode: right side before orientation btn */
-.tabs-stats-btn {
-    margin-left: auto;
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    border-left: 1px solid var(--border-color);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 0 var(--spacing-sm);
-    height: 100%;
-    font-size: var(--font-size-md);
-    display: flex;
-    align-items: center;
-    transition: color var(--transition-fast);
-}
-
-.tabs-stats-btn:hover {
-    color: var(--text-primary);
-}
-
-/* In vertical mode, push stats to bottom above orientation btn */
-.tabs--vertical .tabs-stats-btn {
-    margin-left: 0;
-    margin-top: auto;
-    height: auto;
-    width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-left: none;
-    border-top: 1px solid var(--border-color);
-    justify-content: flex-start;
-}
-
-/* When stats btn is present, orientation btn no longer needs to push itself down (vertical)
-   or push itself right (horizontal) — stats btn handles it */
-.tabs--vertical:has(.tabs-stats-btn) .tab-orientation-btn {
-    margin-top: 0;
-    width: 100%;
-    border-top: 1px solid var(--border-color);
-}
-
-.tabs:not(.tabs--vertical):has(.tabs-stats-btn) .tab-orientation-btn {
-    margin-left: 0;
-    border-left: 1px solid var(--border-color);
-}
-
 /* =====================
    TABS — MODE VERTICAL (SIDEBAR) (GLOBAL)
    ===================== */

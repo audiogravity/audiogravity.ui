@@ -132,7 +132,7 @@ export class AgSystemPage extends LitElement {
                                      @click=${this._toggleEvents}>
                                 ${this.eventsEnabled ? 'RUNNING' : 'STOPPED'}
                             </button>
-                            <button class="clear-btn compact" @click=${this._clearEvents}>
+                            <button class="action-btn compact" @click=${this._clearEvents}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg> Clear
                             </button>
                         </div>

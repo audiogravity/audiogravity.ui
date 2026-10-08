@@ -117,24 +117,20 @@
 
 .lib-pill {
     flex-shrink: 0;
-    padding: 6px 12px;
+
+    /* Sized by the compact box (components/button.css; user's choice, 2026-10-08).
+       Its colours say it selects. */
+    display: inline-flex;
+    align-items: center;
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    border-radius: var(--radius-sm);
     font-family: var(--font-family);
-    font-size: var(--font-size-xxs);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
     background: transparent;
     cursor: pointer;
 }
 
-.lib-pill.on {
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    border-color: var(--text-primary);
-}
+/* .lib-pill.on: the chosen look every row of selectors shares (components/button.css). */
 
 .lib-section-hd {
     padding: 14px 20px 8px;
