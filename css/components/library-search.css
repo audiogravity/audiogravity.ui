@@ -64,32 +64,20 @@
     flex: 0 0 auto;
     white-space: nowrap;
 
-    /* The compact buttons' box — height, padding, type, letter spacing, corners
-       (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
-       18px, in 10px type of regular weight. Its colours say it selects. */
+    /* Sized by the compact box (components/button.css; user's choice, 2026-10-08).
+       Its colours say it selects. */
     display: inline-flex;
     align-items: center;
-    height: var(--button-height-compact);
     font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    line-height: normal;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
-    padding: 0 var(--spacing-sm);
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
 
-.lib-src-badge.active {
-    color: var(--bg-primary);
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-}
+/* .lib-src-badge.active: the chosen look every row of selectors shares (components/button.css). */
 
 .lib-results-label {
     font-family: var(--font-family);

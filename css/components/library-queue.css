@@ -4,25 +4,17 @@
  * queue list rows and action buttons.
  */
 
-/* Refresh and Clear are buttons in the compact buttons' box — height, padding, type,
-   letter spacing, corners (components/button.css, .tile-action-btn; user's choice,
-   2026-10-08) — framed as the source filters just below them. They were words in the
-   line of the track count, a 12px target: Clear empties the queue without asking. */
+/* Refresh and Clear are buttons sized by the compact box (components/button.css; user's
+   choice, 2026-10-08), framed as the source filters just below them. They were words in
+   the line of the track count, a 12px target: Clear empties the queue without asking. */
 .lib-queue-action {
     display: inline-flex;
     align-items: center;
-    height: var(--button-height-compact);
-    padding: 0 var(--spacing-sm);
     background: transparent;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     cursor: pointer;
     font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     color: var(--text-secondary);
-    letter-spacing: 0.3px;
-    line-height: normal;
     text-transform: uppercase;
 }
 

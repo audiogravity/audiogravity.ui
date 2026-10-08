@@ -59,7 +59,7 @@ export class AgHistoryPanel extends LitElement {
             <div class="history-zone tab-zone">
                 <div class="history-header">
                     <h2>${this.title}</h2>
-                    <button class="clear-btn compact" @click=${this._handleClear}>
+                    <button class="action-btn compact" @click=${this._handleClear}>
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconTrash}</svg> Clear
                     </button>
                 </div>

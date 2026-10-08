@@ -50,20 +50,12 @@
 }
 
 /* A badge that is a button (Audio Software's REFRESH, DOWNLOAD, CHECK UPDATES, UPDATE
-   ALL) takes the tile buttons' size exactly — height, padding, font, letter spacing,
-   corners, icon gap (components/button.css, .tile-action-btn; user's choice,
-   2026-10-06). It stood 20px, at 10px. A badge that only names something keeps the
-   rule above. */
+   ALL) is sized by the compact box (components/button.css; user's choice, 2026-10-06).
+   A badge that only names something keeps the rule above. */
 .tab-zone .tab-title-container button.badge {
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-xs);
-    height: var(--button-height-compact);
-    padding: 0 var(--spacing-sm);
-    font-size: var(--font-size-xs);
-    letter-spacing: 0.3px;
-    line-height: normal;
-    border-radius: var(--radius-xs);
 }
 
 /* Filter row below tab-title-container — shared across Profiles, Services, Audio Software */

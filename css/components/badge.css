@@ -270,19 +270,11 @@
     transform: scale(0.98);
 }
 
-/* A clickable <ag-badge> is a compact button in size — height, padding, type, weight,
-   letter spacing, corners (components/button.css, .tile-action-btn; user's choice,
-   2026-10-08). It stood 18px, in 10px type of weight 500. Its colours stay the badge's. */
+/* A clickable <ag-badge> is sized by the compact box (components/button.css; user's
+   choice, 2026-10-08). Its colours stay the badge's. */
 ag-badge button.badge {
     display: inline-flex;
     align-items: center;
-    height: var(--button-height-compact);
-    padding: 0 var(--spacing-sm);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    line-height: normal;
-    border-radius: var(--radius-xs);
 }
 
 /**

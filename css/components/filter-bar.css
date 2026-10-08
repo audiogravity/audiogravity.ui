@@ -20,22 +20,15 @@
  * @state .active - Currently selected option.
  */
 .filter-btn {
-    /* The tile buttons' size exactly — same height, padding, letter spacing and
-       corners (components/button.css, .tile-action-btn; user's choice, 2026-10-06).
-       It stood 20px, from its 2px padding. Its colours say it selects. */
+    /* Sized by the compact box (components/button.css; user's choice, 2026-10-06).
+       Its colours say it selects. */
     display: inline-flex;
     align-items: center;
-    height: var(--button-height-compact);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
-    letter-spacing: 0.3px;
 }
 
 .filter-btn:hover {
@@ -43,8 +36,4 @@
     color: var(--text-primary);
 }
 
-.filter-btn.active {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
+/* .filter-btn.active: the chosen look every row of selectors shares (components/button.css). */

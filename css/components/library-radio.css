@@ -22,40 +22,27 @@
     border-bottom: 1px solid var(--border-color);
 }
 
-/* The compact buttons' box — height, padding, type, letter spacing, corners
-   (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
-   26px, in 10px type of weight 700. The custom-station form's Cancel and Save wear
-   this class too. Each still fills its share of the row. */
+/* Sized by the compact box (components/button.css; user's choice, 2026-10-08). The
+   custom-station form's Cancel and Save wear this class too. Each still fills its
+   share of the row. */
 .lib-radio-tab {
     flex: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: var(--button-height-compact);
-    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    line-height: normal;
     cursor: pointer;
     transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.lib-radio-tab.on {
-    color: var(--bg-primary);
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-}
-
+/* .lib-radio-tab.on: the chosen look every row of selectors shares (components/button.css),
+   its hover included. */
 @media (hover: hover) {
     .lib-radio-tab:hover { color: var(--text-primary); }
-    .lib-radio-tab.on:hover { color: var(--bg-primary); }
 }
 
 /* ─── Search filters ─── */
@@ -130,26 +117,18 @@
     border-bottom: 1px solid var(--border-color);
 }
 
-/* The compact buttons' box — height, padding, type, letter spacing, corners
-   (components/button.css, .tile-action-btn; user's choice, 2026-10-08). It stood
-   26px, in 10px type of weight 700, as the views above it did. */
+/* Sized by the compact box (components/button.css; user's choice, 2026-10-08), as the
+   views above it. */
 .lib-radio-add-btn {
     width: 100%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: var(--button-height-compact);
-    padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    line-height: normal;
     cursor: pointer;
     transition: color var(--transition-fast), border-color var(--transition-fast);
 }
