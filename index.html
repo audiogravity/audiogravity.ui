@@ -49,6 +49,16 @@
          above allows no inline script, and a deferred or module script would run
          after the page has already been drawn. -->
     <script src="/theme-boot.js"></script>
+
+    <!-- Whether this page shows the splash screen: once per opening of the installed app.
+         A separate file for the same reasons as the one above. -->
+    <script src="/splash-boot.js"></script>
+
+    <!-- With no session, leaves for login.html before this page draws anything: its
+         splash screen would show, then be cut by the redirect js/common.js makes once
+         loaded, and login.html's would start over. A separate file for the same
+         reasons as the one above. -->
+    <script src="/session-boot.js"></script>
     <title>Audiogravity - Audio Device Management</title>
 
     <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
@@ -218,7 +228,7 @@
             position: fixed;
             inset: 0;
             z-index: 999999;
-            background-color: #12141c;
+            background-color: var(--bg-primary, #12141c); /* the theme's ground: theme-boot.js stamps the theme before the first paint */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -232,24 +242,21 @@
 </head>
 
 <body>
-    <!-- PWA SPLASH SCREEN (in-app overlay for Android/Chrome/Desktop PWA)
-         The iOS native splash is handled by <link rel="apple-touch-startup-image"> in <head>.
-         This overlay provides an equivalent experience on all other platforms. -->
-    <div id="ag-splash-screen" role="status" aria-label="Loading Audiogravity" aria-live="polite">
-        <div class="splash-logo-wrapper">
-            <svg class="splash-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="9" cy="9" r="4"></circle>
-                <path d="M9 13 l0 8 l2 -2 l2 2 l0 -4"></path>
-                <path d="M14 10 l7 0"></path>
-                <path d="M18 10 l0 3"></path>
-            </svg>
-            <div class="ag-brand-row">
-                <img class="ag-app-icon splash-app-icon" src="pics/apple-touch-180.png" alt=""
-                     aria-hidden="true" width="36" height="36">
-                <span class="ag-wordmark splash-wordmark">Audiogravi<sup>ty</sup></span>
-            </div>
+    <!-- PWA SPLASH SCREEN — shown while an installed app loads (css/components/splash-screen.css,
+         js/splash-screen.js). iOS first shows its own launch image (<link rel="apple-touch-startup-image">
+         in <head>): the plain ground this screen's entrance starts from, drawn by
+         scripts/make-launch-images.mjs. Hence the theme pinned on it, Minimal dark, the one
+         those images are painted from: on the user's theme, a light one cut from black to white
+         at every launch. login.html carries the same markup. -->
+    <div id="ag-splash-screen" data-theme="minimal" class="dark-mode" role="status" aria-label="Loading Audiogravity" aria-live="polite">
+        <div class="splash-mark">
+            <span class="splash-wave" aria-hidden="true"></span>
+            <span class="splash-wave splash-wave--second" aria-hidden="true"></span>
+            <img class="ag-app-icon splash-app-icon" src="pics/apple-touch-180.png" alt=""
+                 aria-hidden="true" width="96" height="96">
         </div>
-        <span class="splash-tagline">Audio Device Management</span>
+        <span class="ag-wordmark splash-wordmark">Audiogravi<sup>ty</sup></span>
+        <span class="splash-tagline">Your audio chain, fully controlled</span>
     </div>
 
     <!-- Skip to main content link (for keyboard users) -->

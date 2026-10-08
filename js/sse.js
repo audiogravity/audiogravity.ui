@@ -196,6 +196,20 @@ export function connectSSE() {
 }
 
 /**
+ * Close the dashboard stream, keeping its worker: the next connectSSE() reopens it.
+ *
+ * The connection is a Web Worker, which has no close() — page unload called one, and
+ * threw on every departure from the app. Closed through the worker's own 'close' action
+ * rather than terminated: a page that stays after all (a departure called off, a return
+ * from the back-forward cache) gets its stream back when shown, as a hidden tab does.
+ */
+export function closeSSE() {
+    if (!sseWorker) return;
+    sseWorker.postMessage({ action: 'close' });
+    AppState.sseConnection = null;
+}
+
+/**
  * OPTIMIZATION: Visibility API to pause SSE and timers when tab is hidden
  * PERFORMANCE OPTIMIZATION (Phase 1): Now also stops uptime updates
  */
@@ -204,10 +218,8 @@ export function initVisibilityManager() {
         if (document.hidden) {
             console.log('App hidden: stopping SSE and timers');
             if (sseWorker) {
-                sseWorker.postMessage({ action: 'close' });
-                // We don't terminate the worker, just close the connection
-                // But we clear the references to trigger a fresh connect later
-                AppState.sseConnection = null;
+                // The connection closed, the worker kept for a fresh connect later
+                closeSSE();
                 AppState.connected = false;
                 updateConnectionStatus(false);
             }

@@ -4,7 +4,7 @@
 
 import { initAuth, logout, applyRoleClass, requireAuth } from './auth.js';
 import { apiCall, apiCallWithRetry, apiGet, apiPost, apiUpload } from './api.js';
-import { connectSSE, updateConnectionStatus, updateSystemMetrics, loadInitialMetrics, initVisibilityManager, startUptimeUpdates, sseStats } from './sse.js';
+import { connectSSE, closeSSE, updateConnectionStatus, updateSystemMetrics, loadInitialMetrics, initVisibilityManager, startUptimeUpdates, sseStats } from './sse.js';
 import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-helpers.js';
 import { addToHistory, clearHistory, renderHistory } from './history.js';
 import { AgTimerManager } from './timer.js';
@@ -13,6 +13,7 @@ import { appearancePreference, isDarkFor, applyStoredAppearance } from './appear
 import { escapeHtml } from './core/escape-html.js';
 import { parseStoredValue } from './core/stored-value.js';
 import { applyUpdates } from './core/sw-update.js';
+import { skipNextSplash } from './splash-screen.js';
 
 import {
     API_BASE_URL, UI_VERSION, THEMES,
@@ -188,6 +189,8 @@ document.addEventListener('logout-click', async () => {
     } catch (e) {
         console.error('Logout failed:', e);
     }
+    // The same opening of the app: the sign-in page shows no splash screen.
+    skipNextSplash();
     window.location.href = 'login.html';
 });
 
@@ -774,10 +777,7 @@ if (import.meta.env.VITE_BETA === 'true') {
 window.addEventListener('beforeunload', () => {
 
     // Close SSE connection
-    if (AppState.sseConnection) {
-        AppState.sseConnection.close();
-        AppState.sseConnection = null;
-    }
+    closeSSE();
 
     // Clear memory cache (optional, helps with testing)
     // MemoryCache.clear();

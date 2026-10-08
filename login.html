@@ -29,6 +29,10 @@
          above allows no inline script, and a deferred or module script would run
          after the page has already been drawn. -->
     <script src="/theme-boot.js"></script>
+
+    <!-- Whether this page shows the splash screen: once per opening of the installed app.
+         A separate file for the same reasons as the one above. -->
+    <script src="/splash-boot.js"></script>
     <title>Login - Audiogravity</title>
 
     <!-- iOS PWA Splash Screens — one <link> per device/orientation with media query -->
@@ -187,6 +191,20 @@
 </head>
 
 <body class="login-page">
+    <!-- The same splash screen as index.html — a launch with no session lands here
+         (public/session-boot.js), and this is the screen it sees while the page loads.
+         js/splash-screen.test.js holds the two copies of the markup together. -->
+    <div id="ag-splash-screen" data-theme="minimal" class="dark-mode" role="status" aria-label="Loading Audiogravity" aria-live="polite">
+        <div class="splash-mark">
+            <span class="splash-wave" aria-hidden="true"></span>
+            <span class="splash-wave splash-wave--second" aria-hidden="true"></span>
+            <img class="ag-app-icon splash-app-icon" src="pics/apple-touch-180.png" alt=""
+                 aria-hidden="true" width="96" height="96">
+        </div>
+        <span class="ag-wordmark splash-wordmark">Audiogravi<sup>ty</sup></span>
+        <span class="splash-tagline">Your audio chain, fully controlled</span>
+    </div>
+
     <div class="login-container">
         <div class="login-card">
             <!-- Light/dark appearance. The theme itself is chosen in the app's

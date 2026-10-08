@@ -191,7 +191,7 @@ describe('the shell can start offline right after an update', () => {
     // theme-boot.js was already precached; it is here so that stops being an accident.
     // It runs before the first paint, so a miss brings back the white flash it exists
     // to remove — and on the revalidation strategy a miss answers 404, not an outage.
-    const CRITICAL = ['/ag-config.js', '/js/sse-worker.js', '/theme-boot.js'];
+    const CRITICAL = ['/ag-config.js', '/js/sse-worker.js', '/theme-boot.js', '/session-boot.js', '/splash-boot.js'];
 
     it.each(CRITICAL)('precaches %s', async (url) => {
         const sw = loadSw();
@@ -233,7 +233,7 @@ describe('unhashed static files ride on the cache rename, not on revalidation', 
     // included — one round trip and one disk write per image per page load, to re-store
     // identical bytes, on a box whose spare CPU belongs to the audio.
     // The manual too: each build carries its own copy (scripts/sync-manual.js).
-    const STABLE = ['/pics/qobuz.webp', '/pics/splash/apple-splash-1125-2436.png', '/theme-boot.js',
+    const STABLE = ['/pics/qobuz.webp', '/pics/splash/apple-splash-1125-2436.png', '/theme-boot.js', '/session-boot.js', '/splash-boot.js',
         '/docs/manual/README.md', '/docs/manual/04-listening.md', '/docs/manual/images/ios-fullscreen.webp'];
 
     it.each(STABLE)('asks the network once for %s, then never again', async (url) => {

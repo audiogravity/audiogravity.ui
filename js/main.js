@@ -8,7 +8,8 @@
  */
 
 // =====================
-// SPLASH SCREEN (Init first — starts the dismiss timer immediately)
+// SPLASH SCREEN (imported first; runs once all of this module's imports have loaded,
+// and times the screen from its first animation — js/splash-screen.js)
 // =====================
 import { splashScreen } from './splash-screen.js';
 splashScreen.init();
