@@ -270,3 +270,49 @@ describe('a new session token', () => {
         expect(connects()).toHaveLength(1);
     });
 });
+
+describe('closing the stream', () => {
+    // The connection is a Web Worker, which has no close(): page unload called one and
+    // threw on every departure from the app. A fresh sse.js, so that no worker is open yet.
+    const posted = [];
+    let created = 0;
+    let sse;
+    let api;
+
+    beforeAll(async () => {
+        vi.stubGlobal('Worker', class {
+            constructor() { created++; }
+            postMessage(message) { posted.push(message); }
+        });
+        vi.resetModules();
+        api = await import('./api.js');
+        sse = await import('./sse.js');
+    });
+    afterAll(() => { vi.unstubAllGlobals(); });
+    beforeEach(() => { posted.length = 0; });
+
+    it('does nothing before the stream was opened', () => {
+        expect(() => sse.closeSSE()).not.toThrow();
+        expect(posted).toEqual([]);
+    });
+
+    it('asks the worker to close its stream', () => {
+        api.buildAuthedUrl.mockReturnValue('http://box/api/sse/dashboard?token=t');
+        sse.connectSSE();
+        expect(() => sse.closeSSE()).not.toThrow();
+        expect(posted.at(-1)).toEqual({ action: 'close' });
+    });
+
+    it('keeps the worker: a page that stays after all gets its stream back through it', () => {
+        sse.connectSSE();
+        expect(posted.at(-1)).toMatchObject({ action: 'connect' });
+        expect(created).toBe(1);
+    });
+
+    it('is what the app runs on its way out', () => {
+        const common = readFileSync(resolve(import.meta.dirname, 'common.js'), 'utf8');
+        const handler = common.slice(common.indexOf("window.addEventListener('beforeunload'"));
+        expect(handler.slice(0, handler.indexOf('\n});'))).toMatch(/\n\s*closeSSE\(\);/);
+        expect(common).not.toMatch(/sseConnection\.close\(\)/);
+    });
+});
