@@ -1,8 +1,8 @@
 // =====================
-// SERVICE WORKER - AUDIOGRAVITY v0.9.69-dev
+// SERVICE WORKER - AUDIOGRAVITY v0.9.69
 // =====================
 
-const CACHE_NAME = 'audiogravity-v0.9.69-dev';
+const CACHE_NAME = 'audiogravity-v0.9.69';
 
 // What marks a cache as this file's own, so activate sweeps ours and leaves anything
 // else on the origin alone. Derived from CACHE_NAME rather than written out again —
