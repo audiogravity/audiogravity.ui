@@ -521,10 +521,12 @@ body.is-offline {
 .tabs--vertical .tabs-logo {
     display: inline-block;
 
-    /* sm rather than a larger step: it reproduces the width the 80px image had in the
-       225px sidebar, where the mark shares its row with the licence badge and the
-       connection dot. */
-    font-size: var(--font-size-sm);
+    /* lg (user, 2026-10-09; it was sm, the width of the 80px image it replaced). The mark
+       shares its 201px row with the licence badge and the connection dot: lg keeps all
+       three on one line with the longest label, "Version expired" (10px each side,
+       measured in Chromium at 390px). 20px, the next step, left that label touching the
+       mark and the dot outside the column. */
+    font-size: var(--font-size-lg);
     opacity: 0.85;
     margin: 0;
 }
