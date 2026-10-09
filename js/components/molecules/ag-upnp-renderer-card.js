@@ -26,6 +26,7 @@ import { apiGet, apiPut, apiDelete } from '../../api.js';
 import { subscribeRendererStatus } from '../../library-store.js';
 import { iconWifi, iconCast, iconOutput } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
+import { confirmRemoval } from '../../ui-helpers.js';
 import '../atoms/ag-status-indicator.js';
 import './ag-volume-popover.js';
 
@@ -56,7 +57,7 @@ class AgUpnpRendererCard extends LitElement {
         this._discovered    = null;
         this._switching     = null;
         this._swipe = new SwipeToDismissController(this, {
-            onCommit: (udn) => this._removeRenderer(udn),
+            onCommit: (udn) => this._onSwipeRemove(udn),
         });
     }
 
@@ -221,6 +222,19 @@ class AgUpnpRendererCard extends LitElement {
     // ── Swipe-to-delete ───────────────────────────────────────────────────────
 
     /**
+     * A swipe on a renderer row asks before removing it: carried a little too far,
+     * meaning to scroll, it used to be enough to drop a renderer from the list.
+     * Named as the row names it, which falls back to the UDN.
+     * @param {string} udn - The swiped renderer's UDN.
+     */
+    async _onSwipeRemove(udn) {
+        const renderer = this._known.find(r => r.udn === udn);
+        if (!renderer) return;
+        if (!await confirmRemoval('Remove renderer', renderer.friendly_name || udn, 'Audio Output')) return;
+        await this._removeRenderer(udn);
+    }
+
+    /**
      * Permanently remove a renderer from the known list via DELETE /upnp-renderer/{udn}.
      * Optimistic: removes from local list immediately; re-fetches on error.
      * @param {string} udn
@@ -328,7 +342,7 @@ class AgUpnpRendererCard extends LitElement {
      * Row for a known renderer.
      *
      * Inactive renderers are wrapped in a swipe-to-delete container driven by the
-     * shared SwipeToDismissController (drag left past the threshold to commit).
+     * shared SwipeToDismissController (drag left past the threshold, then confirm).
      *
      * Active renderers are rendered without the swipe wrapper — they show
      * Disconnect + Volume controls instead.

@@ -5,7 +5,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render } from 'lit';
 import { readStylesheet } from './test-utils.js';
-import { getUserFriendlyError, showConfirm, showPasswordConfirm, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
+import { getUserFriendlyError, showConfirm, showPasswordConfirm, confirmRemoval, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
 import { asNetworkError } from './net-errors.js';
 
 describe('getUserFriendlyError', () => {
@@ -167,6 +167,55 @@ describe('a confirmation that deletes — the option reaches the dialog', () => 
         expect(b.destructive).toBe(true);
         for (const d of [a, b]) d.dispatchEvent(new CustomEvent('dialog-cancel'));
         return Promise.all([expect(plain).resolves.toBeNull(), expect(deletes).resolves.toBeNull()]);
+    });
+});
+
+describe('confirmRemoval — asking before a row leaves its list', () => {
+    afterEach(() => {
+        document.querySelectorAll('ag-confirm-dialog').forEach((d) => d.remove());
+    });
+
+    /** Render the dialog's message into a detached node and return that node. */
+    function message(dialog) {
+        const box = document.createElement('div');
+        render(dialog.messageTemplate, box);
+        return box;
+    }
+
+    it('names the item and the list, and offers an orange Remove', () => {
+        const answer = confirmRemoval('Remove station', 'FIP', 'My Live Radio');
+        const dialog = document.querySelector('ag-confirm-dialog');
+        expect(dialog.title).toBe('Remove station');
+        expect(dialog.okLabel).toBe('Remove');
+        expect(dialog.destructive).toBe(true);
+        expect(message(dialog).textContent.replace(/\s+/g, ' ').trim()).toBe('Remove FIP from My Live Radio?');
+        dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
+        return expect(answer).resolves.toBe(false);
+    });
+
+    it('resolves true on Remove, so the caller goes ahead', () => {
+        const answer = confirmRemoval('Remove server', 'MinimServer', 'UPnP servers');
+        document.querySelector('ag-confirm-dialog').dispatchEvent(new CustomEvent('dialog-confirm'));
+        return expect(answer).resolves.toBe(true);
+    });
+
+    it('adds the note after the question, and only when there is one', () => {
+        confirmRemoval('Remove station', 'My stream', 'My Live Radio', 'Its address will be lost.');
+        confirmRemoval('Remove station', 'FIP', 'Favorites');
+        const [withNote, without] = document.querySelectorAll('ag-confirm-dialog');
+        expect(message(withNote).textContent.replace(/\s+/g, ' ').trim())
+            .toBe('Remove My stream from My Live Radio? Its address will be lost.');
+        expect(message(without).textContent.replace(/\s+/g, ' ').trim()).toBe('Remove FIP from Favorites?');
+    });
+
+    it('shows a name from the network as text, never as markup', () => {
+        // Station names come from the Radio Browser catalogue, renderer names from
+        // whatever a device on the network announces.
+        const name = '<img src=x onerror="window.__pwned=1">Radio';
+        confirmRemoval('Remove renderer', name, 'Audio Output');
+        const box = message(document.querySelector('ag-confirm-dialog'));
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.querySelector('strong').textContent).toBe(name);
     });
 });
 

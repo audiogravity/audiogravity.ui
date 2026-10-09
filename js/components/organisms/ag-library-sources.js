@@ -24,6 +24,7 @@ import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
 import '../molecules/ag-upnp-renderer-card.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
+import { confirmRemoval } from '../../ui-helpers.js';
 import '../molecules/ag-highresaudio-connection.js';
 import '../molecules/ag-hqplayer-output.js';
 import '../molecules/ag-qobuz-connection.js';
@@ -59,10 +60,7 @@ export class AgLibrarySources extends LitElement {
         this._playingKey     = '';
         this._unsubscribeState = null;
         this._swipe = new SwipeToDismissController(this, {
-            onCommit: (id) => {
-                const srv = this._upnpServers.find(s => s.id === id);
-                if (srv) this._removeUpnpServer(srv);
-            },
+            onCommit: (id) => this._onSwipeRemove(id),
         });
     }
 
@@ -166,6 +164,20 @@ export class AgLibrarySources extends LitElement {
     _rescanUpnp() {
         this._upnpDiscovered = false;
         this._upnpServers    = [];
+    }
+
+    /**
+     * A swipe on a server row asks before removing it: carried a little too far,
+     * meaning to scroll, it used to be enough to drop a server from the list.
+     * A device may announce an empty name; the question then names its id, so it
+     * still says which server it means.
+     * @param {string} id - The swiped server's id.
+     */
+    async _onSwipeRemove(id) {
+        const srv = this._upnpServers.find(s => s.id === id);
+        if (!srv) return;
+        if (!await confirmRemoval('Remove server', srv.friendly_name || srv.id, 'UPnP servers')) return;
+        await this._removeUpnpServer(srv);
     }
 
     /**

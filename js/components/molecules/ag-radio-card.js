@@ -14,7 +14,8 @@
  * When ``swipeable`` is set, a left-swipe gesture progressively reveals a
  * delete affordance and commits ``radio-swipe-remove`` past a threshold. The
  * organism uses this single event to remove the station from whichever
- * collection the row currently belongs to.
+ * collection the row currently belongs to, once the user has confirmed: like
+ * the "more" removal, the event only asks.
  *
  * @element ag-radio-card
  *

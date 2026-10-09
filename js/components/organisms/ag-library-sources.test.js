@@ -12,7 +12,7 @@
  * - An input lights up on its own node — its origin names a door, not a catalogue
  * - The list is split by type, so a new source needs no edit here
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // api.js demands authentication at import time and throws in this environment,
 // so it is stubbed the way library-constants.test.js already stubs it. The
@@ -25,6 +25,8 @@ vi.mock('../../library-store.js', () => ({
     getSnapshot: vi.fn(), subscribePlayerState: vi.fn(() => () => {}),
     getRoonZones: vi.fn(), hasSubscription: vi.fn(),
 }));
+// The dialog itself is covered in ui-helpers.test.js; here only the answer matters.
+vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false) }));
 
 const { AgLibrarySources } = await import('./ag-library-sources.js');
 const { BROWSE_KINDS, INPUT_KINDS } = await import('../library-constants.js');
@@ -319,5 +321,110 @@ describe('the list is split by type, not by a list of names', () => {
     it('lists no routing handle: a renderer and HQPlayer carry no kind', () => {
         expect(BROWSE_KINDS.has(undefined)).toBe(false);
         expect(INPUT_KINDS.has(undefined)).toBe(false);
+    });
+});
+
+/**
+ * A swipe on a UPnP server asks before removing it: carried a little too far,
+ * meaning to scroll, it used to be enough to drop a server from the list.
+ */
+describe('a swiped UPnP server is removed only once confirmed', () => {
+    const MINIM = { id: 'upnp:uuid:minim', friendly_name: 'MinimServer[pi]' };
+    const OTHER = { id: 'upnp:uuid:other', friendly_name: 'Other' };
+
+    /** A bare instance holding two servers, its own writes kept off Lit's accessors. */
+    function withServers() {
+        const el = bare();
+        for (const [key, value] of [['_upnpServers', [MINIM, OTHER]], ['_upnpDiscovered', true]]) {
+            Object.defineProperty(el, key, { value, writable: true });
+        }
+        el.dispatchEvent = vi.fn();
+        return el;
+    }
+
+    // clearAllMocks keeps an answer set by mockResolvedValue: put the default back,
+    // or a test that sets none inherits the previous test's.
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        (await import('../../ui-helpers.js')).confirmRemoval.mockResolvedValue(false);
+    });
+
+    it('asks by the name the row shows, under the list the screen names', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const el = withServers();
+        await el._onSwipeRemove(MINIM.id);
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove server', 'MinimServer[pi]', 'UPnP servers');
+    });
+
+    it('keeps the server when the user cancels', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(false);
+        const el = withServers();
+
+        await el._onSwipeRemove(MINIM.id);
+
+        expect(apiDelete).not.toHaveBeenCalled();
+        expect(el._upnpServers).toEqual([MINIM, OTHER]);
+    });
+
+    it('removes it once confirmed, and only it', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(true);
+        const el = withServers();
+
+        await el._onSwipeRemove(MINIM.id);
+
+        expect(apiDelete).toHaveBeenCalledWith(`/library/upnp-known-servers/${encodeURIComponent(MINIM.id)}`);
+        expect(el._upnpServers).toEqual([OTHER]);
+    });
+
+    it('finishes only once the removal has', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(true);
+        let release;
+        apiDelete.mockReturnValue(new Promise((r) => { release = r; }));
+        const el = withServers();
+
+        let done = false;
+        const handled = el._onSwipeRemove(MINIM.id).then(() => { done = true; });
+        await new Promise((r) => setTimeout(r, 0));
+        expect(done).toBe(false);
+
+        release();
+        await handled;
+        expect(el.dispatchEvent).toHaveBeenCalledOnce();
+        expect(el.dispatchEvent.mock.calls[0][0].type).toBe('sources-changed');
+    });
+
+    it('names a server that announced no name by its id, so the question still says which', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const el = withServers();
+        el._upnpServers = [{ id: 'upnp:uuid:blank', friendly_name: '' }];
+        await el._onSwipeRemove('upnp:uuid:blank');
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove server', 'upnp:uuid:blank', 'UPnP servers');
+    });
+
+    it('asks nothing for a server no longer listed', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const el = withServers();
+        await el._onSwipeRemove('upnp:uuid:gone');
+        expect(confirmRemoval).not.toHaveBeenCalled();
+    });
+
+    it('wires the swipe to the question, not straight to the removal', async () => {
+        // A real instance: the wiring lives in the constructor.
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(false);
+        const el = document.createElement('ag-library-sources');
+        el._upnpServers = [MINIM];
+
+        await el._swipe._onCommit(MINIM.id);
+
+        expect(confirmRemoval).toHaveBeenCalledOnce();
+        expect(apiDelete).not.toHaveBeenCalled();
     });
 });
