@@ -214,9 +214,63 @@ describe('ag-top-bar — how the figures read (layout.css)', () => {
         expect(cssRuleBody(small, '.connection-status span')).toMatch(/display:\s*none/);
     });
 
+    it('leaves the connection dot to the column wherever the tabs are one, while the box answers', () => {
+        // The column's logo bar has its own: a phone held sideways showed it twice.
+        const selector = 'body:has(.tabs--vertical) .topbar .connection-status:has(ag-status-indicator[state="up"])';
+        expect(cssRuleBody(CSS, selector)).toMatch(/display:\s*none/);
+        // Not tied to a width or an orientation: a media block would leave a column
+        // somewhere with two dots. At the top level, every brace before it is closed.
+        const at = CSS.indexOf(`${selector} {`);
+        expect(at).toBeGreaterThan(-1);
+        const before = CSS.slice(0, at).replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(before.split('{').length).toBe(before.split('}').length);
+    });
+
+    it('never hides it in a column while the box does not answer: no other place says so', () => {
+        // The column starts closed, the footer is hidden on those screens, and the
+        // offline banner follows the device's network, not the box (measured in
+        // Chromium, 2026-10-09). Every rule hiding the bar's indicator under a column
+        // must be conditioned on the connected state.
+        const bare = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+        const hiding = [...bare.matchAll(/([^{}]*tabs--vertical[^{}]*\.connection-status[^{}]*)\{([^}]*)\}/g)]
+            .filter(([, , body]) => /display:\s*none/.test(body))
+            .map(([, selector]) => selector.trim());
+        expect(hiding.length).toBeGreaterThan(0);
+        for (const selector of hiding) expect(selector).toContain('[state="up"]');
+    });
+
+    it('keeps it on the horizontal bar, which has no other', () => {
+        expect(cssRuleBody(CSS, '.connection-status')).toMatch(/display:\s*flex/);
+        // No rule on the indicator itself hides it, at any width — inside a media
+        // block too, where the brace before it is the block's own.
+        const bare = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(bare).not.toMatch(/(^|[{}])\s*\.connection-status\s*\{[^}]*display:\s*none/);
+    });
+
     it('keeps on a phone the three figures that can call for attention', () => {
         const phone = mediaBlock(CSS, /@media\s*\(width\s*<=\s*768px\)/);
         expect(cssRuleBody(phone, '.system-metrics .metric--uptime')).toMatch(/display:\s*none/);
+    });
+});
+
+describe('ag-top-bar — the connection state, as an attribute', () => {
+    // layout.css hides the indicator under a column by `[state="up"]`: a property
+    // binding (`.state=`) would leave no attribute, and the rule would never match —
+    // the bar would show the dot twice again, with nothing to say so.
+    it('carries the state on the indicator\'s attribute, and follows the stream', async () => {
+        const el = await mount();
+        const indicator = () => el.querySelector('.connection-status ag-status-indicator');
+        expect(indicator().getAttribute('state')).toBe('down');
+        expect(el.querySelector('.connection-status > span').textContent).toBe('Connecting...');
+
+        updateConnectionStatus(true);
+        await el.updateComplete;
+        expect(indicator().getAttribute('state')).toBe('up');
+        expect(el.querySelector('.connection-status > span').textContent).toBe('Connected');
+
+        updateConnectionStatus(false);
+        await el.updateComplete;
+        expect(indicator().getAttribute('state')).toBe('down');
     });
 });
 

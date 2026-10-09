@@ -96,6 +96,17 @@ body:has(.tabs--vertical) .nav-menu {
     gap: var(--spacing-sm);
 }
 
+/* Where the tabs are a column, the column's logo bar carries the connection dot: the
+   bar's own said it twice — a dot and "Connected" beside the menu button on a phone held
+   sideways (user, 2026-10-09). Only while the box answers, though: the column is closed
+   by default and the footer hidden on those screens, so once the box stops answering the
+   bar is the one place left to say it, and "Connecting..." comes back. The offline banner
+   does not: it follows the device's own network (navigator.onLine), not the box. The
+   attribute is the bar's binding (`state=`), not a property: this rule reads it. */
+body:has(.tabs--vertical) .topbar .connection-status:has(ag-status-indicator[state="up"]) {
+    display: none;
+}
+
 .status-indicator {
     width: var(--status-indicator-size);
     height: var(--status-indicator-size);
@@ -813,7 +824,8 @@ body.dark-mode .logo-dark {
     }
 
     /* The words only — `>`: the dot is a span too, nested in its indicator. It says
-       whether the box answers, and the offline banner says it when it does not. The
+       whether the box answers, grey when it does not (the offline banner follows the
+       device's own network, not the box). The
        words came back from 481px, where the figures read inline: they sat on "CPU:"
        up to 520px, and "Connecting…" next to wide figures squeezed the menu button to
        8px (measured in Chromium, 2026-10-04). */
