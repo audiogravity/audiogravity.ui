@@ -160,11 +160,22 @@ describe('ag-tabs — Manual at the foot of the column', () => {
         expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn')).toMatch(/margin-top:\s*auto/);
     });
 
-    it('with Switch right under it where there is one: two automatic margins would share the room', () => {
-        // Switch pushes itself down on its own, for a column without Manual; after
-        // Manual, it gives that up.
-        expect(cssRuleBody(css(), '.tabs--vertical .tab-orientation-btn')).toMatch(/margin-top:\s*auto/);
-        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn')).toMatch(/margin-top:\s*0/);
+    it('takes the right-hand end of the horizontal bar, and only there', () => {
+        // In the column, an automatic left margin would push it to the right edge.
+        expect(cssRuleBody(css(), '.tabs:not(.tabs--vertical) .tab-manual-btn')).toMatch(/margin-left:\s*auto/);
+        expect(cssRuleBody(css(), '.tabs--vertical .tab-manual-btn')).not.toMatch(/margin-left/);
+        // Nor from any other rule on Manual: in the column it would also stop the button
+        // stretching to the column's width.
+        const bare = css().replace(/\/\*[\s\S]*?\*\//g, '');
+        const pushing = [...bare.matchAll(/([^{}]*\.tab-manual-btn[^{}]*)\{([^}]*)\}/g)]
+            .filter(([, , body]) => /margin-left:\s*auto/.test(body))
+            .map(([, selector]) => selector.trim());
+        expect(pushing).toEqual(['.tabs:not(.tabs--vertical) .tab-manual-btn']);
+    });
+
+    it('keeps no style for the Switch button, gone with the choice of layout', () => {
+        // It stood under Manual on a computer's column; a computer has no column now.
+        expect(css()).not.toMatch(/\.tab-orientation-btn/);
     });
 });
 

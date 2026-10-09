@@ -37,6 +37,27 @@ export function deviceAppearance(dark) {
 }
 
 /**
+ * Give jsdom's screen a size — it measures 0 × 0 — and tell the page it changed, as a
+ * window carried to another screen, or a phone turned, would.
+ *
+ * Undone by {@link restoreScreen}.
+ *
+ * @param {number} width - `screen.width`, in CSS pixels.
+ * @param {number} height - `screen.height`, in CSS pixels.
+ */
+export function stubScreen(width, height) {
+    Object.defineProperty(window.screen, 'width', { value: width, configurable: true });
+    Object.defineProperty(window.screen, 'height', { value: height, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+}
+
+/** Give jsdom's screen its own size back, after {@link stubScreen}. */
+export function restoreScreen() {
+    delete window.screen.width;
+    delete window.screen.height;
+}
+
+/**
  * Read one of the app's stylesheets as text, for a guard jsdom cannot give: it lays
  * nothing out, so a layout contract is read out of the stylesheet itself.
  *

@@ -358,26 +358,6 @@ body.is-offline {
     color: var(--btn-primary, var(--text-primary));
 }
 
-/* Toggle d'orientation de la barre d'onglets */
-.tab-orientation-btn {
-    margin-left: auto;
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 0 var(--spacing-sm);
-    height: 100%;
-    font-size: var(--font-size-md);
-    display: flex;
-    align-items: center;
-    transition: color var(--transition-fast);
-}
-
-.tab-orientation-btn:hover {
-    color: var(--text-primary);
-}
-
 /* =====================
    TABS — MODE VERTICAL (SIDEBAR) (GLOBAL)
    ===================== */
@@ -507,23 +487,16 @@ body.is-offline {
     color: var(--text-primary);
 }
 
-.tabs--vertical .tab-orientation-btn {
-    margin-left: 0;
-    margin-top: auto;
-    height: auto;
-    padding: var(--spacing-sm) var(--spacing-md);
-}
-
 /* Manual takes the foot of the column: it is the app's documentation, not a place in
-   it, so it stands apart from the tabs. Switch, where there is one — a computer; the
-   column a phone gets has none — sits right under it: two automatic margins would share
-   the free space, and leave Manual floating halfway down. */
+   it, so it stands apart from the tabs. On the horizontal bar it stands apart the same
+   way, at the right-hand end (user, 2026-10-09) — where Switch used to sit. When the
+   tabs fill the bar there is no room to spare, and it simply follows them. */
 .tabs--vertical .tab-manual-btn {
     margin-top: auto;
 }
 
-.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn {
-    margin-top: 0;
+.tabs:not(.tabs--vertical) .tab-manual-btn {
+    margin-left: auto;
 }
 
 /* Logo bar: logo on the left, connectivity indicator on the right */
