@@ -12,10 +12,13 @@
  *
  * Card actions:
  *   - tap body                     → ``radioPlay`` (queue stream on MPD)
- *   - star toggle                  → add/remove from Favorites
- *   - plus toggle                  → add/remove from My Live Radio
- *   - pencil (custom stations)     → open the edit form
- *   - left-swipe past threshold    → remove from the current sub-tab's list
+ *   - star toggle                  → add/remove from Favorites; asks only when
+ *                                    removing would erase a station added by hand
+ *   - plus                         → add to My Live Radio
+ *   - more → Edit station          → open the edit form
+ *   - more → Remove from My Live Radio, after a confirmation
+ *   - left-swipe past threshold    → remove from the current sub-tab's list,
+ *                                    after a confirmation
  *
  * @element ag-library-radio
  * @fires radio-started - Bubbles once a station has actually started playing (not
@@ -32,6 +35,7 @@ import {
 } from '../../radio-api.js';
 import { RADIO_COUNTRIES, RADIO_GENRES } from '../library-constants.js';
 import { catalogueErrorMessage } from '../utils-lit.js';
+import { confirmRemoval } from '../../ui-helpers.js';
 import '../molecules/ag-radio-card.js';
 
 /**
@@ -326,17 +330,70 @@ export class AgLibraryRadio extends LitElement {
         }
     }
 
-    _onFavoriteToggle = (e) => this._toggleMembership('favorite', e.detail.station, e.detail.favorite);
-    _onLibraryToggle  = (e) => this._toggleMembership('library',  e.detail.station, e.detail.in_library);
-
-    _onSwipeRemove = (e) => {
-        // Swipe means "remove from the currently displayed list" — direct
-        // dispatch to the right flag toggle (Search disables the gesture
-        // entirely so we don't need to defend against `view === 'search'`).
-        const station = e.detail.station;
-        if (this._view === 'favorites') this._toggleMembership('favorite', station, false);
-        else if (this._view === 'library') this._toggleMembership('library', station, false);
+    /**
+     * Star or unstar. One touch, like a switch — except when unstarring would make
+     * the core forget a station added by hand, which takes its address with it:
+     * that one asks (user's choice, 2026-10-09).
+     * @param {CustomEvent} e - `radio-favorite-toggle`.
+     */
+    _onFavoriteToggle = async (e) => {
+        const { station, favorite: value } = e.detail;
+        if (!value && this._losesAddress('favorite', station)
+            && !await this._confirmRemove('favorite', station)) return;
+        await this._toggleMembership('favorite', station, value);
     };
+
+    /**
+     * Add to or remove from My Live Radio. Only the "more" actions remove, and
+     * they ask first; the plus adds at once.
+     * @param {CustomEvent} e - `radio-library-toggle`.
+     */
+    _onLibraryToggle = async (e) => {
+        const { station, in_library: value } = e.detail;
+        if (!value && !await this._confirmRemove('library', station)) return;
+        await this._toggleMembership('library', station, value);
+    };
+
+    /**
+     * Swipe means "remove from the currently displayed list", once confirmed: a
+     * swipe carried a little too far, meaning to scroll, used to be enough to lose
+     * a station. Search disables the gesture entirely, so no other view arrives.
+     * @param {CustomEvent} e - `radio-swipe-remove`.
+     */
+    _onSwipeRemove = async (e) => {
+        const station = e.detail.station;
+        const kind = this._view === 'favorites' ? 'favorite'
+            : this._view === 'library' ? 'library' : null;
+        if (!kind || !await this._confirmRemove(kind, station)) return;
+        await this._toggleMembership(kind, station, false);
+    };
+
+    /**
+     * Whether leaving this list loses the station's address. When a station leaves
+     * the last list holding it, the core forgets it entirely (`_apply_entry_update`
+     * in the core's radio service): a catalogue station can be found again by
+     * Search, a station added by hand cannot.
+     * @param {'library'|'favorite'} kind - The list it leaves.
+     * @param {object} station - The station.
+     * @returns {boolean}
+     */
+    _losesAddress(kind, station) {
+        const otherUuids = kind === 'library' ? this._favoriteUuids : this._libraryUuids;
+        return !!station.is_custom && !otherUuids.has(station.uuid);
+    }
+
+    /**
+     * Ask before a station leaves one of the two lists, saying so when it would
+     * take its address with it ({@link _losesAddress}).
+     * @param {'library'|'favorite'} kind - The list it leaves.
+     * @param {object} station - The station.
+     * @returns {Promise<boolean>} True when the user confirmed.
+     */
+    _confirmRemove(kind, station) {
+        const list = kind === 'library' ? 'My Live Radio' : 'Favorites';
+        return confirmRemoval('Remove station', station.name, list,
+            this._losesAddress(kind, station) ? 'You added this station by hand: its address will be lost.' : '');
+    }
 
     // ------------------------------------------------------------------
     // Custom-station form

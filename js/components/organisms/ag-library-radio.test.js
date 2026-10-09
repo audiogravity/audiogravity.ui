@@ -32,6 +32,8 @@ vi.mock('../molecules/ag-radio-card.js', () => ({}));
 // touched by the handler under test.
 vi.mock('../utils-lit.js', () => ({ catalogueErrorMessage: () => 'error' }));
 vi.mock('../library-constants.js', () => ({ RADIO_COUNTRIES: [], RADIO_GENRES: [] }));
+// The dialog itself is covered in ui-helpers.test.js; here only the answer matters.
+vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false) }));
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -366,5 +368,197 @@ describe('ag-library-radio — announcing a station that actually started', () =
 
         expect(seen.map(e => e.type)).toContain('radio-started');
         expect(seen[0].bubbles).toBe(true);
+    });
+});
+
+/**
+ * Removing a station asks first — the swipe in My Live Radio and in Favorites, and
+ * the "more" removal. A swipe carried a little too far, meaning to scroll, used to
+ * be enough to lose a station. The plus stays one touch, and so does the star —
+ * except when unstarring would erase a station added by hand, address included
+ * (user's decisions, 2026-10-09).
+ */
+describe('ag-library-radio — asking before a station leaves a list', () => {
+    const FIP = { uuid: 'fip', name: 'FIP', is_custom: false };
+    const MINE = { uuid: 'mine', name: 'My stream', is_custom: true };
+    const LOST = 'You added this station by hand: its address will be lost.';
+
+    // clearAllMocks keeps an answer set by mockResolvedValue: put the default back,
+    // or a test that sets none inherits the previous test's.
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        (await import('../../ui-helpers.js')).confirmRemoval.mockResolvedValue(false);
+    });
+
+    /**
+     * A constructed instance showing one list. Constructed, not Object.create'd:
+     * the handlers are bound class FIELDS, so they live on the instance.
+     */
+    async function view(name, stations, { library = [], favorites = [] } = {}) {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const el = new AgLibraryRadio();
+        el._view = name;
+        el._stations = [...stations];
+        el._libraryUuids = new Set(library);
+        el._favoriteUuids = new Set(favorites);
+        return el;
+    }
+
+    async function mocks() {
+        return { ...(await import('../../radio-api.js')), ...(await import('../../ui-helpers.js')) };
+    }
+
+    it('keeps a swiped station in My Live Radio when the user cancels', async () => {
+        const { confirmRemoval, radioRemoveFromLibrary } = await mocks();
+        confirmRemoval.mockResolvedValue(false);
+        const el = await view('library', [FIP], { library: ['fip'] });
+
+        await el._onSwipeRemove({ detail: { station: FIP } });
+
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove station', 'FIP', 'My Live Radio', '');
+        expect(radioRemoveFromLibrary).not.toHaveBeenCalled();
+        expect(el._stations).toEqual([FIP]);
+        expect(el._libraryUuids.has('fip')).toBe(true);
+    });
+
+    it('removes a swiped station from My Live Radio once confirmed', async () => {
+        const { confirmRemoval, radioRemoveFromLibrary, radioRemoveFavorite } = await mocks();
+        confirmRemoval.mockResolvedValue(true);
+        const el = await view('library', [FIP], { library: ['fip'], favorites: ['fip'] });
+
+        await el._onSwipeRemove({ detail: { station: FIP } });
+
+        expect(radioRemoveFromLibrary).toHaveBeenCalledWith('fip');
+        expect(radioRemoveFavorite).not.toHaveBeenCalled();
+        expect(el._stations).toEqual([]);
+    });
+
+    it('asks in Favorites too, naming Favorites, and removes only the favourite', async () => {
+        const { confirmRemoval, radioRemoveFromLibrary, radioRemoveFavorite } = await mocks();
+        confirmRemoval.mockResolvedValue(true);
+        const el = await view('favorites', [FIP], { library: ['fip'], favorites: ['fip'] });
+
+        await el._onSwipeRemove({ detail: { station: FIP } });
+
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove station', 'FIP', 'Favorites', '');
+        expect(radioRemoveFavorite).toHaveBeenCalledWith('fip');
+        expect(radioRemoveFromLibrary).not.toHaveBeenCalled();
+    });
+
+    it('keeps a swiped favourite when the user cancels', async () => {
+        const { confirmRemoval, radioRemoveFavorite } = await mocks();
+        confirmRemoval.mockResolvedValue(false);
+        const el = await view('favorites', [FIP], { favorites: ['fip'] });
+
+        await el._onSwipeRemove({ detail: { station: FIP } });
+
+        expect(radioRemoveFavorite).not.toHaveBeenCalled();
+        expect(el._stations).toEqual([FIP]);
+    });
+
+    it('asks before "Remove from My Live Radio", and does nothing on cancel', async () => {
+        const { confirmRemoval, radioRemoveFromLibrary } = await mocks();
+        confirmRemoval.mockResolvedValue(false);
+        const el = await view('library', [FIP], { library: ['fip'] });
+
+        await el._onLibraryToggle({ detail: { station: FIP, in_library: false } });
+
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove station', 'FIP', 'My Live Radio', '');
+        expect(radioRemoveFromLibrary).not.toHaveBeenCalled();
+    });
+
+    it('removes from My Live Radio once "Remove" is confirmed', async () => {
+        const { confirmRemoval, radioRemoveFromLibrary } = await mocks();
+        confirmRemoval.mockResolvedValue(true);
+        const el = await view('library', [FIP], { library: ['fip'] });
+
+        await el._onLibraryToggle({ detail: { station: FIP, in_library: false } });
+
+        expect(radioRemoveFromLibrary).toHaveBeenCalledWith('fip');
+        expect(el._libraryUuids.has('fip')).toBe(false);
+    });
+
+    it('adds with the plus at once, without asking', async () => {
+        const { confirmRemoval, radioAddToLibrary } = await mocks();
+        const el = await view('search', [FIP]);
+
+        await el._onLibraryToggle({ detail: { station: FIP, in_library: true } });
+
+        expect(confirmRemoval).not.toHaveBeenCalled();
+        expect(radioAddToLibrary).toHaveBeenCalledWith('fip');
+    });
+
+    it('leaves the star one touch for a catalogue station: no question', async () => {
+        const { confirmRemoval, radioRemoveFavorite } = await mocks();
+        const el = await view('favorites', [FIP], { favorites: ['fip'] });
+
+        await el._onFavoriteToggle({ detail: { station: FIP, favorite: false } });
+
+        expect(confirmRemoval).not.toHaveBeenCalled();
+        expect(radioRemoveFavorite).toHaveBeenCalledWith('fip');
+    });
+
+    it('warns that a station added by hand loses its address when it leaves its last list', async () => {
+        const { confirmRemoval } = await mocks();
+        const library = await view('library', [MINE], { library: ['mine'] });
+        await library._onSwipeRemove({ detail: { station: MINE } });
+        expect(confirmRemoval).toHaveBeenLastCalledWith('Remove station', 'My stream', 'My Live Radio', LOST);
+
+        const favorites = await view('favorites', [MINE], { favorites: ['mine'] });
+        await favorites._onSwipeRemove({ detail: { station: MINE } });
+        expect(confirmRemoval).toHaveBeenLastCalledWith('Remove station', 'My stream', 'Favorites', LOST);
+    });
+
+    it('does not warn while the other list still holds the station', async () => {
+        const { confirmRemoval } = await mocks();
+        const el = await view('library', [MINE], { library: ['mine'], favorites: ['mine'] });
+
+        await el._onSwipeRemove({ detail: { station: MINE } });
+
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove station', 'My stream', 'My Live Radio', '');
+    });
+
+    it('asks before the star erases a station added by hand, and keeps it on cancel', async () => {
+        const { confirmRemoval, radioRemoveFavorite } = await mocks();
+        const el = await view('favorites', [MINE], { favorites: ['mine'] });
+
+        await el._onFavoriteToggle({ detail: { station: MINE, favorite: false } });
+
+        expect(confirmRemoval).toHaveBeenCalledWith('Remove station', 'My stream', 'Favorites', LOST);
+        expect(radioRemoveFavorite).not.toHaveBeenCalled();
+        expect(el._stations).toEqual([MINE]);
+    });
+
+    it('lets the star erase it once confirmed', async () => {
+        const { confirmRemoval, radioRemoveFavorite } = await mocks();
+        confirmRemoval.mockResolvedValue(true);
+        const el = await view('favorites', [MINE], { favorites: ['mine'] });
+
+        await el._onFavoriteToggle({ detail: { station: MINE, favorite: false } });
+
+        expect(radioRemoveFavorite).toHaveBeenCalledWith('mine');
+        expect(el._stations).toEqual([]);
+    });
+
+    it('leaves the star one touch for a station added by hand that My Live Radio still holds', async () => {
+        const { confirmRemoval, radioRemoveFavorite } = await mocks();
+        const el = await view('favorites', [MINE], { library: ['mine'], favorites: ['mine'] });
+
+        await el._onFavoriteToggle({ detail: { station: MINE, favorite: false } });
+
+        expect(confirmRemoval).not.toHaveBeenCalled();
+        expect(radioRemoveFavorite).toHaveBeenCalledWith('mine');
+    });
+
+    it('stars at once, whatever the station', async () => {
+        // No membership known (as after a failed load): starring a station added by
+        // hand must still not ask — only unstarring can lose an address.
+        const { confirmRemoval, radioAddFavorite } = await mocks();
+        const el = await view('library', [MINE]);
+
+        await el._onFavoriteToggle({ detail: { station: MINE, favorite: true } });
+
+        expect(confirmRemoval).not.toHaveBeenCalled();
+        expect(radioAddFavorite).toHaveBeenCalledWith('mine');
     });
 });

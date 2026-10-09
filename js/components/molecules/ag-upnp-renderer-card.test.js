@@ -7,11 +7,13 @@
  * - _renderRendererRow(): active / idle / reachable / reconnecting
  * - _renderScanSection(): empty / populated / filters out known renderers
  * - _activeUdn getter
+ * - a swiped renderer is removed only once confirmed
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('lit', () => ({
-    LitElement: class { connectedCallback() {} },
+    // addController: the constructor hands the swipe controller to its host.
+    LitElement: class { connectedCallback() {} addController() {} },
     html: (strings, ...values) => ({ strings, values }),
     nothing: null,
 }));
@@ -20,6 +22,8 @@ vi.mock('../../ag-icons.js', () => ({ iconWifi: '', iconCast: '', iconOutput: ''
 vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 vi.mock('./ag-volume-popover.js', () => ({}));
 vi.mock('../../library-store.js', () => ({ subscribeRendererStatus: vi.fn(() => vi.fn()) }));
+// The dialog itself is covered in ui-helpers.test.js; here only the answer matters.
+vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false) }));
 
 import { AgUpnpRendererCard } from './ag-upnp-renderer-card.js';
 
@@ -306,5 +310,101 @@ describe('AgUpnpRendererCard._renderScanSection()', () => {
         expect(out).toContain('Not selectable');   // local info row present
         expect(out).toContain('Marantz');           // remote selectable row present
         expect(out).toContain('Available');         // remote still connectable
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Swipe to remove — asks first
+// ---------------------------------------------------------------------------
+
+/**
+ * A swipe on a renderer asks before removing it: carried a little too far,
+ * meaning to scroll, it used to be enough to drop a renderer from the list.
+ */
+describe('AgUpnpRendererCard — a swiped renderer is removed only once confirmed', () => {
+    const LIVING = { udn: 'uuid:living', friendly_name: 'Living room', active: false };
+    const NAMELESS = { udn: 'uuid:nameless', friendly_name: '', active: false };
+
+    // clearAllMocks keeps an answer set by mockResolvedValue: put the default back,
+    // or a test that sets none inherits the previous test's.
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        (await import('../../ui-helpers.js')).confirmRemoval.mockResolvedValue(false);
+    });
+
+    it('asks by the name the row shows, under the section the screen names', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const el = makeEl({ _known: [LIVING, NAMELESS] });
+
+        await el._onSwipeRemove(LIVING.udn);
+        expect(confirmRemoval).toHaveBeenLastCalledWith('Remove renderer', 'Living room', 'Audio Output');
+
+        // A renderer without a name is shown by its UDN, and asked about by it.
+        await el._onSwipeRemove(NAMELESS.udn);
+        expect(confirmRemoval).toHaveBeenLastCalledWith('Remove renderer', 'uuid:nameless', 'Audio Output');
+    });
+
+    it('keeps the renderer when the user cancels', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(false);
+        const el = makeEl({ _known: [LIVING, NAMELESS] });
+
+        await el._onSwipeRemove(LIVING.udn);
+
+        expect(apiDelete).not.toHaveBeenCalled();
+        expect(el._known).toEqual([LIVING, NAMELESS]);
+    });
+
+    it('removes it once confirmed, and only it', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(true);
+        apiDelete.mockResolvedValue(undefined);
+        const el = makeEl({ _known: [LIVING, NAMELESS] });
+
+        await el._onSwipeRemove(LIVING.udn);
+
+        expect(apiDelete).toHaveBeenCalledWith(`/upnp-renderer/${LIVING.udn}`);
+        expect(el._known).toEqual([NAMELESS]);
+    });
+
+    it('finishes only once the removal has', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(true);
+        let release;
+        apiDelete.mockReturnValue(new Promise((r) => { release = r; }));
+        const el = makeEl({ _known: [LIVING] });
+
+        let done = false;
+        const handled = el._onSwipeRemove(LIVING.udn).then(() => { done = true; });
+        await new Promise((r) => setTimeout(r, 0));
+        expect(done).toBe(false);
+
+        release();
+        await handled;
+        expect(done).toBe(true);
+    });
+
+    it('asks nothing for a renderer no longer listed', async () => {
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const el = makeEl({ _known: [LIVING] });
+        await el._onSwipeRemove('uuid:gone');
+        expect(confirmRemoval).not.toHaveBeenCalled();
+    });
+
+    it('wires the swipe to the question, not straight to the removal', async () => {
+        // A real instance: the wiring lives in the constructor.
+        const { confirmRemoval } = await import('../../ui-helpers.js');
+        const { apiDelete } = await import('../../api.js');
+        confirmRemoval.mockResolvedValue(false);
+        const el = new AgUpnpRendererCard();
+        el._known = [LIVING];
+
+        await el._swipe._onCommit(LIVING.udn);
+
+        expect(confirmRemoval).toHaveBeenCalledOnce();
+        expect(apiDelete).not.toHaveBeenCalled();
     });
 });

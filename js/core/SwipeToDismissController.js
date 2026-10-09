@@ -6,7 +6,9 @@
  * playback queue), replacing four hand-maintained copies.
  *
  * The gesture is pointer-based (touch + mouse) and left-only; it commits past a
- * threshold. A TOUCH gesture that STARTS in the screen-edge band is ignored — that
+ * threshold. What a commit does is the consumer's call: the radio, UPnP server and
+ * UPnP renderer lists ask for a confirmation before removing, the queue removes at
+ * once (user's decision, 2026-10-09). A TOUCH gesture that STARTS in the screen-edge band is ignored — that
  * band is reserved for the panel-open swipes (settings from the right edge, sidebar
  * from the left), so an edge swipe opens the panel without also removing a row; a
  * mouse is exempt (it never opens those panels). See gesture-constants.js. A

@@ -193,6 +193,29 @@ export function showConfirm(title, message, options = {}, cancelLabel_legacy = n
 }
 
 /**
+ * Ask before taking one item out of a list: "Remove <name> from <list>?".
+ *
+ * The name goes through a Lit template, never through the HTML string path of
+ * {@link showConfirm}: the names asked about here come from the network — a
+ * station from the Radio Browser catalogue, the friendly name any UPnP device
+ * announces — and must be shown as text, not read as markup.
+ *
+ * @param {string} title - Dialog title, e.g. 'Remove station'.
+ * @param {string} name - The item, as its row shows it.
+ * @param {string} list - The list it leaves, as the screen names it.
+ * @param {string} [note] - A sentence after the question, when removing costs
+ *   more than the row.
+ * @returns {Promise<boolean>} True when the user confirmed.
+ */
+export function confirmRemoval(title, name, list, note = '') {
+    return showConfirm(
+        title,
+        html`Remove <strong>${name}</strong> from ${list}?${note ? html` ${note}` : ''}`,
+        { okLabel: 'Remove', destructive: true },
+    );
+}
+
+/**
  * Show a temporary "HUD" overlay with the active tab name.
  * Uses a permanent #hud-container element (already in the DOM) to avoid
  * create/remove timing issues that cause flickering.
