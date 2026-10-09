@@ -31,6 +31,7 @@ vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));
 
 import { apiGet } from '../../api.js';
 import { keepInView } from '../../core/keep-in-view.js';
+import { stubScreen, restoreScreen } from '../../test-utils.js';
 import './ag-tabs.js';
 
 // In the app's order (index.html): Library comes last, after Admin.
@@ -196,20 +197,24 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
     });
 
     it('folds when the tabs change layout, and comes back folded', async () => {
-        el = await mount();
-        // jsdom's screen measures 0 px: the tabs take it for a phone, where the layout
-        // never switches.
-        el._isMobile = false;
-        el._sidebarHidden = false;
-        await el.updateComplete;
-        await tapLibrary(el);
-        el._toggleOrientation();
-        await el.updateComplete;
-        el._toggleOrientation();
-        el._sidebarHidden = false;
-        await el.updateComplete;
-        expect(el._vertical).toBe(true);
-        expect(row(el)).toBeNull();
+        // The layout follows the screen: a window carried to a large screen gets the
+        // bar, and back on a small one the column.
+        try {
+            el = await mount();
+            el._sidebarHidden = false;
+            await el.updateComplete;
+            await tapLibrary(el);
+            stubScreen(1920, 1080);
+            await el.updateComplete;
+            expect(el._vertical).toBe(false);
+            stubScreen(390, 844);
+            el._sidebarHidden = false;
+            await el.updateComplete;
+            expect(el._vertical).toBe(true);
+            expect(row(el)).toBeNull();
+        } finally {
+            restoreScreen();
+        }
     });
 
     it('folds while Library cannot unfold, and does not come back unfolded with no tap', async () => {

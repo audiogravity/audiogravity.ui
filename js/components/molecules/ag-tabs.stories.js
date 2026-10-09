@@ -33,14 +33,16 @@ export const Horizontal = () => html`
 `;
 
 /* ── Vertical sidebar ─────────────────────────────────────────── */
+// The column is a phone's: Storybook runs on a computer, which always gets the bar,
+// so the stories of the column set it — and set it open.
 export const Vertical = () => {
-    // Force vertical mode via localStorage before rendering
-    localStorage.setItem('tabs-orientation', 'vertical');
     return html`
       <div style="position: relative; height: 300px; overflow: hidden;">
         <ag-tabs
             .tabs="${TABS}"
-            .activeTab="profiles">
+            .activeTab="profiles"
+            ._vertical="${true}"
+            ._sidebarHidden="${false}">
         </ag-tabs>
         <div style="margin-left: 160px; padding: 20px; color: var(--text-primary);">
           Content area (sidebar overlays on mobile)
@@ -67,10 +69,10 @@ const TABS_WITH_LIBRARY = [
  * @returns {HTMLElement} The column, open, with Library shown.
  */
 const columnWithLibrary = (nav, unfolded = true) => {
-    localStorage.setItem('tabs-orientation', 'vertical');
-    localStorage.setItem('tabs-sidebar-hidden', 'false');
     injectLibStyles();
     const tabs = document.createElement('ag-tabs');
+    tabs._vertical = true;
+    tabs._sidebarHidden = false;
     tabs.tabs = TABS_WITH_LIBRARY;
     tabs.activeTab = 'library';
     tabs._libNav = nav;

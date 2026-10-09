@@ -60,6 +60,23 @@ const GATED_TABS = new Set(['systemd', 'performance', 'pipeline', 'library']);
 /** The id of the library's bar the column unfolds under Library (aria-controls). */
 const LIBRARY_VIEWS_ID = 'tab-library-views';
 
+/**
+ * Whether the screen is a phone's, for the tabs: its short side is 768 px or less, so a
+ * phone held sideways still counts — and so does a 1366 × 768 laptop.
+ *
+ * @returns {boolean}
+ */
+const isPhoneScreen = () => Math.min(window.screen.width, window.screen.height) <= 768;
+
+/**
+ * Whether the tabs start hidden: a column does, unless it was explicitly left open
+ * (saved as 'false'); the bar never is.
+ *
+ * @param {boolean} vertical - Whether the tabs are a column.
+ * @returns {boolean}
+ */
+const startsHidden = (vertical) => vertical && localStorage.getItem('tabs-sidebar-hidden') !== 'false';
+
 export class AgTabs extends LitElement {
     static properties = {
         activeTab: { type: String, attribute: 'active-tab' },
@@ -74,7 +91,6 @@ export class AgTabs extends LitElement {
         _licenseExpiresAt: { type: String, state: true },
         _tabStats: { type: Object, state: true },
         _previewTab: { type: String, state: true }, // Tab highlighted during swipe gesture
-        _isMobile: { type: Boolean, state: true },
         _announcementCount: { type: Number, state: true },
         _updateAvailable: { type: Boolean, state: true },
         _updateMandatory: { type: Boolean, state: true },
@@ -88,17 +104,14 @@ export class AgTabs extends LitElement {
         this.activeTab = '';
         this.tabs = [];
         this._previewTab = null;
-        // Use the smallest screen dimension so landscape phones are still detected as mobile
-        this._isMobile = Math.min(window.screen.width, window.screen.height) <= 768;
-        // On mobile the layout is always vertical — localStorage preference is ignored
-        if (this._isMobile) {
-            this._vertical = true;
-        } else {
-            const saved = localStorage.getItem('tabs-orientation');
-            this._vertical = saved !== null ? saved === 'vertical' : false;
-        }
-        // Sur mobile, la sidebar est cachée par défaut (null → hidden), visible seulement si explicitement 'false'
-        this._sidebarHidden = this._vertical && localStorage.getItem('tabs-sidebar-hidden') !== 'false';
+        // The screen the layout was chosen for. Not reactive: nothing is drawn from it,
+        // it lets a resize that changes no screen type change nothing.
+        this._isMobile = isPhoneScreen();
+        // A column on a phone, the horizontal bar on a computer. A computer could switch
+        // between the two (Switch button, `tabs-orientation` in localStorage); it no longer
+        // can (user's decision, 2026-10-09), and a choice a browser saved is not read.
+        this._vertical = this._isMobile;
+        this._sidebarHidden = startsHidden(this._vertical);
         const _user = getCurrentUser();
         this._username = _user?.username || '';
         this._userRole = _user?.role || '';
@@ -162,12 +175,12 @@ export class AgTabs extends LitElement {
 
         // Add container role and layout class
         this.classList.add('tabs');
-        // BACKLOG: the tablist also holds buttons that are not tabs (Manual, Switch, the
-        // library's bar) — see audiogravity.ops/BACKLOG.md, « La barre d'onglets se déclare… ».
+        // BACKLOG: the tablist also holds buttons that are not tabs (Manual, the library's
+        // bar) — see audiogravity.ops/BACKLOG.md, « La barre d'onglets se déclare… ».
         this.setAttribute('role', 'tablist');
         this.setAttribute('aria-label', 'Main navigation');
 
-        // Restore orientation from localStorage
+        // The layout's classes, before the first render
         if (this._vertical) this.classList.add('tabs--vertical');
         if (this._sidebarHidden) this.classList.add('tabs--sidebar-hidden');
 
@@ -188,10 +201,21 @@ export class AgTabs extends LitElement {
         window.addEventListener('touchend', this._boundTouchEnd, { passive: true });
         window.addEventListener('touchcancel', this._boundTouchCancel = this._handleTouchCancel.bind(this), { passive: true });
 
-        // Re-evaluate mobile status on orientation change (screen.width/height swap on Android but not iOS)
+        // Re-evaluate the screen on orientation change (screen.width/height swap on Android
+        // but not iOS) and on resize. Only a change of screen type acts: a phone fires
+        // `resize` as its address bar shows and hides, and an open column must stay open
+        // through it — so must a column a Storybook story sets on a computer. The layout
+        // then follows the screen both ways (it used to follow it to the column only, and
+        // Switch, now gone, was the way back) and comes as on a load: the bar shown, the
+        // column as it was left. A pending auto-close is dropped: it would mark the bar
+        // hidden.
         this._orientationHandler = () => {
-            this._isMobile = Math.min(window.screen.width, window.screen.height) <= 768;
-            if (this._isMobile) this._vertical = true;
+            const phone = isPhoneScreen();
+            if (phone === this._isMobile) return;
+            this._isMobile = phone;
+            clearTimeout(this._autoCloseTimer);
+            this._vertical = phone;
+            this._sidebarHidden = startsHidden(phone);
         };
         window.addEventListener('orientationchange', this._orientationHandler);
         window.addEventListener('resize', this._orientationHandler);
@@ -332,18 +356,6 @@ export class AgTabs extends LitElement {
             this.updateComplete.then(() => {
                 keepInView(this.querySelector(`[data-tab="${tabId}"]`), { first });
             });
-        }
-    }
-
-    _toggleOrientation() {
-        // Orientation switching is disabled on mobile — always vertical
-        if (this._isMobile) return;
-        this._vertical = !this._vertical;
-        localStorage.setItem('tabs-orientation', this._vertical ? 'vertical' : 'horizontal');
-        // Reset hidden state when switching to horizontal
-        if (!this._vertical && this._sidebarHidden) {
-            this._sidebarHidden = false;
-            localStorage.setItem('tabs-sidebar-hidden', 'false');
         }
     }
 
@@ -706,7 +718,7 @@ export class AgTabs extends LitElement {
 
     _handleKeyDown(e) {
         // Only a key pressed on one of the tabs moves to another. The column holds more
-        // than tabs — the library's own bar, Manual, Switch — and an arrow pressed on one
+        // than tabs — the library's own bar, Manual — and an arrow pressed on one
         // of those moved the app to the next tab.
         if (!e.target?.closest?.('.tab-btn[data-tab]')) return;
         const visibleTabs = this.tabs.filter(t => !t.hidden);
@@ -843,12 +855,6 @@ export class AgTabs extends LitElement {
                 <span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconManual}</svg></span>
                 Manual
             </button>
-            ${!this._isMobile ? html`
-            <button class="tab-orientation-btn"
-                    @click=${this._toggleOrientation}
->
-                <span class="btn-text">Switch</span>&nbsp;${this._vertical ? '⇄' : '⇅'}
-            </button>` : nothing}
         `;
     }
 

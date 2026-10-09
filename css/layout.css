@@ -96,6 +96,17 @@ body:has(.tabs--vertical) .nav-menu {
     gap: var(--spacing-sm);
 }
 
+/* Where the tabs are a column, the column's logo bar carries the connection dot: the
+   bar's own said it twice — a dot and "Connected" beside the menu button on a phone held
+   sideways (user, 2026-10-09). Only while the box answers, though: the column is closed
+   by default and the footer hidden on those screens, so once the box stops answering the
+   bar is the one place left to say it, and "Connecting..." comes back. The offline banner
+   does not: it follows the device's own network (navigator.onLine), not the box. The
+   attribute is the bar's binding (`state=`), not a property: this rule reads it. */
+body:has(.tabs--vertical) .topbar .connection-status:has(ag-status-indicator[state="up"]) {
+    display: none;
+}
+
 .status-indicator {
     width: var(--status-indicator-size);
     height: var(--status-indicator-size);
@@ -347,26 +358,6 @@ body.is-offline {
     color: var(--btn-primary, var(--text-primary));
 }
 
-/* Toggle d'orientation de la barre d'onglets */
-.tab-orientation-btn {
-    margin-left: auto;
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 0 var(--spacing-sm);
-    height: 100%;
-    font-size: var(--font-size-md);
-    display: flex;
-    align-items: center;
-    transition: color var(--transition-fast);
-}
-
-.tab-orientation-btn:hover {
-    color: var(--text-primary);
-}
-
 /* =====================
    TABS — MODE VERTICAL (SIDEBAR) (GLOBAL)
    ===================== */
@@ -496,23 +487,16 @@ body.is-offline {
     color: var(--text-primary);
 }
 
-.tabs--vertical .tab-orientation-btn {
-    margin-left: 0;
-    margin-top: auto;
-    height: auto;
-    padding: var(--spacing-sm) var(--spacing-md);
-}
-
 /* Manual takes the foot of the column: it is the app's documentation, not a place in
-   it, so it stands apart from the tabs. Switch, where there is one — a computer; the
-   column a phone gets has none — sits right under it: two automatic margins would share
-   the free space, and leave Manual floating halfway down. */
+   it, so it stands apart from the tabs. On the horizontal bar it stands apart the same
+   way, at the right-hand end (user, 2026-10-09) — where Switch used to sit. When the
+   tabs fill the bar there is no room to spare, and it simply follows them. */
 .tabs--vertical .tab-manual-btn {
     margin-top: auto;
 }
 
-.tabs--vertical .tab-manual-btn ~ .tab-orientation-btn {
-    margin-top: 0;
+.tabs:not(.tabs--vertical) .tab-manual-btn {
+    margin-left: auto;
 }
 
 /* Logo bar: logo on the left, connectivity indicator on the right */
@@ -813,7 +797,8 @@ body.dark-mode .logo-dark {
     }
 
     /* The words only — `>`: the dot is a span too, nested in its indicator. It says
-       whether the box answers, and the offline banner says it when it does not. The
+       whether the box answers, grey when it does not (the offline banner follows the
+       device's own network, not the box). The
        words came back from 481px, where the figures read inline: they sat on "CPU:"
        up to 520px, and "Connecting…" next to wide figures squeezed the menu button to
        8px (measured in Chromium, 2026-10-04). */
