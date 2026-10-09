@@ -283,6 +283,16 @@ body.is-offline {
 }
 
 /* NAVIGATION TABS */
+
+/* index.html writes the tabs as plain buttons, which ag-tabs reads and then replaces.
+   Until its script has defined it, that raw bar showed on a blank page — horizontal,
+   even on a phone that then gets the column. The splash screen covers this at launch;
+   after a sign-in it is skipped on purpose (one per opening), and the raw bar was
+   mistaken for another screen (user, 2026-10-09). Hidden, it still holds its place. */
+ag-tabs:not(:defined) {
+    visibility: hidden;
+}
+
 .tabs {
     position: fixed;
     top: calc(var(--topbar-height) + var(--title-bar-height));

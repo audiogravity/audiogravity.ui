@@ -183,6 +183,21 @@ describe('ag-tabs — Manual at the foot of the column', () => {
 // The mark at the head of the column
 // ---------------------------------------------------------------------------
 
+describe('ag-tabs — the raw bar index.html writes', () => {
+    it('stays hidden until the component is defined, keeping its place', () => {
+        // After a sign-in the splash screen is skipped on purpose, and the plain buttons
+        // showed as a horizontal bar on a blank page — on a phone too (user, 2026-10-09;
+        // 59 frames in Chromium after a real sign-in, 0 with this rule).
+        const css = readStylesheet('css', 'layout.css');
+        expect(cssRuleBody(css, 'ag-tabs:not(:defined)')).toMatch(/visibility:\s*hidden/);
+    });
+
+    it('is the markup the component reads: the plain buttons are still in the page', () => {
+        const page = readStylesheet('index.html');
+        expect(page).toMatch(/<ag-tabs id="mainTabs" class="tabs">\s*<button class="tab-btn active" data-tab="profiles">/);
+    });
+});
+
 describe('ag-tabs — the mark at the head of the column', () => {
     it('stands at the lg step, the largest that keeps its row on one line', () => {
         // With "Version expired", the longest licence label, xl (20px) left the badge
