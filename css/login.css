@@ -80,18 +80,41 @@ body.login-page {
 .login-page {
     margin: 0;
     padding: 0;
+
+    /* svh, the height with the browser's bars shown: in Safari 100vh is the height
+       without them, which made the body taller than the screen — with the body as the
+       scroller below, the end of the card would sit under the toolbar, out of reach.
+       css/base.css sets the body's height (100dvh); this floor only matters where dvh
+       is unknown, and 100vh stays for those browsers. */
     min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--bg-primary);
     font-family: var(--font-family);
+
+    /* The page scrolls when the card is taller than the screen — a phone held sideways,
+       375px high for a card near 590px. css/base.css hides the body's overflow for the
+       app, whose panes scroll on their own; here it left the card's top and bottom out
+       of reach (user, 2026-10-09). The body scrolls, not the window: html is held below,
+       so the body keeps the very box base.css gives it, and a card that fits does not
+       move by a pixel nor scroll at all. */
+    overflow-y: auto;
 }
 
+html:has(> body.login-page) {
+    overflow: hidden;
+}
+
+/* Centred while it fits; once taller than the screen it starts at the top and the rest
+   scrolls into view. align-items: center pushed it off both edges, the top beyond the
+   reach of any scroll. Automatic margins never go below zero. */
 .login-container {
     width: 100%;
     max-width: 420px;
     padding: var(--spacing-md);
+    margin-block: auto;
 }
 
 /* Card de connexion */
@@ -149,6 +172,14 @@ body.login-page {
     margin: var(--spacing-xs) 0 0;
     display: flex;
     justify-content: center;
+}
+
+/* In the header, the licence stands as far under the core as the core under the line
+   above it (#login-status): at the shared xs step it sat 4px under, read as part of the
+   core's line (user, 2026-10-09). Only a line that holds a badge: an empty one keeps xs.
+   The panel's copy is spaced by its own rule (.auto-passkey-state, below). */
+.login-header .login-license-status:not(:empty) {
+    margin-top: var(--spacing-sm);
 }
 
 
@@ -330,6 +361,23 @@ body.login-page {
     text-align: center;
 }
 
+/* The panel's three blocks exist for a phone held sideways (below). Elsewhere they are
+   not boxes: their children are the panel's own items, in the order of the page — the
+   order on screen and for a screen reader alike. A version that regrouped them and put
+   them back in place with `order` read them to VoiceOver in another order than shown. */
+.auto-passkey-side,
+.auto-passkey-main,
+.auto-passkey-state {
+    display: contents;
+}
+
+/* The licence 8px under the core, as in the header (user, 2026-10-09): the panel parts
+   its items by md, so the licence comes back by the difference. Only when a badge is
+   there — an empty line would otherwise pull "Use password instead" up with it. */
+.auto-passkey-state > .login-license-status:not(:empty) {
+    margin-top: calc(var(--spacing-sm) - var(--spacing-md));
+}
+
 
 .auto-passkey-meta {
     margin: 0;
@@ -345,11 +393,15 @@ body.login-page {
     justify-content: center;
     width: 140px;
     height: 140px;
-    border: 1px solid var(--text-primary);
+
+    /* Filled, as the page's main button (Login): the key is the one action this panel
+       offers — black with a white key in a light theme, the reverse in a dark one. It
+       was outlined and only filled under the pointer (user, 2026-10-09). */
+    border: 1px solid var(--btn-primary);
     border-radius: var(--radius-md);
-    background: none;
+    background: var(--btn-primary);
     cursor: pointer;
-    color: var(--text-primary);
+    color: var(--bg-primary);
     transition: background var(--transition-fast), color var(--transition-fast);
     margin: var(--spacing-sm) 0;
 }
@@ -364,13 +416,17 @@ body.login-page {
     fill: none;
 }
 
-.auto-passkey-key-box:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
+/* Under a pointer it opens up, as Login does. Not on a touch screen, where the hover a
+   tap leaves behind would keep the key outlined once WebAuthn's sheet has closed. */
+@media (hover: hover) {
+    .auto-passkey-key-box:hover {
+        background: transparent;
+        color: var(--btn-primary);
+    }
 }
 
 .auto-passkey-key-box:active {
-    background: var(--text-primary);
+    background: var(--btn-primary);
     color: var(--bg-primary);
     opacity: 0.75;
 }
@@ -522,6 +578,119 @@ body.login-page {
        that has itself lost a step of padding. */
     .login-logo {
         font-size: 34px;
+    }
+}
+
+/*
+ * A phone held sideways: the card in two columns, the brand on the left and what to do
+ * on the right, so it fits the 375 to 440px of height such a phone has (user,
+ * 2026-10-09). Measured in Chromium at 956x440, 812x375 and 667x375, the sign-in form
+ * fits without scrolling; at 568x320 the page scrolls the 17px it lacks (.login-page).
+ * The spacing tightens here only.
+ */
+@media (orientation: landscape) and (height <= 500px) {
+    /* viewport-fit=cover lays the page under the notch or the Dynamic Island, on the
+       side the phone was turned to (44 to 59px), and over the home indicator: the card
+       keeps clear of both. env() is 0 where there is nothing to avoid. */
+    .login-container {
+        max-width: 760px;
+        padding: var(--spacing-sm);
+        padding-right: max(var(--spacing-sm), env(safe-area-inset-right));
+        padding-bottom: max(var(--spacing-sm), env(safe-area-inset-bottom));
+        padding-left: max(var(--spacing-sm), env(safe-area-inset-left));
+    }
+
+    .login-card {
+        display: grid;
+        grid-template:
+            "header form" 1fr
+            "footer form" auto
+            / minmax(0, 1fr) minmax(0, 1fr);
+        column-gap: var(--spacing-xl);
+        padding: var(--spacing-md);
+    }
+
+    /* The top-left corner is the empty one: on the right it sat on the first field. */
+    .login-card ag-theme-toggle {
+        right: auto;
+        left: var(--spacing-sm);
+    }
+
+    .login-header {
+        grid-area: header;
+        align-self: center;
+        margin-bottom: 0;
+    }
+
+    .login-form,
+    .passkey-offer {
+        grid-area: form;
+    }
+
+    .login-form {
+        gap: var(--spacing-sm);
+    }
+
+    .passkey-divider {
+        margin: 0;
+    }
+
+    .login-footer {
+        grid-area: footer;
+        margin-top: var(--spacing-md);
+        padding-top: var(--spacing-md);
+    }
+
+    /* The automatic passkey panel replaces the header and the form: it takes both
+       columns — who and where, then the core, on the left, the key on the right, and
+       "Use password instead" under the key. The key spans the two left rows, which
+       share the height it adds equally: the left blocks, held together where the rows
+       meet, stand centred against it. */
+    .auto-passkey-panel {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: grid;
+        grid-template:
+            "side main" auto
+            "state main" auto
+            ". cancel" auto
+            / minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--spacing-sm) var(--spacing-xl);
+        padding: 0;
+    }
+
+    .auto-passkey-side,
+    .auto-passkey-main,
+    .auto-passkey-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .auto-passkey-side {
+        grid-area: side;
+        align-self: end;
+    }
+
+    .auto-passkey-main {
+        grid-area: main;
+    }
+
+    .auto-passkey-state {
+        grid-area: state;
+        align-self: start;
+    }
+
+    .auto-passkey-panel > .btn-link {
+        grid-area: cancel;
+        justify-self: center;
+    }
+
+    /* The block parts its items by sm already: the licence's own margin goes. */
+    .auto-passkey-state > .login-license-status,
+    .auto-passkey-state > .login-license-status:not(:empty) {
+        margin-top: 0;
     }
 }
 

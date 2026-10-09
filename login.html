@@ -229,35 +229,43 @@
 
             <!-- Auto passkey panel -->
             <div id="autoPasskeyPanel" style="display:none" class="auto-passkey-panel">
-                <!-- The same lockup as the header above: this panel replaces the card's
-                     contents, so it has to carry the brand the same way. -->
-                <div class="ag-brand-row">
-                    <img class="ag-app-icon" src="pics/apple-touch-180.png" alt="" aria-hidden="true"
-                         width="36" height="36">
-                    <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
+                <!-- Three blocks, in the order the panel is read: who and where, the key,
+                     then the core and the licence. Upright they are not boxes at all
+                     (display: contents), so the panel reads as one column; held sideways,
+                     the first and the last stand on the left and the key on the right
+                     (css/login.css). The order on screen is the order in the page, for a
+                     screen reader too. -->
+                <div class="auto-passkey-side">
+                    <!-- The same lockup as the header above: this panel replaces the card's
+                         contents, so it has to carry the brand the same way. -->
+                    <div class="ag-brand-row">
+                        <img class="ag-app-icon" src="pics/apple-touch-180.png" alt="" aria-hidden="true"
+                             width="36" height="36">
+                        <span class="ag-wordmark login-logo">Audiogravi<sup>ty</sup></span>
+                    </div>
+                    <p class="auto-passkey-meta" id="autoPasskeyMeta"></p>
                 </div>
-                <p class="auto-passkey-meta" id="autoPasskeyMeta"></p>
-
-                <button type="button" id="autoPasskeyTrigger" class="auto-passkey-key-box" aria-label="Tap to authenticate">
-                    <div class="passkey"><svg viewBox="0 0 24 24">
-                            <circle cx="9" cy="9" r="4"></circle>
-                            <path d="M9 13 l0 8 l2 -2 l2 2 l0 -4"></path>
-                            <path d="M14 10 l7 0"></path>
-                            <path d="M18 10 l0 3"></path>
-                        </svg></div>
-                </button>
-
-                <div class="auto-passkey-info">
-                    <h2>Sign in with passkey</h2>
-                    <p>Tap the key above. WebAuthn will use the<br>biometric enrolled on this device.</p>
+                <div class="auto-passkey-main">
+                    <button type="button" id="autoPasskeyTrigger" class="auto-passkey-key-box" aria-label="Tap to authenticate">
+                        <div class="passkey"><svg viewBox="0 0 24 24">
+                                <circle cx="9" cy="9" r="4"></circle>
+                                <path d="M9 13 l0 8 l2 -2 l2 2 l0 -4"></path>
+                                <path d="M14 10 l7 0"></path>
+                                <path d="M18 10 l0 3"></path>
+                            </svg></div>
+                    </button>
+                    <div class="auto-passkey-info">
+                        <h2>Sign in with passkey</h2>
+                        <p>Tap the key above. WebAuthn will use the<br>biometric enrolled on this device.</p>
+                    </div>
+                    <p id="autoPasskeyError" class="auto-passkey-error" style="display:none"></p>
                 </div>
-
-                <p id="autoPasskeyError" class="auto-passkey-error" style="display:none"></p>
-                <p id="autoPasskeyStatus" class="auto-passkey-status"></p>
-                <p class="login-license-status" id="autoPasskeyLicense"></p>
+                <div class="auto-passkey-state">
+                    <p id="autoPasskeyStatus" class="auto-passkey-status"></p>
+                    <p class="login-license-status" id="autoPasskeyLicense"></p>
+                </div>
                 <button type="button" id="autoPasskeyCancel" class="btn-link">Use password instead</button>
             </div>
-
             <!-- Login Form -->
             <form id="loginForm" class="login-form">
                 <div class="form-group">
