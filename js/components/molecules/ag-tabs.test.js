@@ -180,6 +180,19 @@ describe('ag-tabs — Manual at the foot of the column', () => {
 });
 
 // ---------------------------------------------------------------------------
+// The mark at the head of the column
+// ---------------------------------------------------------------------------
+
+describe('ag-tabs — the mark at the head of the column', () => {
+    it('stands at the lg step, the largest that keeps its row on one line', () => {
+        // With "Version expired", the longest licence label, xl (20px) left the badge
+        // touching the mark and pushed the dot out of the column.
+        const css = readStylesheet('css', 'layout.css');
+        expect(cssRuleBody(css, '.tabs--vertical .tabs-logo')).toMatch(/font-size:\s*var\(--font-size-lg\)/);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // The order of the tabs
 // ---------------------------------------------------------------------------
 
