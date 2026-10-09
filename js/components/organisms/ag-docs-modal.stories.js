@@ -13,8 +13,8 @@ export default {
 
 const Template = (args) => html`
   <div style="height: 500px; padding: 20px;">
-    <ag-docs-modal 
-        ?show="${args.show}"
+    <ag-docs-modal
+        ?is-open="${args.show}"
         .title="${args.title}"
         .src="${args.src}"
         @docs-close="${() => console.log('Docs closed')}">

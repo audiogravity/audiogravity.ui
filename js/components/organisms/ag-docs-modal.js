@@ -13,7 +13,7 @@
  * @fires docs-close - Dispatched when the modal is closed
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
 export class AgDocsModal extends LitElement {
@@ -79,6 +79,14 @@ export class AgDocsModal extends LitElement {
         }
     }
 
+    /**
+     * The frame exists only while there is a document to show. The window sits in
+     * index.html from the start, and an iframe with no address still made a blank
+     * document at every launch of the app (user, 2026-10-09). Closing already clears
+     * the address once the window has faded out (updated()), so the frame goes with it
+     * and the document is loaded afresh at each opening — as it already was.
+     * @returns {import('lit').TemplateResult}
+     */
     render() {
         return html`
             <div class="docs-modal-header">
@@ -86,7 +94,7 @@ export class AgDocsModal extends LitElement {
                 <button class="modal-close" @click=${this.close} aria-label="Close">&times;</button>
             </div>
             <div class="docs-modal-content">
-                <iframe src="${this.src}" style="border: 0;" loading="lazy"></iframe>
+                ${this.src ? html`<iframe src="${this.src}" style="border: 0;" loading="lazy"></iframe>` : nothing}
             </div>
         `;
     }
