@@ -33,11 +33,13 @@
 
 /* Not on an unavailable button — here and in the variants' :hover rules below. In
    :where() so each keeps its weight, and the variants still win over this one as before. */
-:is(.btn-action, .tile-action-btn):hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--bg-hover);
-    border-color: var(--text-tertiary);
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: var(--shadow-sm);
+@media (hover: hover) {
+    :is(.btn-action, .tile-action-btn):hover:where(:not(:disabled, [aria-disabled="true"])) {
+        background: var(--bg-hover);
+        border-color: var(--text-tertiary);
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: var(--shadow-sm);
+    }
 }
 
 /* `aria-disabled` is the unavailable state that keeps the focus (a disabled button throws
@@ -67,11 +69,13 @@
     color: var(--color-error-text);
 }
 
-:is(.btn-action.error, .tile-action-btn:is(.stop, .deactivate)):hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--color-error-bg, var(--btn-error-hover-bg));
-    border-color: var(--color-error);
-    transform: translateY(-1px) scale(1.05);
-    box-shadow: 0 0 8px var(--color-error-bg, var(--btn-error-hover-shadow));
+@media (hover: hover) {
+    :is(.btn-action.error, .tile-action-btn:is(.stop, .deactivate)):hover:where(:not(:disabled, [aria-disabled="true"])) {
+        background: var(--color-error-bg, var(--btn-error-hover-bg));
+        border-color: var(--color-error);
+        transform: translateY(-1px) scale(1.05);
+        box-shadow: 0 0 8px var(--color-error-bg, var(--btn-error-hover-shadow));
+    }
 }
 
 /* Warning variant */
@@ -80,11 +84,13 @@
     color: var(--color-warning-text);
 }
 
-:is(.btn-action, .tile-action-btn).warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--color-warning-bg, var(--btn-warning-hover-bg));
-    border-color: var(--color-warning);
-    transform: translateY(-1px) scale(1.05);
-    box-shadow: 0 0 8px var(--color-warning-bg, var(--btn-warning-hover-shadow));
+@media (hover: hover) {
+    :is(.btn-action, .tile-action-btn).warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
+        background: var(--color-warning-bg, var(--btn-warning-hover-bg));
+        border-color: var(--color-warning);
+        transform: translateY(-1px) scale(1.05);
+        box-shadow: 0 0 8px var(--color-warning-bg, var(--btn-warning-hover-shadow));
+    }
 }
 
 /* Ghost variant: .btn-action--ghost — neutral/secondary, transparent with dim border */
@@ -94,10 +100,12 @@
     color: var(--text-secondary);
 }
 
-.btn-action--ghost:hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--bg-tertiary);
-    border-color: var(--text-primary);
-    color: var(--text-primary);
+@media (hover: hover) {
+    .btn-action--ghost:hover:where(:not(:disabled, [aria-disabled="true"])) {
+        background: var(--bg-tertiary);
+        border-color: var(--text-primary);
+        color: var(--text-primary);
+    }
 }
 
 /* =====================
@@ -123,9 +131,11 @@
     gap: var(--spacing-xs);
 }
 
-.action-btn:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
+@media (hover: hover) {
+    .action-btn:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+    }
 }
 
 /* The class is worn by links too, where the action is to open an address
@@ -133,8 +143,10 @@
    whose href starts with http on hover, at the same specificity as the rule
    above, and this file is imported after it: a button shape must not sprout an
    underline. */
-a.action-btn:hover {
-    text-decoration: none;
+@media (hover: hover) {
+    a.action-btn:hover {
+        text-decoration: none;
+    }
 }
 
 .action-btn.primary {
@@ -143,9 +155,11 @@ a.action-btn:hover {
     border-color: var(--btn-primary, var(--text-primary));
 }
 
-.action-btn.primary:hover { 
-    background: transparent; 
-    color: var(--btn-primary, var(--text-primary)); 
+@media (hover: hover) {
+    .action-btn.primary:hover { 
+        background: transparent; 
+        color: var(--btn-primary, var(--text-primary)); 
+    }
 }
 
 /* Secondary : bouton neutre/annulation */
@@ -154,10 +168,12 @@ a.action-btn:hover {
     color: var(--text-secondary);
 }
 
-.action-btn.secondary:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--text-primary);
+@media (hover: hover) {
+    .action-btn.secondary:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--text-primary);
+    }
 }
 
 /* Success : bouton de confirmation/sauvegarde */
@@ -166,9 +182,11 @@ a.action-btn:hover {
     color: var(--color-success-text);
 }
 
-.action-btn.success:hover {
-    background: var(--color-success);
-    color: var(--bg-primary);
+@media (hover: hover) {
+    .action-btn.success:hover {
+        background: var(--color-success);
+        color: var(--bg-primary);
+    }
 }
 
 /* The variant of every button that deletes or removes (user decision: one colour for
@@ -183,16 +201,20 @@ a.action-btn:hover {
 /* On the amber fill the label takes --text-on-warning, the token made for it. The page
    background it used before is white in the light themes, and read at 2.2:1 there. Not
    on a disabled button: "Deleting…" filled orange as if it could still be pressed. */
-.action-btn.warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
-    background: var(--color-warning);
-    color: var(--text-on-warning);
+@media (hover: hover) {
+    .action-btn.warning:hover:where(:not(:disabled, [aria-disabled="true"])) {
+        background: var(--color-warning);
+        color: var(--text-on-warning);
+    }
 }
 
 .action-btn.error { border-color: var(--color-error); }
 
-.action-btn.error:hover {
-    background: var(--color-error);
-    color: var(--bg-primary);
+@media (hover: hover) {
+    .action-btn.error:hover {
+        background: var(--color-error);
+        color: var(--bg-primary);
+    }
 }
 
 .action-btn:disabled {
@@ -240,13 +262,20 @@ ag-badge button.badge,
 /* The chosen one of a row of selectors — the tabs' and the queue's filters, Library's
    Browse pills, Search sources and Radio views — is filled with the text colour (user's
    choice, 2026-10-08): the filters showed it in a light grey, the Library in black.
-   Declared once, hover included: a family's own :hover, read later, would otherwise
-   darken the label into its fill. */
-:is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on),
-:is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on):hover {
+   Restated for hover, under the same media query as every :hover: a family's own
+   :hover, read later, would otherwise darken the label into its fill. */
+:is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on) {
     background: var(--text-primary);
     color: var(--bg-primary);
     border-color: var(--text-primary);
+}
+
+@media (hover: hover) {
+    :is(.filter-btn.active, .lib-pill.on, .lib-src-badge.active, .lib-radio-tab.on):hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        border-color: var(--text-primary);
+    }
 }
 
 /* A dialog's buttons are one medium size, on a computer and a phone alike — 29px, 12px
@@ -283,28 +312,36 @@ ag-badge button.badge,
     border-radius: var(--radius-sm);
 }
 
-.icon-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--text-primary);
+@media (hover: hover) {
+    .icon-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border-color: var(--text-primary);
+    }
 }
 
 .icon-btn [class^="icon-"] {
     transition: transform var(--transition-fast);
 }
 
-.icon-btn:hover [class^="icon-"] {
-    transform: scale(1.2); /* Basic hover animation */
+@media (hover: hover) {
+    .icon-btn:hover [class^="icon-"] {
+        transform: scale(1.2); /* Basic hover animation */
+    }
 }
 
 /* Specific rotation for Documentation icon */
-.icon-btn:hover .icon-books {
-    transform: scale(1.2) rotate(-10deg);
+@media (hover: hover) {
+    .icon-btn:hover .icon-books {
+        transform: scale(1.2) rotate(-10deg);
+    }
 }
 
 /* Specific shift for Exit icon */
-.icon-btn:hover .icon-exit {
-    transform: translateX(2px) scale(1.1);
+@media (hover: hover) {
+    .icon-btn:hover .icon-exit {
+        transform: translateX(2px) scale(1.1);
+    }
 }
 
 .icon-btn:active {

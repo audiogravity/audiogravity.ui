@@ -47,22 +47,24 @@
  */
 
 /* A hovered tile rises above its neighbours, so its lift and shadow are not covered */
-.services-grid .service-tile:hover,
-.profiles-grid .profile-tile:hover,
-.systemd-grid .systemd-tile:hover,
-.config-selector-grid .config-tile:hover,
-.software-grid .software-card:hover,
-.system-grid .system-tile:hover,
-.users-grid .system-tile:hover,
-.governor-grid .governor-tile:hover {
-    z-index: 100;
-    border-color: var(--text-primary);
-    opacity: 1;
+@media (hover: hover) {
+    .services-grid .service-tile:hover,
+    .profiles-grid .profile-tile:hover,
+    .systemd-grid .systemd-tile:hover,
+    .config-selector-grid .config-tile:hover,
+    .software-grid .software-card:hover,
+    .system-grid .system-tile:hover,
+    .users-grid .system-tile:hover,
+    .governor-grid .governor-tile:hover {
+        z-index: 100;
+        border-color: var(--text-primary);
+        opacity: 1;
 
-    /* Full opacity under the pointer for a tile faded at rest — a profile being
-       switched (.pending). An unavailable tile keeps its fade (its own :hover rule). */
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px var(--shadow-color);
+        /* Full opacity under the pointer for a tile faded at rest — a profile being
+           switched (.pending). An unavailable tile keeps its fade (its own :hover rule). */
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px var(--shadow-color);
+    }
 }
 
 /**
@@ -167,12 +169,14 @@
 
 /* Hover suppressed, with no opacity: the fade lives on the children of these tiles,
    and restating it here would put the name and the badge back under it. */
-.services-grid .service-tile.unavailable:hover,
-.profiles-grid .profile-tile.unavailable:hover,
-.config-selector-grid .config-tile.unavailable:hover {
-    transform: none;
-    box-shadow: none;
-    border-color: var(--border-color);
+@media (hover: hover) {
+    .services-grid .service-tile.unavailable:hover,
+    .profiles-grid .profile-tile.unavailable:hover,
+    .config-selector-grid .config-tile.unavailable:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: var(--border-color);
+    }
 }
 
 /**
@@ -189,10 +193,12 @@
     opacity: 0.55;
 }
 
-.systemd-grid .systemd-tile.unavailable:hover {
-    transform: none;
-    box-shadow: none;
-    border-color: var(--border-color);
+@media (hover: hover) {
+    .systemd-grid .systemd-tile.unavailable:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: var(--border-color);
+    }
 }
 
 /* Profile tiles do not clip their content */

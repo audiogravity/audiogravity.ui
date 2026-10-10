@@ -108,8 +108,14 @@ describe('the chosen one of a row of selectors', () => {
         ['.lib-src-badge.active', ['css', 'components', 'library-search.css']],
         ['.lib-radio-tab.on', ['css', 'components', 'library-radio.css']],
     ];
-    const chosen = rulesOf(readStylesheet('css', 'components', 'button.css'))
-        .find((r) => r.selectors.some((s) => s.includes('.filter-btn.active')));
+    // At rest and under the mouse: two rules, the second under @media (hover: hover)
+    // like every hover rule (js/hover-media.test.js) — a touch screen has no mouse
+    // to darken it, and its family's :hover is guarded the same way.
+    const buttonRules = rulesOf(readStylesheet('css', 'components', 'button.css'));
+    const chosen = buttonRules.find((r) => r.selectors.some((s) => s.includes('.filter-btn.active'))
+        && !r.selectors.some((s) => s.endsWith(':hover')));
+    const chosenHover = buttonRules.find((r) => r.selectors.some((s) => s.includes('.filter-btn.active') && s.endsWith(':hover')));
+    const squash = (body) => body.replace(/\s+/g, ' ').trim();
 
     it('is filled with the text colour, in one rule for every row — the filters showed it in light grey', () => {
         expect(chosen, 'no shared rule for the chosen selector').toBeTruthy();
@@ -119,12 +125,13 @@ describe('the chosen one of a row of selectors', () => {
     });
 
     it('keeps its label light under the mouse: a family\'s :hover would darken it into the fill', () => {
-        expect(chosen.selectors.some((s) => s.endsWith(':hover'))).toBe(true);
+        expect(chosenHover, 'no rule for the chosen selector under the mouse').toBeTruthy();
+        expect(squash(chosenHover.body)).toBe(squash(chosen.body));
     });
 
     it.each(CHOSEN)('— %s — is in that rule, at rest and under the mouse, and no rule of its family paints it again', (selector, file) => {
-        const atRest = chosen.selectors.filter((s) => !s.endsWith(':hover'));
-        const hovered = chosen.selectors.filter((s) => s.endsWith(':hover'));
+        const atRest = chosen.selectors;
+        const hovered = chosenHover.selectors;
         expect(atRest.join(' '), 'at rest').toContain(selector);
         expect(hovered.join(' '), 'under the mouse').toContain(selector);
         for (const rule of rulesOf(readStylesheet(...file))) {

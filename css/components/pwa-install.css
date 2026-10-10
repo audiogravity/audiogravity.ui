@@ -72,6 +72,8 @@ body:has(ag-now-playing) .pwa-install-banner {
     transition: color var(--transition-fast);
 }
 
-.pwa-install-banner__btn-dismiss:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .pwa-install-banner__btn-dismiss:hover {
+        color: var(--text-primary);
+    }
 }

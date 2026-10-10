@@ -476,8 +476,10 @@ body.no-animations .animate-stagger {
     transition: background-color 0.2s;
 }
 
-.test-type-selector .radio-label:hover {
-    background: var(--bg-secondary);
+@media (hover: hover) {
+    .test-type-selector .radio-label:hover {
+        background: var(--bg-secondary);
+    }
 }
 
 .test-type-selector input[type="radio"] {
@@ -729,8 +731,10 @@ body.no-animations .animate-stagger {
 }
 
 /* Orange, like every control that deletes (user decision: one colour for what destroys). */
-.test-history-clear:hover {
-    color: var(--color-warning-text);
+@media (hover: hover) {
+    .test-history-clear:hover {
+        color: var(--color-warning-text);
+    }
 }
 
 /* =====================

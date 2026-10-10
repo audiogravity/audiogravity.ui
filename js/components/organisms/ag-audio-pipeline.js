@@ -252,8 +252,10 @@ export class AgAudioPipeline extends LitElement {
             align-self: flex-end;
         }
 
-        .controls-toggle:hover {
-            color: var(--accent-primary);
+        @media (hover: hover) {
+            .controls-toggle:hover {
+                color: var(--accent-primary);
+            }
         }
 
         .controls.collapsed .control-group {
@@ -318,9 +320,11 @@ export class AgAudioPipeline extends LitElement {
             padding: 0;
         }
 
-        .zoom-btn:hover {
-            background: var(--bg-tertiary);
-            border-color: var(--accent-primary);
+        @media (hover: hover) {
+            .zoom-btn:hover {
+                background: var(--bg-tertiary);
+                border-color: var(--accent-primary);
+            }
         }
 
         .zoom-value {
@@ -510,8 +514,10 @@ export class AgAudioPipeline extends LitElement {
             cursor: pointer;
         }
 
-        .minimap-viewport:hover {
-            fill-opacity: 0.2;
+        @media (hover: hover) {
+            .minimap-viewport:hover {
+                fill-opacity: 0.2;
+            }
         }
 
         .minimap-node {
@@ -568,8 +574,10 @@ export class AgAudioPipeline extends LitElement {
             padding: 0 2px;
         }
 
-        .steering-popover-header button:hover {
-            color: var(--text-primary);
+        @media (hover: hover) {
+            .steering-popover-header button:hover {
+                color: var(--text-primary);
+            }
         }
 
         .steering-popover-body {
@@ -584,8 +592,10 @@ export class AgAudioPipeline extends LitElement {
             font-size: var(--font-size-sm);
         }
 
-        .steering-service-row:hover {
-            background: rgba(255,255,255,0.04);
+        @media (hover: hover) {
+            .steering-service-row:hover {
+                background: rgba(255,255,255,0.04);
+            }
         }
 
         .steering-svc-dot {
@@ -613,10 +623,12 @@ export class AgAudioPipeline extends LitElement {
             white-space: nowrap;
         }
 
-        .steering-svc-btn:hover {
-            background: rgba(99,102,241,0.3);
-            border-color: #6366f1;
-            color: #e0e7ff;
+        @media (hover: hover) {
+            .steering-svc-btn:hover {
+                background: rgba(99,102,241,0.3);
+                border-color: #6366f1;
+                color: #e0e7ff;
+            }
         }
 
         .steering-svc-btn:disabled {
@@ -752,7 +764,9 @@ export class AgAudioPipeline extends LitElement {
             flex-shrink: 0;
         }
 
-        .ndp-close:hover { color: var(--text-primary); }
+        @media (hover: hover) {
+            .ndp-close:hover { color: var(--text-primary); }
+        }
 
         .ndp-dot {
             width: 7px;
@@ -880,7 +894,9 @@ export class AgAudioPipeline extends LitElement {
             padding: 0 2px;
         }
 
-        .link-bubble-title button:hover { color: var(--text-primary); }
+        @media (hover: hover) {
+            .link-bubble-title button:hover { color: var(--text-primary); }
+        }
 
         .link-bubble-row {
             display: flex;

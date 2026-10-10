@@ -42,8 +42,10 @@
     cursor: pointer;
 }
 
-.ag-pp-back:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .ag-pp-back:hover {
+        color: var(--text-primary);
+    }
 }
 
 .ag-pp-head {
@@ -136,10 +138,16 @@
     transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.ag-pp-icon-btn:hover,
 .ag-pp-icon-btn:active {
     border-color: var(--text-primary);
     color: var(--text-primary);
+}
+
+@media (hover: hover) {
+    .ag-pp-icon-btn:hover {
+        border-color: var(--text-primary);
+        color: var(--text-primary);
+    }
 }
 
 .ag-pp-icon-btn:focus-visible {

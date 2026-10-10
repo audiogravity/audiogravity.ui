@@ -55,9 +55,11 @@ ag-back-to-top {
     transform: none;
 }
 
-.ag-btt:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
+@media (hover: hover) {
+    .ag-btt:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+    }
 }
 
 /* The app's focus ring (base.css), kept round: its rule gives every focused button
@@ -109,6 +111,8 @@ ag-back-to-top {
     transition: transform var(--transition-fast);
 }
 
-.ag-btt:hover .ag-btt-arrow {
-    transform: translateY(-3px);
+@media (hover: hover) {
+    .ag-btt:hover .ag-btt-arrow {
+        transform: translateY(-3px);
+    }
 }

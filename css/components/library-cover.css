@@ -147,12 +147,15 @@ ag-library-add-btn {
     flex-shrink: 0;
 }
 
-.lib-ac-wrap:hover .lib-ac-add,
 .lib-ac-wrap:focus-within .lib-ac-add,
-.lib-ac-wrap:hover .lib-ac-pl,
 .lib-ac-wrap:focus-within .lib-ac-pl,
-.lib-ac-wrap:hover .lib-ac-open,
 .lib-ac-wrap:focus-within .lib-ac-open { opacity: 1; }
+
+@media (hover: hover) {
+    .lib-ac-wrap:hover .lib-ac-add,
+    .lib-ac-wrap:hover .lib-ac-pl,
+    .lib-ac-wrap:hover .lib-ac-open { opacity: 1; }
+}
 
 @media (hover: none) { .lib-ac-add, .lib-ac-pl, .lib-ac-open { opacity: 1; } }
 
@@ -216,8 +219,11 @@ ag-library-add-btn {
     filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55));
 }
 
-.lib-ac-wrap:hover .lib-ac-fav,
 .lib-ac-wrap:focus-within .lib-ac-fav { opacity: 1; }
+
+@media (hover: hover) {
+    .lib-ac-wrap:hover .lib-ac-fav { opacity: 1; }
+}
 
 /* A favorited album shows its star at all times, not only on hover. The overlay
    sits on a FIXED dark pill, so it uses a theme-independent gold (the universal

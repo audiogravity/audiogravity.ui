@@ -134,8 +134,10 @@ ag-sparkline .sparkline-svg {
    ===================== */
 
 /* Make sparklines clickable (SERVICES tab) */
-.services-zone .sparkline-container:hover {
-    opacity: 0.7;
+@media (hover: hover) {
+    .services-zone .sparkline-container:hover {
+        opacity: 0.7;
+    }
 }
 
 /* SYSTEM tab - no click interaction (cursor set above) */

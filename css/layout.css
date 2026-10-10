@@ -49,12 +49,14 @@
     display: flex;
 }
 
-.burger-menu:hover,
-.topbar .icon-btn:hover {
-    color: var(--btn-primary);
+@media (hover: hover) {
+    .burger-menu:hover,
+    .topbar .icon-btn:hover {
+        color: var(--btn-primary);
 
-    /* .icon-btn:hover fills the box with --bg-hover; a borderless button has no box. */
-    background: none;
+        /* .icon-btn:hover fills the box with --bg-hover; a borderless button has no box. */
+        background: none;
+    }
 }
 
 /* Mobile navigation button (left) — opens the vertical tab sidebar. Renders a
@@ -85,8 +87,10 @@ body:has(.tabs--vertical) .nav-menu {
     transition: var(--transition-fast);
 }
 
-.nav-menu:hover span {
-    background: var(--btn-primary);
+@media (hover: hover) {
+    .nav-menu:hover span {
+        background: var(--btn-primary);
+    }
 }
 
 /* Connection Status indicator inside shell */
@@ -339,9 +343,11 @@ ag-tabs:not(:defined) {
     white-space: nowrap;
 }
 
-.tab-btn:hover {
-    background: var(--tab-hover);
-    color: var(--text-primary);
+@media (hover: hover) {
+    .tab-btn:hover {
+        background: var(--tab-hover);
+        color: var(--text-primary);
+    }
 }
 
 .tab-btn.active {
@@ -353,8 +359,10 @@ ag-tabs:not(:defined) {
     background: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 
-.tab-btn--locked:hover {
-    background: color-mix(in srgb, var(--color-error) 14%, transparent);
+@media (hover: hover) {
+    .tab-btn--locked:hover {
+        background: color-mix(in srgb, var(--color-error) 14%, transparent);
+    }
 }
 
 .action-btn.primary {
@@ -363,9 +371,11 @@ ag-tabs:not(:defined) {
     border-color: var(--btn-primary, var(--text-primary));
 }
 
-.action-btn.primary:hover {
-    background: transparent;
-    color: var(--btn-primary, var(--text-primary));
+@media (hover: hover) {
+    .action-btn.primary:hover {
+        background: transparent;
+        color: var(--btn-primary, var(--text-primary));
+    }
 }
 
 /* =====================
@@ -460,9 +470,14 @@ ag-tabs:not(:defined) {
     fill: none;
 }
 
-.tab-btn.active .tab-icon,
-.tab-btn:hover .tab-icon {
+.tab-btn.active .tab-icon {
     opacity: 1;
+}
+
+@media (hover: hover) {
+    .tab-btn:hover .tab-icon {
+        opacity: 1;
+    }
 }
 
 @keyframes streamingPulse {
@@ -491,10 +506,16 @@ ag-tabs:not(:defined) {
     flex-shrink: 0;
 }
 
-.tabs--vertical .tab-btn.active .tab-stats,
-.tabs--vertical .tab-btn:hover .tab-stats {
+.tabs--vertical .tab-btn.active .tab-stats {
     opacity: 1;
     color: var(--text-primary);
+}
+
+@media (hover: hover) {
+    .tabs--vertical .tab-btn:hover .tab-stats {
+        opacity: 1;
+        color: var(--text-primary);
+    }
 }
 
 /* Manual takes the foot of the column: it is the app's documentation, not a place in
@@ -603,8 +624,10 @@ body:has(.tabs--vertical) .tab-sidebar-toggle {
     transition: transform var(--transition-normal), color var(--transition-fast);
 }
 
-body:has(.tabs--vertical) .tab-sidebar-toggle:hover {
-    opacity: 0.8;
+@media (hover: hover) {
+    body:has(.tabs--vertical) .tab-sidebar-toggle:hover {
+        opacity: 0.8;
+    }
 }
 
 body.dark-mode:has(.tabs--vertical) .tab-sidebar-toggle {
@@ -748,8 +771,10 @@ body.dark-mode .logo-dark {
     border-radius: var(--radius-sm);
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--text-secondary);
+@media (hover: hover) {
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
+    }
 }
 
 /* RESPONSIVE OVERRIDES */
@@ -1046,9 +1071,11 @@ body.dark-mode .logo-dark {
     cursor: pointer;
 }
 
-.version-link:hover {
-    color: var(--text-primary);
-    text-decoration-thickness: 2px;
+@media (hover: hover) {
+    .version-link:hover {
+        color: var(--text-primary);
+        text-decoration-thickness: 2px;
+    }
 }
 
 /* DESKTOP OVERRIDES (Moved to bottom for cascade) */

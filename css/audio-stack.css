@@ -78,8 +78,10 @@
     transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.ag-prov-card:hover {
-    border-color: var(--text-secondary);
+@media (hover: hover) {
+    .ag-prov-card:hover {
+        border-color: var(--text-secondary);
+    }
 }
 
 .ag-prov-card.selected {
@@ -333,8 +335,10 @@
 }
 
 /* Orange, like every control that deletes (user decision: one colour for what destroys). */
-.ag-nmf-remove:hover {
-    color: var(--color-warning-text);
+@media (hover: hover) {
+    .ag-nmf-remove:hover {
+        color: var(--color-warning-text);
+    }
 }
 
 .ag-nmf-remove svg {

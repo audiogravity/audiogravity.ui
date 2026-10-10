@@ -59,9 +59,11 @@
     transition: color var(--transition-fast);
 }
 
-.profile-name-clickable:hover {
-    color: var(--color-accent, var(--text-secondary));
-    text-decoration: underline;
+@media (hover: hover) {
+    .profile-name-clickable:hover {
+        color: var(--color-accent, var(--text-secondary));
+        text-decoration: underline;
+    }
 }
 
 /* Profile Detail Modal */

@@ -33,9 +33,11 @@
     cursor: pointer;
 }
 
-.metric-box.clickable:hover {
-    background: var(--bg-secondary);
-    border-color: var(--text-primary);
+@media (hover: hover) {
+    .metric-box.clickable:hover {
+        background: var(--bg-secondary);
+        border-color: var(--text-primary);
+    }
 }
 
 /* =====================

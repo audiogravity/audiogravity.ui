@@ -70,7 +70,10 @@
 }
 
 .lib-src-zone-row:last-child  { border-bottom: 0; }
-.lib-src-zone-row:hover       { background: var(--bg-secondary); }
+
+@media (hover: hover) {
+    .lib-src-zone-row:hover       { background: var(--bg-secondary); }
+}
 .lib-src-zone-row.active      { background: var(--bg-tertiary); }
 
 .lib-src-zone-row.loading {
@@ -302,7 +305,9 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     transition: color var(--transition-fast);
 }
 
-.lib-upnp-rescan:hover { color: var(--text-primary); }
+@media (hover: hover) {
+    .lib-upnp-rescan:hover { color: var(--text-primary); }
+}
 
 .lib-upnp-discover {
     border: 1px solid var(--border-color);

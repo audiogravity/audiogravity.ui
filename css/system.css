@@ -231,9 +231,11 @@
     text-transform: uppercase;
 }
 
-.event-toggle-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--text-tertiary);
+@media (hover: hover) {
+    .event-toggle-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--text-tertiary);
+    }
 }
 
 .event-toggle-btn.started {
@@ -261,8 +263,10 @@
     transition: background var(--transition-fast);
 }
 
-.history-item.clickable:hover {
-    background: var(--bg-hover);
+@media (hover: hover) {
+    .history-item.clickable:hover {
+        background: var(--bg-hover);
+    }
 }
 
 .json-viewer {
@@ -514,10 +518,12 @@
     text-transform: uppercase;
 }
 
-.log-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--text-tertiary);
+@media (hover: hover) {
+    .log-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border-color: var(--text-tertiary);
+    }
 }
 
 .log-btn.log-btn-active {
