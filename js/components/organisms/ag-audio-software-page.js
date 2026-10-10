@@ -28,7 +28,6 @@ import {
     AgTimerManager,
     EventEmitter,
     addToHistory,
-    escapeHtml
 } from '../../common.js';
 import { isGuest, isAdmin } from '../../auth.js';
 import { FetchController } from '../../core/FetchController.js';
@@ -493,18 +492,9 @@ export class AgAudioSoftwarePage extends LitElement {
      * to Roon anyway. The person pressing the button knows whether they are
      * listening; this makes sure they know what the button does.
      *
-     * @param {Object} pkg - Package the action targets.
-     * @param {string} action - install | update | uninstall.
-     * @returns {string} A sentence to append, or '' when nothing is at stake.
-     */
-    _playbackWarning(pkg, action) {
-        // Escaped: showConfirm renders through unsafeHTML.
-        return this._playbackWarningText(pkg, action, escapeHtml(pkg.label));
-    }
-
-    /**
-     * The playback warning as plain text, for a Lit template — which escapes it
-     * itself. Escaping here too put entities on screen (`&gt;=` in the logs).
+     * Plain text, as every message of showConfirm and every Lit template wants
+     * it: both show it as text. Escaping it put entities on screen (`&gt;=` in
+     * the logs).
      *
      * @param {Object} pkg - Package the action targets.
      * @param {string} action - install | update | uninstall.
@@ -547,26 +537,26 @@ export class AgAudioSoftwarePage extends LitElement {
         const reinstallOnly = action === 'update' && updateDecision(pkg) === 'reinstall';
 
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
-        const label = escapeHtml(pkg.label);
+        const label = pkg.label;
 
-        // Escaped: showConfirm renders this through unsafeHTML, and both the
-        // label and the version can carry vendor text — a version string is read
-        // straight out of a file the vendor's installer wrote.
+        // Plain text, shown as text by showConfirm: the label and the version can
+        // carry vendor text — a version string is read straight out of a file the
+        // vendor's installer wrote — and must not be escaped here, or `&lt;` shows.
         let confirmMessage = `Are you sure you want to ${action} ${label}?`;
         if (action === 'update' && reinstallOnly) {
             const installed = pkg.installed_version
-                ? ` You currently have ${escapeHtml(pkg.installed_version)}.` : '';
+                ? ` You currently have ${pkg.installed_version}.` : '';
             confirmMessage = `${label} publishes no version number, so there is nothing to compare against. Reinstall it from the vendor's latest published build?${installed}`;
         } else if (action === 'update' && pkg.available_version) {
             // The installed version can be absent — a failed install leaves the
             // card in error with nothing on disk — and printing it unguarded
             // offered to update "from version null".
             confirmMessage = pkg.installed_version
-                ? `${pkg.available_is_older ? 'Switch' : 'Update'} ${label} from version ${escapeHtml(pkg.installed_version)} to ${escapeHtml(pkg.available_version)}?`
-                : `Install ${label} version ${escapeHtml(pkg.available_version)}?`;
+                ? `${pkg.available_is_older ? 'Switch' : 'Update'} ${label} from version ${pkg.installed_version} to ${pkg.available_version}?`
+                : `Install ${label} version ${pkg.available_version}?`;
         }
 
-        confirmMessage += this._playbackWarning(pkg, action);
+        confirmMessage += this._playbackWarningText(pkg, action);
 
         const confirmed = await showConfirm(
             `${actionLabel} Package`,
@@ -820,16 +810,18 @@ export class AgAudioSoftwarePage extends LitElement {
             return;
         }
 
-        const pkgListHtml = `
+        // A Lit template: the list is markup, and Lit renders each vendor label
+        // and version as text.
+        const pkgList = html`
             <div class="package-update-list">
                 <p class="package-update-intro">The following ${updates.length} packages will be updated:</p>
                 <div class="package-list-container">
-                    ${updates.map(pkg => `
+                    ${updates.map(pkg => html`
                         <div class="package-list-item">
-                            <span><strong>${escapeHtml(pkg.label)}</strong></span>
-                            <span class="package-version-info">${escapeHtml(pkg.installed_version || '')} → ${escapeHtml(pkg.available_version || '')}</span>
+                            <span><strong>${pkg.label}</strong></span>
+                            <span class="package-version-info">${pkg.installed_version || ''} → ${pkg.available_version || ''}</span>
                         </div>
-                    `).join('')}
+                    `)}
                 </div>
                 <p class="package-update-note">Note: Packages will be updated sequentially. This may take a few minutes.</p>
             </div>
@@ -837,7 +829,7 @@ export class AgAudioSoftwarePage extends LitElement {
 
         const confirmed = await window.showConfirm(
             `Update All Packages`,
-            pkgListHtml
+            pkgList
         );
 
         if (!confirmed) return;

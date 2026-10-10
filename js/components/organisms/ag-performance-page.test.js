@@ -104,6 +104,13 @@ describe('Apply All', () => {
 
         expect(await offered(el)).toBe('Set "schedutil" governor on all CPUs?');
     });
+
+    it('puts the governor the box reports raw', async () => {
+        // showConfirm shows a string message as text: escaped, `&lt;` would show.
+        const el = page();
+        el.cpuInfo[0].current_governor = '<b>x</b>';
+        expect(await offered(el)).toBe('Set "<b>x</b>" governor on all CPUs?');
+    });
 });
 
 describe('the load of each core', () => {

@@ -1,5 +1,4 @@
 import { html } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { isNetworkError, isGatewayError } from './net-errors.js';
 
 // Toast durations (ms)
@@ -121,10 +120,35 @@ export function showToast(type, title, message, duration = TOAST_DURATION_DEFAUL
 // CONFIRM MODAL
 // =====================
 
+/** A tag, opening or closing: what a text message is not expected to hold. */
+const MARKUP = /<\/?[a-zA-Z][\w-]*(\s[^<>]*)?>/;
+
+/**
+ * Say in the console that a text message looks like markup: it is shown as
+ * text, tags included. Mirrors showToast's wrong-type report — the dialog still
+ * opens, the mistake is visible where a developer looks.
+ *
+ * @param {string} caller - The helper that received the message.
+ * @param {string} message - The text message.
+ */
+function reportMarkup(caller, message) {
+    if (MARKUP.test(message)) {
+        console.error(`[${caller}] a text message is shown as text, tags included — `
+            + `pass an html\`\` template for markup: ${message.slice(0, 80)}`);
+    }
+}
+
 /**
  * Show a confirm dialog using Lit Web Component
+ *
+ * A string message is shown as TEXT: a name typed by a user, a label from the
+ * network, a `<` — all displayed, never read as markup. A message that needs
+ * markup (`<strong>`, a list) is a Lit `html\`…\`` template, whose
+ * interpolations Lit renders as text too. Nothing here goes through unsafeHTML,
+ * so no caller has to escape anything — and none may, or `&lt;` would show.
+ *
  * @param {string} title - Dialog title
- * @param {string|TemplateResult} message - Dialog message (supports HTML or Lit TemplateResult)
+ * @param {string|TemplateResult} message - Plain text, or a Lit TemplateResult for markup
  * @param {object|string} options - Options: { isInfo: boolean, okLabel: string, cancelLabel: string,
  *   destructive: boolean } or legacy okLabel. `destructive` — the action deletes or removes
  *   something, or throws away unsaved changes: OK is orange and Cancel is focused.
@@ -138,17 +162,12 @@ export function showConfirm(title, message, options = {}, cancelLabel_legacy = n
         const opts = typeof options === 'string' ? { okLabel: options, cancelLabel: cancelLabel_legacy } : options;
         
         dialog.title = title;
-        // SECURITY: Si le message est une string, on la convertit en TemplateResult Lit
-        // après avoir sanitisé les données dynamiques.
-        // Cela évite que unsafeHTML dans ag-confirm-dialog ne reçoive des données brutes.
-        // Les messages qui sont déjà des TemplateResult Lit (html`...`) restent inchangés.
+        // A string interpolated by Lit is text; a TemplateResult (html`…`) is passed
+        // through unchanged. Going through messageTemplate keeps a single rendering
+        // path in ag-confirm-dialog.
         if (typeof message === 'string') {
-            // SECURITY: Les strings passées à showConfirm sont wrappées dans un TemplateResult Lit
-            // via unsafeHTML. La responsabilité de sanitiser les variables dynamiques appartient
-            // à l'appelant (escapeHtml sur les données backend avant interpolation).
-            // Ce chemin évite que dialog.message ne soit utilisé, ce qui court-circuitait le
-            // système de templates Lit dans ag-confirm-dialog.
-            dialog.messageTemplate = html`${unsafeHTML(message)}`;
+            reportMarkup('showConfirm', message);
+            dialog.messageTemplate = html`${message}`;
         } else {
             dialog.messageTemplate = message;
         }
@@ -195,10 +214,10 @@ export function showConfirm(title, message, options = {}, cancelLabel_legacy = n
 /**
  * Ask before taking one item out of a list: "Remove <name> from <list>?".
  *
- * The name goes through a Lit template, never through the HTML string path of
- * {@link showConfirm}: the names asked about here come from the network — a
- * station from the Radio Browser catalogue, the friendly name any UPnP device
- * announces — and must be shown as text, not read as markup.
+ * A Lit template, for the `<strong>` around the name; Lit renders the name
+ * itself as text. The names asked about here come from the network — a station
+ * from the Radio Browser catalogue, the friendly name any UPnP device announces
+ * — and must be shown as text, not read as markup.
  *
  * @param {string} title - Dialog title, e.g. 'Remove station'.
  * @param {string} name - The item, as its row shows it.
@@ -248,7 +267,8 @@ export function showTabHUD(label) {
  * button off-screen (site#6).
  *
  * @param {string} title - Dialog title
- * @param {string} message - Dialog message (HTML string)
+ * @param {string|TemplateResult} message - Plain text, shown as text — or a Lit
+ *   TemplateResult for markup, as for {@link showConfirm}
  * @param {{destructive?: boolean}} [options] - `destructive`: the action deletes or
  *   removes something — Confirm is orange (see showConfirm)
  * @returns {Promise<string|null>} Resolves with the entered password, or null if cancelled
@@ -261,8 +281,9 @@ export function showPasswordConfirm(title, message, options = {}) {
         dialog.destructive = options.destructive || false;
 
         const inputId = `pwd-confirm-${Date.now()}`;
+        if (typeof message === 'string') reportMarkup('showPasswordConfirm', message);
         dialog.messageTemplate = html`
-            <p style="margin: 0 0 var(--spacing-md);">${unsafeHTML(message)}</p>
+            <p style="margin: 0 0 var(--spacing-md);">${message}</p>
             <input
                 id=${inputId}
                 class="form-control form-control--dialog"

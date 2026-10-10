@@ -16,7 +16,7 @@ vi.mock('../../net-errors.js', () => ({ validationField: vi.fn() }));
 vi.mock('../../common.js', () => ({
     apiGet: vi.fn(), apiPost: vi.fn(), apiCall: vi.fn(), apiCallWithRetry: vi.fn(),
     showToast: vi.fn(), showConfirm: vi.fn(), AppState: {}, addToHistory: vi.fn(),
-    handleError: vi.fn(), escapeHtml: (s) => s,
+    handleError: vi.fn(),
 }));
 vi.mock('../../core/FetchController.js', () => ({ FetchController: class {} }));
 vi.mock('@lit/context', () => ({ ContextConsumer: class {} }));
@@ -25,7 +25,8 @@ vi.mock('./ag-card-grid.js', () => ({}));
 vi.mock('../molecules/ag-systemd-card.js', () => ({}));
 vi.mock('../molecules/ag-validation-results.js', () => ({}));
 
-import { apiPost, handleError } from '../../common.js';
+import { apiPost, handleError, showConfirm } from '../../common.js';
+import { validationField } from '../../net-errors.js';
 import { AgSystemdPage } from './ag-systemd-page.js';
 
 const SERVICE = { id: 'hqplayerd', name: 'HQPlayer Embedded', systemd_unit: 'hqplayerd.service' };
@@ -64,5 +65,42 @@ describe('ag-systemd-page — saving a service\'s properties', () => {
         const el = makeEl();
         expect(await el._saveProperties(SERVICE, { nice: -5 }, true)).toBe(true);
         expect(el._loadServices).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('ag-systemd-page — a refused validation', () => {
+    /** Every interpolated value of a (mocked) Lit template, nested ones included. */
+    function valuesOf(node) {
+        if (Array.isArray(node)) return node.flatMap(valuesOf);
+        if (node && Array.isArray(node.strings)) return node.values.flatMap(valuesOf);
+        return [node];
+    }
+    /** Every literal part of the same template: what Lit takes as markup. */
+    function markupOf(node) {
+        if (Array.isArray(node)) return node.flatMap(markupOf);
+        if (node && Array.isArray(node.strings)) return [...node.strings, ...node.values.flatMap(markupOf)];
+        return [];
+    }
+
+    it("asks with a template: the field and the core's message are values, shown as text", async () => {
+        validationField.mockReturnValue('properties.<b>nice</b>');
+        apiPost.mockRejectedValueOnce(Object.assign(new Error('422'), {
+            status: 422, validationErrors: [{ msg: '<i>out of range</i>' }],
+        }));
+        const el = makeEl();
+        expect(await el._saveProperties(SERVICE, { nice: 99 }, true)).toBe(false);
+        const message = showConfirm.mock.calls[0][1];
+        expect(typeof message).not.toBe('string');
+        expect(valuesOf(message)).toEqual(expect.arrayContaining(['<B>NICE</B>', '<i>out of range</i>']));
+        expect(markupOf(message).join('')).not.toMatch(/NICE|out of range/);
+    });
+
+    it("does the same for a refusal that is not a field list", async () => {
+        apiPost.mockRejectedValueOnce(Object.assign(new Error('x'), { status: 500, detail: '<b>boom</b>' }));
+        const el = makeEl();
+        expect(await el._saveProperties(SERVICE, { nice: 99 }, true)).toBe(false);
+        const message = showConfirm.mock.calls[0][1];
+        expect(valuesOf(message)).toContain('<b>boom</b>');
+        expect(markupOf(message).join('')).not.toContain('boom');
     });
 });

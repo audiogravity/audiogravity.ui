@@ -151,6 +151,26 @@ describe('ag-network-mount-form', () => {
         expect(el._error).toMatch(/busy/);
     });
 
+    // showConfirm shows a string message as text: the label goes in raw — escaped,
+    // `&lt;` would show on screen.
+    it('puts the share label raw in the removal question', async () => {
+        showConfirm.mockResolvedValue(false);
+        await el._remove({ slug: 'nas', label: '<b>NAS</b>', in_use: false });
+        const message = showConfirm.mock.calls[0][1];
+        expect(message).toContain('Remove “<b>NAS</b>”?');
+        expect(message).not.toContain('&lt;');
+    });
+
+    it("puts the core's busy message raw in the forced-retry question", async () => {
+        showConfirm.mockResolvedValueOnce(true);
+        apiDelete.mockRejectedValueOnce({ status: 409, detail: 'Share <i>NAS</i> is busy.' });
+        showConfirm.mockResolvedValueOnce(false);
+        await el._remove({ slug: 'nas', label: 'NAS', in_use: false });
+        const message = showConfirm.mock.calls[1][1];
+        expect(message).toContain('Share <i>NAS</i> is busy. Force-remove');
+        expect(message).not.toContain('&lt;');
+    });
+
     it('loads the existing AG mounts when opened', async () => {
         apiGet.mockResolvedValue([{ slug: 'x', label: 'X', host: 'h', share: 's', mountpoint: '/mnt/x', mounted: true, in_use: false }]);
         await el._toggle();

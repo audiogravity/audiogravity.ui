@@ -3,7 +3,7 @@
  * password-confirm field's styling contract (site#6).
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render } from 'lit';
+import { html, render } from 'lit';
 import { readStylesheet } from './test-utils.js';
 import { getUserFriendlyError, showConfirm, showPasswordConfirm, confirmRemoval, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
 import { asNetworkError } from './net-errors.js';
@@ -216,6 +216,54 @@ describe('confirmRemoval — asking before a row leaves its list', () => {
         const box = message(document.querySelector('ag-confirm-dialog'));
         expect(box.querySelector('img')).toBeNull();
         expect(box.querySelector('strong').textContent).toBe(name);
+    });
+});
+
+describe('a string message is shown as text; markup is a Lit template', () => {
+    afterEach(() => {
+        document.querySelectorAll('ag-confirm-dialog').forEach((d) => d.remove());
+        vi.restoreAllMocks();
+    });
+
+    /** Render the dialog's message into a detached node and return that node. */
+    function message(dialog) {
+        const box = document.createElement('div');
+        render(dialog.messageTemplate, box);
+        return box;
+    }
+
+    const name = '<img src=x onerror="window.__pwned=1">Kitchen';
+
+    it('showConfirm: a string with tags stays text, and the console says so', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        showConfirm('Remove Passkey', `Remove passkey ${name}?`);
+        const box = message(document.querySelector('ag-confirm-dialog'));
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.textContent).toBe(`Remove passkey ${name}?`);
+        expect(error).toHaveBeenCalledWith(expect.stringContaining('[showConfirm]'));
+    });
+
+    it('showConfirm: plain text raises nothing', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        showConfirm('Restart Core', 'Restart "A & B" now?');
+        const box = message(document.querySelector('ag-confirm-dialog'));
+        expect(box.textContent).toBe('Restart "A & B" now?');
+        expect(error).not.toHaveBeenCalled();
+    });
+
+    it('showConfirm: a Lit template keeps its markup and shows the name as text', () => {
+        showConfirm('Remove Passkey', html`Remove passkey <strong>${name}</strong>?`);
+        const box = message(document.querySelector('ag-confirm-dialog'));
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.querySelector('strong').textContent).toBe(name);
+    });
+
+    it('showPasswordConfirm: a string with tags stays text', () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        showPasswordConfirm('Confirm', `Remove ${name}? Enter your password.`);
+        const box = message(document.querySelector('ag-confirm-dialog'));
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.querySelector('p').textContent).toBe(`Remove ${name}? Enter your password.`);
     });
 });
 

@@ -1,12 +1,12 @@
 /**
- * Unit tests for ag-audio-software-page.js — XSS fix in bulk-update confirm dialog.
+ * Unit tests for ag-audio-software-page.js.
  *
- * Covers:
- * - Package labels and version strings are HTML-escaped before being injected
- *   into the showConfirm dialog HTML string (XSS regression)
- * - The escaping does not break display of normal package names
+ * Covers, among the rest: the bulk-update confirmation is a Lit template, so a
+ * package's label and version strings — vendor text — are shown as text, never
+ * read as markup.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render } from 'lit';
 
 const session = vi.hoisted(() => ({ admin: true }));
 
@@ -23,82 +23,67 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
 import { updateDecision } from '../molecules/ag-package-card.js';
 
-/**
- * Replicate the escapeHtml logic used in the component (same as common.js)
- * so we can test the expected output without importing the full component.
- */
-function escapeHtml(text) {
-    if (typeof text !== 'string') return String(text ?? '');
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+describe('Bulk-update confirm dialog — vendor text is shown as text', () => {
+    afterEach(() => { delete window.showConfirm; });
 
-/** Build the package list HTML the same way the component does after the fix. */
-function buildPkgListHtml(updates) {
-    return `
-        <div class="package-update-list">
-            <p>The following ${updates.length} packages will be updated:</p>
-            <div class="package-list-container">
-                ${updates.map(pkg => `
-                    <div class="package-list-item">
-                        <span><strong>${escapeHtml(pkg.label)}</strong></span>
-                        <span>${escapeHtml(pkg.installed_version || '')} → ${escapeHtml(pkg.available_version || '')}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
+    /** Run Update All on ``packages``; return the confirmation it asked, rendered. */
+    async function asked(packages) {
+        window.showConfirm = vi.fn().mockResolvedValue(false);
+        const page = Object.create(AgAudioSoftwarePage.prototype);
+        // An own value, past Lit's reactive setter: no element was constructed to update.
+        Object.defineProperty(page, 'packages', { value: packages });
+        await page._handleUpdateAll();
+        const box = document.createElement('div');
+        render(window.showConfirm.mock.calls[0][1], box);
+        return box;
+    }
 
-describe('Bulk-update confirm dialog — XSS prevention via escapeHtml', () => {
-    it('escapes a malicious package label', () => {
-        const updates = [{
-            id: 'evil',
-            label: '<img src=x onerror=alert(1)>',
-            installed_version: '1.0',
-            available_version: '2.0',
-        }];
-        const html = buildPkgListHtml(updates);
-        expect(html).not.toContain('<img src=x');
-        expect(html).toContain('&lt;img src=x');
+    it('shows a malicious label as text', async () => {
+        const box = await asked([{
+            id: 'evil', label: '<img src=x onerror=alert(1)>', installed_version: '1.0', available_version: '2.0',
+        }]);
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.querySelector('strong').textContent).toBe('<img src=x onerror=alert(1)>');
     });
 
-    it('escapes malicious version strings', () => {
-        const updates = [{
-            id: 'pkg',
-            label: 'Safe Package',
-            installed_version: '1.0<script>',
-            available_version: '2.0</script>',
-        }];
-        const html = buildPkgListHtml(updates);
-        expect(html).not.toContain('<script>');
-        expect(html).toContain('&lt;script&gt;');
+    it('shows malicious version strings as text', async () => {
+        const box = await asked([{
+            id: 'pkg', label: 'Safe Package', installed_version: '1.0<script>', available_version: '2.0</script>',
+        }]);
+        expect(box.querySelector('script')).toBeNull();
+        expect(box.querySelector('.package-version-info').textContent).toBe('1.0<script> → 2.0</script>');
     });
 
-    it('renders a normal package correctly after escaping', () => {
-        const updates = [{
-            id: 'mpd',
-            label: 'Music Player Daemon',
-            installed_version: '0.23.12',
-            available_version: '0.23.15',
-        }];
-        const html = buildPkgListHtml(updates);
-        expect(html).toContain('Music Player Daemon');
-        expect(html).toContain('0.23.12');
-        expect(html).toContain('0.23.15');
+    it('lists a normal package as it is named', async () => {
+        const box = await asked([{
+            id: 'mpd', label: 'Music Player Daemon', installed_version: '0.23.12', available_version: '0.23.15',
+        }]);
+        expect(box.textContent).toContain('The following 1 packages will be updated:');
+        expect(box.querySelector('strong').textContent).toBe('Music Player Daemon');
+        expect(box.querySelector('.package-version-info').textContent).toBe('0.23.12 → 0.23.15');
     });
+});
 
-    it('handles undefined version gracefully', () => {
-        const updates = [{
-            id: 'pkg',
-            label: 'TestPkg',
-            installed_version: undefined,
-            available_version: '1.0',
-        }];
-        expect(() => buildPkgListHtml(updates)).not.toThrow();
-        const html = buildPkgListHtml(updates);
-        expect(html).toContain('TestPkg');
+describe('Single-package confirmation — vendor text is plain text', () => {
+    afterEach(() => { document.querySelectorAll('ag-confirm-dialog').forEach((d) => d.remove()); });
+
+    it('names the package and its versions as they are, through the real dialog', async () => {
+        // Escaped here, `&lt;` would show: showConfirm displays a string as text.
+        const page = Object.create(AgAudioSoftwarePage.prototype);
+        Object.defineProperty(page, 'packages', { value: [{
+            id: 'p', label: '<b>x</b>', installed_version: '1.0', available_version: '2<i>',
+            installer_type: 'apt_deb', service_id: 'mpd',
+        }] });
+        const asked = page._handleAction({ detail: { packageId: 'p', action: 'update' } });
+        await Promise.resolve();
+        const dialog = document.querySelector('ag-confirm-dialog');
+        const box = document.createElement('div');
+        render(dialog.messageTemplate, box);
+        expect(box.textContent).toBe(
+            'Update <b>x</b> from version 1.0 to 2<i>? This restarts <b>x</b> — anything playing through it will stop.');
+        expect(box.querySelector('b, i')).toBeNull();
+        dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
+        await asked;
     });
 });
 
@@ -167,34 +152,35 @@ describe('Playback warning in the confirmation', () => {
     }
 
     it('warns that an update restarts the service', () => {
-        const text = page()._playbackWarning(
+        const text = page()._playbackWarningText(
             { label: 'Music Player Daemon', service_id: 'mpd' }, 'update');
         expect(text).toContain('restarts Music Player Daemon');
         expect(text).toContain('will stop');
     });
 
     it('warns that an uninstall stops and removes it', () => {
-        const text = page()._playbackWarning(
+        const text = page()._playbackWarningText(
             { label: 'UPnP Bridge', service_id: 'upmpdcli' }, 'uninstall');
         expect(text).toContain('stops and removes UPnP Bridge');
     });
 
     it('says nothing when installing something that is not running yet', () => {
-        expect(page()._playbackWarning(
+        expect(page()._playbackWarningText(
             { label: 'Roon Bridge', service_id: 'roon' }, 'install')).toBe('');
     });
 
     it('says nothing for a package AG does not start or stop', () => {
         // Roon Server has no service_id: AG installs it and has no handle on it.
-        expect(page()._playbackWarning(
+        expect(page()._playbackWarningText(
             { label: 'Roon Server', service_id: null }, 'update')).toBe('');
     });
 
-    it('escapes the label it interpolates', () => {
-        const text = page()._playbackWarning(
+    it('leaves the label raw: the confirmation shows its message as text', () => {
+        // Escaped here, `&lt;img` would show on screen (showConfirm renders text).
+        const text = page()._playbackWarningText(
             { label: '<img src=x onerror=alert(1)>', service_id: 'mpd' }, 'update');
-        expect(text).not.toContain('<img');
-        expect(text).toContain('&lt;img');
+        expect(text).toContain('restarts <img src=x onerror=alert(1)>');
+        expect(text).not.toContain('&lt;');
     });
 
     it('gives the uninstall dialog plain text, which Lit escapes itself', () => {

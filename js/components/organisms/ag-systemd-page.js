@@ -10,7 +10,6 @@ import {
     AppState,
     addToHistory,
     handleError,
-    escapeHtml
 } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
@@ -154,23 +153,22 @@ export class AgSystemdPage extends LitElement {
             try {
                 validation = await apiPost(`/services/${service.systemd_unit}/properties/validate`, properties);
             } catch (validationError) {
-                let errorContent = '';
+                // A Lit template: the markup is ours, and Lit renders the field names and
+                // the core's messages as text.
+                let errorContent;
                 if (validationError.status === 422 && validationError.validationErrors) {
-                    errorContent = '<div class="validation-section validation-errors">';
-                    errorContent += '<h4 class="validation-section-title">❌ Invalid Input Values</h4>';
-                    errorContent += '<ul class="validation-list">';
-                    validationError.validationErrors.forEach(err => {
-                        const field = validationField(err);
-                        const fieldName = field.replace('properties.', '').replace(/_/g, ' ').toUpperCase();
-                        errorContent += `<li class="validation-error"><strong>${escapeHtml(fieldName)}:</strong> ${escapeHtml(err.msg || 'Invalid value')}</li>`;
-                    });
-                    errorContent += '</ul></div>';
+                    errorContent = html`<div class="validation-section validation-errors"><h4 class="validation-section-title">❌ Invalid Input Values</h4><ul class="validation-list">${
+                        validationError.validationErrors.map(err => {
+                            const fieldName = validationField(err).replace('properties.', '').replace(/_/g, ' ').toUpperCase();
+                            return html`<li class="validation-error"><strong>${fieldName}:</strong> ${err.msg || 'Invalid value'}</li>`;
+                        })
+                    }</ul></div>`;
                 } else {
                     const errorMsg = validationError.detail || validationError.message || 'Unknown validation error';
-                    errorContent = `<div class="validation-section validation-errors"><h4 class="validation-section-title">❌ Validation Failed</h4><p class="validation-error"><strong>${escapeHtml(errorMsg)}</strong></p></div>`;
+                    errorContent = html`<div class="validation-section validation-errors"><h4 class="validation-section-title">❌ Validation Failed</h4><p class="validation-error"><strong>${errorMsg}</strong></p></div>`;
                 }
 
-                if (showConfirm) showConfirm('❌ Validation Error', `<div class="validation-results">${errorContent}</div>`, { isInfo: true });
+                if (showConfirm) showConfirm('❌ Validation Error', html`<div class="validation-results">${errorContent}</div>`, { isInfo: true });
                 return false;
             }
 

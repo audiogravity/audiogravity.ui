@@ -37,7 +37,7 @@ vi.mock('../molecules/ag-license-status.js', () => ({}));
 vi.mock('../molecules/ag-license-verify.js', () => ({}));
 vi.mock('../molecules/ag-user-card.js', () => ({}));
 
-import { apiGet } from '../../common.js';
+import { apiGet, showConfirm } from '../../common.js';
 import { isAdmin } from '../../auth.js';
 import { AgAdminPage } from './ag-admin-page.js';
 
@@ -95,5 +95,17 @@ describe('ag-admin-page — no connected-users counter', () => {
 
         expect(el.activeUsers).toEqual(['bob']);
         expect(emitted.map(([name]) => name)).not.toContain('users-stats');
+    });
+});
+
+describe('deleting a user — the question', () => {
+    it('is a template, with the user name as a value Lit shows as text', async () => {
+        showConfirm.mockResolvedValue(false);
+        const el = Object.create(AgAdminPage.prototype);
+        await el._handleDeleteUser({ detail: { username: '<b>bob</b>' } });
+        const message = showConfirm.mock.calls.at(-1)[1];
+        expect(typeof message).not.toBe('string');
+        expect(message.values).toEqual(['<b>bob</b>']);
+        expect(message.strings.join('')).toContain('<strong>');
     });
 });

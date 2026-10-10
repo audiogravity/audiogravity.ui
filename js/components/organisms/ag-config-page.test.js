@@ -34,7 +34,7 @@ vi.mock('./ag-card-grid.js', () => ({}));
 vi.mock('../molecules/ag-config-card.js', () => ({}));
 vi.mock('./ag-modal.js', () => ({}));
 
-import { apiGet } from '../../common.js';
+import { apiGet, showConfirm } from '../../common.js';
 import { AgConfigPage } from './ag-config-page.js';
 
 const STATUS = {
@@ -233,5 +233,19 @@ describe('after a guided change, the tiles are read again', () => {
 
         expect(tiles).toHaveBeenCalledTimes(1);
         expect(status).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('the backup name in the restore question', () => {
+    // showConfirm shows a string message as text: the name goes in raw — escaped,
+    // `&lt;` would show on screen.
+    it('puts the file name raw', async () => {
+        showConfirm.mockResolvedValue(false);
+        const page = new AgConfigPage();
+        page.selectedServiceId = 'mpd';
+        await page._handleRestore({ detail: { filename: 'mpd.conf.<b>x</b>.bak' } });
+        const message = showConfirm.mock.calls.at(-1)[1];
+        expect(message).toContain('from mpd.conf.<b>x</b>.bak.');
+        expect(message).not.toContain('&lt;');
     });
 });
