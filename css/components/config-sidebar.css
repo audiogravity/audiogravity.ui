@@ -87,8 +87,10 @@
     transition: color var(--transition-fast);
 }
 
-.close-btn:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .close-btn:hover {
+        color: var(--text-primary);
+    }
 }
 
 .config-content {
@@ -127,8 +129,10 @@
     height: 14px;
 }
 
-.config-footer-logout:hover {
-    color: var(--color-error-text);
+@media (hover: hover) {
+    .config-footer-logout:hover {
+        color: var(--color-error-text);
+    }
 }
 
 /* The generic .version-info is also styled by audio-software.css (imported later),
@@ -210,13 +214,17 @@
     display: inline-block;
 }
 
-.version-icon:hover {
-    opacity: 1;
-    color: var(--text-primary);
+@media (hover: hover) {
+    .version-icon:hover {
+        opacity: 1;
+        color: var(--text-primary);
+    }
 }
 
-.version-icon:hover [class^="icon-"] {
-    transform: scale(1.3) rotate(15deg);
+@media (hover: hover) {
+    .version-icon:hover [class^="icon-"] {
+        transform: scale(1.3) rotate(15deg);
+    }
 }
 
 .version-icon [class^="icon-"] {
@@ -273,8 +281,10 @@
 }
 
 /* Orange, like every control that deletes (user decision: one colour for what destroys). */
-.passkey-chip-delete:hover {
-    color: var(--color-warning-text);
+@media (hover: hover) {
+    .passkey-chip-delete:hover {
+        color: var(--color-warning-text);
+    }
 }
 
 /* Passkeys section (legacy, kept for safety) */

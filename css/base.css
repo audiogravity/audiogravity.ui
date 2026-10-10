@@ -9,7 +9,9 @@
     padding: 0;
     box-sizing: border-box;
 
-    /* Remove grey tap flash on iOS Safari */
+    /* Remove grey tap flash on iOS Safari.
+       BACKLOG: with hover kept for a mouse, most buttons show nothing while a finger
+       presses them — audiogravity.ops/BACKLOG.md (👇). */
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -163,9 +165,11 @@ a {
     transition: color var(--transition-fast);
 }
 
-a[href^="http"]:hover,
-a[href^="https"]:hover {
-    text-decoration: underline;
+@media (hover: hover) {
+    a[href^="http"]:hover,
+    a[href^="https"]:hover {
+        text-decoration: underline;
+    }
 }
 
 /* FORMS BASE */

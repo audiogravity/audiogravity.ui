@@ -101,9 +101,11 @@
     transition: all var(--transition-fast);
 }
 
-.ag-audio-output:hover {
-    border-color: var(--color-info);
-    background: var(--bg-secondary);
+@media (hover: hover) {
+    .ag-audio-output:hover {
+        border-color: var(--color-info);
+        background: var(--bg-secondary);
+    }
 }
 
 .ag-audio-output .icon-volume-medium {
@@ -178,8 +180,10 @@
     transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.config-mode-tab:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .config-mode-tab:hover {
+        color: var(--text-primary);
+    }
 }
 
 .config-mode-tab.active {
@@ -281,10 +285,12 @@
     vertical-align: middle;
 }
 
-.version-icon:hover {
-    opacity: 1;
-    transform: scale(1.1);
-    color: var(--text-primary);
+@media (hover: hover) {
+    .version-icon:hover {
+        opacity: 1;
+        transform: scale(1.1);
+        color: var(--text-primary);
+    }
 }
 
 .version-link.clickable {
@@ -292,9 +298,11 @@
     text-decoration: underline;
 }
 
-.version-link.clickable:hover {
-    color: var(--text-primary);
-    text-decoration: underline;
+@media (hover: hover) {
+    .version-link.clickable:hover {
+        color: var(--text-primary);
+        text-decoration: underline;
+    }
 }
 
 .clickable {
@@ -511,8 +519,10 @@
     transition: background var(--transition-fast);
 }
 
-.config-backup-item:hover {
-    background: var(--bg-primary);
+@media (hover: hover) {
+    .config-backup-item:hover {
+        background: var(--bg-primary);
+    }
 }
 
 .config-backup-filename {
@@ -531,9 +541,11 @@
     transition: all var(--transition-fast);
 }
 
-.config-backup-restore-btn:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
+@media (hover: hover) {
+    .config-backup-restore-btn:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+    }
 }
 
 /* =====================
@@ -800,12 +812,14 @@
  * Config tiles use a different hover effect (background change) instead of
  * the default scale/shadow effect defined in components/badge.css.
  */
-.config-tile .badge.clickable:hover {
-    background-color: var(--text-primary);
-    color: var(--bg-primary);
-    border-color: var(--text-primary);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
+@media (hover: hover) {
+    .config-tile .badge.clickable:hover {
+        background-color: var(--text-primary);
+        color: var(--bg-primary);
+        border-color: var(--text-primary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
 }
 
 .config-selector-grid-container>ag-config-card>.config-tile {

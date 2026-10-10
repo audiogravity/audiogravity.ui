@@ -22,9 +22,11 @@
     transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.ag-theme-toggle:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
+@media (hover: hover) {
+    .ag-theme-toggle:hover {
+        color: var(--text-primary);
+        background: var(--bg-tertiary);
+    }
 }
 
 .ag-theme-toggle:focus-visible {

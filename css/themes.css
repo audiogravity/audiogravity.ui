@@ -386,9 +386,14 @@ body.dark-mode {
 
    /* Preserve essential transforms but remove animations */
    .toast.show,
-   .config-modal.active,
-   .tile:hover {
+   .config-modal.active {
       animation: none !important;
+   }
+
+   @media (hover: hover) {
+       .tile:hover {
+          animation: none !important;
+       }
    }
 
    /* Preserve critical status animations for visibility */
@@ -457,9 +462,14 @@ body.no-animations .spinner {
 
 /* Preserve essential transforms but remove animations */
 body.no-animations .toast.show,
-body.no-animations .config-modal.active,
-body.no-animations .tile:hover {
+body.no-animations .config-modal.active {
    animation: none !important;
+}
+
+@media (hover: hover) {
+    body.no-animations .tile:hover {
+       animation: none !important;
+    }
 }
 
 /* CRITICAL: Override prefers-reduced-motion exceptions when user explicitly disables animations */
@@ -480,19 +490,26 @@ body.no-animations .tile:hover {
 }
 
 /* Disable tile hover transforms and animations */
-body.no-animations .service-tile:hover,
-body.no-animations .profile-tile:hover,
-body.no-animations .systemd-tile:hover,
-body.no-animations .config-tile:hover,
-body.no-animations .software-card:hover,
-body.no-animations .system-tile:hover,
-body.no-animations .governor-tile:hover,
-body.no-animations .icon-btn:hover [class^="icon-"],
-body.no-animations .version-icon:hover [class^="icon-"],
 body.no-animations .icon-btn:active {
    transform: none !important;
    box-shadow: none !important;
    transition: none !important;
+}
+
+@media (hover: hover) {
+    body.no-animations .service-tile:hover,
+    body.no-animations .profile-tile:hover,
+    body.no-animations .systemd-tile:hover,
+    body.no-animations .config-tile:hover,
+    body.no-animations .software-card:hover,
+    body.no-animations .system-tile:hover,
+    body.no-animations .governor-tile:hover,
+    body.no-animations .icon-btn:hover [class^="icon-"],
+    body.no-animations .version-icon:hover [class^="icon-"] {
+       transform: none !important;
+       box-shadow: none !important;
+       transition: none !important;
+    }
 }
 
 /* Remove glow on status bullets/dots and high activity metrics */
@@ -518,12 +535,17 @@ body.no-animations .blink-slow {
 
 
 /* Disable Audio Software animations */
-body.no-animations .software-action-btn:hover,
-body.no-animations .software-action-btn.install:hover,
-body.no-animations .software-action-btn.update:hover,
-body.no-animations .software-action-btn.uninstall:hover,
 body.no-animations .btn-link:active {
    transform: none !important;
+}
+
+@media (hover: hover) {
+    body.no-animations .software-action-btn:hover,
+    body.no-animations .software-action-btn.install:hover,
+    body.no-animations .software-action-btn.update:hover,
+    body.no-animations .software-action-btn.uninstall:hover {
+       transform: none !important;
+    }
 }
 
 body.no-animations .install-progress-fill,

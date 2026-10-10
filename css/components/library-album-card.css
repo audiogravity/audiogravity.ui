@@ -232,8 +232,10 @@
     transition: background var(--transition-fast);
 }
 
-.lib-ac-new:hover .lib-ac-new-cell {
-    background: var(--bg-tertiary);
+@media (hover: hover) {
+    .lib-ac-new:hover .lib-ac-new-cell {
+        background: var(--bg-tertiary);
+    }
 }
 
 .lib-ac-new:focus-visible {

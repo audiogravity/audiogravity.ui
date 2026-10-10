@@ -261,9 +261,11 @@
     user-select: none;
 }
 
-.badge.clickable:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+@media (hover: hover) {
+    .badge.clickable:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+    }
 }
 
 .badge.clickable:active {
@@ -293,6 +295,8 @@ ag-badge button.badge {
    DARK MODE ADJUSTMENTS
    ===================== */
 
-body.dark-mode .badge.clickable:hover {
-    box-shadow: 0 2px 8px rgb(255 255 255 / 0.15);
+@media (hover: hover) {
+    body.dark-mode .badge.clickable:hover {
+        box-shadow: 0 2px 8px rgb(255 255 255 / 0.15);
+    }
 }

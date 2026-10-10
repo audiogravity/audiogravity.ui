@@ -86,8 +86,10 @@
     transition: color var(--transition-fast);
 }
 
-.modal-close:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
 }
 
 .modal-body {
@@ -206,9 +208,11 @@
     transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.manual-toc-item:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+@media (hover: hover) {
+    .manual-toc-item:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 }
 
 .manual-toc-item.active {
@@ -286,8 +290,10 @@
     text-decoration: none;
 }
 
-.manual-md a:hover {
-    text-decoration: underline;
+@media (hover: hover) {
+    .manual-md a:hover {
+        text-decoration: underline;
+    }
 }
 
 /* Screenshots are authored with an explicit width in the Markdown (they are phone captures
@@ -394,9 +400,14 @@
     box-shadow: calc(var(--spacing-sm) - 1px) 0 0 var(--bg-tertiary);
 }
 
-.manual-md .manual-copy:hover,
 .manual-md .manual-copy.is-copied {
     color: var(--text-primary);
+}
+
+@media (hover: hover) {
+    .manual-md .manual-copy:hover {
+        color: var(--text-primary);
+    }
 }
 
 .manual-md .manual-copy svg {

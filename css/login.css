@@ -495,8 +495,10 @@ html:has(> body.login-page) {
     text-underline-offset: 2px;
 }
 
-.btn-link:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .btn-link:hover {
+        color: var(--text-primary);
+    }
 }
 
 /* Footer */

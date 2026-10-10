@@ -32,9 +32,11 @@
     transition: all var(--transition-fast);
 }
 
-.filter-btn:hover {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
+@media (hover: hover) {
+    .filter-btn:hover {
+        border-color: var(--text-primary);
+        color: var(--text-primary);
+    }
 }
 
 /* .filter-btn.active: the chosen look every row of selectors shares (components/button.css). */

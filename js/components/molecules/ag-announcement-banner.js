@@ -143,7 +143,9 @@ export class AgAnnouncementBanner extends LitElement {
                     vertical-align: -0.15em;
                     margin-left: var(--spacing-xs);
                 }
-                ag-announcement-banner .ag-ann-link:hover { text-decoration: underline; }
+                @media (hover: hover) {
+                    ag-announcement-banner .ag-ann-link:hover { text-decoration: underline; }
+                }
                 ag-announcement-banner .ag-ann-dismiss {
                     display: flex;
                     background: none;
@@ -154,7 +156,9 @@ export class AgAnnouncementBanner extends LitElement {
                     flex-shrink: 0;
                 }
                 ag-announcement-banner .ag-ann-dismiss svg { width: var(--font-size-md); height: var(--font-size-md); }
-                ag-announcement-banner .ag-ann-dismiss:hover { color: var(--text-primary); }
+                @media (hover: hover) {
+                    ag-announcement-banner .ag-ann-dismiss:hover { color: var(--text-primary); }
+                }
             </style>
             ${visible.map(a => html`
                 <div class="ag-ann-banner ${a.type}">

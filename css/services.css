@@ -27,9 +27,11 @@
     transition: color var(--transition-fast), transform var(--transition-fast);
 }
 
-.toggle-metrics-icon:hover {
-    color: var(--text-primary);
-    transform: scale(1.1);
+@media (hover: hover) {
+    .toggle-metrics-icon:hover {
+        color: var(--text-primary);
+        transform: scale(1.1);
+    }
 }
 
 .toggle-metrics-icon:active {
@@ -104,9 +106,11 @@
     transition: opacity var(--transition-fast);
 }
 
-.service-name-clickable:hover {
-    opacity: 0.75;
-    text-decoration: underline;
+@media (hover: hover) {
+    .service-name-clickable:hover {
+        opacity: 0.75;
+        text-decoration: underline;
+    }
 }
 
 /* =====================
@@ -247,8 +251,10 @@
     transition: color var(--transition-fast);
 }
 
-.metric-close-btn:hover {
-    color: var(--text-primary);
+@media (hover: hover) {
+    .metric-close-btn:hover {
+        color: var(--text-primary);
+    }
 }
 
 /* Expanded metric content */

@@ -292,7 +292,9 @@ export class AgUpdateBanner extends LitElement {
                     text-decoration: none;
                     font-size: var(--font-size-xs);
                 }
-                ag-update-banner .ag-upd-link:hover { text-decoration: underline; }
+                @media (hover: hover) {
+                    ag-update-banner .ag-upd-link:hover { text-decoration: underline; }
+                }
                 ag-update-banner .ag-upd-btn { align-self: center; flex-shrink: 0; }
             </style>
         `;

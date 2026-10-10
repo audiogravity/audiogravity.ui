@@ -334,8 +334,10 @@
     gap: 4px;
 }
 
-.restart-badge:hover {
-    filter: brightness(1.15);
+@media (hover: hover) {
+    .restart-badge:hover {
+        filter: brightness(1.15);
+    }
 }
 
 /* Documentation link in footer */
@@ -354,9 +356,11 @@
     flex-shrink: 0;
 }
 
-.doc-link:hover {
-    color: var(--accent-primary);
-    background: var(--accent-primary-alpha);
+@media (hover: hover) {
+    .doc-link:hover {
+        color: var(--accent-primary);
+        background: var(--accent-primary-alpha);
+    }
 }
 
 .install-progress-container {
@@ -396,9 +400,11 @@
     transition: all 0.2s ease;
 }
 
-.btn-link:hover {
-    background: var(--accent-primary-alpha);
-    color: var(--accent-hover);
+@media (hover: hover) {
+    .btn-link:hover {
+        background: var(--accent-primary-alpha);
+        color: var(--accent-hover);
+    }
 }
 
 .btn-link:active {
@@ -468,8 +474,10 @@
     transition: border-color var(--transition-fast);
 }
 
-.ag-pid-choice:hover {
-    border-color: var(--accent-primary);
+@media (hover: hover) {
+    .ag-pid-choice:hover {
+        border-color: var(--accent-primary);
+    }
 }
 
 .ag-pid-choice-major {
