@@ -120,6 +120,10 @@
 
     /* Indigo-500 */
     --accent-primary-alpha: rgb(99 102 241 / 0.1);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #4F46E5;
     --accent-hover: #4F46E5;
 
     /* Indigo-600 */
@@ -282,6 +286,10 @@
 
     /* Indigo-400 (lighter for dark mode) */
     --accent-primary-alpha: rgb(129 140 248 / 0.15);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #A5B4FC;
     --accent-hover: #A5B4FC;
 
     /* Indigo-300 */

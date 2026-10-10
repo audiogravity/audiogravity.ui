@@ -839,7 +839,7 @@ export class AgTabs extends LitElement {
                             <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" role="img" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning-text);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>
                         ` : ''}
                         ${!locked && tab.id === 'admin' && this._updateAvailable ? html`
-                            <span role="img" aria-label="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning-text)' : 'var(--accent-primary)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
+                            <span role="img" aria-label="Update available" style="margin-left:.3em;color:${this._updateMandatory ? 'var(--color-warning-text)' : 'var(--accent-primary-text)'};flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg></span>
                         ` : ''}
                         ${this._tabStats[tab.id] ? html`<span class="tab-stats">${
                             `${this._tabStats[tab.id].num}/${this._tabStats[tab.id].den}`

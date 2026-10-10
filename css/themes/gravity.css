@@ -80,6 +80,10 @@
     /* Accent Colors - Gravity Blue/Indigo */
     --accent-primary: #6366f1;
     --accent-primary-alpha: rgb(99 102 241 / 0.1);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #4F46E5;
     --accent-hover: #4f46e5;
 
     /* Accessibility */
@@ -203,6 +207,10 @@
     /* Accent - Neon Blue */
     --accent-primary: #00f2fe;
     --accent-primary-alpha: rgb(0 242 254 / 0.1);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #00f2fe;
     --accent-hover: #4facfe;
 
     /* Syntax Highlighting */

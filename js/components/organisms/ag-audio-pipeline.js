@@ -253,7 +253,7 @@ export class AgAudioPipeline extends LitElement {
         }
 
         .controls-toggle:hover {
-            color: var(--accent-primary);
+            color: var(--accent-primary-text);
         }
 
         .controls.collapsed .control-group {
@@ -666,7 +666,7 @@ export class AgAudioPipeline extends LitElement {
         .network-popover-title {
             font-size: var(--font-size-xxs);
             font-weight: 700;
-            color: var(--accent-primary);
+            color: var(--accent-primary-text);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
@@ -859,7 +859,7 @@ export class AgAudioPipeline extends LitElement {
         .link-bubble-title {
             font-size: var(--font-size-xxs);
             font-weight: 700;
-            color: var(--accent-primary);
+            color: var(--accent-primary-text);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
@@ -1686,9 +1686,9 @@ export class AgAudioPipeline extends LitElement {
 
                     <div class="control-group control-group--ruled control-group--grid">
                         <button class="zoom-btn" @click=${this._resetLayout}>RESET</button>
-                        <button class="zoom-btn" @click=${this._toggleLegend} style="background: var(--accent-primary-alpha); color: var(--accent-primary);">LEGEND</button>
-                        <button class="zoom-btn" @click=${this._toggleMinimap} style="background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary)' : 'var(--text-primary)'};">MINIMAP</button>
-                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary)' : 'var(--text-primary)'};">NETWORK</button>
+                        <button class="zoom-btn" @click=${this._toggleLegend} style="background: var(--accent-primary-alpha); color: var(--accent-primary-text);">LEGEND</button>
+                        <button class="zoom-btn" @click=${this._toggleMinimap} style="background: ${this.showMinimap ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showMinimap ? 'var(--accent-primary-text)' : 'var(--text-primary)'};">MINIMAP</button>
+                        <button class="zoom-btn" @click=${this._toggleNetworkLinks} style="background: ${this.showNetworkLinks ? 'var(--accent-primary-alpha)' : 'var(--bg-tertiary)'}; color: ${this.showNetworkLinks ? 'var(--accent-primary-text)' : 'var(--text-primary)'};">NETWORK</button>
                     </div>
 
                     <div class="control-group control-group--ruled control-group--toggles">

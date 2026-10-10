@@ -314,7 +314,7 @@ ag-now-playing {
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     line-height: 1.2;
 }
 
@@ -431,7 +431,7 @@ ag-now-playing {
 @media (hover: hover) {
     .np-btn:hover {
         background: var(--bg-hover);
-        color: var(--accent-primary);
+        color: var(--accent-primary-text);
     }
 }
 

@@ -43,7 +43,7 @@ body:has(ag-now-playing) .pwa-install-banner {
     flex-shrink: 0;
     width: 18px;
     height: 18px;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
 }
 
 .pwa-install-banner__text {

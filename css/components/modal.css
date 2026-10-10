@@ -214,7 +214,7 @@
 .manual-toc-item.active {
     background: var(--bg-tertiary);
     border-left-color: var(--accent-primary);
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
 }
 
 .manual-content {
@@ -235,7 +235,7 @@
 }
 
 .manual-status a {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
 }
 
 /* Rendered Markdown — theme tokens only, width-constrained for readability. The reading
@@ -282,7 +282,7 @@
 }
 
 .manual-md a {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     text-decoration: none;
 }
 

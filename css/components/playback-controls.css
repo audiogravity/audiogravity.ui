@@ -35,7 +35,7 @@
 }
 
 .ag-pc-ctrl.active {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     background: var(--accent-primary-alpha);
 }
 

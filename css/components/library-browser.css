@@ -138,7 +138,7 @@
 }
 
 /* ── Roon action-item tinted cover variant ── */
-ag-library-cover.lib-browser-cv--act { color: var(--accent-primary); }
+ag-library-cover.lib-browser-cv--act { color: var(--accent-primary-text); }
 
 ag-library-cover.lib-browser-cv--act .ag-libcv {
     background: var(--accent-primary-alpha);

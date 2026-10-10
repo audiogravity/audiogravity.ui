@@ -301,7 +301,7 @@ body:not(.npfs-open) .topbar {
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     align-self: flex-start;
 }
 
@@ -589,7 +589,7 @@ body:not(.npfs-open) .topbar {
     }
 }
 
-.npfs-header-btn.active { color: var(--accent-primary); }
+.npfs-header-btn.active { color: var(--accent-primary-text); }
 
 /* ── Hi-res badge on cover ── */
 

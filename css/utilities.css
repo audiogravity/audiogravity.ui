@@ -34,7 +34,7 @@
 /* Text colors */
 .text-primary-color { color: var(--text-primary); }
 .text-secondary-color { color: var(--text-secondary); }
-.text-accent { color: var(--accent-primary); }
+.text-accent { color: var(--accent-primary-text); }
 
 /* Font sizes */
 .text-sm { font-size: var(--font-size-sm); }

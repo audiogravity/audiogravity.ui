@@ -118,6 +118,10 @@
     /* Accent Colors (for buttons, links, etc.) */
     --accent-primary: #000000;
     --accent-primary-alpha: rgb(0 0 0 / 0.1);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #000000;
     --accent-hover: #333333;
 
     /* Accessibility: focus outline */
@@ -302,6 +306,10 @@
     /* Accent Colors (for buttons, links, etc.) */
     --accent-primary: #FFFFFF;
     --accent-primary-alpha: rgb(255 255 255 / 0.15);
+
+    /* The accent as TEXT (rule 8): 4.5:1 on all three grounds and on its own tint,
+       which --accent-primary itself is not in every theme. */
+    --accent-primary-text: #FFFFFF;
     --accent-hover: #CCCCCC;
 
     /* Sparkline: SVG grid line — Dark Mode */
