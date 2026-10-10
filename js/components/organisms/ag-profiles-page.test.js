@@ -155,3 +155,20 @@ describe('ag-profiles-page — a switch that never reports back', () => {
         expect(el._loadProfiles).not.toHaveBeenCalled();
     });
 });
+
+describe('profile names in the confirm question', () => {
+    // showConfirm shows a string message as text: the name goes in raw — escaped,
+    // `&lt;` would show on screen.
+    it('puts the name raw, critical profile or not', async () => {
+        showConfirm.mockResolvedValue(false);
+        for (const critical of [false, true]) {
+            const el = makeEl();
+            el.profiles = [{ id: 'p', name: '<b>Hi-Fi</b>', state: 'inactive', critical }];
+            await el._handleToggleProfile({ detail: { profileId: 'p' } });
+            const message = showConfirm.mock.calls.at(-1)[1];
+            expect(message, `critical=${critical}`).toContain('"<b>Hi-Fi</b>"');
+            expect(message, `critical=${critical}`).not.toContain('&lt;');
+            el.disconnectedCallback();
+        }
+    });
+});

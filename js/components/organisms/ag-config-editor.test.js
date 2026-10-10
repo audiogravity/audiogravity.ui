@@ -470,3 +470,17 @@ describe('AgConfigEditor — the Expert editor is loaded on demand', () => {
         expect(window.showToast).toHaveBeenCalledWith('error', expect.any(String), expect.stringMatching(/could not be loaded/));
     });
 });
+
+describe('AgConfigEditor — the backup name in the restore question', () => {
+    // showConfirm shows a string message as text: the name goes in raw — escaped,
+    // `&lt;` would show on screen.
+    afterEach(() => { delete window.showConfirm; });
+
+    it('puts the file name raw', () => {
+        window.showConfirm = vi.fn().mockResolvedValue(false);
+        new AgConfigEditor()._handleRestore('mpd.conf.<b>x</b>.bak');
+        const message = window.showConfirm.mock.calls[0][1];
+        expect(message).toContain('from mpd.conf.<b>x</b>.bak.');
+        expect(message).not.toContain('&lt;');
+    });
+});

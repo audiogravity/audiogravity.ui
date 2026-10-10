@@ -23,7 +23,6 @@ import {
     showConfirm,
     handleError,
     AppState,
-    escapeHtml,
     addToHistory,
 } from '../../common.js';
 import { getCurrentUser, isAdmin, replaceToken } from '../../auth.js';
@@ -246,7 +245,7 @@ export class AgAdminPage extends LitElement {
         const username = e.detail.username;
         const confirmed = await showConfirm(
             'Delete User',
-            `Are you sure you want to completely delete the user <strong>${escapeHtml(username)}</strong>? This cannot be undone.`,
+            html`Are you sure you want to completely delete the user <strong>${username}</strong>? This cannot be undone.`,
             { destructive: true }
         );
 

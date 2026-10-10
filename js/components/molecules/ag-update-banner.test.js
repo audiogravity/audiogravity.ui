@@ -18,7 +18,7 @@ vi.mock('../../ui-helpers.js', () => ({
 
 import { apiGet, apiPost } from '../../api.js';
 import { isAdmin } from '../../auth.js';
-import { showToast } from '../../ui-helpers.js';
+import { showConfirm, showToast } from '../../ui-helpers.js';
 import { isUpdateAvailable, updatePhaseLabel, updateFailureText } from './ag-update-banner.js';
 
 const POLL_MS = 3000;
@@ -137,6 +137,17 @@ describe('ag-update-banner — mounted', () => {
 
     /** How many times the progress has been polled. */
     const polls = () => apiGet.mock.calls.filter(([path]) => path === '/sysinfo/update-status').length;
+
+    it('puts the offered version raw in the confirm question', async () => {
+        // The version comes from the network; showConfirm shows a string as text.
+        offer = { available: true, latest: '1.0<b>x</b>' };
+        await mount();
+        showConfirm.mockResolvedValueOnce(false);
+        await el._handleUpdate();
+        const message = showConfirm.mock.calls.at(-1)[1];
+        expect(message).toContain('Install v1.0<b>x</b>?');
+        expect(message).not.toContain('&lt;');
+    });
 
     describe('the Admin-tab badge (update-badge event)', () => {
         /** The badge details emitted while mounting with ``update`` on offer. */

@@ -38,6 +38,7 @@ vi.mock('../molecules/ag-service-card.js', () => ({}));
 
 import { AgServicesPage } from './ag-services-page.js';
 import { EventEmitter } from '../../common.js';
+import { showConfirm } from '../../ui-helpers.js';
 import { flat } from '../../test-utils.js';
 
 
@@ -363,5 +364,32 @@ describe('the detail window follows the live figures', () => {
         el.services = [];
         el._detailName = 'mpd';
         expect(el._detailServiceNow()).toBe(null);
+    });
+});
+
+describe('service names in the confirm questions', () => {
+    // showConfirm shows a string message as text: the name goes in raw — escaped,
+    // `&lt;` would show on screen.
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    function withService() {
+        const el = Object.create(AgServicesPage.prototype);
+        el.services = [{ id: 'svc', name: '<b>MPD</b>', enabled: true, state: 'active' }];
+        return el;
+    }
+
+    it('puts the name raw when asking to restart, toggle and start/stop', async () => {
+        showConfirm.mockResolvedValue(false);
+        const el = withService();
+        const handlers = ['_handleRestartService', '_handleToggleEnabled', '_handleToggleService'];
+        for (const [i, handler] of handlers.entries()) {
+            await el[handler]({ detail: { serviceId: 'svc' } });
+            // One question per handler: a handler returning before it asks would
+            // otherwise pass on the previous handler's message.
+            expect(showConfirm, handler).toHaveBeenCalledTimes(i + 1);
+            const message = showConfirm.mock.calls[i][1];
+            expect(message, handler).toContain('"<b>MPD</b>"');
+            expect(message, handler).not.toContain('&lt;');
+        }
     });
 });

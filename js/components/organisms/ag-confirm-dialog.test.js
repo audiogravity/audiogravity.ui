@@ -145,3 +145,14 @@ describe('the confirmations that delete or remove', () => {
         }
     });
 });
+
+describe('the message property', () => {
+    it('is shown as text, tags included', async () => {
+        // Markup goes through messageTemplate (a Lit template); a string never is.
+        const message = '<img src=x onerror="window.__pwned=1">Hi';
+        const el = await dialog({ message });
+        const box = el.querySelector('#dialogMessage');
+        expect(box.querySelector('img')).toBeNull();
+        expect(box.textContent.trim()).toBe(message);
+    });
+});

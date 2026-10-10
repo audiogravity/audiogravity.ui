@@ -5,7 +5,6 @@
  */
 
 import { LitElement, html } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import './ag-modal.js';
 
 /**
@@ -13,7 +12,8 @@ import './ag-modal.js';
  * @element ag-confirm-dialog
  *
  * @attr {string} title - Dialog title
- * @attr {string} message - Dialog message (supports HTML)
+ * @attr {string} message - Dialog message, shown as text (markup: set `messageTemplate`
+ *   to a Lit TemplateResult)
  * @attr {boolean} show - Controls visibility
  * @attr {boolean} info-mode - If true, hides cancel button (info modal)
  * @attr {boolean} destructive - The action deletes or removes something: OK is orange,
@@ -115,7 +115,7 @@ export class AgConfirmDialog extends LitElement {
                 @modal-close=${() => this._handleModalClose()}
                 .bodyTemplate=${html`
                     <div id="dialogMessage">
-                        ${this.messageTemplate ? this.messageTemplate : unsafeHTML(this.message || '')}
+                        ${this.messageTemplate ? this.messageTemplate : (this.message || '')}
                     </div>
                 `}
                 .footerTemplate=${html`
