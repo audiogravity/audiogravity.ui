@@ -160,7 +160,7 @@ h3 {
 
 /* LINKS */
 a {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     text-decoration: none;
     transition: color var(--transition-fast);
 }

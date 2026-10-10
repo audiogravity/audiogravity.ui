@@ -74,8 +74,7 @@ ag-mobile-pipeline .amp-source-badge { display: inline-flex; align-items: center
 ag-mobile-pipeline .amp-source-row .ag-source-badge { font-size: var(--font-size-xxs); }
 ag-mobile-pipeline .amp-source-badge[data-color="roon"]    { background: var(--color-info-bg); color: var(--color-info-text); }
 ag-mobile-pipeline .amp-source-badge[data-color="airplay"] { background: var(--color-warning-bg); color: var(--color-warning-text); }
-/* BACKLOG: MPD writes in the accent, under 4.5:1 in Slate and Gravity light — see BACKLOG.md. */
-ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary); }
+ag-mobile-pipeline .amp-source-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary-text); }
 ag-mobile-pipeline .amp-source-badge[data-color="default"] { background: var(--color-success-bg); color: var(--color-success-text); }
 /* The pulse animates the dot's COLOUR, not its opacity or its scale — deliberately.
  *
@@ -103,7 +102,7 @@ ag-mobile-pipeline .amp-np-album  { font-size: var(--font-size-xs); color: var(-
 ag-mobile-pipeline .amp-np-idle   { font-size: var(--font-size-sm); color: var(--text-tertiary); margin-bottom: 12px; font-style: italic; }
 ag-mobile-pipeline .amp-format-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--spacing-md); }
 ag-mobile-pipeline .amp-fmt-chip { font-size: var(--font-size-xxs); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); letter-spacing: 0.4px; background: var(--color-success-bg); color: var(--color-success-text); }
-ag-mobile-pipeline .amp-fmt-chip.dim { background: var(--accent-primary-alpha); color: var(--accent-primary); }
+ag-mobile-pipeline .amp-fmt-chip.dim { background: var(--accent-primary-alpha); color: var(--accent-primary-text); }
 ag-mobile-pipeline .amp-chain-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-xs); padding: 16px; margin-bottom: 10px; }
 ag-mobile-pipeline .amp-nochain .amp-nochain-line { margin: 0 0 var(--spacing-sm); color: var(--text-secondary); font-size: var(--font-size-xs); line-height: 1.5; }
 ag-mobile-pipeline .amp-nochain .amp-nochain-line:last-child { margin-bottom: 0; }
@@ -122,7 +121,7 @@ ag-mobile-pipeline .amp-device-icon span { font-size: var(--font-size-sm); }
    controller have no semantic AG token) — kept literal on purpose (UI rule 6 exception). */
 ag-mobile-pipeline .amp-device-icon.controller { background: rgba(245,158,11,0.15); color: #f59e0b; }
 ag-mobile-pipeline .amp-device-icon.server     { background: var(--color-info-bg);  color: var(--color-info-text); }
-ag-mobile-pipeline .amp-device-icon.streamer   { background: var(--accent-primary-alpha);  color: var(--accent-primary); }
+ag-mobile-pipeline .amp-device-icon.streamer   { background: var(--accent-primary-alpha);  color: var(--accent-primary-text); }
 ag-mobile-pipeline .amp-device-icon.converter  { background: rgba(139,92,246,0.15);  color: #a78bfa; }
 ag-mobile-pipeline .amp-device-icon.amplifier  { background: rgba(236,72,153,0.15);  color: #f472b6; }
 ag-mobile-pipeline .amp-device-icon.output     { background: var(--color-success-bg);  color: var(--color-success-text); }
@@ -137,7 +136,7 @@ ag-mobile-pipeline .amp-svc-badge[data-color="roon"]    { background: var(--colo
 ag-mobile-pipeline .amp-svc-badge[data-color="roon"] .dot { background: var(--color-info); }
 ag-mobile-pipeline .amp-svc-badge[data-color="airplay"] { background: var(--color-warning-bg); color: var(--color-warning-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="airplay"] .dot { background: var(--color-warning); }
-ag-mobile-pipeline .amp-svc-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary); }
+ag-mobile-pipeline .amp-svc-badge[data-color="mpd"]     { background: var(--accent-primary-alpha); color: var(--accent-primary-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="mpd"] .dot { background: var(--accent-primary); }
 ag-mobile-pipeline .amp-svc-badge[data-color="default"] { background: var(--color-success-bg); color: var(--color-success-text); }
 ag-mobile-pipeline .amp-svc-badge[data-color="default"] .dot { background: var(--color-success); }

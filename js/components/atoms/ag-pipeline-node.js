@@ -421,7 +421,7 @@ export const renderPipelineNode = (node) => {
                     <rect width="${badgeWidth}" height="34" rx="4" style="fill: var(--bg-tertiary); stroke: var(--border-color); stroke-width: 1;" />
                     <g transform="translate(8, 8) scale(0.7)"><path d="${volumePath}" fill="var(--color-info)" /></g>
                     <text x="30" y="21" style="fill: var(--text-secondary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace);">${deviceName}</text>
-                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--accent-primary); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
+                    <text x="${badgeWidth - 8}" y="21" style="fill: var(--accent-primary-text); font-size: 10px; font-weight: bold; font-family: var(--font-mono, monospace); text-anchor: end;">${volumeLevel}</text>
                 </g>
             </g>
         `;
@@ -512,10 +512,10 @@ export const renderPipelineNode = (node) => {
                         <!-- Metadata: Track info -->
                         <text x="30" y="32" style="fill: var(--text-secondary); font-size: 9px; font-style: italic;">${displayTrackText}</text>
                         <!-- Quality Info -->
-                        <text x="30" y="42" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="42" style="fill: var(--accent-primary-text); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     ` : svg`
                         <!-- Quality Info (if no title) -->
-                        <text x="30" y="30" style="fill: var(--accent-primary); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
+                        <text x="30" y="30" style="fill: var(--accent-primary-text); font-size: 7px; font-weight: bold; text-transform: uppercase;">${sourceFormat || ''}</text>
                     `}
 
                     <!-- Software Output Port (Green circle on the right) -->

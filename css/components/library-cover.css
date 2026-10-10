@@ -179,7 +179,7 @@ ag-library-add-btn {
 }
 
 .lib-lr-fav.on {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     border-color: var(--accent-primary);
 }
 

@@ -41,7 +41,7 @@
 .orientation-gate-icon svg {
     width: 56px;
     height: 56px;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
 }
 
 .orientation-gate-title {

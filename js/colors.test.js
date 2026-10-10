@@ -37,10 +37,18 @@ const SEMANTIC = ['success', 'error', 'warning', 'info'];
  */
 const SYNTAX_TOKENS = ['--syntax-key', '--syntax-string', '--syntax-number', '--syntax-boolean', '--syntax-null'];
 
+/**
+ * The accent as text. --accent-primary is chosen for fills and borders; written as text
+ * it read 3.47 to 4.47:1 in Slate and Gravity (computed 2026-10-05), so the themes
+ * declare a text variant, as they do for the semantic roles.
+ */
+const ACCENT_TEXT = '--accent-primary-text';
+
 /** Every token a `color:` declaration is allowed to resolve to. */
 const TEXT_TOKENS = [
     '--text-primary', '--text-secondary', '--text-tertiary',
     ...SEMANTIC.map(n => `--color-${n}-text`),
+    ACCENT_TEXT,
     ...SYNTAX_TOKENS,
 ];
 
@@ -61,6 +69,25 @@ const COMPONENTS = [
  * @returns {string}
  */
 const strip = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+/**
+ * Where a source paints text in the base accent: a `color:` whose value names
+ * --accent-primary, or an SVG <text> filled with it.
+ *
+ * The `color:` window runs to the next `;` or `}` rather than stopping at `{`: in a
+ * template literal the value is an interpolation — `color: ${x ? 'var(--accent-primary)'
+ * : …}` — and a pattern that stops at `{` cannot see past the `${`. A `}` ends the
+ * rule, and would carry the window into the next one's values.
+ *
+ * @param {string} css - A source, comments stripped.
+ * @returns {string[]} The offending snippets.
+ */
+function accentAsText(css) {
+    return [
+        ...css.matchAll(/(?<![-\w])color\s*:[^;}]{0,200}?var\(--accent-primary\)/g),
+        ...css.matchAll(/<text\b[^>]*?(?<![-\w])fill\s*[:=]\s*"?var\(--accent-primary\)/g),
+    ].map(m => m[0].replace(/\s+/g, ' ').slice(0, 80));
+}
 
 /**
  * Relative luminance of an sRGB hex colour, per WCAG 2.
@@ -187,6 +214,7 @@ describe('colours — every text token clears the floor (règle 8)', () => {
                     expect(tokens[`--color-${n}-text`],
                         `${theme} ${mode} : --color-${n}-text manquant`).toBeDefined();
                 }
+                expect(tokens[ACCENT_TEXT], `${theme} ${mode} : ${ACCENT_TEXT} manquant`).toBeDefined();
             }
         }
     });
@@ -230,6 +258,10 @@ describe('colours — text on its own tint, as a tag sits on a card (règle 8)',
                     const ratio = contrast(text, over(tint, card));
                     if (ratio < 4.5) failing.push(`--color-${n}-text=${text} ${ratio.toFixed(2)}:1`);
                 }
+                // The accent's tags too: MPD's badges in the mobile pipeline, the dim
+                // format chip — 3.88 to 3.95:1 with --accent-primary as their text.
+                const accent = contrast(tokens[ACCENT_TEXT], over(tokens['--accent-primary-alpha'], card));
+                if (accent < 4.5) failing.push(`${ACCENT_TEXT}=${tokens[ACCENT_TEXT]} ${accent.toFixed(2)}:1`);
                 expect(failing, `sous 4,5:1 sur la teinte : ${failing.join(' · ')}`).toEqual([]);
             });
         }
@@ -443,16 +475,36 @@ describe('colours — components read roles, never values (règle 6)', () => {
         const offenders = [];
         for (const file of COMPONENTS) {
             const css = strip(fs.readFileSync(file, 'utf8'));
-            // The window runs to the next `;` rather than stopping at a brace:
+            // The window runs to the next `;` or `}` rather than stopping at `{`:
             // half of these declarations are inside template literals, where the
             // value is an interpolation — `color: ${x ? 'var(--color-error)' : …}`
-            // — and a pattern that stops at `{` cannot see past the `${`.
+            // — and a pattern that stops at `{` cannot see past the `${`. A `}`
+            // ends the rule, and would carry the window into the next one's values.
             for (const [, role] of css.matchAll(
-                /(?<![-\w])color\s*:[^;]{0,200}?var\(--color-(success|error|warning|info)\)/g,
+                /(?<![-\w])color\s*:[^;}]{0,200}?var\(--color-(success|error|warning|info)\)/g,
             )) {
                 offenders.push(`${path.relative(ROOT, file)} — color: var(--color-${role})`);
             }
         }
         expect(offenders, `texte sur un jeton de base :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('paints text in the accent with its text variant, never --accent-primary', () => {
+        // An SVG <text> is text too, and takes its colour from `fill`: the pipeline
+        // diagram's volume and source format sat at 3.5:1 on its grey cards.
+        const offenders = COMPONENTS.flatMap(file => accentAsText(strip(fs.readFileSync(file, 'utf8')))
+            .map(snippet => `${path.relative(ROOT, file)} — ${snippet}`));
+        expect(offenders, `texte dans l'accent de base :\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('reads the accent as text where it is, and only there', () => {
+        expect(accentAsText('.a { color: var(--accent-primary); }')).toHaveLength(1);
+        expect(accentAsText("color: ${on ? 'var(--accent-primary)' : 'inherit'};")).toHaveLength(1);
+        expect(accentAsText('<text x="${w - 8}" style="fill: var(--accent-primary)">')).toHaveLength(1);
+        expect(accentAsText('<text fill="var(--accent-primary)">')).toHaveLength(1);
+        // Not text: a border, a shape's fill, the next rule's background.
+        expect(accentAsText('.a { border-color: var(--accent-primary); }')).toEqual([]);
+        expect(accentAsText('<rect style="fill: var(--accent-primary)" />')).toEqual([]);
+        expect(accentAsText('.a { color: red } .b { background: var(--accent-primary) }')).toEqual([]);
     });
 });

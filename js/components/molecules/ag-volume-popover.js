@@ -53,7 +53,7 @@ ag-volume-popover { display: block; }
     .avp-btn:hover { background: var(--bg-hover, var(--bg-tertiary)); }
 }
 .avp-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
-.avp-btn.active { color: var(--accent-primary); }
+.avp-btn.active { color: var(--accent-primary-text); }
 
 /* ── Popover ── */
 .avp-popover {

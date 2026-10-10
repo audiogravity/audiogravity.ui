@@ -358,7 +358,7 @@
 
 @media (hover: hover) {
     .doc-link:hover {
-        color: var(--accent-primary);
+        color: var(--accent-primary-text);
         background: var(--accent-primary-alpha);
     }
 }
@@ -389,7 +389,7 @@
 .btn-link {
     background: none;
     border: none;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     cursor: pointer;
     font-size: var(--font-size-sm);
     padding: 4px 8px;

@@ -295,14 +295,14 @@
     }
 }
 
-.lib-radio-star.on { color: var(--accent-primary); }
+.lib-radio-star.on { color: var(--accent-primary-text); }
 .lib-radio-more.on { color: var(--text-primary); }
 
 @media (hover: hover) {
     .lib-radio-star:hover,
     .lib-radio-more:hover,
     .lib-radio-lib:hover { color: var(--text-primary); }
-    .lib-radio-star.on:hover { color: var(--accent-primary); }
+    .lib-radio-star.on:hover { color: var(--accent-primary-text); }
 }
 
 /* The "more" actions, unfolded under their station: worded compact buttons, where the

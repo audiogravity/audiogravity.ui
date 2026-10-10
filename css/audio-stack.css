@@ -102,7 +102,7 @@
    row stays narrow and the output label keeps room to truncate on mobile. */
 .ag-prov-rec {
     display: inline-flex;
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
 }
 
 .ag-prov-card-icon {

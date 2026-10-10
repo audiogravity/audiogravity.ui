@@ -259,7 +259,7 @@ export class AgUpdateBanner extends LitElement {
                     font-size: var(--font-size-sm);
                 }
                 ag-update-banner .ag-upd-banner.mandatory { border-left-color: var(--color-warning); }
-                ag-update-banner .ag-upd-icon  { color: var(--accent-primary); flex-shrink: 0; display: flex; }
+                ag-update-banner .ag-upd-icon  { color: var(--accent-primary-text); flex-shrink: 0; display: flex; }
                 ag-update-banner .ag-upd-banner.mandatory .ag-upd-icon { color: var(--color-warning-text); }
                 ag-update-banner .ag-upd-body  { flex: 1; }
                 ag-update-banner .ag-upd-title {
@@ -288,7 +288,7 @@ export class AgUpdateBanner extends LitElement {
                 ag-update-banner .ag-upd-link {
                     display: inline-block;
                     margin-top: var(--spacing-xs);
-                    color: var(--accent-primary);
+                    color: var(--accent-primary-text);
                     text-decoration: none;
                     font-size: var(--font-size-xs);
                 }

@@ -606,7 +606,7 @@ body.dark-mode .lib-src-mark-dark { display: block; }
 /* ── UPnP Renderer card ── */
 
 .lib-rdr-ic {
-    color: var(--accent-primary);
+    color: var(--accent-primary-text);
     display: flex;
     align-items: center;
     justify-content: center;
