@@ -112,14 +112,20 @@ export class SwipeToDismissController {
      * should be. The row's transform is already driven imperatively for the same
      * reason: a drag must not re-render its host.
      *
+     * The row is held opaque meanwhile, backdrop or not: on a touch screen a pressed
+     * row fades (base.css, press feedback), and the finger stays down for the whole
+     * drag, so the backdrop showed through it — and a row without one slid as a ghost.
+     * Inline, for the same reason as the transform.
+     *
      * Every step is probed rather than assumed: tests drive the controller with plain
      * objects that are not DOM nodes, and a host may omit the wrapper entirely — in
-     * which case there is no backdrop, and nothing to do.
+     * which case there is no backdrop to show.
      *
      * @param {HTMLElement} el - The swiped row.
      * @param {boolean} on
      */
     _setActive(el, on) {
+        if (el.style) el.style.filter = on ? 'none' : '';
         const wrap = typeof el.closest === 'function' ? el.closest('.ag-swipe-wrap') : null;
         const reveal = wrap?.querySelector?.(REVEAL_SELECTOR);
         if (!reveal?.style) return;
