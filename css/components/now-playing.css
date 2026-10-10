@@ -75,6 +75,14 @@ ag-now-playing {
     cursor: pointer;
 }
 
+/* The details bubble is drawn inside the cover, which is announced as a button: a
+   finger on the bubble — to scroll it — presses the cover too, and the press feedback
+   (base.css) faded the cover and the bubble with it. */
+.np-cover-wrap:has(.np-detail-popover:active) {
+    filter: none;
+    transform: none;
+}
+
 .np-detail-popover {
     position: absolute;
     bottom: calc(100% + 10px);

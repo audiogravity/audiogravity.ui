@@ -163,13 +163,31 @@ export function appSources() {
 
 /**
  * The selectors of a selector list, split on its top-level commas only — inside `:not()`
- * or `:is()` a comma separates arguments, not selectors — trimmed, whitespace collapsed.
+ * or `:is()` a comma separates arguments, not selectors, at any depth
+ * (`:where(:not(a, :has(b, c)))`) — trimmed, whitespace collapsed. A quoted attribute
+ * value is read as text: its commas and brackets split and nest nothing.
  *
  * @param {string} list - A rule's selector list, as written before its `{`.
  * @returns {string[]}
  */
 export function selectorList(list) {
-    return list.split(/,(?![^(]*\))/).map((s) => s.trim().replace(/\s+/g, ' '));
+    const selectors = [];
+    let depth = 0;
+    let from = 0;
+    for (let i = 0; i < list.length; i++) {
+        const c = list[i];
+        if (c === '"' || c === '\'') {
+            i++;
+            while (i < list.length && list[i] !== c) i += list[i] === '\\' ? 2 : 1;
+        } else if (c === '(' || c === '[') depth++;
+        else if (c === ')' || c === ']') depth--;
+        else if (c === ',' && depth === 0) {
+            selectors.push(list.slice(from, i));
+            from = i + 1;
+        }
+    }
+    selectors.push(list.slice(from));
+    return selectors.map((s) => s.trim().replace(/\s+/g, ' '));
 }
 
 /**

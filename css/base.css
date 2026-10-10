@@ -9,9 +9,8 @@
     padding: 0;
     box-sizing: border-box;
 
-    /* Remove grey tap flash on iOS Safari.
-       BACKLOG: with hover kept for a mouse, most buttons show nothing while a finger
-       presses them — audiogravity.ops/BACKLOG.md (👇). */
+    /* Remove grey tap flash on iOS Safari: a pressed button fades instead (see the
+       press feedback below). */
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -187,11 +186,26 @@ button, a, select, [role="button"], [role="tab"], label {
     touch-action: manipulation;
 }
 
-/* Active press feedback — ressenti natif au tap */
+/* Press feedback on a touch screen, where hover is never shown: while the finger is on
+   it, a button shrinks a little and fades. The fade is what the eye catches — a 4%
+   shrink is under 2px on a 40px button. It is a filter, not `opacity`, so that it
+   multiplies a button's own opacity (an inactive log filter sits at 0.35) instead of
+   replacing it.
+   This rule leaves a busy button (aria-disabled) alone. A role="button" card that
+   holds buttons of its own — a radio's star — is :active too while one of them is
+   pressed, as every ancestor of a pressed element is: it stays still, and only the
+   pressed button fades.
+   60ms rather than --transition-fast (150ms): a press must show under the finger at
+   once, not as the finger lifts.
+   A component that draws in its own shadow root is out of this sheet's reach: the
+   audio pipeline diagram's buttons (tablet, phone held sideways) get no press look.
+   BACKLOG: audiogravity.ops/BACKLOG.md (👇). */
 @media (hover: none) and (pointer: coarse) {
-    button:active, [role="button"]:active {
+    button:active:where(:not(:disabled, [aria-disabled="true"])),
+    [role="button"]:active:where(:not([aria-disabled="true"], :has(:is(button, [role="button"]):active))) {
         transform: scale(0.96);
-        transition: transform 60ms ease-out;
+        filter: opacity(0.6);
+        transition: transform 60ms ease-out, filter 60ms ease-out;
     }
 }
 

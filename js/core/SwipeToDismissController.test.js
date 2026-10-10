@@ -352,6 +352,31 @@ describe('SwipeToDismissController', () => {
             expect(revealShown(wrap)).toBe(false);
         });
 
+        it('holds the row opaque over the backdrop while dragging, then lets it go', () => {
+            // A pressed row fades on a touch screen (base.css); the backdrop showed through.
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const { row } = makeRow();
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            expect(row.style.filter).toBe('');        // a press, not yet a swipe: it may fade
+            c.move(ev(150));
+            expect(row.style.filter).toBe('none');
+            c.end(ev(150, 'pointerup'));
+            vi.runAllTimers();
+            expect(row.style.filter).toBe('');
+        });
+
+        it('holds a row without a backdrop opaque too', () => {
+            const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
+            const row = document.createElement('div');
+            document.body.appendChild(row);
+            c.start(ev(200, 'pointerdown'), row, 'row1');
+            c.move(ev(150));
+            expect(row.style.filter).toBe('none');
+            c.end(ev(150, 'pointerup'));
+            vi.runAllTimers();
+            expect(row.style.filter).toBe('');
+        });
+
         it('clears the inline transform once the snap-back has run', () => {
             const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
             const { row } = makeRow();
