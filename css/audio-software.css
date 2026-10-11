@@ -21,7 +21,6 @@
     .software-zone .tab-title-container h2 {
         width: 100%;
         margin-bottom: 0;
-        font-size: var(--font-size-lg);
     }
 
     .dry-run-toggle {

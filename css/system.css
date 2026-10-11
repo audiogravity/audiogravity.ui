@@ -127,10 +127,6 @@
 
 
 
-.backend-logs-zone .tab-title-container {
-    margin-bottom: var(--spacing-md);
-}
-
 .backend-logs-zone .log-controls {
     margin-left: auto;
     display: flex;

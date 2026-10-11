@@ -87,6 +87,23 @@ export function cssRuleBody(css, selector) {
 }
 
 /**
+ * Every rule of a stylesheet that holds declarations — those nested in a `@media`
+ * included — as its selector list and the text between its braces, comments stripped.
+ * A reading by pattern, enough for this interface's CSS: it does not skip strings, so a
+ * brace inside a quoted value would cut a rule short.
+ *
+ * BACKLOG: a dozen guards still parse rules their own way — audiogravity.ops/BACKLOG.md,
+ * "readStylesheet — le lecteur partagé existe".
+ *
+ * @param {string} css - A stylesheet's text (see readStylesheet).
+ * @returns {{selectors: string[], body: string}[]}
+ */
+export function cssRules(css) {
+    return [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .map(([, list, body]) => ({ selectors: selectorList(list.trim()), body }));
+}
+
+/**
  * The body of the first block — `@media`, `@container`, `@keyframes` — whose prelude
  * matches, braces balanced: the rules a screen of that size gets, for cssRuleBody to read,
  * or the steps of an animation.
