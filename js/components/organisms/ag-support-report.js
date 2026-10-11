@@ -154,13 +154,13 @@ export class AgSupportReport extends LitElement {
                     ` : ''}
                 `}
                 .footerTemplate=${html`
-                    <button class="btn-action" ?disabled=${!this._text} @click=${this._copy}>
+                    <button class="action-btn primary" ?disabled=${!this._text} @click=${this._copy}>
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCopy}</svg> Copy
                     </button>
-                    <button class="btn-action" ?disabled=${!this._text} @click=${this._download}>
+                    <button class="action-btn secondary" ?disabled=${!this._text} @click=${this._download}>
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> Download
                     </button>
-                    <button class="btn-action" @click=${this._handleClose}>Close</button>
+                    <button class="action-btn secondary" @click=${this._handleClose}>Close</button>
                 `}>
             </ag-modal>
         `;

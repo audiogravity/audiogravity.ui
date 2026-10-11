@@ -340,16 +340,16 @@ export class AgJsonConfigModal extends LitElement {
                     </div>
                 `}
                 .footerTemplate=${html`
-                    <button class="btn-action" @click=${this._handleClose} ?disabled=${this._isLoading}>
+                    <button class="action-btn secondary" @click=${this._handleClose} ?disabled=${this._isLoading}>
                         Cancel
                     </button>
                     ${this.allowFileTransfer ? html`
-                        <button class="btn-action" @click=${this._handleDownload} ?disabled=${this._isLoading}>
+                        <button class="action-btn secondary" @click=${this._handleDownload} ?disabled=${this._isLoading}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> Download
                         </button>
                     ` : ''}
                     ${this.allowFileTransfer && !this.isGuest ? html`
-                        <button class="btn-action" @click=${this._handleUploadClick} ?disabled=${this._isLoading}
+                        <button class="action-btn secondary" @click=${this._handleUploadClick} ?disabled=${this._isLoading}
                             aria-disabled="${this._cm.state === 'ready' ? 'false' : 'true'}">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpload}</svg> Upload
                         </button>
@@ -357,13 +357,13 @@ export class AgJsonConfigModal extends LitElement {
                     ${!this._isEditMode && !this.isGuest ? html`
                         <!-- Unavailable, not disabled, until the editor exists: a disabled button
                              throws the focus off itself (convention of ag-audio-software-page). -->
-                        <button class="btn-action" @click=${this._enableEditMode}
+                        <button class="action-btn secondary" @click=${this._enableEditMode}
                             aria-disabled="${this._cm.state === 'ready' ? 'false' : 'true'}">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPencil}</svg> Edit
                         </button>
                     ` : ''}
                     ${this._isEditMode ? html`
-                        <button class="btn-action success" @click=${this._handleSave} ?disabled=${!this._isValid || this._isLoading}>
+                        <button class="action-btn primary" @click=${this._handleSave} ?disabled=${!this._isValid || this._isLoading}>
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCheck}</svg> Save
                         </button>
                     ` : ''}

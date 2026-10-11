@@ -16,7 +16,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { readStylesheet, cssRuleBody, openingTags, selectorList, appSources } from './test-utils.js';
+import { join } from 'node:path';
+import { readStylesheet, cssRuleBody, cssRules, filesUnder, openingTags, selectorList, appSources } from './test-utils.js';
 
 /** The pipeline diagram's styles live in its component, in a shadow root. */
 const PIPELINE = ['js', 'components', 'organisms', 'ag-audio-pipeline.js'];
@@ -193,6 +194,52 @@ describe('a dialog\'s buttons', () => {
     it('stay at 29px on a phone: the touch rule\'s 44px is undone (user\'s cap)', () => {
         expect(body).toMatch(/min-height:\s*0/);
         expect(body).toMatch(/min-width:\s*0/);
+    });
+
+    it('are framed, as the confirmation\'s: the grey system is for tiles and panels', () => {
+        // Five windows kept Cancel in grey and Save in green after the sizes were aligned;
+        // the user chose the confirmation's writing for them (2026-10-11, on mock-ups):
+        // Cancel, Close and the tools outlined, the window's main action filled (Save, and
+        // the support report's Copy, made to be pasted), one that interrupts in orange.
+        // Every footer handed to a modal is read, and every footer a window builds in a
+        // method of its own.
+        const grey = appSources().filter((f) => f.endsWith('.js')).flatMap((file) => {
+            const source = readFileSync(file, 'utf8');
+            const footers = [];
+            for (let at = source.indexOf('.footerTemplate='); at >= 0; at = source.indexOf('.footerTemplate=', at + 1)) {
+                footers.push(source.slice(at, source.indexOf('</ag-modal>', at)));
+            }
+            if (source.includes('<ag-modal')) {
+                for (const m of source.matchAll(/\n( +)_render(?:Footer|Actions)\([^)]*\)\s*\{[\s\S]*?\n\1\}/g)) footers.push(m[0]);
+            }
+            return footers.some((footer) => /\bbtn-action\b/.test(footer)) ? [file] : [];
+        });
+        expect(grey, `windows whose footer is grey:\n  ${grey.join('\n  ')}`).toEqual([]);
+    });
+
+    it('look and act unavailable when announced unavailable, as the grey ones do', () => {
+        const css = readStylesheet('css', 'components', 'button.css');
+        expect(cssRuleBody(css, '.action-btn:is(:disabled, [aria-disabled="true"])')).toMatch(/opacity:\s*0\.3/);
+        expect(css).toMatch(/\.action-btn:active:not\(:disabled, \[aria-disabled="true"\]\)/);
+    });
+
+    it('leave an unavailable one alone under the mouse, in every stylesheet', () => {
+        // Excluded from its variant's hover alone, a disabled Cancel fell back on the
+        // generic one and turned black; a copy of the primary rule in layout.css, loaded
+        // later, made a disabled Save react whatever button.css said (both measured).
+        const offenders = filesUnder('css', /\.css$/).flatMap((file) => cssRules(readStylesheet(file))
+            .flatMap(({ selectors, body }) => selectors
+                .filter((s) => /\.action-btn\b/.test(s) && /:hover/.test(s)
+                    && /(?<![-\w])(background|color|border-color)\s*:/.test(body)
+                    && !s.includes(':where(:not(:disabled, [aria-disabled="true"]))'))
+                .map((s) => `${file} — ${s}`)));
+        expect(offenders, `hovers that a disabled button still takes:\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+
+    it('declare the filled one once, in components/button.css', () => {
+        const copies = filesUnder('css', /\.css$/).filter((file) => cssRules(readStylesheet(file))
+            .some(({ selectors }) => selectors.includes('.action-btn.primary')));
+        expect(copies).toEqual([join('css', 'components', 'button.css')]);
     });
 });
 

@@ -365,19 +365,6 @@ ag-tabs:not(:defined) {
     }
 }
 
-.action-btn.primary {
-    background: var(--btn-primary, var(--text-primary));
-    color: var(--bg-primary);
-    border-color: var(--btn-primary, var(--text-primary));
-}
-
-@media (hover: hover) {
-    .action-btn.primary:hover {
-        background: transparent;
-        color: var(--btn-primary, var(--text-primary));
-    }
-}
-
 /* =====================
    TABS — MODE VERTICAL (SIDEBAR) (GLOBAL)
    ===================== */
