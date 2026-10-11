@@ -538,3 +538,42 @@ describe('a narrow bar gives the title its room', () => {
         expect(cssRuleBody(narrowBlock(), '.np-track.np-text--scroll')).toMatch(/animation:\s*none/);
     });
 });
+
+describe('AgNowPlaying — a play/pause tap sends the intent (real _sendControl)', () => {
+    function np(items) {
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({ _items: items, _volumePending: undefined })) {
+            Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        }
+        el._isLicensed = () => true;
+        for (const k of ['_licenseStatus', '_outputs', '_activeOutputId',
+                         '_activeSourceIdx', '_userSourceOverride', '_hasItems']) {
+            Object.defineProperty(el, k, { value: undefined, writable: true, configurable: true });
+        }
+        el.requestUpdate = () => {};
+        el._reportHeight = () => {};
+        return el;
+    }
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({ success: true }); });
+
+    it.each([
+        ['Playing', 'pause', 'Paused'],
+        ['Paused', 'play', 'Playing'],
+    ])('an item shown %s sends %s, then flips', async (status, sent, after) => {
+        const item = { source_id: 'src_mpd', control_id: 'src_mpd', playback_status: status };
+        const el = np([item]);
+        await el._sendControl('src_mpd', 'toggle', null, item);
+        expect(apiPost).toHaveBeenCalledWith('/audio_pipeline/control',
+            expect.objectContaining({ action: sent, source_id: 'src_mpd' }));
+        expect(el._items[0].playback_status).toBe(after);
+    });
+
+    it('still undoes the flip when the core refuses', async () => {
+        const item = { source_id: 'src_mpd', control_id: 'src_mpd', playback_status: 'Paused' };
+        const el = np([item]);
+        apiPost.mockResolvedValueOnce({ success: false });
+        await el._sendControl('src_mpd', 'toggle', null, item);
+        expect(el._items[0].playback_status).toBe('Paused');
+    });
+});

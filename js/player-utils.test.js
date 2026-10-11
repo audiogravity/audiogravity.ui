@@ -414,3 +414,14 @@ describe('hiResLabel', () => {
         expect(hiResLabel({ format: 'Lossy', sample_rate: '96kHz', codec: 'AAC' })).toBeNull();
     });
 });
+
+// playPauseIntent — a tap sends what the listener asked for, not a toggle the core
+// would guess from a state that may have moved since the screen drew it.
+import { playPauseIntent } from './player-utils.js';
+
+describe('playPauseIntent', () => {
+    it('pauses what the screen shows playing, plays everything else', () => {
+        expect(playPauseIntent(true)).toBe('pause');
+        expect(playPauseIntent(false)).toBe('play');
+    });
+});

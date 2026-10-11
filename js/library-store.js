@@ -133,7 +133,22 @@ const _backoff = new Map();
 /** sourceId-or-null → transport errors since the stream last opened */
 const _errorsSinceOpen = new Map();
 
+/**
+ * The last state each open stream delivered, replayed to a subscriber that joins a
+ * stream already open: the server sends a state when it changes, so a late
+ * subscriber — the full-screen player opened while nothing plays — otherwise saw
+ * nothing until the next change, and its Play went out without the handle the idle
+ * state carries (measured 2026-10-11). One entry per open stream, dropped with it.
+ * @type {Map<string|null, object>}
+ */
+const _lastStates = new Map();
+
 function _openSse(key) {
+    // A stream opening now makes a pending reconnect moot: left armed, it opened a
+    // second stream over this one, never closed, and every state then arrived twice
+    // for the life of the page (a subscriber joining while the box was out of reach).
+    const pending = _reconnectTimers.get(key);
+    if (pending) { clearTimeout(pending); _reconnectTimers.delete(key); }
     const url = buildAuthedUrl('/player/state', key ? { source_id: key } : {});
     if (!url) {
         // No credentials: an EventSource opened anyway would collect a 401 and let the
@@ -155,6 +170,7 @@ function _openSse(key) {
         }
         // First successful event resets the reconnect backoff.
         _backoff.delete(key);
+        _lastStates.set(key, state);
         // Unfiltered stream (active source) feeds the shared snapshot cache
         // and the offline localStorage snapshot.
         if (key === null) {
@@ -207,6 +223,7 @@ function _openSse(key) {
 function _closeSse(key) {
     const es = _connections.get(key);
     if (es) { es.close(); _connections.delete(key); }
+    _lastStates.delete(key);
     _errorsSinceOpen.delete(key);
     const timer = _reconnectTimers.get(key);
     if (timer) { clearTimeout(timer); _reconnectTimers.delete(key); }
@@ -216,7 +233,8 @@ function _closeSse(key) {
 /**
  * Subscribe to PlayerState `state` events from `GET /player/state`.
  * The first subscriber for a given source key opens the SSE connection;
- * the last unsubscribe closes it.
+ * the last unsubscribe closes it. A subscriber joining a stream already open
+ * gets that stream's last state at once, then the live ones.
  *
  * BACKLOG: today only `ag-now-playing-fullscreen` subscribes. When the
  * fullscreen player is closed, the snapshot cache falls back to its 30s TTL.
@@ -235,6 +253,13 @@ export function subscribePlayerState(cb, { sourceId } = {}) {
     if (!_subscribers.has(key)) _subscribers.set(key, new Set());
     _subscribers.get(key).add(cb);
     if (!_connections.has(key)) _openSse(key);
+    else if (_lastStates.has(key)) {
+        // A stream already open: hand over its last state now (_lastStates), after
+        // the caller has stored its unsubscribe — unless it is already gone.
+        queueMicrotask(() => {
+            if (_subscribers.get(key)?.has(cb) && _lastStates.has(key)) cb(_lastStates.get(key));
+        });
+    }
     return () => {
         const set = _subscribers.get(key);
         if (!set) return;

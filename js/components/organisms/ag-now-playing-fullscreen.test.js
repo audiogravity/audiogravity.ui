@@ -929,3 +929,42 @@ describe('AgNowPlayingFullscreen — a live station has no progress to show', ()
         expect(bar.hasAttribute('live')).toBe(false);
     });
 });
+
+describe('AgNowPlayingFullscreen — a play/pause tap sends the intent (real _control)', () => {
+    function fs(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_state', { value: state, writable: true, configurable: true });
+        el._targetSourceId = 'src_mpd';
+        el._volumePending = undefined;
+        el._seekPending = null;
+        el._controlRecentTime = null;
+        el.requestUpdate = () => {};
+        return el;
+    }
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({}); });
+
+    it.each([
+        [true, 'pause'],
+        [false, 'play'],
+    ])('the screen showing playing=%s sends %s, then flips', async (playing, sent) => {
+        const el = fs({ source_id: 'src_mpd', control_id: 'src_mpd', playing, title: 'A' });
+        await el._control('toggle');
+        expect(apiPost).toHaveBeenCalledWith('/player/control',
+            expect.objectContaining({ action: sent, source_id: 'src_mpd' }));
+        expect(el._state.playing).toBe(!playing);
+    });
+
+    it('sends play when nothing is shown at all', async () => {
+        const el = fs(null);
+        await el._control('toggle');
+        expect(apiPost).toHaveBeenCalledWith('/player/control', expect.objectContaining({ action: 'play' }));
+    });
+
+    it('still undoes the flip when the core refuses', async () => {
+        const el = fs({ source_id: 'src_mpd', control_id: 'src_mpd', playing: false, title: 'A' });
+        apiPost.mockRejectedValueOnce(Object.assign(new Error('refused'), { status: 503 }));
+        await el._control('toggle');
+        expect(el._state.playing).toBe(false);
+    });
+});

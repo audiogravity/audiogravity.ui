@@ -3,7 +3,7 @@ import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard, playPauseIntent } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -342,6 +342,9 @@ export class AgNowPlaying extends LitElement {
                 window.EventEmitter.emit('show-license-modal');
             return;
         }
+        // The intent a play/pause tap carries, read from the screen before the
+        // flip below — never a toggle for the core to guess (playPauseIntent).
+        const wire = action === 'toggle' ? playPauseIntent(item?.playback_status === 'Playing') : action;
         // Optimistic update: toggle playback_status locally before the server
         // confirms, so the progress bar stops/starts immediately.
         // Replace _items with a new array so Lit detects the state change.
@@ -362,7 +365,7 @@ export class AgNowPlaying extends LitElement {
             this._volumePending = { target: volume, at: Date.now(), sourceId: sourceId };
         }
         try {
-            const body = { source_id: sourceId, action };
+            const body = { source_id: sourceId, action: wire };
             // Routing handle (spec §3): commands go to the device that PLAYS
             // the content. source_id is kept as the backend fallback.
             if (item?.control_id) body.control_id = item.control_id;

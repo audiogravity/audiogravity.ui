@@ -472,15 +472,25 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/player/outputs` | Selector catalogue — every selectable output |
 | PUT | `/player/mpd-output/{output_id}` | Enable one MPD output exclusively and disconnect any active renderer. The switch is atomic and enable-**first**: if MPD refuses the target (device busy), the previous output keeps playing and the response is **503 carrying MPD's reason** |
 
-**Transport actions**: `toggle`, `next`, `prev`, `seek`, `set_volume`, `set_repeat`,
-`set_shuffle`. Route with `control_id` (`source_id` accepted as fallback). Anything
-else → **400**. `seek` and `set_volume` require `value`.
+**Transport actions**: `play`, `pause`, `toggle`, `next`, `prev`, `seek`, `set_volume`,
+`set_repeat`, `set_shuffle` — the same on `/audio_pipeline/control`. Route with
+`control_id` (`source_id` accepted as fallback). Anything else → **400**. `seek` and
+`set_volume` require `value`.
+
+- `play` / `pause` carry the intent: send the one the screen asks for. Either can be
+  repeated safely — a `pause` on a paused or stopped player changes nothing, a `play`
+  on a playing one neither.
+- `toggle` decides from the device's state when the command lands; kept for older
+  callers.
+- A stopped MPD (its queue played through, or stopped by another client) takes
+  `play`: it starts the current song, or the top of the queue. On an empty queue
+  `play` is refused (**503** / `success: false`).
 
 **`PlayerState` — routing and output fields**
 
 | Field | Meaning |
 |---|---|
-| `control_id` | Routing handle of the active item — send it back on `/player/control` |
+| `control_id` | Routing handle of the active item — send it back on `/player/control`. While nothing plays: the player `play` reaches — the selected renderer, else the box's MPD when it was the last source or none is known — or `null` |
 | `played_on` | Where the audio comes out: `"local"` or a renderer UDN. Display only |
 | `outputs[]` | Runtime outputs: the local chain + the selected renderer |
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |

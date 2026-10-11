@@ -236,6 +236,21 @@ export function seekRefusalRollback(state, pending, prevElapsed, status) {
 }
 
 /**
+ * The command a play/pause tap sends: what the listener asked for, read from what
+ * the screen shows — not a toggle the core would have to guess from the device's
+ * state when it lands. That state can have moved since the screen drew it: a queue
+ * that ran out turned a Pause into a Play of the whole queue, a source that took
+ * over did the same (review, 2026-10-11). Repeating it is safe: a pause on a paused
+ * player changes nothing.
+ *
+ * @param {boolean} playing - Whether the screen shows the music playing.
+ * @returns {'play'|'pause'}
+ */
+export function playPauseIntent(playing) {
+    return playing ? 'pause' : 'play';
+}
+
+/**
  * Decide the rollback after a REFUSED play/pause toggle.
  *
  * Same contract as {@link seekRefusalRollback}: a 503 from /player/control is

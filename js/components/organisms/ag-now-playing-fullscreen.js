@@ -29,7 +29,7 @@ import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, isLiveStream, hiResLabel } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
@@ -575,7 +575,9 @@ export class AgNowPlayingFullscreen extends LitElement {
             };
         }
         try {
-            const body = { action };
+            // A tap sends the intent read from the screen before the flip, never
+            // a toggle for the core to guess (playPauseIntent).
+            const body = { action: action === 'toggle' ? playPauseIntent(Boolean(toggleAnchor?.playing)) : action };
             if (value !== undefined) body.value = value;
             if (this._targetSourceId) body.source_id = this._targetSourceId;
             // Routing handle (spec §3): send the displayed state's control_id so
