@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { filesUnder } from './test-utils.js';
+import { cssRules, filesUnder } from './test-utils.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const read = rel => readFileSync(join(ROOT, rel), 'utf8');
@@ -175,5 +175,28 @@ describe('sizes come from the scale', () => {
             if (/var\(--font-size-xxs\)/.test(body)) offenders.push(`${file} — ${sel}`);
         }
         expect(offenders, `read text back on the label step:\n  ${offenders.join('\n  ')}`).toEqual([]);
+    });
+});
+
+describe('every card title is one size', () => {
+    // Audio Software's title dropped to the lg step on a phone (14px against the
+    // others' 18px, measured 2026-10-10), from a rule of its own that put it on a
+    // line above its actions. A page may lay its title out; it does not size it. A card
+    // title is an h2 in a title row, or straight under a page's zone; `font:` sizes too.
+    const TITLE = /\.(tab-title-container|history-header|test-header|[\w-]+-(zone|section))\s*>?\s*h2$/;
+    const titleRules = filesUnder('css', /\.css$/).flatMap((file) => cssRules(read(file))
+        .filter(({ selectors }) => selectors.some((s) => TITLE.test(s)))
+        .map(({ selectors, body }) => ({ file, sel: selectors.join(', '), body })));
+
+    it('finds the card titles', () => {
+        expect(titleRules.length).toBeGreaterThan(0);
+    });
+
+    it('sizes them on the title step only', () => {
+        const offenders = titleRules
+            .filter(({ body }) => [...body.matchAll(/(?<![-\w])font(?:-size)?\s*:\s*([^;]+)/g)]
+                .some(([, value]) => !value.includes('var(--font-size-xl)')))
+            .map(({ file, sel }) => `${file} — ${sel}`);
+        expect(offenders, `a card title off the title step:\n  ${offenders.join('\n  ')}`).toEqual([]);
     });
 });
