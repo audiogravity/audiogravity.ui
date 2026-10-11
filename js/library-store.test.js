@@ -765,39 +765,39 @@ describe('the Tidal Explore tree', () => {
 
 import { subscribePlayerState } from './library-store.js';
 
+/** An EventSource that the test opens, fails and closes. */
+class FakeEventSource extends EventTarget {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSED = 2;
+    static made = [];
+
+    constructor(url) {
+        super();
+        this.url = url;
+        this.readyState = FakeEventSource.CONNECTING;
+        this.onerror = null;
+        FakeEventSource.made.push(this);
+    }
+
+    close() { this.readyState = FakeEventSource.CLOSED; }
+
+    open() {
+        this.readyState = FakeEventSource.OPEN;
+        this.dispatchEvent(new Event('open'));
+    }
+
+    /** A transport error (the browser then reconnects), or a stream the server closed. */
+    fail({ closed = false } = {}) {
+        this.readyState = closed ? FakeEventSource.CLOSED : FakeEventSource.CONNECTING;
+        this.onerror?.(new Event('error'));
+    }
+}
+
 describe('the player stream, when it drops', () => {
     // The service worker no longer stands between the stream and the box (sw.js): a box
     // out of reach is a transport error, after which the browser retries by itself every
     // few seconds — where the worker's 503 used to close the stream and let it back off.
-
-    /** An EventSource that the test opens, fails and closes. */
-    class FakeEventSource extends EventTarget {
-        static CONNECTING = 0;
-        static OPEN = 1;
-        static CLOSED = 2;
-        static made = [];
-
-        constructor(url) {
-            super();
-            this.url = url;
-            this.readyState = FakeEventSource.CONNECTING;
-            this.onerror = null;
-            FakeEventSource.made.push(this);
-        }
-
-        close() { this.readyState = FakeEventSource.CLOSED; }
-
-        open() {
-            this.readyState = FakeEventSource.OPEN;
-            this.dispatchEvent(new Event('open'));
-        }
-
-        /** A transport error (the browser then reconnects), or a stream the server closed. */
-        fail({ closed = false } = {}) {
-            this.readyState = closed ? FakeEventSource.CLOSED : FakeEventSource.CONNECTING;
-            this.onerror?.(new Event('error'));
-        }
-    }
 
     let unsubscribe;
     beforeEach(() => {
@@ -873,5 +873,99 @@ describe('the player stream, when it drops', () => {
         es.fail();
         vi.advanceTimersByTime(60_000);
         expect(FakeEventSource.made).toHaveLength(1);
+    });
+});
+
+describe('the player stream, joined while a reconnect waits', () => {
+    // The box out of reach, a reconnect armed: a subscriber joining then opens a stream
+    // at once. The armed reconnect then opened a second one over it, never closed, and
+    // every state arrived twice for the life of the page (review, 2026-10-11).
+    beforeEach(() => {
+        vi.useFakeTimers();
+        FakeEventSource.made = [];
+        vi.stubGlobal('EventSource', FakeEventSource);
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.useRealTimers();
+    });
+
+    it('cancels the reconnect: one stream open, not two', () => {
+        const stopFirst = subscribePlayerState(() => {}, { sourceId: 'joined-while-away' });
+        const first = FakeEventSource.made.at(-1);
+        first.fail();
+        first.fail();                                   // out of reach: closed, reconnect armed
+        const late = vi.fn();
+        const stopLate = subscribePlayerState(late, { sourceId: 'joined-while-away' });
+        expect(FakeEventSource.made).toHaveLength(2);   // the joiner's stream, at once
+        vi.advanceTimersByTime(60_000);
+        expect(FakeEventSource.made).toHaveLength(2);   // the armed reconnect opened no third
+        FakeEventSource.made[1].dispatchEvent(new MessageEvent('state', { data: JSON.stringify({ playing: true }) }));
+        expect(late).toHaveBeenCalledTimes(1);          // once, not twice
+        stopLate(); stopFirst();
+    });
+});
+
+describe('the player stream, for a subscriber that joins it late', () => {
+    // The server sends a state when it changes: a subscriber joining a stream already
+    // open — the full-screen player opened while nothing plays — saw nothing until the
+    // next change, and its Play went out without the idle state's handle (2026-10-11).
+    beforeEach(() => {
+        FakeEventSource.made = [];
+        vi.stubGlobal('EventSource', FakeEventSource);
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    const deliver = (es, state) => es.dispatchEvent(new MessageEvent('state', { data: JSON.stringify(state) }));
+
+    it('gets the last state at once, then the live ones', async () => {
+        const first = vi.fn();
+        const stopFirst = subscribePlayerState(first, { sourceId: 'late-joiner' });
+        const es = FakeEventSource.made.at(-1);
+        deliver(es, { control_id: 'src_mpd', playing: false });
+
+        const late = vi.fn();
+        const stopLate = subscribePlayerState(late, { sourceId: 'late-joiner' });
+        expect(late).not.toHaveBeenCalled();          // after the caller stored its unsubscribe
+        await Promise.resolve();
+        expect(late).toHaveBeenCalledWith({ control_id: 'src_mpd', playing: false });
+        expect(FakeEventSource.made).toHaveLength(1);  // the stream already open, not a second one
+
+        deliver(es, { control_id: 'src_mpd', playing: true });
+        expect(late).toHaveBeenLastCalledWith({ control_id: 'src_mpd', playing: true });
+        expect(first).toHaveBeenCalledTimes(2);       // the first subscriber gets no replay
+        stopLate(); stopFirst();
+    });
+
+    it('gets nothing from a stream that has delivered nothing yet', async () => {
+        const stopFirst = subscribePlayerState(() => {}, { sourceId: 'quiet' });
+        const late = vi.fn();
+        const stopLate = subscribePlayerState(late, { sourceId: 'quiet' });
+        await Promise.resolve();
+        expect(late).not.toHaveBeenCalled();
+        stopLate(); stopFirst();
+    });
+
+    it('gets nothing once it left before the replay', async () => {
+        const stopFirst = subscribePlayerState(() => {}, { sourceId: 'left-early' });
+        deliver(FakeEventSource.made.at(-1), { playing: false });
+        const late = vi.fn();
+        subscribePlayerState(late, { sourceId: 'left-early' })();
+        await Promise.resolve();
+        expect(late).not.toHaveBeenCalled();
+        stopFirst();
+    });
+
+    it('forgets a stream\'s last state when it closes', async () => {
+        const stop = subscribePlayerState(() => {}, { sourceId: 'closed-then-reopened' });
+        deliver(FakeEventSource.made.at(-1), { playing: true });
+        stop();                                       // last subscriber: the stream closes
+        const stopAgain = subscribePlayerState(() => {}, { sourceId: 'closed-then-reopened' });
+        expect(FakeEventSource.made).toHaveLength(2); // a fresh stream, that has said nothing yet
+        const late = vi.fn();
+        const stopLate = subscribePlayerState(late, { sourceId: 'closed-then-reopened' });
+        await Promise.resolve();
+        expect(late).not.toHaveBeenCalled();          // not the closed stream's old state
+        stopLate(); stopAgain();
     });
 });
