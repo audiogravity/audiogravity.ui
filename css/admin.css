@@ -138,10 +138,6 @@ ag-license-status {
     /* Placed at the bottom, spans all columns */
 }
 
-.login-logs-zone .tab-title-container {
-    margin-bottom: var(--spacing-md);
-}
-
 .login-logs-zone .log-controls {
     margin-left: auto;
     display: flex;
@@ -159,7 +155,6 @@ ag-license-status {
     display: grid;
     gap: var(--spacing-md);
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    margin-top: var(--spacing-md);
 }
 
 @media (width <= 768px) {

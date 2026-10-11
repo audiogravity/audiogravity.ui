@@ -3,11 +3,18 @@
  * @description Styles for the activity/history sidebar.
  */
 
+/* A title row: 24px above what follows, as every card's (components/tab-zone.css). */
 .history-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* The base h2's 12px below would make the row taller, and the space under the title
+   36px. */
+.history-header h2 {
+    margin: 0;
 }
 
 .history-list {

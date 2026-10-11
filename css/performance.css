@@ -26,10 +26,6 @@
     margin-bottom: 0;
 }
 
-.performance-section>h2 {
-    margin-bottom: var(--spacing-md);
-}
-
 /* =====================
    CPU GENERAL INFO
    ===================== */
@@ -414,11 +410,12 @@ body.no-animations .animate-stagger {
     margin-top: var(--spacing-lg);
 }
 
+/* A title row: 24px above what follows, as every card's (components/tab-zone.css). */
 .test-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
 }
 
 .test-title-wrapper {

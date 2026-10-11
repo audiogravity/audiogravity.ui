@@ -20,11 +20,20 @@
     margin-top: var(--spacing-lg);
 }
 
+/* A card's title row — the page title, a panel's header, a test's — stands 24px above
+   what follows, on every page (user's choice, 2026-10-11). The row carries that space
+   and what follows adds none: a .tab-zone is a column flex, where margins add up
+   instead of collapsing, and the 18px above gave 30px under some titles and 12px under
+   others. */
+.tab-zone > :is(.tab-title-container, .history-header, .test-header) + * {
+    margin-top: 0;
+}
+
 .tab-title-container {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
     width: 100%;
 }
 
@@ -103,4 +112,13 @@
    rounded bottom edge. */
 .amp-mobile-bar .tab-title-container {
     margin-bottom: 0;
+}
+
+/* The title stands alone in that bar, so its 24px down to the chain are the bar's
+   bottom padding and the 6px between the view's cards (.amp-mobile-view, layout.css):
+   18 + 6. On a phone the padding drops to 12px (above), and the bar makes it up. */
+@media (width <= 480px) {
+    .amp-mobile-bar {
+        margin-bottom: var(--spacing-sm);
+    }
 }
