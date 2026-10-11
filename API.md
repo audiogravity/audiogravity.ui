@@ -879,8 +879,7 @@ badged `origin: "radio"`.
 | POST | `/packages/{package_id}/uninstall` | Uninstall — `?purge=true` to delete its settings too |
 | POST | `/packages/{package_id}/update` | Update one package |
 | POST | `/packages/update_all` | Update every managed package |
-| GET | `/packages/config/view` | The registry-generated config, as applied |
-| POST | `/packages/config/refresh` | Regenerate that config from the registry |
+| POST | `/packages/config/refresh` | Regenerate the packages config from the registry |
 
 **`status`** — `not_installed`, `installing`, `installed`, `updating`, `uninstalling`, or
 **`error`** while the last operation on the package failed: until the next one starts, or
