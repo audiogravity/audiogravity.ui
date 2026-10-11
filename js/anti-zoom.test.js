@@ -19,6 +19,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mediaBlock } from './test-utils.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const JS_ROOT = ROOT;
@@ -99,6 +100,19 @@ describe('mobile anti-zoom contract', () => {
         expect(base).toMatch(
             /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="range"\]\)/,
         );
+    });
+
+    it('gives text areas the weight of text fields', () => {
+        // A bare `textarea` weighs (0,0,1) and lost to every class that sets a size —
+        // .config-field textarea, .config-editor, .form-control: measured in Chromium
+        // with a coarse pointer on 2026-10-11, those fields were declared at 12px and
+        // Safari zooms on them. Inside the :is(), a text area weighs (0,3,1) as well.
+        const base = fs.readFileSync(path.join(CSS_ROOT, 'base.css'), 'utf8');
+        const block = mediaBlock(base, /@media \(pointer: coarse\)/);
+        expect(block).toMatch(
+            /:is\(input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="range"\]\),\s*textarea\)\s*\{/,
+        );
+        expect(block).not.toMatch(/^\s*textarea\s*[,{]/m);
     });
 });
 
@@ -213,10 +227,11 @@ describe('the sign-in page keeps its own field ratio', () => {
     });
 
     it('keeps the selector specific enough to beat the one in base.css', () => {
-        // base.css reaches (0,3,1) with three chained :not(); prefixing the page class
-        // takes it to (0,4,2). The list form would collapse it and lose the tie.
+        // base.css reaches (0,3,1) with three chained :not(), text areas included through
+        // its :is(); prefixing the page class takes both to (0,4,2). The list form would
+        // collapse it and lose the tie, and a bare `textarea` here (0,1,2) would lose too.
         expect(login).toMatch(
-            /body\.login-page input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="range"\]\)/,
+            /body\.login-page :is\(input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\):not\(\[type="range"\]\),\s*textarea\)/,
         );
     });
 

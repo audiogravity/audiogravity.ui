@@ -64,14 +64,16 @@ body.login-page {
  * this screen has always rendered with and is kept unrounded-up on purpose, so the field
  * is pixel-identical to what it was.
  *
- * Specificity: base.css uses the chained :not() to reach (0,3,1); prefixed here it reads
- * (0,4,2) and wins wherever it is imported from.
+ * Specificity: base.css uses the chained :not() to reach (0,3,1), and :is() to give text
+ * areas the same; prefixed here it reads (0,4,2) for both and wins wherever it is
+ * imported from.
  */
 @media (pointer: coarse) {
     /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
-       intentional, as in css/base.css: the list form would collapse the specificity. */
-    body.login-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-    body.login-page textarea {
+       intentional, as in css/base.css: the list form would collapse the specificity.
+       The :is() is base.css's too: it gives a text area the input's weight, without
+       which base.css's text-area rule (0,3,1) would beat this page's (0,1,2). */
+    body.login-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea) {
         font-size-adjust: 0.4435;
     }
 }
