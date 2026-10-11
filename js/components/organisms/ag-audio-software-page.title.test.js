@@ -63,7 +63,7 @@ describe('the actions of the Audio Software title', () => {
     it('are buttons, UPDATE ALL included', async () => {
         const page = await mountPage([MPD]);
         const actions = [...page.querySelectorAll('.tab-title-container .badge')];
-        expect(actions.map((a) => a.localName)).toEqual(['button', 'button', 'button', 'button']);
+        expect(actions.map((a) => a.localName)).toEqual(['button', 'button', 'button']);
         expect(actions.at(-1).textContent.trim()).toBe('UPDATE ALL');
     });
 
@@ -71,8 +71,15 @@ describe('the actions of the Audio Software title', () => {
         // Two black squares side by side said nothing of what they do (2026-10-04).
         const page = await mountPage([MPD]);
         const words = [...page.querySelectorAll('.tab-title-container .badge')].map((a) => a.textContent.trim());
-        expect(words).toEqual(['REFRESH', 'DOWNLOAD', 'CHECK UPDATES', 'UPDATE ALL']);
-        expect(page.querySelector('button[aria-label="Download resolved configuration"]')).not.toBeNull();
+        expect(words).toEqual(['REFRESH', 'CHECK UPDATES', 'UPDATE ALL']);
+    });
+
+    it('offer no download of the resolved package config', async () => {
+        // DOWNLOAD saved packages-config.json, a file the box rebuilds by itself and its
+        // owner can do nothing with; the core no longer serves it (2026-10-11).
+        const page = await mountPage([MPD]);
+        expect(page.querySelector('button[aria-label="Download resolved configuration"]')).toBeNull();
+        expect(page.textContent).not.toContain('DOWNLOAD');
     });
 
     it('fit on one line on a 375px phone: no margin of their own once the row wraps', () => {

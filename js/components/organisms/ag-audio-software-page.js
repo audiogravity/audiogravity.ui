@@ -16,7 +16,7 @@
 import { LitElement, html } from 'lit';
 import { getUserFriendlyError } from '../../ui-helpers.js';
 import '../atoms/ag-filter-bar.js';
-import { iconRepeat, iconDownload } from '../../ag-icons.js';
+import { iconRepeat } from '../../ag-icons.js';
 import {
     apiGet,
     apiPost,
@@ -1016,27 +1016,6 @@ export class AgAudioSoftwarePage extends LitElement {
         this.dryRun = e.target.checked;
     }
 
-    async _downloadConfig() {
-        try {
-            const response = await apiGet('/packages/config/view');
-            if (response && response.error) {
-                showToast('error', 'Error', response.error);
-                return;
-            }
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(response, null, 2));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "packages-config.json");
-            document.body.appendChild(downloadAnchorNode); // required for firefox
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-            showToast('success', 'Success', 'Configuration downloaded successfully');
-        } catch (error) {
-            console.error('Failed to download configuration:', error);
-            showToast('error', 'Download Failed', 'Failed to download configuration');
-        }
-    }
-
     /**
      * The packages the filter bar lets through. INSTALLED counts a package whose
      * last operation failed but left a version on the box: it is installed.
@@ -1072,9 +1051,6 @@ export class AgAudioSoftwarePage extends LitElement {
                     <button class="badge warning plain-btn ${this._isRefreshing ? 'animate-pulse' : 'clickable'}"
                           aria-label="Refresh package config (re-probe sources)" aria-disabled=${this._isRefreshing ? 'true' : 'false'}
                           @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> REFRESH</button>
-                    <button class="badge neutral clickable plain-btn"
-                          aria-label="Download resolved configuration"
-                          @click=${this._downloadConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg> DOWNLOAD</button>
                     <button class="badge success clickable plain-btn ${this.isCheckingAll ? 'animate-pulse' : ''}"
                           @click=${this._checkAllUpdates}>
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
