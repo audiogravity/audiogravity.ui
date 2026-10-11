@@ -3,19 +3,23 @@
  * @description Styles for ag-library-search: search bar, source-pill row, results label.
  */
 
+/* The search bar is the field's visible box — its input is borderless inside it — so it
+   takes .form-control's padding, border and corners: the same 29px as every field. */
 .lib-search-bar {
     margin: 6px 20px 14px;
-    padding: 12px 14px;
+    padding: var(--spacing-sm);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--spacing-sm);
     border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
     background: var(--bg-secondary);
 }
 
+/* 14px, under the 15px line of the input: the magnifier no longer sets the bar's height. */
 .lib-search-bar svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     stroke: var(--text-tertiary);
     fill: none;
     stroke-width: 1.8;
@@ -148,17 +152,18 @@
     gap: var(--spacing-sm);
 }
 
-.lib-hraf-input,
+/* Layout only: the field draws as .form-control (css/components/forms.css). */
+.lib-hraf-input {
+    min-width: 0;
+}
+
+/* Layout only. The lists share the row with the fields, so they draw as .form-control
+   too — the one exception to "lists keep their own look": with their own, they
+   stretched the row past the fields' height (user's choice, 2026-10-11). No native
+   arrow, as before. */
 .lib-hraf-select {
     min-width: 0;
-    padding: 8px 10px;
     appearance: none;
-    border: 1px solid var(--border-color);
-    outline: 0;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-family: var(--font-family);
-    font-size: var(--font-size-sm);
 }
 
 .lib-hraf-input::placeholder { color: var(--text-tertiary); }

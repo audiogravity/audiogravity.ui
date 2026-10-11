@@ -248,13 +248,13 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>CPU Affinity <span class="help-text">(ex: "0,1" or "0-3")</span></label>
-                                <input type="text" name="cpu_affinity" .value=${props.cpu_affinity || ''}
+                                <input class="form-control form-control--raised" type="text" name="cpu_affinity" .value=${props.cpu_affinity || ''}
                                        placeholder="0,1">
                             </div>
 
                             <div class="form-field">
                                 <label>CPU Scheduling Policy</label>
-                                <select name="cpu_scheduling_policy" .value=${props.cpu_scheduling_policy || ''}>
+                                <select class="form-control form-control--raised" name="cpu_scheduling_policy" .value=${props.cpu_scheduling_policy || ''}>
                                     <option value="">Default</option>
                                     <option value="other">Other</option>
                                     <option value="batch">Batch</option>
@@ -266,21 +266,21 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>CPU Scheduling Priority <span class="help-text">(0-99 for RT)</span></label>
-                                <input type="number" name="cpu_scheduling_priority"
+                                <input class="form-control form-control--raised" type="number" name="cpu_scheduling_priority"
                                        .value=${props.cpu_scheduling_priority != null ? props.cpu_scheduling_priority : ''}
                                        min="0" max="99" placeholder="0-99">
                             </div>
 
                             <div class="form-field">
                                 <label>Nice <span class="help-text">(-20 to 19)</span></label>
-                                <input type="number" name="nice"
+                                <input class="form-control form-control--raised" type="number" name="nice"
                                        .value=${props.nice != null ? props.nice : ''}
                                        min="-20" max="19" placeholder="-20 to 19">
                             </div>
 
                             <div class="form-field">
                                 <label>CPU Weight <span class="help-text">(cgroup v2 scheduler, 1-10000, default 100)</span></label>
-                                <input type="number" name="cpu_weight"
+                                <input class="form-control form-control--raised" type="number" name="cpu_weight"
                                        .value=${props.cpu_weight != null ? props.cpu_weight : ''}
                                        min="1" max="10000" placeholder="100">
                             </div>
@@ -291,7 +291,7 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>I/O Scheduling Class</label>
-                                <select name="io_scheduling_class" .value=${props.io_scheduling_class || ''}>
+                                <select class="form-control form-control--raised" name="io_scheduling_class" .value=${props.io_scheduling_class || ''}>
                                     <option value="">Default</option>
                                     <option value="none">None</option>
                                     <option value="realtime">Realtime</option>
@@ -302,7 +302,7 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>I/O Scheduling Priority <span class="help-text">(0-7)</span></label>
-                                <input type="number" name="io_scheduling_priority"
+                                <input class="form-control form-control--raised" type="number" name="io_scheduling_priority"
                                        .value=${props.io_scheduling_priority != null ? props.io_scheduling_priority : ''}
                                        min="0" max="7" placeholder="0-7">
                             </div>
@@ -313,19 +313,19 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>Memory Max <span class="help-text">(ex: "2G", "512M", "infinity")</span></label>
-                                <input type="text" name="memory_max" .value=${props.memory_max || ''}
+                                <input class="form-control form-control--raised" type="text" name="memory_max" .value=${props.memory_max || ''}
                                        placeholder="2G or infinity">
                             </div>
 
                             <div class="form-field">
                                 <label>Memory High <span class="help-text">(ex: "1G", "256M")</span></label>
-                                <input type="text" name="memory_high" .value=${props.memory_high || ''}
+                                <input class="form-control form-control--raised" type="text" name="memory_high" .value=${props.memory_high || ''}
                                        placeholder="1G">
                             </div>
 
                             <div class="form-field">
                                 <label>MEMLOCK Limit <span class="help-text">(ex: "infinity", "unlimited")</span></label>
-                                <input type="text" name="limit_memlock" .value=${props.limit_memlock || ''}
+                                <input class="form-control form-control--raised" type="text" name="limit_memlock" .value=${props.limit_memlock || ''}
                                        placeholder="infinity">
                             </div>
                         </div>
@@ -334,31 +334,31 @@ export class AgSystemdOverrideEditor extends LitElement {
                             <h4>Other Limits</h4>
                             <div class="form-field">
                                 <label>Tasks Max</label>
-                                <input type="number" name="tasks_max"
+                                <input class="form-control form-control--raised" type="number" name="tasks_max"
                                        .value=${props.tasks_max != null ? props.tasks_max : ''}
                                        placeholder="unlimited">
                             </div>
                             <div class="form-field">
                                 <label>RTPRIO Limit <span class="help-text">(0-99)</span></label>
-                                <input type="number" name="limit_rtprio"
+                                <input class="form-control form-control--raised" type="number" name="limit_rtprio"
                                        .value=${props.limit_rtprio != null ? props.limit_rtprio : ''}
                                        min="0" max="99" placeholder="95">
                             </div>
                             <div class="form-field">
                                 <label>NOFILE Limit <span class="help-text">(max open files)</span></label>
-                                <input type="number" name="limit_nofile"
+                                <input class="form-control form-control--raised" type="number" name="limit_nofile"
                                        .value=${props.limit_nofile != null ? props.limit_nofile : ''}
                                        placeholder="65536">
                             </div>
                             <div class="form-field">
                                 <label>NPROC Limit <span class="help-text">(max processes)</span></label>
-                                <input type="number" name="limit_nproc"
+                                <input class="form-control form-control--raised" type="number" name="limit_nproc"
                                        .value=${props.limit_nproc != null ? props.limit_nproc : ''}
                                        placeholder="4096">
                             </div>
                             <div class="form-field">
                                 <label>OOM Score Adjust <span class="help-text">(-1000 to 1000; negative = protected from OOM killer)</span></label>
-                                <input type="number" name="oom_score_adjust"
+                                <input class="form-control form-control--raised" type="number" name="oom_score_adjust"
                                        .value=${props.oom_score_adjust != null ? props.oom_score_adjust : ''}
                                        min="-1000" max="1000" placeholder="0">
                             </div>

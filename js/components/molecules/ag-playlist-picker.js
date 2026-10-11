@@ -291,7 +291,7 @@ export class AgPlaylistPicker extends LitElement {
             <form class="ag-plp-form" @submit=${(e) => { e.preventDefault(); this._create(); }}>
                 <div class="form-field">
                     <label class="form-label" for="ag-plp-name">Name</label>
-                    <input id="ag-plp-name" class="form-control form-control--dialog" type="text"
+                    <input id="ag-plp-name" class="form-control form-control--raised" type="text"
                         maxlength="100" autocomplete="off" .value=${this._name}
                         ?disabled=${this._busy}
                         @input=${(e) => { this._name = e.target.value; }}>

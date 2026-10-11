@@ -180,7 +180,7 @@ export class AgHraSearchFilters extends LitElement {
     _text(prop, label, { inputmode = '' } = {}) {
         return html`
             <input
-                class="lib-hraf-input"
+                class="form-control form-control--raised lib-hraf-input"
                 type="text"
                 placeholder=${label}
                 aria-label=${label}
@@ -214,7 +214,7 @@ export class AgHraSearchFilters extends LitElement {
         `;
         return html`
             <select
-                class="lib-hraf-select"
+                class="form-control form-control--raised lib-hraf-select"
                 aria-label=${label}
                 @change=${(e) => this._set(prop, e.target.value)}
             >

@@ -54,29 +54,14 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Layout only: the field draws as .form-control (css/components/forms.css). No native
+   look: Safari draws a type="search" field rounded, with its own inner padding. */
 .lib-radio-search-input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-
-    /* Force consistent typography for all input types including type="url"
-       which some browsers render in monospace by default */
-    font-family: var(--font-family);
-    font-size: var(--font-size-sm);
-    font-weight: 400;
     appearance: none;
 }
 
 .lib-radio-search-input::placeholder {
     color: var(--text-tertiary);
-}
-
-.lib-radio-search-input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
 }
 
 .lib-radio-filters {

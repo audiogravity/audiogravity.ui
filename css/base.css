@@ -226,6 +226,13 @@ button, a, select, [role="button"], [role="tab"], label {
    An inline `style` attribute outranks this rule whatever its specificity —
    form controls must take their font-size from a class, never from `style=`.
 
+   Text areas sit in the same `:is()`, which weighs as much as its heaviest
+   argument: (0,3,1) for them too. Written as a bare `textarea` (0,0,1), the rule
+   lost to every class that sets a size — `.config-field textarea` (the config
+   editor's multi-line settings), `.config-editor`, `.form-control` — and those
+   fields were declared at 12px on a touch device, which Safari zooms on (measured
+   in Chromium with a coarse pointer, 2026-10-11).
+
    `select` is deliberately NOT in this list, and putting it back is a regression.
    It was here from the start on the assumption that every form control zooms, and
    that was never checked: measured on an iPhone, a select declared at a plain 13px
@@ -237,8 +244,7 @@ button, a, select, [role="button"], [role="tab"], label {
     /* stylelint-disable-next-line selector-not-notation -- the chained :not() is
        intentional: it raises specificity to (0,3,1) so this wins the (0,1,1) tie.
        The list form :not(a, b, c) would collapse back to (0,1,1) and re-break it. */
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-    textarea {
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea) {
         /* rule 12 exception — 16px here is a Safari constant, not a step: iOS zooms the
            page in when a field smaller than that takes focus and does not zoom back out.
            js/anti-zoom.test.js requires the literal, and caught a sweep that expressed it

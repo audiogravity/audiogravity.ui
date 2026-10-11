@@ -8,6 +8,7 @@
  * this is the slowest endpoint HRA exposes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { classesOf, flat, openingTags } from '../../test-utils.js';
 
 vi.mock('lit', () => ({
     LitElement: class {},
@@ -194,5 +195,15 @@ describe('ag-hra-search-filters', () => {
         const out = JSON.stringify(el().render());
         expect(out).toContain('Advanced search');
         expect(out).not.toContain('Composer');
+    });
+
+    it('draws its lists as its fields, the one row they share', () => {
+        // Lists keep their own look elsewhere. Here, with their own, their 33px stretched
+        // the fields beside them past the 29px every typed field has (user's choice,
+        // 2026-10-11) — js/form-fields.test.js holds the fields themselves.
+        const markup = flat(el({ _open: true, _formats: [{ value: 'fl192', label: 'FLAC 192' }] }).render());
+        const controls = openingTags(markup).filter((tag) => /^<(input|select)\b/.test(tag));
+        expect(controls).toHaveLength(7);
+        expect(controls.filter((tag) => !classesOf(tag).includes('form-control'))).toEqual([]);
     });
 });

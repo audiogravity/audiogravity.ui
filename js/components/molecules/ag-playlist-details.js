@@ -159,7 +159,7 @@ export class AgPlaylistDetails extends LitElement {
                 @keydown=${this._onKeydown}>
                 <div class="form-field">
                     <label class="form-label" for=${this._nameId}>Name</label>
-                    <input id=${this._nameId} class="form-control form-control--dialog" type="text"
+                    <input id=${this._nameId} class="form-control form-control--raised" type="text"
                         maxlength=${NAME_MAX} autocomplete="off" .value=${this._name}
                         ?disabled=${this._busy}
                         @input=${(e) => { this._name = e.target.value; }}>
@@ -168,7 +168,7 @@ export class AgPlaylistDetails extends LitElement {
                     <label class="form-label" for=${this._descriptionId}>
                         Description <span class="ag-pld-optional">(optional)</span>
                     </label>
-                    <input id=${this._descriptionId} class="form-control form-control--dialog"
+                    <input id=${this._descriptionId} class="form-control form-control--raised"
                         type="text" maxlength=${DESCRIPTION_MAX} autocomplete="off"
                         placeholder="What it is for" .value=${this._description}
                         ?disabled=${this._busy}

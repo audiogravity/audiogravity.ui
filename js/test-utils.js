@@ -208,6 +208,17 @@ export function selectorList(list) {
 }
 
 /**
+ * The class names written in a tag's plain class attribute, in either quotes. A class
+ * chosen by an expression is read as written: `class="a ${b}"` gives `a` and `${b}`.
+ *
+ * @param {string} tag - An opening tag, as openingTags returns it.
+ * @returns {string[]} The names, empty when the tag has no plain class attribute.
+ */
+export function classesOf(tag) {
+    return (tag.match(/\bclass=(["'])([\s\S]*?)\1/)?.[2] ?? '').split(/\s+/).filter(Boolean);
+}
+
+/**
  * The opening tags written in a source, each read to its closing `>` — the one outside
  * any `${...}` expression, so the `=>` of an arrow function inside does not end it.
  *

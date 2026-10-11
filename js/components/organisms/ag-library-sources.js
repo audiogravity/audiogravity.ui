@@ -393,7 +393,7 @@ export class AgLibrarySources extends LitElement {
                         <div class="lib-upnp-discover">
                             <div class="lib-inline-row">
                                 <input
-                                    class="lib-inline-input"
+                                    class="form-control lib-inline-input"
                                     type="text"
                                     placeholder="IP, host:port or http://host:port/uuid/Upnp/device.xml"
                                     .value=${this._upnpExtraHost}

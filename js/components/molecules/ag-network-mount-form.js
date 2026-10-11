@@ -222,16 +222,16 @@ export class AgNetworkMountForm extends LitElement {
 
                 <fieldset class="ag-nmf-fields" ?disabled=${this._busy}>
                     <div class="ag-nmf-grid">
-                        <input class="ag-prov-input" type="text" placeholder="Name (e.g. NAS Music)"
+                        <input class="form-control ag-prov-input" type="text" placeholder="Name (e.g. NAS Music)"
                                .value=${f.label} @input=${(e) => this._set('label', e.target.value)}>
-                        <input class="ag-prov-input" type="text" placeholder="Host or IP (e.g. 192.168.1.20)"
+                        <input class="form-control ag-prov-input" type="text" placeholder="Host or IP (e.g. 192.168.1.20)"
                                .value=${f.host} @input=${(e) => this._set('host', e.target.value)}>
-                        <input class="ag-prov-input" type="text" placeholder="Share (e.g. music)"
+                        <input class="form-control ag-prov-input" type="text" placeholder="Share (e.g. music)"
                                .value=${f.share} @input=${(e) => this._set('share', e.target.value)}>
-                        <input class="ag-prov-input" type="text" placeholder="Username (empty = guest)"
+                        <input class="form-control ag-prov-input" type="text" placeholder="Username (empty = guest)"
                                autocomplete="off"
                                .value=${f.username} @input=${(e) => this._set('username', e.target.value)}>
-                        <input class="ag-prov-input" type="password" placeholder="Password"
+                        <input class="form-control ag-prov-input" type="password" placeholder="Password"
                                autocomplete="new-password"
                                .value=${f.password} @input=${(e) => this._set('password', e.target.value)}>
                     </div>
