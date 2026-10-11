@@ -324,20 +324,12 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     gap: 8px;
 }
 
+/* Layout only: the field draws as .form-control (css/components/forms.css). */
 .lib-inline-input {
     flex: 1;
     min-width: 0;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: var(--font-family);
-    font-size: var(--font-size-xs);
-    padding: 9px 12px;
-    outline: none;
-    transition: border-color var(--transition-fast);
 }
 
-.lib-inline-input:focus { border-color: var(--text-primary); }
 .lib-inline-input::placeholder { color: var(--text-tertiary); }
 
 .lib-inline-help {
@@ -765,21 +757,6 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     align-items: stretch;
     gap: var(--spacing-sm);
     padding: 0 14px 14px;
-}
-
-.lib-hra-input {
-    padding: 8px 10px;
-    font-family: var(--font-family);
-    font-size: var(--font-size-sm);
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-}
-
-.lib-hra-input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
 }
 
 .lib-hra-note {

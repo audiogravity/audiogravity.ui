@@ -469,11 +469,11 @@ export class AgNetworkTest extends LitElement {
                     <div class="test-config">
                         <div class="field-group inline">
                             <label>Target IP/Host:</label>
-                            <input type="text" id="cfg_pingTarget" .value=${this.config.pingTarget} @input=${this._handleConfigChange} class="config-input" ?disabled=${this.testState === 'running'}>
+                            <input type="text" id="cfg_pingTarget" .value=${this.config.pingTarget} @input=${this._handleConfigChange} class="form-control config-input" ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="field-group inline">
                             <label>Packet Count:</label>
-                            <input type="number" id="cfg_pingCount" .value=${this.config.pingCount} min="5" max="100" @input=${this._handleConfigChange} class="config-input compact" ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_pingCount" .value=${this.config.pingCount} min="5" max="100" @input=${this._handleConfigChange} class="form-control config-input compact" ?disabled=${this.testState === 'running'}>
                         </div>
                     </div>
                 ` : ''}
@@ -483,22 +483,22 @@ export class AgNetworkTest extends LitElement {
                     <div class="test-config">
                         <div class="field-group inline">
                             <label>Server (IP:port):</label>
-                            <input type="text" id="cfg_iperf3Server" .value=${this.config.iperf3Server} placeholder="192.168.1.100:5201" @input=${this._handleConfigChange} list="serverSuggestions" class="config-input" ?disabled=${this.testState === 'running'}>
+                            <input type="text" id="cfg_iperf3Server" .value=${this.config.iperf3Server} placeholder="192.168.1.100:5201" @input=${this._handleConfigChange} list="serverSuggestions" class="form-control config-input" ?disabled=${this.testState === 'running'}>
                             <datalist id="serverSuggestions">
                                 ${[...new Set([...this.serverHistory, ...this.suggestedServers])].map(s => html`<option value="${s}">`)}
                             </datalist>
                         </div>
                         <div class="field-group inline">
                             <label>Duration (s):</label>
-                            <input type="number" id="cfg_iperf3Duration" .value=${this.config.iperf3Duration} min="10" max="120" @input=${this._handleConfigChange} class="config-input compact" ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_iperf3Duration" .value=${this.config.iperf3Duration} min="10" max="120" @input=${this._handleConfigChange} class="form-control config-input compact" ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="field-group inline">
                             <label>Bandwidth:</label>
-                            <input type="text" id="cfg_iperf3Bandwidth" .value=${this.config.iperf3Bandwidth} @input=${this._handleConfigChange} class="config-input compact" placeholder="10M" ?disabled=${this.testState === 'running'}>
+                            <input type="text" id="cfg_iperf3Bandwidth" .value=${this.config.iperf3Bandwidth} @input=${this._handleConfigChange} class="form-control config-input compact" placeholder="10M" ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="field-group inline">
                             <label>Packet Size:</label>
-                            <input type="number" id="cfg_iperf3PacketSize" .value=${this.config.iperf3PacketSize} min="64" max="1500" @input=${this._handleConfigChange} class="config-input compact" ?disabled=${this.testState === 'running'}>
+                            <input type="number" id="cfg_iperf3PacketSize" .value=${this.config.iperf3PacketSize} min="64" max="1500" @input=${this._handleConfigChange} class="form-control config-input compact" ?disabled=${this.testState === 'running'}>
                         </div>
                         <div class="field-group inline service-control-row">
                             <label>Internal Server Service:</label>

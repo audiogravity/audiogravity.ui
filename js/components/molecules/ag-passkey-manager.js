@@ -152,7 +152,7 @@ export class AgPasskeyManager extends LitElement {
                     ${this._showAddForm ? html`
                         <div class="passkey-add-form">
                             <input
-                                class="passkey-name-input"
+                                class="form-control passkey-name-input"
                                 type="text"
                                 placeholder="Device name (e.g. iPhone 15)"
                                 maxlength="100"

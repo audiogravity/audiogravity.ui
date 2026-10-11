@@ -157,7 +157,7 @@ export class AgUserModal extends LitElement {
                         <h4>Account Information</h4>
                         <div class="form-field">
                             <label>Username</label>
-                            <input type="text" 
+                            <input class="form-control form-control--raised" type="text" 
                                 .value=${this._username} 
                                 @input=${(e) => this._handleInput('username', e)}
                                 placeholder="e.g. john" 
@@ -165,7 +165,7 @@ export class AgUserModal extends LitElement {
                         </div>
                         <div class="form-field">
                             <label>Email (Optional)</label>
-                            <input type="email" 
+                            <input class="form-control form-control--raised" type="email" 
                                 .value=${this._email}
                                 @input=${(e) => this._handleInput('email', e)}
                                 placeholder="Email address">
@@ -176,14 +176,14 @@ export class AgUserModal extends LitElement {
                         <h4>Security & Access</h4>
                         <div class="form-field">
                             <label>Password <span class="help-text">${isEditing ? '(Leave empty to keep current password)' : ''}</span></label>
-                            <input type="password" 
+                            <input class="form-control form-control--raised" type="password" 
                                 .value=${this._password}
                                 @input=${(e) => this._handleInput('password', e)}
                                 placeholder="Minimum 6 chars">
                         </div>
                         <div class="form-field">
                             <label>Role</label>
-                            <select .value=${this._role} @change=${(e) => this._handleInput('role', e)} ?disabled=${!!locked}>
+                            <select class="form-control form-control--raised" .value=${this._role} @change=${(e) => this._handleInput('role', e)} ?disabled=${!!locked}>
                                 <option value="user">User</option>
                                 <option value="guest">Guest</option>
                                 <option value="admin">Admin</option>

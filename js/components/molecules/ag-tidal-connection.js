@@ -179,7 +179,7 @@ export class AgTidalConnection extends LitElement {
                             After logging in, copy the page URL (it contains <code>code=</code>) and paste it here:
                         </span>
                         <input
-                            class="lib-inline-input"
+                            class="form-control form-control--raised lib-inline-input"
                             type="text"
                             placeholder="https://tidal.com/android/login/auth?code=…"
                             .value=${this._redirect}

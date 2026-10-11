@@ -135,17 +135,11 @@
     padding: 0;
 }
 
+/* Layout only: the field draws as .form-control (css/components/forms.css), in the
+   interface's font like every typed field (user's choice, 2026-10-11). */
 .ag-prov-input {
     flex: 1 1 12ch;
     min-width: 0;
-    box-sizing: border-box;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-xs);
 }
 
 .ag-prov-actions {

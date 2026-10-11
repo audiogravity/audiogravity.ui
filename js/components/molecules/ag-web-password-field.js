@@ -130,7 +130,7 @@ export class AgWebPasswordField extends LitElement {
                     <label class="form-label" for=${this._inputId}>Password</label>
                     <input
                         id=${this._inputId}
-                        class="form-control form-control--dialog ag-pid-password"
+                        class="form-control form-control--raised ag-pid-password"
                         type="text"
                         autocomplete="off"
                         autocapitalize="off"

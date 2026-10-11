@@ -286,7 +286,7 @@ export function showPasswordConfirm(title, message, options = {}) {
             <p style="margin: 0 0 var(--spacing-md);">${message}</p>
             <input
                 id=${inputId}
-                class="form-control form-control--dialog"
+                class="form-control form-control--raised"
                 type="password"
                 placeholder="Enter your password"
                 autocomplete="current-password"

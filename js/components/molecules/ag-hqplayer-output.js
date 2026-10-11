@@ -434,7 +434,7 @@ class AgHqplayerOutput extends LitElement {
 
                 <div class="lib-inline-row">
                     <input
-                        class="lib-inline-input"
+                        class="form-control form-control--raised lib-inline-input"
                         type="text"
                         placeholder="HQPlayer IP (e.g. 10.0.4.200)"
                         .value=${this._manualHost}

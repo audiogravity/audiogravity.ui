@@ -3,6 +3,10 @@
  * @description Shared form controls, inputs, and layout.
  */
 
+/* The one look of every field the user types into: Inter at the labels' step, 29px
+   tall (user's choice, 2026-10-11). A component's own class on the field lays it out
+   and nothing else; lists, checkboxes, code editors and the sign-in page keep their
+   own. Guard: js/form-fields.test.js. */
 .form-control {
     width: 100%;
     padding: var(--spacing-sm);
@@ -15,6 +19,11 @@
     transition: border-color var(--transition-fast);
 }
 
+/* The active field is marked by its border, which turns to the text colour — not by
+   base.css's 3px focus ring, which this rule outweighs (0,2,0 against 0,1,1). A text
+   field matches :focus-visible on a click or a tap too (measured in Chromium, where a
+   button does not), so the ring would come up each time a finger lands in one
+   (user's choice, 2026-10-11). */
 .form-control:focus {
     outline: none;
     border-color: var(--text-primary);
@@ -52,11 +61,14 @@
     margin-bottom: var(--spacing-md);
 }
 
-/* A field rendered inside a dialog. `.modal-dialog` is itself --bg-primary, so
-   the default fill leaves the input the exact colour of the surface behind it
-   and only a 1px border says it can be typed into. Restores the contrast the
-   password prompt had before its inline styling was removed (site#6). */
-.form-control--dialog {
+/* A field laid on a --bg-primary ground: a dialog (`.modal-dialog` is itself
+   --bg-primary), or a page such as the library's. The default fill would leave the
+   input the exact colour of the surface behind it, with only a 1px border to say it
+   can be typed into, so it takes the next step of fill. Named after what it does, not
+   where it first served: it was --dialog until the library's fields needed it too.
+   It restored the contrast the password prompt had before its inline styling was
+   removed (site#6). A field on any other ground (a card, a section) keeps the default. */
+.form-control--raised {
     background: var(--bg-secondary);
 }
 

@@ -92,20 +92,11 @@ ag-license-status {
     flex-wrap: wrap;
 }
 
+/* Layout only: the field draws as .form-control (css/components/forms.css). Its compact
+   buttons keep their 24px, centred on the 29px field (user's choice, 2026-10-11). */
 .passkey-name-input {
     flex: 1;
     min-width: 120px;
-    padding: 4px var(--spacing-xs);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-}
-
-.passkey-name-input:focus {
-    outline: none;
-    border-color: var(--color-info);
 }
 
 

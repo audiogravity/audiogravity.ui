@@ -286,15 +286,7 @@ body.no-animations .animate-stagger {
     font-weight: 500;
 }
 
-.config-field input {
-    padding: var(--spacing-sm);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-}
-
+/* A .config-field's field is drawn by css/config.css, imported after this sheet. */
 .config-field input:focus {
     outline: none;
     border-color: var(--text-primary);
@@ -513,13 +505,11 @@ body.no-animations .animate-stagger {
 
 /* Handled by components/metrics.css (Aliases) */
 
+/* Layout only: the field draws as .form-control (css/components/forms.css), but keeps
+   its natural width beside its label in the inline row, where .form-control's 100%
+   would take the whole line. Same weight as .form-control, imported after it. */
 .config-input {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xs);
-    color: var(--text-primary);
-    padding: 6px 12px;
-    font-size: var(--font-size-sm);
+    width: auto;
 }
 
 .config-input.compact {

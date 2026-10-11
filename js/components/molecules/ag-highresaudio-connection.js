@@ -163,7 +163,7 @@ export class AgHighresaudioConnection extends LitElement {
                 </div>
                 <form id="hra-login-form" class="lib-hra-form" @submit=${this._connect}>
                     <input
-                        class="lib-hra-input"
+                        class="form-control form-control--raised"
                         name="username"
                         type="email"
                         autocomplete="username"
@@ -171,7 +171,7 @@ export class AgHighresaudioConnection extends LitElement {
                         ?disabled=${this._connecting}
                     />
                     <input
-                        class="lib-hra-input"
+                        class="form-control form-control--raised"
                         name="password"
                         type="password"
                         autocomplete="current-password"

@@ -21,7 +21,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { appSources, openingTags } from './test-utils.js';
+import { appSources, classesOf, openingTags } from './test-utils.js';
 
 /** role="button", written as is or chosen by an expression. */
 const BUTTON_ROLE = /\brole=("button"|'button'|\$\{[^}]*'button')/;
@@ -31,9 +31,6 @@ const CANNOT_BE_BUTTONS = [
     ['js/components/molecules/ag-radio-card.js', 'lib-radio-card'],
     ['js/components/organisms/ag-now-playing.js', 'np-cover-wrap'],
 ];
-
-/** The class names of a tag's plain class attribute. */
-const classesOf = (tag) => (tag.match(/\bclass="([^"]*)"/)?.[1] ?? '').split(/\s+/);
 
 /** The exception a tag of this file is, if it is one. */
 const exceptionOf = (file, tag) =>

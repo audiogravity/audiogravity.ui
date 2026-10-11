@@ -208,7 +208,7 @@ export class AgProvLibraryPicker extends LitElement {
                     <span class="ag-prov-card-icon">${svgIcon(iconFolder)}</span>
                     <span class="ag-prov-card-label">Manual path</span>
                 </button>
-                <input class="ag-prov-input" type="text" placeholder="/mnt/musics"
+                <input class="form-control ag-prov-input" type="text" placeholder="/mnt/musics"
                        .value=${this.manualPath}
                        @focus=${() => this._emit('manual', this.manualPath)}
                        @input=${(e) => this._emit('manual', e.target.value)}>

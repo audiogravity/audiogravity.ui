@@ -286,7 +286,7 @@ describe('showPasswordConfirm — dialog contrast', () => {
         render(dialog.messageTemplate, container);
         const field = container.querySelector('input[type="password"]');
 
-        expect(field.classList.contains('form-control--dialog')).toBe(true);
+        expect(field.classList.contains('form-control--raised')).toBe(true);
 
         dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
         dialog.remove();

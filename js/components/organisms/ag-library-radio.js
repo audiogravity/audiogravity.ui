@@ -498,7 +498,7 @@ export class AgLibraryRadio extends LitElement {
         return html`
             <div class="lib-radio-search-wrap">
                 <input
-                    class="lib-radio-search-input"
+                    class="form-control form-control--raised lib-radio-search-input"
                     type="search"
                     placeholder="Search radio stations…"
                     .value=${this._searchQuery}
@@ -586,7 +586,7 @@ export class AgLibraryRadio extends LitElement {
                     ${isEdit ? 'Edit station' : 'Add custom station'}
                 </div>
                 <input
-                    class="lib-radio-search-input"
+                    class="form-control form-control--raised lib-radio-search-input"
                     type="text"
                     placeholder="Title (e.g. Radio Paradise FLAC)"
                     required
@@ -594,7 +594,7 @@ export class AgLibraryRadio extends LitElement {
                     @input=${e => this._updateCustomField('title', e.target.value)}
                 />
                 <input
-                    class="lib-radio-search-input"
+                    class="form-control form-control--raised lib-radio-search-input"
                     type="text"
                     inputmode="url"
                     placeholder="Stream URL (https://…)"
@@ -604,7 +604,7 @@ export class AgLibraryRadio extends LitElement {
                     @input=${e => this._updateCustomField('url', e.target.value)}
                 />
                 <input
-                    class="lib-radio-search-input"
+                    class="form-control form-control--raised lib-radio-search-input"
                     type="text"
                     inputmode="url"
                     placeholder="Image URL (optional)"
@@ -613,7 +613,7 @@ export class AgLibraryRadio extends LitElement {
                     @input=${e => this._updateCustomField('image_url', e.target.value)}
                 />
                 <input
-                    class="lib-radio-search-input"
+                    class="form-control form-control--raised lib-radio-search-input"
                     type="text"
                     placeholder="Genre (optional, e.g. jazz, classical)"
                     .value=${f.genre}
