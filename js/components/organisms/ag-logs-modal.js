@@ -181,15 +181,15 @@ export class AgLogsModal extends LitElement {
                     </div>
                 `}
                 .footerTemplate=${html`
-                    <button class="btn-action" @click=${this._copyLogs}>
+                    <button class="action-btn secondary" @click=${this._copyLogs}>
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCopy}</svg> Copy Logs
                     </button>
                     ${this.showCancel ? html`
-                        <button class="btn-action error" @click=${this._handleCancel}>
+                        <button class="action-btn warning" @click=${this._handleCancel}>
                             Cancel Operation
                         </button>
                     ` : ''}
-                    <button class="btn-action" @click=${this._handleClose}>Close</button>
+                    <button class="action-btn secondary" @click=${this._handleClose}>Close</button>
                 `}>
             </ag-modal>
         `;

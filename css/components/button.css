@@ -131,8 +131,11 @@
     gap: var(--spacing-xs);
 }
 
+/* Every hover of the framed buttons, this one first, leaves a disabled or unavailable
+   button alone: excluded from its variant's hover alone, it fell back on this one and
+   turned black under the mouse (measured on a disabled Cancel, 2026-10-11). */
 @media (hover: hover) {
-    .action-btn:hover {
+    .action-btn:hover:where(:not(:disabled, [aria-disabled="true"])) {
         background: var(--text-primary);
         color: var(--bg-primary);
     }
@@ -156,7 +159,7 @@
 }
 
 @media (hover: hover) {
-    .action-btn.primary:hover { 
+    .action-btn.primary:hover:where(:not(:disabled, [aria-disabled="true"])) {
         background: transparent; 
         color: var(--btn-primary, var(--text-primary)); 
     }
@@ -169,7 +172,7 @@
 }
 
 @media (hover: hover) {
-    .action-btn.secondary:hover {
+    .action-btn.secondary:hover:where(:not(:disabled, [aria-disabled="true"])) {
         background: var(--bg-tertiary);
         color: var(--text-primary);
         border-color: var(--text-primary);
@@ -183,14 +186,14 @@
 }
 
 @media (hover: hover) {
-    .action-btn.success:hover {
+    .action-btn.success:hover:where(:not(:disabled, [aria-disabled="true"])) {
         background: var(--color-success);
         color: var(--bg-primary);
     }
 }
 
-/* The variant of every button that deletes or removes (user decision: one colour for
-   what destroys). The label carries the orange too, as on .btn-action.warning: the
+/* The variant of every button that deletes, removes or interrupts (user decision: one
+   colour for what destroys; a window's Cancel Operation took it, 2026-10-11). The label carries the orange too, as on .btn-action.warning: the
    amber border alone reads at 2.1:1 on a light page, under the 3:1 a control's edge
    owes, where the red it replaced read at 3.8:1. */
 .action-btn.warning {
@@ -211,17 +214,20 @@
 .action-btn.error { border-color: var(--color-error); }
 
 @media (hover: hover) {
-    .action-btn.error:hover {
+    .action-btn.error:hover:where(:not(:disabled, [aria-disabled="true"])) {
         background: var(--color-error);
         color: var(--bg-primary);
     }
 }
 
-.action-btn:disabled {
+/* Unavailable reads as disabled, as the grey buttons treat it — at this system's own
+   opacity, 0.3, where theirs is 0.5: a window's Upload and Edit are announced
+   unavailable, not disabled, while its editor loads (ag-json-config-modal). */
+.action-btn:is(:disabled, [aria-disabled="true"]) {
     opacity: 0.3;
     cursor: not-allowed;
 }
-.action-btn:active:not(:disabled) { transform: scale(0.95); }
+.action-btn:active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.95); }
 
 /* The compact box — one height, padding, type, weight, letter spacing, line height and
    corners for every small button of the interface (user's choice, 2026-10-06, then

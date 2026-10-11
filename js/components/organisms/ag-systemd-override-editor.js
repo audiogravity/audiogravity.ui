@@ -389,8 +389,8 @@ export class AgSystemdOverrideEditor extends LitElement {
                     </form>
                 `}
                 .footerTemplate=${html`
-                    <button class="btn-action" @click=${() => this._handleClose()} ?disabled=${this.isSaving}>Cancel</button>
-                    <button class="btn-action success" @click=${() => this._handleSave()} ?disabled=${this.isSaving}>
+                    <button class="action-btn secondary" @click=${() => this._handleClose()} ?disabled=${this.isSaving}>Cancel</button>
+                    <button class="action-btn primary" @click=${() => this._handleSave()} ?disabled=${this.isSaving}>
                         ${this.isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                 `}>
