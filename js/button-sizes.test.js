@@ -251,6 +251,26 @@ describe('a radio station\'s Edit and Remove', () => {
     });
 });
 
+describe('Library › Sources\' Scan renderers and Scan network', () => {
+    const SCANS = [
+        ['Scan renderers', ['js', 'components', 'molecules', 'ag-upnp-renderer-card.js']],
+        ['Scan network', ['js', 'components', 'molecules', 'ag-hqplayer-output.js']],
+    ];
+
+    it('keep the width of their label: their column stretched them across the card, 327px on a phone', () => {
+        const body = cssRuleBody(readStylesheet('css', 'components', 'library-sources.css'), '.lib-hqp-discover > .action-btn');
+        expect(body, 'no rule for the scan button').toBeTruthy();
+        expect(body).toMatch(/align-self:\s*flex-start/);
+    });
+
+    it.each(SCANS)('— %s — is the first child of that column, which the rule reaches', (_, file) => {
+        const tags = openingTags(readStylesheet(...file));
+        const column = tags.findIndex((t) => /class="lib-hqp-discover"/.test(t));
+        expect(column, 'no .lib-hqp-discover').toBeGreaterThan(-1);
+        expect(tags[column + 1]).toMatch(/^<button\s+class="action-btn compact"/);
+    });
+});
+
 describe('the queue\'s Refresh and Clear', () => {
     it('are framed as the source filters below them: they were words in a line of text', () => {
         const body = cssRuleBody(readStylesheet('css', 'components', 'library-queue.css'), '.lib-queue-action');

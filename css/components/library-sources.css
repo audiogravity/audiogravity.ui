@@ -369,6 +369,14 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     gap: var(--spacing-sm);
 }
 
+/* The scan button keeps the width of its label, as every other button of the page: the
+   column stretched it across the card (327px on a phone, 860px on a computer), and a long
+   bar 24px tall read as lower than its neighbours. The discovered renderers listed under
+   it are children of the same column and keep the full width. */
+.lib-hqp-discover > .action-btn {
+    align-self: flex-start;
+}
+
 .lib-hqp-card {
     border: 1px solid var(--border-color);
     margin-bottom: 10px;
