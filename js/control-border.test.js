@@ -11,11 +11,16 @@
  * 2. each control family draws its outline with it — the rules found by walking every screen in
  *    Chromium for controls outlined in the border colour, then by reading the stylesheets
  * 3. no other rule aimed at a control outlines it in --border-color, save the panels that group
- *    controls, the separators, and the sign-in page, which does not change (user's choice)
+ *    controls, the separators, and the sign-in page, which does not change (user's choice).
+ *    A control is known by its element or a class named as one, and — since a name proves
+ *    nothing (Radio's lists are .lib-radio-filter; the review of 2026-10-13 found them) — by
+ *    every class the templates put on a <button>, <input>, <select> or <textarea>
+ * 4. no control in a template outlines itself in --border-color through a style attribute,
+ *    out of the stylesheets' reach, save the one named
  * The contrast of the theme values is checked with the other colours, in js/colors.test.js.
  */
 import { describe, it, expect } from 'vitest';
-import { readStylesheet, cssRules, cssRuleBody, filesUnder } from './test-utils.js';
+import { readStylesheet, cssRules, filesUnder, appSources, openingTags } from './test-utils.js';
 
 /** The audio diagram's styles live in its component, in a shadow root. */
 const PIPELINE = 'js/components/organisms/ag-audio-pipeline.js';
@@ -48,13 +53,33 @@ const FAMILIES = [
     ['the log\'s levels', 'css/system.css', '.log-filter-btn'],
     ['the audio diagram\'s buttons', PIPELINE, '.zoom-btn'],
     ['the audio diagram\'s switches', PIPELINE, '.toggle-slider'],
+    ['the switches', 'css/components/forms.css', '.slider'],
+    ['Radio\'s country and genre lists', 'css/components/library-radio.css', '.lib-radio-filter'],
+    ['a UPnP server row\'s Play, Add to queue and Add to playlist', 'css/components/library-cover.css', '.lib-lr-pl'],
 ];
 
 /** An outline drawn in the cards' border colour. */
 const CARD_OUTLINE = /border(?:-(?:top|right|bottom|left))?(?:-color)?\s*:[^;]*var\(--border-color\)/;
 
 /** What a selector aims at: a control element, or a class named as one. */
-const CONTROL = /(?:^|[\s>+~(])(?:input|select|textarea|button)(?![\w-])|\.[\w-]*(?:btn|button|select|input|field|tab|pill|badge|chip|toggle)[\w-]*/;
+const CONTROL = /(?:^|[\s>+~(])(?:input|select|textarea|button)(?![\w-])|\.[\w-]*(?:btn|button|select|input|field|tab|pill|badge|chip|toggle|slider|switch|filter)[\w-]*/;
+
+/** A tag the user types into or presses — not the check boxes and the like, which keep the browser's. */
+const CONTROL_TAG = /^<(?:button|select|textarea)\b|^<input\b(?![^>]*\btype="(?:checkbox|radio|range|hidden)")|\brole="button"/;
+
+/** The templates' control tags. */
+const TAGS = appSources().flatMap((file) => openingTags(readStylesheet(file))
+    .filter((tag) => CONTROL_TAG.test(tag)).map((tag) => ({ file, tag })));
+
+/** Every class the templates put on a control tag, written literally (an expression proves nothing). */
+const CONTROL_CLASSES = new Set(TAGS.flatMap(({ tag }) => (tag.match(/\bclass="([^"]*)"/)?.[1] ?? '')
+    .split(/\s+/).filter((c) => /^[a-z][\w-]*$/.test(c))));
+
+/** [file, a mark of the tag, why its inline outline stays the cards' colour] */
+const INLINE_EXCEPTIONS = [
+    ['js/components/organisms/ag-now-playing.js', 'aria-label="Open fullscreen player"',
+        'the tab continues the bar\'s top edge, and its chevron is what tells it apart'],
+];
 
 /** [stylesheet, selector, why its outline stays the cards' colour] */
 const NOT_CONTROLS = [
@@ -65,6 +90,9 @@ const NOT_CONTROLS = [
     ['css/components/forms.css', '.checkbox-field', 'a panel that groups a checkbox and its label'],
     ['css/performance.css', '.test-type-selector', 'a panel that groups the network test\'s radio buttons'],
     ['css/login.css', '.form-group input', 'the sign-in page does not change (user\'s choice)'],
+    ['css/components/library-radio.css', '.lib-radio-card', 'the rule under each station, not a button\'s edge'],
+    ['css/audio-stack.css', '.ag-prov-card', 'a card that can be pressed: its words and layout tell it, as the Sources cards'],
+    ['css/config.css', '.config-editor', 'the code editor keeps its own look (user\'s choice, 2026-10-11)'],
 ];
 
 /** The stylesheets of the app, and the diagram's styles in its component. */
@@ -90,7 +118,8 @@ describe('the controls\' border', () => {
     });
 
     it.each(FAMILIES)('— %s — draw their outline with it', (_, file, selector) => {
-        const body = cssRuleBody(readStylesheet(file), selector);
+        // The rule naming this selector itself: `.switch.disabled .slider` comes before `.slider`.
+        const body = cssRules(readStylesheet(file)).find(({ selectors }) => selectors.includes(selector))?.body;
         expect(body, `no rule for ${selector}`).toBeTruthy();
         expect(body).toMatch(/border(?:-color)?\s*:\s*(?:1px solid )?var\(--control-border\)/);
         expect(body).not.toMatch(CARD_OUTLINE);
@@ -104,11 +133,29 @@ describe('the controls\' border', () => {
                 if (!CARD_OUTLINE.test(body)) continue;
                 for (const selector of selectors) {
                     const last = selector.split(/\s*[>+~]\s*|\s+/).pop();
-                    if (CONTROL.test(` ${last}`) && !allowed.includes(`${file}: ${selector}`)) found.push(`${file}: ${selector}`);
+                    const named = CONTROL.test(` ${last}`);
+                    const worn = (last.match(/\.[\w-]+/g) ?? []).some((c) => CONTROL_CLASSES.has(c.slice(1)));
+                    if ((named || worn) && !allowed.includes(`${file}: ${selector}`)) found.push(`${file}: ${selector}`);
                 }
             }
         }
         expect(found).toEqual([]);
+    });
+
+    it('outline no control of a template in the cards\' colour through a style attribute', () => {
+        const found = TAGS.filter(({ file, tag }) => /\bstyle="[^"]*border[^"]*var\(--border-color\)/.test(tag)
+            && !INLINE_EXCEPTIONS.some(([f, mark]) => f === file && tag.includes(mark)))
+            .map(({ file, tag }) => `${file}: ${tag.slice(0, 70)}`);
+        expect(found).toEqual([]);
+        for (const [file, mark] of INLINE_EXCEPTIONS) {
+            expect(TAGS.some(({ file: f, tag }) => f === file && tag.includes(mark)), mark).toBe(true);
+        }
+    });
+
+    it('reads the classes the templates put on their controls', () => {
+        // The scan of item 3 is only as good as this set: Radio's lists must be in it.
+        expect(TAGS.length).toBeGreaterThan(100);
+        for (const c of ['lib-radio-filter', 'form-control', 'action-btn', 'lib-hqp-select']) expect(CONTROL_CLASSES.has(c), c).toBe(true);
     });
 
     it('names only rules that exist and still draw an outline, so an exception cannot outlive its reason', () => {

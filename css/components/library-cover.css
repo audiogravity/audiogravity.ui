@@ -70,7 +70,7 @@ ag-library-add-btn {
     justify-content: center;
     padding: 0;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     cursor: pointer;
     color: var(--text-tertiary);
     transition: border-color var(--transition-fast), color var(--transition-fast);

@@ -73,7 +73,7 @@
 
 .lib-radio-filter {
     padding: 6px 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-primary);
