@@ -76,6 +76,10 @@
 
     /* UI Colors */
     --border-color: #D0D0D0;
+
+    /* What can be typed into or pressed (themes.css): 3.2:1 on --bg-tertiary, more on the
+       two lighter grounds. The cards keep the hairline above. */
+    --control-border: #858585;
     --shadow-color: rgb(0 0 0 / 0.08);
     --overlay-bg: rgb(0 0 0 / 0.6);
 
@@ -237,6 +241,9 @@
     /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
        value sat under it, which is the direction nobody checks. */
     --border-color: #2A2A2A;
+
+    /* Controls' outline — 3.7:1 on --bg-tertiary, more on the two darker grounds. */
+    --control-border: #707070;
     --shadow-color: rgb(255 255 255 / 0.08);
     --topbar-bg: #000000;
     --topbar-shadow: 0 1px 0 #2A2A2A;

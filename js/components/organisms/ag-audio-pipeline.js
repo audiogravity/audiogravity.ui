@@ -302,7 +302,7 @@ export class AgAudioPipeline extends LitElement {
             align-items: center;
             justify-content: center;
             background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--control-border);
             border-radius: var(--radius-pipeline);
             color: var(--text-primary);
             cursor: pointer;
@@ -371,7 +371,7 @@ export class AgAudioPipeline extends LitElement {
             background-color: var(--bg-tertiary);
             transition: all var(--transition-normal);
             border-radius: 20px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--control-border);
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
         }
 

@@ -327,6 +327,18 @@
 
 
 
+/* The outline of what can be typed into or pressed: fields, lists, framed buttons and
+   selectors (js/control-border.test.js lists them). By default the theme's border colour,
+   so a theme that does not set one draws its controls as before. Minimal sets it at 3:1 on
+   its grounds (WCAG 1.4.11): its #D0D0D0 border read 1.45:1 on a panel, measured
+   2026-10-13. Declared on body as well as :root so that it resolves against the border of
+   the element that reads it — a theme stating its dark border on body alone would
+   otherwise hand body the light value computed on <html>. */
+:root,
+body {
+   --control-border: var(--border-color);
+}
+
 /* =========================================
    2b. SHARED DARK DEFAULTS
    =========================================

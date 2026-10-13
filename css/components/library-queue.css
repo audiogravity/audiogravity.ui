@@ -11,7 +11,7 @@
     display: inline-flex;
     align-items: center;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     cursor: pointer;
     font-family: var(--font-family);
     color: var(--text-secondary);

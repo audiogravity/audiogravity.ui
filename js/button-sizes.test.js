@@ -274,7 +274,8 @@ describe('Library › Sources\' Scan renderers and Scan network', () => {
 describe('the queue\'s Refresh and Clear', () => {
     it('are framed as the source filters below them: they were words in a line of text', () => {
         const body = cssRuleBody(readStylesheet('css', 'components', 'library-queue.css'), '.lib-queue-action');
-        expect(body).toMatch(/border:\s*1px solid var\(--border-color\)/);
+        expect(body).toMatch(/border:\s*1px solid var\(--control-border\)/);
+        expect(cssRuleBody(readStylesheet('css', 'components', 'filter-bar.css'), '.filter-btn')).toMatch(/border:\s*1px solid var\(--control-border\)/);
         expect(body).not.toMatch(/border:\s*0/);
     });
 
