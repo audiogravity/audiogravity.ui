@@ -77,7 +77,7 @@
 
 .software-card.installed {
     border-left-width: 3px;
-    border-left-color: var(--color-success);
+    border-left-color: var(--installed-mark);
 }
 
 /* Not faded: a package that is not installed is one INSTALL away, nothing on its card is

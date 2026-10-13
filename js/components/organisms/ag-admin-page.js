@@ -321,7 +321,7 @@ export class AgAdminPage extends LitElement {
 
                 <div class="tab-title-container">
                         <h2>USER MANAGEMENT</h2>
-                        <span class="badge warning clickable" @click=${() => this._openUserModal()}>NEW USER</span>
+                        <span class="badge warning action-tag clickable" @click=${() => this._openUserModal()}>NEW USER</span>
                     </div>
                     
                     <ag-card-grid 

@@ -331,12 +331,30 @@
    selectors (js/control-border.test.js lists them). By default the theme's border colour,
    so a theme that does not set one draws its controls as before. Minimal sets it at 3:1 on
    its grounds (WCAG 1.4.11): its #D0D0D0 border read 1.45:1 on a panel, measured
-   2026-10-13. Declared on body as well as :root so that it resolves against the border of
-   the element that reads it — a theme stating its dark border on body alone would
-   otherwise hand body the light value computed on <html>. */
+   2026-10-13.
+
+   With it, the roles that keep colour for states (UI guidelines rule 10): by default the
+   semantic colour each used to read, so Slate and Gravity draw them as before; Minimal sets
+   them in its text colours (user's choice, 2026-10-13; js/state-colours.test.js). The
+   plain actions written as badges (--action-tag) have no default here: they come in green
+   and orange, so badge.css gives each variant its own fallback.
+
+   A custom property resolves where it is declared, and its children inherit the resolved
+   value. Declared on body as well as :root, these resolve against body's own tokens — a
+   theme stating its dark values on body alone would otherwise hand body the light ones
+   computed on <html>. */
 :root,
 body {
    --control-border: var(--border-color);
+   --action-positive: var(--color-success);          /* START, ACTIVATE, a confirming button */
+   --action-positive-text: var(--color-success-text);
+   --activity-low-text: var(--color-success-text);   /* a service's figure at rest */
+   --health-running: var(--color-success);           /* the running share of a health bar */
+   --health-running-text: var(--color-success-text); /* "1 running" */
+   --critical-mark: var(--color-warning);            /* stripe of a service the chain needs */
+   --critical-mark-text: var(--color-warning-text);  /* its CRITICAL tag */
+   --critical-mark-bg: var(--color-warning-bg);
+   --installed-mark: var(--color-success);           /* stripe of an installed package */
 }
 
 /* =========================================

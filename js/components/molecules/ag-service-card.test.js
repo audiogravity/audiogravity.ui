@@ -136,7 +136,7 @@ describe('a critical service', () => {
         // Outlined, it had the shape of START, RESTART and the ENABLED toggle beside it.
         const el = card(ALL_MEASURED);
         el.service = { ...el.service, critical: true };
-        expect(flat(el.render())).toContain('<span class="badge warning">CRITICAL</span>');
+        expect(flat(el.render())).toContain('<span class="badge warning critical-tag">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {

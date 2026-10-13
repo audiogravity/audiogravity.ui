@@ -107,7 +107,7 @@
 .systemd-tile.critical,
 .config-tile.critical {
     border-left-width: 3px;
-    border-left-color: var(--color-warning);
+    border-left-color: var(--critical-mark);
 }
 
 /* Systemd: Has Override (bordure top) */

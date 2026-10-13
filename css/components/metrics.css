@@ -107,7 +107,7 @@
 }
 
 /* Activity Indicators */
-.metric-value.activity-low { color: var(--color-success-text); }
+.metric-value.activity-low { color: var(--activity-low-text); }
 .metric-value.activity-medium { color: var(--color-warning-text); }
 .metric-value.activity-high { color: var(--color-error-text); }
 

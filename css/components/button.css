@@ -58,8 +58,8 @@
 /* Success variant */
 .btn-action.success,
 .tile-action-btn:is(.start, .activate) {
-    border-color: var(--color-success);
-    color: var(--color-success-text);
+    border-color: var(--action-positive);
+    color: var(--action-positive-text);
 }
 
 /* Error variant */
@@ -181,13 +181,13 @@
 
 /* Success : bouton de confirmation/sauvegarde */
 .action-btn.success {
-    border-color: var(--color-success);
-    color: var(--color-success-text);
+    border-color: var(--action-positive);
+    color: var(--action-positive-text);
 }
 
 @media (hover: hover) {
     .action-btn.success:hover:where(:not(:disabled, [aria-disabled="true"])) {
-        background: var(--color-success);
+        background: var(--action-positive);
         color: var(--bg-primary);
     }
 }
