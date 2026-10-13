@@ -528,7 +528,7 @@ body.dark-mode .lib-src-mark-dark { display: block; }
 
 .lib-hqp-select {
     padding: 6px 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     background: var(--bg-secondary);
     color: var(--text-primary);
     font-family: var(--font-family);
@@ -784,7 +784,7 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     width: auto;
     height: auto;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     padding: 5px 10px;
     font-size: var(--font-size-xs);
     font-weight: 500;

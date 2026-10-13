@@ -76,6 +76,10 @@
 
     /* UI Colors */
     --border-color: #D0D0D0;
+
+    /* What can be typed into or pressed (themes.css): 3.2:1 on --bg-tertiary, more on the
+       two lighter grounds. The cards keep the hairline above. */
+    --control-border: #858585;
     --shadow-color: rgb(0 0 0 / 0.08);
     --overlay-bg: rgb(0 0 0 / 0.6);
 
@@ -88,6 +92,25 @@
     --btn-secondary: #FFFFFF;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: #f97316;
+
+    /* Colour marks a state here, never an action or a figure at rest (UI guidelines rule
+       10; the user's choice after a trial on the real screens, 2026-10-13). Each is a role
+       the components read, its default in themes.css the semantic colour the other themes
+       keep. Stated once for both modes: a custom property resolves where it is declared,
+       and this block matches <html> and <body>, which carry .dark-mode as well — the dark
+       --text-* is in force there, and what is inside inherits the resolved value. A subtree
+       given a --text-primary of its own would not re-resolve these. */
+    --action-positive: var(--text-primary);       /* START, ACTIVATE, a confirming button */
+    --action-positive-text: var(--text-primary);
+    --action-tag: var(--text-primary);            /* REFRESH, CHECK UPDATES, NEW USER, CONFIG */
+    --action-tag-text: var(--text-primary);
+    --activity-low-text: var(--text-primary);     /* a service's figure at rest, 0.0 % */
+    --health-running: var(--text-primary);        /* the running share of a health bar */
+    --health-running-text: var(--text-secondary); /* "1 running" */
+    --critical-mark: var(--text-primary);         /* stripe of a service the chain needs */
+    --critical-mark-text: var(--text-primary);    /* its CRITICAL tag */
+    --critical-mark-bg: var(--color-neutral-bg);
+    --installed-mark: var(--text-primary);        /* stripe of an installed package */
 
     /* No --font-family here on purpose. Minimal is the default theme, so what it
        renders is what almost every installation renders: it takes Inter from
@@ -237,6 +260,9 @@
     /* Lightened to clear the 4.5:1 floor on the dark grounds — the previous
        value sat under it, which is the direction nobody checks. */
     --border-color: #2A2A2A;
+
+    /* Controls' outline — 3.7:1 on --bg-tertiary, more on the two darker grounds. */
+    --control-border: #707070;
     --shadow-color: rgb(255 255 255 / 0.08);
     --topbar-bg: #000000;
     --topbar-shadow: 0 1px 0 #2A2A2A;

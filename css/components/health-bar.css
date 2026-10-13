@@ -26,7 +26,7 @@
     transition: width var(--transition-normal);
 }
 
-.health-segment.active { background: var(--color-success); }
+.health-segment.active { background: var(--health-running); }
 .health-segment.failed { background: var(--color-error); }
 .health-segment.idle   { background: var(--border-color); }
 
@@ -49,7 +49,7 @@
     font-size: var(--font-size-xs);
 }
 
-.health-count.running { color: var(--color-success-text); }
+.health-count.running { color: var(--health-running-text); }
 .health-count.idle    { color: var(--text-secondary); }
 .health-count.failed  { color: var(--color-error-text); }
 .health-count-sep     { color: var(--text-tertiary); }

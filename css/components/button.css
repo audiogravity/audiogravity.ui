@@ -22,7 +22,7 @@
     justify-content: center;
     align-items: center;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     color: var(--text-primary);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -58,8 +58,8 @@
 /* Success variant */
 .btn-action.success,
 .tile-action-btn:is(.start, .activate) {
-    border-color: var(--color-success);
-    color: var(--color-success-text);
+    border-color: var(--action-positive);
+    color: var(--action-positive-text);
 }
 
 /* Error variant */
@@ -96,7 +96,7 @@
 /* Ghost variant: .btn-action--ghost — neutral/secondary, transparent with dim border */
 .btn-action--ghost {
     background: transparent;
-    border-color: var(--border-color);
+    border-color: var(--control-border);
     color: var(--text-secondary);
 }
 
@@ -167,7 +167,7 @@
 
 /* Secondary : bouton neutre/annulation */
 .action-btn.secondary {
-    border-color: var(--border-color);
+    border-color: var(--control-border);
     color: var(--text-secondary);
 }
 
@@ -181,13 +181,13 @@
 
 /* Success : bouton de confirmation/sauvegarde */
 .action-btn.success {
-    border-color: var(--color-success);
-    color: var(--color-success-text);
+    border-color: var(--action-positive);
+    color: var(--action-positive-text);
 }
 
 @media (hover: hover) {
     .action-btn.success:hover:where(:not(:disabled, [aria-disabled="true"])) {
-        background: var(--color-success);
+        background: var(--action-positive);
         color: var(--bg-primary);
     }
 }
@@ -306,7 +306,7 @@ ag-badge button.badge,
    ===================== */
 .icon-btn {
     background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     color: var(--text-primary);
     cursor: pointer;
     width: 38px;

@@ -96,17 +96,6 @@
 }
 
 /**
- * @variant .badge.error-pulse
- * @description Red error badge with pulse animation.
- */
-.badge.error-pulse {
-    border-color: var(--color-error);
-    color: var(--color-error-text);
-    background: transparent;
-    animation: badgeFramePulse 2s ease-in-out infinite;
-}
-
-/**
  * @variant .badge.filled
  * @description Variation with solid background color.
  */
@@ -151,9 +140,38 @@
 }
 
 .badge:not(button, .clickable, .filled):is(.success, .success-pulse) { background: var(--color-success-bg); }
-.badge:not(button, .clickable, .filled):is(.error, .error-pulse) { background: var(--color-error-bg); }
+.badge:not(button, .clickable, .filled).error { background: var(--color-error-bg); }
 .badge:not(button, .clickable, .filled):is(.warning, .critical) { background: var(--color-warning-bg); }
 .badge:not(button, .clickable, .filled).info { background: var(--color-info-bg); }
+
+/**
+ * @variant .badge.critical-tag
+ * @description A service the chain cannot do without: CRITICAL on the Services, Config and
+ * Systemd cards, worn beside .warning. Drawn as a warning unless the theme sets
+ * --critical-mark-text and --critical-mark-bg — Minimal keeps colour for states and draws
+ * it neutral (UI guidelines rule 10, 2026-10-13). After .warning and its tint, which it
+ * outranks by order alone.
+ */
+.badge.critical-tag { color: var(--critical-mark-text); }
+.badge:not(button, .clickable, .filled).critical-tag { background: var(--critical-mark-bg); }
+
+/**
+ * @variant .badge.action-tag
+ * @description A badge that is a plain action and states nothing: REFRESH, CHECK UPDATES,
+ * NEW USER, CONFIG. Drawn in its variant's colour unless the theme sets --action-tag and
+ * --action-tag-text — Minimal draws them neutral (2026-10-13). A frame, so only what is
+ * pressed (the rule above). UPDATE ALL is not one: its orange says updates are waiting
+ * (user's choice).
+ */
+.badge.action-tag.success:is(button, .clickable) {
+    border-color: var(--action-tag, var(--color-success));
+    color: var(--action-tag-text, var(--color-success-text));
+}
+
+.badge.action-tag.warning:is(button, .clickable) {
+    border-color: var(--action-tag, var(--color-warning));
+    color: var(--action-tag-text, var(--color-warning-text));
+}
 
 /**
  * @rule A pulse never fades a badge's words (2026-10-05)
@@ -177,14 +195,14 @@
     animation-name: badgeFramePulse;
 }
 
-.badge:not(button, .clickable, .filled):is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+.badge:not(button, .clickable, .filled):is(.animate-pulse, .critical, .success-pulse) {
     animation-name: badgeTintPulse;
 }
 
 /* A filled badge does not pulse: its words sit on the fill, and nothing around them can
    breathe without taking them along — its frame is the fill's colour, so a beat there
    would only repaint, unseen. */
-.badge.filled:is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+.badge.filled:is(.animate-pulse, .critical, .success-pulse) {
     animation: none;
 }
 

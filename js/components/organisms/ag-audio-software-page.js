@@ -1048,15 +1048,15 @@ export class AgAudioSoftwarePage extends LitElement {
                          a keyboard or screen-reader user loses their place (measured in Chromium). -->
                     <!-- Each icon carries a word: two black squares side by side said nothing
                          of what they do. The aria-label keeps the full sentence. -->
-                    <button class="badge warning plain-btn ${this._isRefreshing ? 'animate-pulse' : 'clickable'}"
+                    <button class="badge warning action-tag plain-btn ${this._isRefreshing ? 'animate-pulse' : 'clickable'}"
                           aria-label="Refresh package config (re-probe sources)" aria-disabled=${this._isRefreshing ? 'true' : 'false'}
                           @click=${this._isRefreshing ? null : this._refreshConfig}><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg> REFRESH</button>
-                    <button class="badge success clickable plain-btn ${this.isCheckingAll ? 'animate-pulse' : ''}"
+                    <button class="badge success action-tag clickable plain-btn ${this.isCheckingAll ? 'animate-pulse' : ''}"
                           @click=${this._checkAllUpdates}>
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
                     </button>
                     ${this.packages.some(hasUpdates) ? html`
-                        <button class="badge error clickable plain-btn"
+                        <button class="badge warning clickable plain-btn"
                               @click=${this._handleUpdateAll}>UPDATE ALL</button>
                     ` : ''}
                     ` : ''}

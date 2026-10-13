@@ -31,7 +31,7 @@ const Template = (args) => html`
 export const Percentage = Template.bind({});
 Percentage.args = {
     label: 'CPU Usage',
-    color: 'var(--accent-primary)',
+    color: 'var(--chart-cpu)',
     unit: '%',
     data: mockData
 };
@@ -39,7 +39,7 @@ Percentage.args = {
 export const Memory = Template.bind({});
 Memory.args = {
     label: 'Memory Usage',
-    color: 'var(--accent-secondary)',
+    color: 'var(--chart-memory)',
     unit: 'mem',
     data: Array.from({ length: 30 }, () => Math.random() * 1024 * 1024 * 1024)
 };
@@ -47,7 +47,7 @@ Memory.args = {
 export const Rate = Template.bind({});
 Rate.args = {
     label: 'Network Rate',
-    color: 'var(--status-success)',
+    color: 'var(--chart-network)',
     unit: 'rate',
     data: Array.from({ length: 30 }, () => Math.random() * 500000)
 };
@@ -61,17 +61,17 @@ Rate.args = {
 export const PartialWindow = Template.bind({});
 PartialWindow.args = {
     label: 'CPU Usage',
-    color: 'var(--accent-primary)',
+    color: 'var(--chart-cpu)',
     unit: '%',
     slots: 30,
     data: [1.2, 1.6, 1.4],
 };
 
-/** The very first measurement: a point, not an empty chart. */
-export const LonePoint = Template.bind({});
-LonePoint.args = { ...PartialWindow.args, data: [1.2] };
+/** The very first measurement: one bar, not an empty chart. */
+export const LoneMeasurement = Template.bind({});
+LoneMeasurement.args = { ...PartialWindow.args, data: [1.2] };
 
-/** A missing sample is a gap, and one measured alone between gaps is a point. */
+/** A missing sample is a gap between the bars. */
 export const WithGaps = Template.bind({});
 WithGaps.args = {
     ...PartialWindow.args,

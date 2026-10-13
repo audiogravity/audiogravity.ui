@@ -538,7 +538,7 @@ body:not(.npfs-open) .topbar {
 
 .npfs-switch-btn {
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     padding: 5px 12px;
     font-size: var(--font-size-sm);

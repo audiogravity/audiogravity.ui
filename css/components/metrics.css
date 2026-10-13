@@ -75,12 +75,6 @@
     font-weight: 700;
 }
 
-.detailed-chart-svg {
-    width: 100%;
-    height: 60px;
-    display: block;
-}
-
 /* =====================
    METRIC LABEL / VALUE
    ===================== */
@@ -107,7 +101,7 @@
 }
 
 /* Activity Indicators */
-.metric-value.activity-low { color: var(--color-success-text); }
+.metric-value.activity-low { color: var(--activity-low-text); }
 .metric-value.activity-medium { color: var(--color-warning-text); }
 .metric-value.activity-high { color: var(--color-error-text); }
 

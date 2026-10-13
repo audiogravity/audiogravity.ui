@@ -321,6 +321,25 @@ describe('colours — text on a fill, not on the page', () => {
     }
 });
 
+describe('colours — a control\'s outline shows at 3:1 (WCAG 1.4.11)', () => {
+    // The fields, lists and framed buttons read --control-border (js/control-border.test.js).
+    // A theme that sets a value owes it 3:1 on every ground; one that does not keeps its
+    // border colour, which css/themes.css hands down unresolved, so there is nothing to read.
+    for (const theme of THEMES) {
+        for (const mode of ['light', 'dark']) {
+            it(`${theme} ${mode}`, () => {
+                const tokens = resolve(theme, mode);
+                const outline = tokens['--control-border'];
+                if (theme === 'minimal') expect(outline, `${theme} ${mode} : --control-border manquant`).toBeDefined();
+                if (!outline) return;
+                const grounds = ['--bg-primary', '--bg-secondary', '--bg-tertiary'].map(k => tokens[k]);
+                const worst = Math.min(...grounds.map(g => contrast(outline, g)));
+                expect(worst, `--control-border=${outline} ${worst.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+            });
+        }
+    }
+});
+
 describe("colours — the browser's own controls take the theme's", () => {
     // Left unset, every native check box and radio button the app does not draw
     // itself took the browser's blue — a colour found nowhere else in AG (the

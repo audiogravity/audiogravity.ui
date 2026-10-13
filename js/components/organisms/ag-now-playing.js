@@ -788,6 +788,8 @@ export class AgNowPlaying extends LitElement {
         return html`
             <div class="now-playing-bar">
                 ${!window.matchMedia('(pointer: coarse)').matches ? html`
+                <!-- Outlined in the cards' border, not --control-border: the tab continues the
+                     bar's top edge, and its chevron is what tells it apart (js/control-border.test.js). -->
                 <button
                     aria-label="Open fullscreen player"
                     style="position:absolute;top:-24px;right:0;z-index:104;width:32px;height:24px;display:flex;align-items:center;justify-content:center;background:var(--bg-secondary);border:1px solid var(--border-color);border-bottom:none;border-radius:var(--radius-sm,4px) var(--radius-sm,4px) 0 0;padding:0;color:var(--text-secondary);cursor:pointer;"

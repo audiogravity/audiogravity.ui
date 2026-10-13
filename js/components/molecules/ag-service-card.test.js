@@ -131,12 +131,26 @@ describe('a figure that was measured', () => {
     });
 });
 
+describe('the expanded charts', () => {
+    it('take the theme\'s chart colours — never a status colour (2026-10-13)', () => {
+        // Writes were drawn in red and egress in orange, as if writing to disk were an error.
+        // Each series has a chart of its own here, so none takes the grey of a second series:
+        // in bars faded to 0.55 it came out at 1.7:1 in Minimal.
+        const out = flat(card(ALL_MEASURED, { expanded: true }).render());
+        for (const [label, colour] of [['CPU', 'chart-cpu'], ['Memory', 'chart-memory'], ['↓ Ingress', 'chart-network'],
+            ['↑ Egress', 'chart-network'], ['Read', 'chart-disk'], ['Write', 'chart-disk']]) {
+            expect(out).toMatch(new RegExp(`label="${label}"[^>]*color="var\\(--${colour}\\)"`));
+        }
+        expect(out).not.toMatch(/<ag-metric-detail[^>]*color="var\(--color-/);
+    });
+});
+
 describe('a critical service', () => {
     it('is tagged CRITICAL with a tint, the same tag as on the Config and Systemd cards', () => {
         // Outlined, it had the shape of START, RESTART and the ENABLED toggle beside it.
         const el = card(ALL_MEASURED);
         el.service = { ...el.service, critical: true };
-        expect(flat(el.render())).toContain('<span class="badge warning">CRITICAL</span>');
+        expect(flat(el.render())).toContain('<span class="badge warning critical-tag">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {

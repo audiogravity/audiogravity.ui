@@ -1,6 +1,6 @@
 /**
- * Unit tests for ag-systemd-card.js — the CRITICAL tag, and the colour of the button
- * that removes an override.
+ * Unit tests for ag-systemd-card.js — the CRITICAL tag, the I/O and IP accounting tags,
+ * and the colour of the button that removes an override.
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -27,7 +27,7 @@ function renderCard(overrides = {}) {
 
 describe('critical service', () => {
     it('is tagged CRITICAL with a tint, the same tag as on the Services and Config cards', () => {
-        expect(renderCard({ critical: true })).toContain('<span class="badge warning">CRITICAL</span>');
+        expect(renderCard({ critical: true })).toContain('<span class="badge warning critical-tag">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {
@@ -38,5 +38,20 @@ describe('critical service', () => {
 describe('removing an override', () => {
     it('is orange, like every button that deletes', () => {
         expect(renderCard({ has_override: true })).toMatch(/<button class="tile-action-btn warning"[^>]*>\s*Remove Override/);
+    });
+});
+
+describe('the I/O and IP accounting tags', () => {
+    it('are green and beat while the accounting is on', () => {
+        const card = renderCard({ properties: { io_accounting: true, ip_accounting: true } });
+        expect(card).toContain('<span class="badge success-pulse">I/O Acc</span>');
+        expect(card).toContain('<span class="badge success-pulse">IP Acc</span>');
+    });
+
+    it('are grey and still while it is off: an option turned off is no failure, so not red (2026-10-13)', () => {
+        const card = renderCard({ properties: { io_accounting: false, ip_accounting: false } });
+        expect(card).toContain('<span class="badge neutral">I/O Acc</span>');
+        expect(card).toContain('<span class="badge neutral">IP Acc</span>');
+        expect(card).not.toMatch(/error/);
     });
 });

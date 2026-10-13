@@ -171,14 +171,6 @@ ag-sparkline .sparkline-svg {
     font-weight: 700;
 }
 
-.detailed-chart-svg {
-    width: 100%;
-    height: 60px;
-    display: block;
-    background: var(--chart-bg);
-    border-radius: var(--radius-xs);
-}
-
 /* =====================
    RESPONSIVE
    ===================== */
@@ -187,18 +179,10 @@ ag-sparkline .sparkline-svg {
     .sparkline-container {
         height: 32px;
     }
-
-    .detailed-chart-svg {
-        height: 50px;
-    }
 }
 
 @media (width <= 480px) {
     .sparkline-container {
         height: 28px;
-    }
-
-    .detailed-chart-svg {
-        height: 40px;
     }
 }

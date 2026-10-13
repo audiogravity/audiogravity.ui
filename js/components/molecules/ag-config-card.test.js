@@ -121,7 +121,7 @@ describe('critical service', () => {
     it('is tagged CRITICAL with a tint, not an outline shaped like EDIT CONFIG beside it', () => {
         // A <span>, not .clickable: badge.css draws it as a tint without a frame. Outlined,
         // it read as a second button next to EDIT CONFIG.
-        expect(renderCard({ critical: true })).toContain('<span class="badge warning">CRITICAL</span>');
+        expect(renderCard({ critical: true })).toContain('<span class="badge warning critical-tag">CRITICAL</span>');
     });
 
     it('is not tagged when the chain can do without it', () => {

@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
 }
@@ -76,7 +76,7 @@
     text-transform: uppercase;
     color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
@@ -117,7 +117,7 @@
     letter-spacing: 0.08em;
     color: var(--text-secondary);
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     padding: 2px var(--spacing-sm);
     cursor: pointer;

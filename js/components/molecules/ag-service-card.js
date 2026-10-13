@@ -386,7 +386,7 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('cpu')}>×</button>
                         </div>
                         <div class="expanded-metric-content">
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="CPU" .data=${this.history?.cpu || []} color="var(--color-info)" unit="%"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="CPU" .data=${this.history?.cpu || []} color="var(--chart-cpu)" unit="%"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -398,7 +398,7 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('mem')}>×</button>
                         </div>
                         <div class="expanded-metric-content">
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Memory" .data=${this.history?.mem || []} color="var(--color-success)" unit="mem"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Memory" .data=${this.history?.mem || []} color="var(--chart-memory)" unit="mem"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -410,8 +410,8 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('net')}>×</button>
                         </div>
                         <div class="expanded-metric-content split">
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↓ Ingress" .data=${this.history?.netRx || []} color="var(--color-success)" unit="rate"></ag-metric-detail>
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↑ Egress" .data=${this.history?.netTx || []} color="var(--color-warning)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↓ Ingress" .data=${this.history?.netRx || []} color="var(--chart-network)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="↑ Egress" .data=${this.history?.netTx || []} color="var(--chart-network)" unit="rate"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -423,8 +423,8 @@ export class AgServiceCard extends LitElement {
                             <button class="metric-close-btn" @click=${() => this._handleExpandMetric('disk')}>×</button>
                         </div>
                         <div class="expanded-metric-content split">
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Read" .data=${this.history?.diskRead || []} color="var(--color-info)" unit="rate"></ag-metric-detail>
-                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Write" .data=${this.history?.diskWrite || []} color="var(--color-error)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Read" .data=${this.history?.diskRead || []} color="var(--chart-disk)" unit="rate"></ag-metric-detail>
+                            <ag-metric-detail slots=${SERVICE_METRICS_WINDOW} label="Write" .data=${this.history?.diskWrite || []} color="var(--chart-disk)" unit="rate"></ag-metric-detail>
                         </div>
                     </div>
                 ` : ''}
@@ -456,7 +456,7 @@ export class AgServiceCard extends LitElement {
 
                         ${!isInstalled ? html`<span class="badge error">NOT INSTALLED</span>` : ''}
                         ${this.service.state === 'failed' ? html`<span class="badge error">FAILED</span>` : ''}
-                        ${this.service.critical ? html`<span class="badge warning">CRITICAL</span>` : ''}
+                        ${this.service.critical ? html`<span class="badge warning critical-tag">CRITICAL</span>` : ''}
                     </div>
 
                     ${this._lastActionTime ? html`
