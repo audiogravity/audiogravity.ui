@@ -77,8 +77,8 @@ export class AgSystemdCard extends LitElement {
                         ${this.service.critical ? html`<span class="badge warning critical-tag">CRITICAL</span>` : nothing}
                         ${this.service.has_override ? html`<span class="badge info">Override</span>` : nothing}
                         ${!isInstalled ? html`<span class="badge error">NOT INSTALLED</span>` : nothing}
-                        <span class="badge ${props.io_accounting ? 'success-pulse' : 'error-pulse'}">I/O Acc</span>
-                        <span class="badge ${props.ip_accounting ? 'success-pulse' : 'error-pulse'}">IP Acc</span>
+                        <span class="badge ${props.io_accounting ? 'success-pulse' : 'neutral'}">I/O Acc</span>
+                        <span class="badge ${props.ip_accounting ? 'success-pulse' : 'neutral'}">IP Acc</span>
                     </div>
                 </div>
                 

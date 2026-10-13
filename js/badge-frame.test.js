@@ -86,7 +86,7 @@ describe('a badge that is not a button', () => {
         expect(cssRuleBody(css, TAG)).toMatch(/background:\s*var\(--color-neutral-bg\)/);
         for (const [variants, token] of [
             [':is(.success, .success-pulse)', '--color-success-bg'],
-            [':is(.error, .error-pulse)', '--color-error-bg'],
+            ['.error', '--color-error-bg'],
             [':is(.warning, .critical)', '--color-warning-bg'],
             ['.info', '--color-info-bg'],
         ]) {
@@ -191,14 +191,14 @@ describe('a pulse', () => {
         // .animate-pulse brings `pulse`, which fades the whole element: on a badge it
         // takes the frame's beat, on a tag the tint's.
         expect(cssRuleBody(css, '.badge.animate-pulse')).toMatch(/animation-name:\s*badgeFramePulse/);
-        expect(cssRuleBody(css, `${TAG}:is(.animate-pulse, .critical, .success-pulse, .error-pulse)`))
+        expect(cssRuleBody(css, `${TAG}:is(.animate-pulse, .critical, .success-pulse)`))
             .toMatch(/animation-name:\s*badgeTintPulse/);
     });
 
     it('stops on a filled badge, whose frame is the colour of its fill', () => {
         // Nothing around words sitting on a fill can breathe without taking them along;
         // a beat of its frame would only repaint, unseen.
-        expect(cssRuleBody(css, '.badge.filled:is(.animate-pulse, .critical, .success-pulse, .error-pulse)'))
+        expect(cssRuleBody(css, '.badge.filled:is(.animate-pulse, .critical, .success-pulse)'))
             .toMatch(/animation:\s*none/);
     });
 

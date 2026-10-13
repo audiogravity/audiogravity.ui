@@ -13,14 +13,14 @@
  * variants, green and orange, so they keep a fallback per variant where they are read.
  *
  * What still carries a colour is a state — UP, ENABLED, FAILED, a destructive action's
- * orange — and the orange of what waits on the user: a package's web password to set,
- * its restart.
+ * orange — and the orange of what waits on the user: UPDATE ALL (user's choice), a
+ * package's web password to set, its restart.
  *
  * Covers:
  * 1. each rule reads its role, whose default is the semantic colour it had
  * 2. Minimal sets every role in the text colours, and no other theme sets one
  * 3. the components wear the classes these rules read: CRITICAL as .critical-tag on the
- *    three cards, the plain actions as .action-tag
+ *    three cards, the plain actions as .action-tag, and UPDATE ALL as an orange action
  */
 import { describe, it, expect } from 'vitest';
 import { readStylesheet, cssRules, cssRuleBody, appSources, openingTags } from './test-utils.js';
@@ -125,12 +125,18 @@ describe('the components wear the classes these rules read', () => {
                 if (!/(^|\s)badge(\s|$)/.test(cls) || !/(^|\s)(success|warning)(\s|$)/.test(cls)) return;
                 if (!/\bclickable\b/.test(cls) && !/^<button\b/.test(tag)) return;
                 if (/(^|\s)action-tag(\s|$)/.test(cls)) return;
-                // Shown only while something waits on the user, and orange for it: a web
-                // password to set, a restart.
-                if (/web-password-badge|restart-badge/.test(tag)) return;
+                // Shown only while something waits on the user, and orange for it, as UPDATE ALL
+                // is (user's choice): updates to install, a web password to set, a restart.
+                if (/_handleUpdateAll|web-password-badge|restart-badge/.test(tag)) return;
                 missing.push(`${file}: ${tag.slice(0, 80)}`);
             });
         }
         expect(missing).toEqual([]);
+    });
+
+    it('draws UPDATE ALL in orange in every theme: updates are waiting, nothing failed (user\'s choice)', () => {
+        const software = readStylesheet('js', 'components', 'organisms', 'ag-audio-software-page.js');
+        expect(software).toMatch(/<button class="badge warning clickable plain-btn"\s*@click=\$\{this\._handleUpdateAll\}>UPDATE ALL<\/button>/);
+        expect(cssRuleBody(readStylesheet('css', 'components', 'badge.css'), '.badge.warning')).toMatch(/border-color:\s*var\(--color-warning\)/);
     });
 });

@@ -1056,7 +1056,7 @@ export class AgAudioSoftwarePage extends LitElement {
                         ${this.isCheckingAll ? 'CHECKING...' : 'CHECK UPDATES'}
                     </button>
                     ${this.packages.some(hasUpdates) ? html`
-                        <button class="badge error clickable plain-btn"
+                        <button class="badge warning clickable plain-btn"
                               @click=${this._handleUpdateAll}>UPDATE ALL</button>
                     ` : ''}
                     ` : ''}

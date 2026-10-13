@@ -96,17 +96,6 @@
 }
 
 /**
- * @variant .badge.error-pulse
- * @description Red error badge with pulse animation.
- */
-.badge.error-pulse {
-    border-color: var(--color-error);
-    color: var(--color-error-text);
-    background: transparent;
-    animation: badgeFramePulse 2s ease-in-out infinite;
-}
-
-/**
  * @variant .badge.filled
  * @description Variation with solid background color.
  */
@@ -151,7 +140,7 @@
 }
 
 .badge:not(button, .clickable, .filled):is(.success, .success-pulse) { background: var(--color-success-bg); }
-.badge:not(button, .clickable, .filled):is(.error, .error-pulse) { background: var(--color-error-bg); }
+.badge:not(button, .clickable, .filled).error { background: var(--color-error-bg); }
 .badge:not(button, .clickable, .filled):is(.warning, .critical) { background: var(--color-warning-bg); }
 .badge:not(button, .clickable, .filled).info { background: var(--color-info-bg); }
 
@@ -206,14 +195,14 @@
     animation-name: badgeFramePulse;
 }
 
-.badge:not(button, .clickable, .filled):is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+.badge:not(button, .clickable, .filled):is(.animate-pulse, .critical, .success-pulse) {
     animation-name: badgeTintPulse;
 }
 
 /* A filled badge does not pulse: its words sit on the fill, and nothing around them can
    breathe without taking them along — its frame is the fill's colour, so a beat there
    would only repaint, unseen. */
-.badge.filled:is(.animate-pulse, .critical, .success-pulse, .error-pulse) {
+.badge.filled:is(.animate-pulse, .critical, .success-pulse) {
     animation: none;
 }
 
