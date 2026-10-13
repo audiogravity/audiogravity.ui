@@ -26,7 +26,7 @@
 }
 
 @media (hover: hover) {
-    .ag-pc-ctrl:hover { background: var(--bg-tertiary); }
+    .ag-pc-ctrl:hover:not(:disabled) { background: var(--bg-tertiary); }
 }
 
 .ag-pc-ctrl:disabled {

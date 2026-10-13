@@ -11,6 +11,17 @@
  * @attr {boolean} can-prev - Whether the previous action is available.
  * @attr {boolean} repeat   - Whether repeat mode is on.
  * @attr {boolean} shuffle  - Whether shuffle mode is on.
+ * @attr {boolean} live     - A live broadcast (see `isLiveStream()`), not stopped:
+ *                            stopped, the skips are impossible whatever the queue
+ *                            holds, so they no longer tell a station alone. Played
+ *                            alone (neither skip possible), a repeat or shuffle
+ *                            that is off is greyed: nothing for it to act on, and
+ *                            a mode a tap set there stayed on for the next queue.
+ *                            One already on stays live, so it can be turned off.
+ *
+ * Every button stays in its place whatever plays: one that cannot act is greyed,
+ * never removed, so nothing slides under the finger when a track or a queue
+ * changes.
  *
  * @fires playback-control - Bubbles. detail: { action: string, value?: number }
  *
@@ -26,6 +37,7 @@ export class AgPlaybackControls extends LitElement {
         canPrev:  { type: Boolean, attribute: 'can-prev' },
         repeat:   { type: Boolean },
         shuffle:  { type: Boolean },
+        live:     { type: Boolean },
     };
 
     createRenderRoot() { return this; }
@@ -37,6 +49,7 @@ export class AgPlaybackControls extends LitElement {
         this.canPrev = false;
         this.repeat  = false;
         this.shuffle = false;
+        this.live    = false;
     }
 
     _emit(action, value) {
@@ -45,10 +58,12 @@ export class AgPlaybackControls extends LitElement {
     }
 
     render() {
-        const { playing, canNext, canPrev, repeat, shuffle } = this;
+        const { playing, canNext, canPrev, repeat, shuffle, live } = this;
+        // On a live broadcast, neither skip possible means nothing else in the queue.
+        const alone = live && !canNext && !canPrev;
         return html`
             <div class="ag-pc-controls">
-                <button class="ag-pc-ctrl small ${repeat ? 'active' : ''}"
+                <button class="ag-pc-ctrl small ${repeat ? 'active' : ''}" ?disabled=${alone && !repeat}
                     @click=${() => this._emit('set_repeat', repeat ? 0 : 1)}
                     aria-label="Repeat">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconRepeat}</svg>
@@ -70,7 +85,7 @@ export class AgPlaybackControls extends LitElement {
                     aria-label="Next">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
                 </button>
-                <button class="ag-pc-ctrl small ${shuffle ? 'active' : ''}"
+                <button class="ag-pc-ctrl small ${shuffle ? 'active' : ''}" ?disabled=${alone && !shuffle}
                     @click=${() => this._emit('set_shuffle', shuffle ? 0 : 1)}
                     aria-label="Shuffle">
                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconShuffle}</svg>

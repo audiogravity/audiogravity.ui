@@ -437,10 +437,16 @@ ag-now-playing {
 }
 
 @media (hover: hover) {
-    .np-btn:hover {
+    .np-btn:hover:not(:disabled) {
         background: var(--bg-hover);
         color: var(--accent-primary-text);
     }
+}
+
+/* Previous / Next with nowhere to go: greyed in place, never removed, as in the full player. */
+.np-btn:disabled {
+    opacity: .3;
+    cursor: default;
 }
 
 .np-btn:focus-visible {

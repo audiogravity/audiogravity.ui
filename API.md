@@ -486,6 +486,18 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
   `play`: it starts the current song, or the top of the queue. On an empty queue
   `play` is refused (**503** / `success: false`).
 
+**`can_next` / `can_prev` / `can_seek`** — on the item and on each `sources[]` entry:
+whether `next`, `prev` and `seek` would go anywhere now. For the box's MPD they follow its
+queue and change while a source plays or sits paused, so read them from every `PlayerState`:
+
+- `can_next` — another entry comes next in MPD's play order, repeat and random included.
+  `false` on the last entry without repeat, and on a station played alone.
+- `can_prev` — the current entry is a track (`prev` restarts it), or another entry comes
+  before it, or may under repeat or random. `false` on a station played alone, where `prev`
+  would only reconnect it.
+- Both are `false` while MPD is stopped: it refuses `next` and `prev` then.
+- `can_seek` — a length is known (`duration`). `false` on a live stream.
+
 **`PlayerState` — routing and output fields**
 
 | Field | Meaning |

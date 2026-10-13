@@ -322,6 +322,9 @@ export function hiResLabel(fmt) {
  * @returns {boolean}
  */
 export function isLiveStream(state) {
+    // BACKLOG: a station the radio module does not know (started by another app) is
+    // not `radio` and reads as no live stream here, while the core treats it as one —
+    // see ops BACKLOG.md, "Trois définitions du direct".
     return state?.origin === 'radio' && !(Number(state?.duration) > 0);
 }
 

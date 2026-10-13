@@ -928,6 +928,38 @@ describe('AgNowPlayingFullscreen — a live station has no progress to show', ()
         const bar = progressBar({ origin: 'qobuz', duration: 545, title: 'So What', playing: true });
         expect(bar.hasAttribute('live')).toBe(false);
     });
+
+    /** Render the whole player for a state and return its transport controls. */
+    function controls(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: { source_id: 'src_mpd', playing: true, ...state },
+            _rendererActive: false, _nextTrack: null, _sources: [],
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        return host.querySelector('ag-playback-controls');
+    }
+
+    it('tells the transport controls a station plays live', () => {
+        // They offered Repeat and Shuffle there, and a Next that stopped playback.
+        expect(controls({ origin: 'radio', duration: 0, title: 'FIP' }).live).toBe(true);
+    });
+
+    it('leaves the transport controls as they were for a track', () => {
+        expect(controls({ origin: 'qobuz', duration: 545, title: 'So What' }).live).toBe(false);
+    });
+
+    it('does not tell them a stopped station is live', () => {
+        // Stopped, the core reads both skips impossible whatever the queue holds (MPD
+        // refuses them): a station with tracks behind it would have looked alone, its
+        // Repeat and Shuffle greyed although they act on those tracks.
+        const stopped = { origin: 'radio', duration: 0, title: 'FIP', playback_status: 'Stopped' };
+        expect(controls(stopped).live).toBe(false);
+        expect(controls({ ...stopped, playback_status: 'Paused' }).live).toBe(true);
+    });
 });
 
 describe('AgNowPlayingFullscreen — a play/pause tap sends the intent (real _control)', () => {
