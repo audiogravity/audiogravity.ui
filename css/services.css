@@ -277,10 +277,25 @@
     gap: var(--spacing-sm);
 }
 
+/* Label and figure on one line (user's choice, 2026-10-13); components/metrics.css stacks
+   them, so the direction is restated here. Should a line still be too short for both, the
+   figure wraps under its label instead of overlapping it. */
 .detailed-chart-header {
     display: flex;
+    flex-flow: row wrap;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
+    gap: 0 var(--spacing-sm);
+}
+
+/* Two charts side by side (network, disk; above 1200px) are 97 to 123px wide, measured
+   on 2026-10-13: whether a figure fits beside its label then depends on its length, and
+   the two charts of a pair came out at different heights. There, the label stays above. */
+@media (width > 1200px) {
+    .expanded-metric-content.split .detailed-chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
 
 .detailed-chart-label {
@@ -296,14 +311,10 @@
     color: var(--text-primary);
 }
 
-.detailed-chart-svg {
-    width: 100%;
+/* The bars of an expanded chart (ag-sparkline, 'bars'): no frame, as on the System tiles
+   they repeat; the small chart fills the height given here. */
+.detailed-chart-bars {
     height: var(--size-xxl);
-    display: block;
-    background: var(--bg-primary);
-    border: 1px solid var(--text-primary);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-xs);
 }
 
 /* Mobile adjustments for expanded metrics */
@@ -317,10 +328,6 @@
     .expanded-metric-content.split {
         grid-template-columns: 1fr;
     }
-
-    .detailed-chart-svg {
-        height: var(--size-xxl);
-    }
 }
 
 @media (width <= 480px) {
@@ -328,7 +335,7 @@
         font-size: var(--font-size-sm);
     }
 
-    .detailed-chart-svg {
+    .detailed-chart-bars {
         height: 50px;
     }
 }
