@@ -319,6 +319,7 @@ describe('AgNowPlaying — control body routing handle', () => {
 // applied on behalf of a stale command, and one mutating an item object that
 // _onState had already replaced.
 
+import { render as litRender } from 'lit';
 import { AgNowPlaying } from './ag-now-playing.js';
 import { apiPost } from '../../api.js';
 
@@ -575,5 +576,61 @@ describe('AgNowPlaying — a play/pause tap sends the intent (real _sendControl)
         apiPost.mockResolvedValueOnce({ success: false });
         await el._sendControl('src_mpd', 'toggle', null, item);
         expect(el._items[0].playback_status).toBe('Paused');
+    });
+});
+
+/**
+ * Previous / Next in the bar are greyed when they would go nowhere, never removed.
+ *
+ * The bar left them out whenever the source said they went nowhere. MPD said so for
+ * the first time with the live-stream fix (its flags were always true before): on
+ * the last track of an album Next vanished and Play slid into its place, under the
+ * finger that had just tapped Next (measured on the captures: 540 → 628 px).
+ */
+describe('the bar greys Previous / Next rather than dropping them', () => {
+    /**
+     * The transport buttons drawn for one item: label, and whether each is greyed.
+     * @param {object} item - The item rendered.
+     * @returns {Array<[string, boolean]>}
+     */
+    function transport(item) {
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({
+            _bgColors: new Map(), _brokenCovers: new Set(), _detailOpenId: null,
+            _albumTracks: new Map(), _offline: false, _outputs: [], _activeOutputId: null,
+        })) {
+            Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        }
+        el._isLicensed = () => true;
+        const host = document.createElement('div');
+        litRender(el._renderItem({ source_id: 'src_mpd', playback_status: 'Playing', title: 'So What', ...item }), host);
+        return [...host.querySelectorAll('.np-controls > button')]
+            .map((b) => [b.getAttribute('aria-label'), b.disabled]);
+    }
+
+    it('keeps both where they can go', () => {
+        expect(transport({ origin: 'qobuz', duration: 545, can_prev: true, can_next: true }))
+            .toEqual([['Previous', false], ['Pause', false], ['Next', false]]);
+    });
+
+    it('greys Next on the last track of an album, in its place', () => {
+        expect(transport({ origin: 'qobuz', duration: 545, can_prev: true, can_next: false }))
+            .toEqual([['Previous', false], ['Pause', false], ['Next', true]]);
+    });
+
+    it('greys both on a station played alone, each in its place', () => {
+        expect(transport({ origin: 'radio', duration: null, can_prev: false, can_next: false }))
+            .toEqual([['Previous', true], ['Pause', false], ['Next', true]]);
+    });
+
+    it('lights Next on a station another entry follows', () => {
+        expect(transport({ origin: 'radio', duration: null, can_prev: false, can_next: true }))
+            .toEqual([['Previous', true], ['Pause', false], ['Next', false]]);
+    });
+
+    it('draws a greyed button as inert', () => {
+        const css = readStylesheet('css', 'components', 'now-playing.css');
+        expect(cssRuleBody(css, '.np-btn:disabled')).toMatch(/opacity:\s*\.3/);
+        expect(css).toMatch(/\.np-btn:hover:not\(:disabled\)/);
     });
 });

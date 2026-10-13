@@ -721,19 +721,20 @@ export class AgNowPlaying extends LitElement {
                     ${item.source_format ? html`<span class="np-format">${item.source_format}</span>` : nothing}
                 </div>
 
-                <!-- Transport controls -->
+                <!-- Transport controls. Previous / Next are greyed when they would go
+                     nowhere, never removed: removed, Play slid into the place of a Next
+                     that went away under the finger (the last track of an album). -->
                 <div class="np-controls ${this._isLicensed() ? '' : 'np-gated'}">
-                    ${item.can_prev ? html`
-                        <!-- Not on a phone (now-playing.css): the title needs the room,
-                             and Previous is one tap away in the full player. -->
-                        <button
-                            class="np-btn np-btn--prev"
-                            aria-label="Previous"
-                            @click="${() => this._sendControl(item.source_id, 'prev', null, item)}"
-                        >
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSkipBack}</svg>
-                        </button>
-                    ` : nothing}
+                    <!-- Not on a phone (now-playing.css): the title needs the room,
+                         and Previous is one tap away in the full player. -->
+                    <button
+                        class="np-btn np-btn--prev"
+                        aria-label="Previous"
+                        ?disabled=${!item.can_prev}
+                        @click="${() => this._sendControl(item.source_id, 'prev', null, item)}"
+                    >
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSkipBack}</svg>
+                    </button>
                     <button
                         class="np-btn"
                         aria-label="${statusLabel}"
@@ -743,15 +744,14 @@ export class AgNowPlaying extends LitElement {
                             ? html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPause}</svg>`
                             : html`<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconPlay}</svg>`}
                     </button>
-                    ${item.can_next ? html`
-                        <button
-                            class="np-btn"
-                            aria-label="Next"
-                            @click="${() => this._sendControl(item.source_id, 'next', null, item)}"
-                        >
-                            <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
-                        </button>
-                    ` : nothing}
+                    <button
+                        class="np-btn"
+                        aria-label="Next"
+                        ?disabled=${!item.can_next}
+                        @click="${() => this._sendControl(item.source_id, 'next', null, item)}"
+                    >
+                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUpNext}</svg>
+                    </button>
                     ${item.can_set_volume && (!isDsd(item.source_format) || isSelfManagedDriver(item)) ? html`
                         <ag-volume-popover
                             .volume=${item.volume ?? 0}

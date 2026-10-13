@@ -1088,6 +1088,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 ?can-prev=${s?.can_prev ?? false}
                                 ?repeat=${s?.repeat ?? false}
                                 ?shuffle=${s?.shuffle ?? false}
+                                ?live=${isLiveStream(s) && s?.playback_status !== 'Stopped'}
                                 @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
                             ></ag-playback-controls>
                             ${s?.can_set_volume && (!isDsd(s?.format) || isSelfManagedDriver(s)) ? html`
