@@ -97,9 +97,10 @@ ag-sparkline .sparkline-svg {
     stroke-width: 1;
 }
 
-/* Every bar but the latest is lightened, so the current value stands out. */
+/* Every bar but the latest is lightened, so the current value stands out. How much is
+   the theme's, set beside its chart colours: a faded bar still owes 3:1 on its ground. */
 .sparkline-bar {
-    fill-opacity: 0.55;
+    fill-opacity: var(--chart-past-opacity);
 }
 
 .sparkline-bar.is-last {

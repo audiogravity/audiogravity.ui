@@ -46,16 +46,20 @@
     --activity-medium: #f59e0b;
     --activity-high: #f43f5e;
 
-    /* Sparkline chart colors */
-    --chart-cpu: #6366f1;
+    /* Sparkline chart colors (System, Performance, Services). A bar owes 3:1 on its
+       ground (WCAG 1.4.11, js/colors.test.js). The lighter shades these replace read 1.5
+       to 2.1:1 once faded, and the amber and the green 1.9 to 2.5:1 even at full
+       strength — measured 2026-10-14 on the tiles' white and on the page ground behind
+       the expanded charts. Past bars are faded by the default of css/themes.css. */
+    --chart-cpu: #4338ca;
     --chart-cpu-bg: rgb(99 102 241 / 0.12);
-    --chart-memory: #a855f7;
+    --chart-memory: #7e22ce;
     --chart-memory-bg: rgb(168 85 247 / 0.12);
-    --chart-temperature: #f59e0b;
+    --chart-temperature: #b45309;
     --chart-temperature-bg: rgb(245 158 11 / 0.12);
-    --chart-network: #10b981;
+    --chart-network: #047857;
     --chart-network-bg: rgb(16 185 129 / 0.12);
-    --chart-disk: #ec4899;
+    --chart-disk: #be185d;
     --chart-disk-bg: rgb(236 72 153 / 0.12);
 
     /* Second series of a chart (outgoing, writes). Resolved where it is read, so

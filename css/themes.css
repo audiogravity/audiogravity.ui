@@ -339,6 +339,12 @@
    plain actions written as badges (--action-tag) have no default here: they come in green
    and orange, so badge.css gives each variant its own fallback.
 
+   And how much a chart's past bars are faded (components/sparkline.css): a faded bar still
+   owes 3:1 on its ground (js/colors.test.js), so the share suits the palette. This default
+   is the one Slate and Gravity's light palettes need; the shared dark block below sets the
+   dark one, and Minimal its own. A theme left without a value would draw every bar at full
+   strength, and the latest would no longer stand out.
+
    A custom property resolves where it is declared, and its children inherit the resolved
    value. Declared on body as well as :root, these resolve against body's own tokens — a
    theme stating its dark values on body alone would otherwise hand body the light ones
@@ -355,6 +361,7 @@ body {
    --critical-mark-text: var(--color-warning-text);  /* its CRITICAL tag */
    --critical-mark-bg: var(--color-warning-bg);
    --installed-mark: var(--color-success);           /* stripe of an installed package */
+   --chart-past-opacity: 0.8;
 }
 
 /* =========================================
@@ -381,6 +388,7 @@ body.dark-mode {
     --chart-memory-bg: rgb(167 139 250 / 0.15);
     --chart-network: #34D399;
     --chart-network-bg: rgb(52 211 153 / 0.15);
+    --chart-past-opacity: 0.7;   /* 0.55 left past bars at 2.6 to 3.0:1 (2026-10-14) */
     --chart-temperature: #FBBF24;
     --chart-temperature-bg: rgb(251 191 36 / 0.15);
     --color-success: #34D399;
