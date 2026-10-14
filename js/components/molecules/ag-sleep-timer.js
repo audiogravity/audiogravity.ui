@@ -7,8 +7,10 @@
  *
  * The molecule renders a clock button. On click it opens a popover with
  * preset durations (15/30/45/60 min) — selecting one emits `sleep-set`.
- * When `sleepEnd` is set, the button displays the remaining time and the
- * popover offers a `Cancel` option that emits `sleep-cancel`.
+ * When `sleepEnd` is set, the button displays the remaining time beside the
+ * clock — the clock stays, so the figure reads as a sleep timer and not as the
+ * time of day — and the popover offers a `Cancel` option that emits
+ * `sleep-cancel`.
  *
  * @element ag-sleep-timer
  *
@@ -95,15 +97,13 @@ export class AgSleepTimer extends LitElement {
         const active = !!this.sleepEnd;
         return html`
             <div class="ag-st-wrap">
-                <button class="npfs-header-btn ${active ? 'active' : ''}" aria-label="Sleep timer"
+                <button class="npfs-header-btn ag-st-btn ${active ? 'active' : ''}" aria-label="Sleep timer"
                     @click=${this._toggleOpen}>
-                    ${active
-                        ? html`<span class="ag-st-countdown">${this._remaining()}</span>`
-                        : html`<svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                ${iconAlarm}
-                            </svg>`
-                    }
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        ${iconAlarm}
+                    </svg>
+                    ${active ? html`<span class="ag-st-countdown">${this._remaining()}</span>` : nothing}
                 </button>
                 ${this._open ? html`
                     <div class="ag-st-popover" @click=${(e) => e.stopPropagation()}>

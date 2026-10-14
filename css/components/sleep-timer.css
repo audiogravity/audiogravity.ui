@@ -6,6 +6,9 @@
 
 .ag-st-wrap { position: relative; }
 
+/* The clock and, while counting, the time left beside it. */
+.ag-st-btn { gap: var(--spacing-xs); }
+
 .ag-st-popover {
     position: absolute;
     top: calc(100% + 6px);
