@@ -628,6 +628,26 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
             .toEqual([['Previous', true], ['Pause', false], ['Next', false]]);
     });
 
+    it.each([
+        ['a track', { origin: 'qobuz', duration: 545 }, true],
+        // A station AG cast to a renderer that reports a length: live by AG's word,
+        // as the full player shows it — no countdown, no knob to drag.
+        ['a broadcast whose player reports a length', { origin: 'radio', duration: 3600, live: true }, false],
+        ['a broadcast with no length', { origin: 'upnp', duration: null, live: true }, false],
+    ])('draws a progress bar for %s only when it is no broadcast', (_name, item, bar) => {
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({
+            _bgColors: new Map(), _brokenCovers: new Set(), _detailOpenId: null,
+            _albumTracks: new Map(), _offline: false, _outputs: [], _activeOutputId: null,
+        })) {
+            Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        }
+        el._isLicensed = () => true;
+        const host = document.createElement('div');
+        litRender(el._renderItem({ source_id: 'src_mpd', playback_status: 'Playing', title: 'X', ...item }), host);
+        expect(!!host.querySelector('ag-progress-bar')).toBe(bar);
+    });
+
     it('draws a greyed button as inert', () => {
         const css = readStylesheet('css', 'components', 'now-playing.css');
         expect(cssRuleBody(css, '.np-btn:disabled')).toMatch(/opacity:\s*\.3/);

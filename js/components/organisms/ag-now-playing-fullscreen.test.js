@@ -1000,3 +1000,24 @@ describe('AgNowPlayingFullscreen — a play/pause tap sends the intent (real _co
         expect(el._state.playing).toBe(false);
     });
 });
+
+describe('AgNowPlayingFullscreen — opened from the bar, it keeps the core\'s word on a broadcast', () => {
+    // Opened on a webradio another app started (origin 'upnp', live from the core),
+    // the screen drew a bar at "−0:00" with Repeat and Shuffle offered until the first
+    // live state arrived: the state it starts from had no `live`, and isLiveStream fell
+    // back on origin 'radio'.
+    function seeded(item) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_state', { value: null, writable: true, configurable: true });
+        el._seedStateFromItem({ source_id: 'src_mpd', playback_status: 'Playing', title: 'Swiss Jazz', ...item });
+        return el._state;
+    }
+
+    it.each([[true], [false]])('carries live=%s from the item', (live) => {
+        expect(seeded({ origin: 'upnp', live }).live).toBe(live);
+    });
+
+    it('leaves it unknown when the item says nothing', () => {
+        expect(seeded({ origin: 'radio' }).live).toBeNull();
+    });
+});
