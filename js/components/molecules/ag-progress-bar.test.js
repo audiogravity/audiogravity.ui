@@ -7,12 +7,23 @@
  *
  * Covers:
  * 1. live: the marker replaces the track and the times
- * 2. live and paused: the marker says so
+ * 2. live and paused: the marker says so, in the grey of the greyed transport buttons
  * 3. live: nothing ticks
  * 4. back to a track: the bar and its ticker return
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readStylesheet, cssRuleBody } from '../../test-utils.js';
 import './ag-progress-bar.js';
+
+/**
+ * The value of one declaration in a rule's body.
+ * @param {string|null} body - The text between a rule's braces (see cssRuleBody).
+ * @param {string} property - The property's name.
+ * @returns {string|undefined} Its value as written, or undefined when not declared.
+ */
+function declared(body, property) {
+    return body?.match(new RegExp(`(?:^|[;\\s])${property}:\\s*([^;]+);`))?.[1].trim();
+}
 
 /**
  * Mount a progress bar.
@@ -45,6 +56,20 @@ describe('a live broadcast', () => {
         el.playing = true;
         await el.updateComplete;
         expect(el.querySelector('.ag-pb-live').classList.contains('ag-pb-live--paused')).toBe(false);
+    });
+
+    it('greys out paused in the shade of the greyed transport buttons', () => {
+        // Same colour at the same opacity composes to the same shade on any background,
+        // the cover-tinted one of the full player included. A grey token of its own
+        // (--text-secondary) read as a third, stronger shade beside the buttons.
+        const bar = readStylesheet('css', 'components', 'progress-bar.css');
+        const controls = readStylesheet('css', 'components', 'playback-controls.css');
+        const paused = cssRuleBody(bar, '.ag-pb-live--paused');
+        expect(declared(cssRuleBody(bar, '.ag-pb-live'), 'color'))
+            .toBe(declared(cssRuleBody(controls, '.ag-pc-ctrl'), 'color'));
+        expect(declared(paused, 'color')).toBeUndefined();
+        expect(declared(paused, 'opacity'))
+            .toBe(declared(cssRuleBody(controls, '.ag-pc-ctrl:disabled'), 'opacity'));
     });
 
     it('ticks nothing', async () => {
