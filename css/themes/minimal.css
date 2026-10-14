@@ -63,6 +63,7 @@
     --chart-network-bg: rgb(85 85 85 / 0.12);
     --chart-disk: #000000;
     --chart-disk-bg: rgb(85 85 85 / 0.12);
+    --chart-past-opacity: 0.55;   /* black faded still reads 4.7:1 */
 
     /* Second series of a chart (outgoing, writes): a grey under the main line,
        not the warning amber it used to fall back to. 3:1 on the white ground. */
@@ -319,6 +320,7 @@
     --chart-network-bg: rgb(170 170 170 / 0.12);
     --chart-disk: #AAAAAA;
     --chart-disk-bg: rgb(170 170 170 / 0.12);
+    --chart-past-opacity: 0.55;   /* 3.2:1 on the black ground */
 
     /* Second series of a chart — 3.2:1 on the black ground. */
     --chart-secondary: #5E5E5E;

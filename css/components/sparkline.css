@@ -97,9 +97,10 @@ ag-sparkline .sparkline-svg {
     stroke-width: 1;
 }
 
-/* Every bar but the latest is lightened, so the current value stands out. */
+/* Every bar but the latest is lightened, so the current value stands out. How much is
+   the theme's, set beside its chart colours: a faded bar still owes 3:1 on its ground. */
 .sparkline-bar {
-    fill-opacity: 0.55;
+    fill-opacity: var(--chart-past-opacity);
 }
 
 .sparkline-bar.is-last {
@@ -141,35 +142,6 @@ ag-sparkline .sparkline-svg {
 }
 
 /* SYSTEM tab - no click interaction (cursor set above) */
-
-/* =====================
-   DETAILED CHART (SERVICES EXPANDED VIEW)
-   ===================== */
-
-.detailed-chart {
-    width: 100%;
-    margin-top: var(--spacing-sm);
-}
-
-.detailed-chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-xs);
-}
-
-.detailed-chart-label {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-}
-
-.detailed-chart-value {
-    font-size: var(--font-size-md);
-    font-weight: 700;
-}
 
 /* =====================
    RESPONSIVE

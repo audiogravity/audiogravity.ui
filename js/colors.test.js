@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { appSources, filesUnder } from './test-utils.js';
+import { appSources, filesUnder, readStylesheet, cssRuleBody } from './test-utils.js';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,13 +90,22 @@ function accentAsText(css) {
 }
 
 /**
+ * The red, green and blue channels of a hex colour, 0 to 255.
+ * @param {string} hex - `#rrggbb`.
+ * @returns {number[]}
+ */
+function channels(hex) {
+    const h = hex.trim().replace('#', '');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+}
+
+/**
  * Relative luminance of an sRGB hex colour, per WCAG 2.
  * @param {string} hex
  * @returns {number}
  */
 function luminance(hex) {
-    const h = hex.trim().replace('#', '');
-    const ch = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    const ch = channels(hex).map(v => v / 255)
         .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
     return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
 }
@@ -233,10 +242,21 @@ function over(tint, ground) {
     if (!m || !/^#[0-9a-fA-F]{6}$/.test(ground)) {
         throw new Error(`cannot lay ${tint} over ${ground}`);
     }
-    const [r, g, b] = [m[1], m[2], m[3]].map(Number);
-    const alpha = Number(m[4]) / (m[5] ? 100 : 1);
-    const under = [0, 2, 4].map(i => parseInt(ground.slice(1 + i, 3 + i), 16));
-    return '#' + [r, g, b].map((c, i) => Math.round(c * alpha + under[i] * (1 - alpha))
+    return blend([m[1], m[2], m[3]].map(Number), Number(m[4]) / (m[5] ? 100 : 1), ground);
+}
+
+/**
+ * Channels drawn at an opacity over an opaque ground, as the browser composites them.
+ * @param {number[]} top - Red, green and blue, 0 to 255.
+ * @param {number} alpha - Opacity, 0 to 1.
+ * @param {string} ground - Hex colour.
+ * @returns {string} The hex colour seen.
+ */
+function blend(top, alpha, ground) {
+    // Outside 0 to 1 the arithmetic yields no colour ("#-102bd0") and a contrast that passes.
+    if (!(alpha >= 0 && alpha <= 1)) throw new Error(`opacity ${alpha} is not between 0 and 1`);
+    const under = channels(ground);
+    return '#' + top.map((c, i) => Math.round(c * alpha + under[i] * (1 - alpha))
         .toString(16).padStart(2, '0')).join('');
 }
 
@@ -338,6 +358,45 @@ describe('colours — a control\'s outline shows at 3:1 (WCAG 1.4.11)', () => {
             });
         }
     }
+});
+
+/** The series colours a chart draws its bars in. */
+const CHART_SERIES = ['--chart-cpu', '--chart-memory', '--chart-temperature', '--chart-network', '--chart-disk'];
+
+describe('colours — a chart\'s bars show at 3:1, the faded past ones too (WCAG 1.4.11)', () => {
+    // Every bar but the latest is drawn at --chart-past-opacity (components/sparkline.css).
+    // Measured in Chromium on 2026-10-14: at 0.55, Slate and Gravity's past bars read 1.5 to
+    // 2.1:1 in light and 2.6 to 3.0:1 in dark, and their amber and green failed even at full
+    // strength. The bars sit on the tiles (System, Performance: --bg-secondary) and on the
+    // expanded Services charts (--bg-primary); none on --bg-tertiary, where Slate's dark
+    // past bars would read 2.6 to 2.8:1 — a chart placed there must be added here.
+    for (const theme of THEMES) {
+        for (const mode of ['light', 'dark']) {
+            it(`${theme} ${mode}`, () => {
+                const tokens = resolve(theme, mode);
+                const opacity = Number(resolve(theme, mode, '[\\d.]+')['--chart-past-opacity']);
+                expect(opacity, `${theme} ${mode}: --chart-past-opacity missing`).toBeGreaterThan(0);
+                // At 1 the past bars are drawn as the latest, which no longer stands out.
+                expect(opacity, `${theme} ${mode}: past bars not faded`).toBeLessThan(1);
+                const failing = [];
+                for (const series of CHART_SERIES) {
+                    const hex = tokens[series];
+                    expect(hex, `${theme} ${mode}: ${series} missing`).toBeDefined();
+                    for (const ground of ['--bg-primary', '--bg-secondary']) {
+                        const full = contrast(hex, tokens[ground]);
+                        const past = contrast(blend(channels(hex), opacity, tokens[ground]), tokens[ground]);
+                        if (Math.min(full, past) < 3) failing.push(`${series}=${hex} on ${ground}: ${full.toFixed(2)}, faded ${past.toFixed(2)}:1`);
+                    }
+                }
+                expect(failing, failing.join(' · ')).toEqual([]);
+            });
+        }
+    }
+
+    it('is what the past bars are drawn at', () => {
+        const body = cssRuleBody(readStylesheet('css', 'components', 'sparkline.css'), '.sparkline-bar');
+        expect(body).toMatch(/fill-opacity:\s*var\(--chart-past-opacity\);/);
+    });
 });
 
 describe("colours — the browser's own controls take the theme's", () => {

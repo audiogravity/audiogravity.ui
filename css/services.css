@@ -279,22 +279,31 @@
     gap: var(--spacing-md);
 }
 
-/* Detailed chart */
+/* Detailed chart (ag-metric-detail): the expanded view of one measurement. Its rules
+   live here only; components/metrics.css and components/sparkline.css each held a copy
+   that this sheet, loaded last, partly overrode. */
 .detailed-chart {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+    width: 100%;
+    min-width: 0;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
 }
 
-/* Label and figure on one line (user's choice, 2026-10-13); components/metrics.css stacks
-   them, so the direction is restated here. Should a line still be too short for both, the
-   figure wraps under its label instead of overlapping it. */
+/* Label and figure on one line (user's choice, 2026-10-13). Should a line still be too
+   short for both, the figure wraps under its label instead of overlapping it. */
 .detailed-chart-header {
     display: flex;
     flex-flow: row wrap;
     justify-content: space-between;
     align-items: baseline;
     gap: 0 var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
 }
 
 /* Two charts side by side (network, disk; above 1200px) are 97 to 123px wide, measured
@@ -312,6 +321,7 @@
     font-weight: 600;
     color: var(--text-tertiary);
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .detailed-chart-value {
