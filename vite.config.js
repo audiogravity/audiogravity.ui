@@ -165,6 +165,11 @@ export default defineConfig({
           name: 'unit',
           include: ['js/**/*.test.js'],
           environment: 'jsdom',
+          // Vitest hands back an empty string for any stylesheet it is not told to
+          // process. press.css is adopted by a shadow-DOM component through
+          // `?inline` (ag-audio-pipeline): the test of that component must see the
+          // very rule it adopts, not an empty sheet that would pass for it.
+          css: { include: [/css\/components\/press\.css/] },
         },
       },
       // Storybook interaction tests (browser)

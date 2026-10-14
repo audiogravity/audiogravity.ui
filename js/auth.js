@@ -121,13 +121,16 @@ function saveAuth(token, user, expiresInHours = 12, persistent = true) {
 }
 
 /**
- * Efface l'authentification des deux types de stockage
+ * Efface l'authentification des deux types de stockage.
+ *
+ * The page to come back to after signing in (`redirect_after_login`) is left alone:
+ * a session that expired is dropped here — by initAuth() on the sign-in page, among
+ * others — and the destination saved as the reader was sent there must survive it, to
+ * be read once signed in again. It went with the session, and an expired session
+ * brought the reader back to the root. Only a sign-out forgets it (logout()).
  */
 function clearAuth() {
-    for (const storage of [localStorage, sessionStorage]) {
-        dropStoredSession(storage);
-        storage.removeItem('redirect_after_login');
-    }
+    for (const storage of [localStorage, sessionStorage]) dropStoredSession(storage);
     forgetSession();
 }
 
@@ -260,6 +263,24 @@ async function fetchJsonInSession(url, options) {
     return readJson(response);
 }
 
+/** Tabs only an admin may open — the one list the tab bar and the address both read. */
+const ADMIN_TABS = new Set(['admin']);
+
+/**
+ * Whether the app may open a tab named in its address (`/#systemd`).
+ *
+ * Read when the app loads and when its `#` changes: it opened whatever the address
+ * named, a tab hidden for this role included — a guest at /#admin, or an admin turned
+ * guest brought back there by the page to come back to after signing in.
+ *
+ * @param {string} tabId - The tab named.
+ * @param {string[]} knownTabs - The ids of the tabs the tab bar holds.
+ * @returns {boolean} True for a tab that exists and that this role may see.
+ */
+function tabAllowed(tabId, knownTabs) {
+    return knownTabs.includes(tabId) && (!ADMIN_TABS.has(tabId) || isAdmin());
+}
+
 /**
  * Applique ou retire la classe CSS selon le rôle (ex: guest)
  * Gère également la visibilité de l'onglet Admin
@@ -277,11 +298,12 @@ function applyRoleClass() {
         const agTabs = document.querySelector('ag-tabs');
         if (agTabs) {
             customElements.whenDefined('ag-tabs').then(() => {
-                agTabs.toggleTabVisibility('admin', isAdminUser);
-                
-                // Si l'utilisateur n'est plus admin mais est toujours sur l'onglet admin, on redirige
-                if (!isAdminUser && window.AppState && window.AppState.currentTab === 'admin') {
-                    agTabs._selectTab('profiles');
+                for (const tab of ADMIN_TABS) agTabs.toggleTabVisibility(tab, isAdminUser);
+
+                // Si l'utilisateur n'est plus admin mais est toujours sur l'onglet admin, on redirige.
+                // selectTab — `_selectTab` never existed: this threw, and the reader stayed.
+                if (!isAdminUser && window.AppState && ADMIN_TABS.has(window.AppState.currentTab)) {
+                    agTabs.selectTab('profiles');
                 }
             });
         }
@@ -398,8 +420,10 @@ async function logout() {
             });
         }
     } finally {
-        // Toujours effacer la session locale
+        // Toujours effacer la session locale — and the page to come back to: leaving on
+        // purpose, the reader is not to be taken back there by the next sign-in.
         clearAuth();
+        for (const storage of [localStorage, sessionStorage]) storage.removeItem('redirect_after_login');
     }
 }
 
@@ -429,9 +453,9 @@ function requireAuth() {
             return true;
         }
 
-        // Sauvegarder la page actuelle pour redirection après login
-        // On utilise localStorage pour la redirection car c'est plus fiable lors des sauts de domaines/sessions
-        localStorage.setItem('redirect_after_login', window.location.pathname);
+        // Where to come back once signed in, query and view (#…) included: takeRedirectAfterLogin()
+        // reads it on the sign-in page. localStorage, as public/session-boot.js writes it.
+        localStorage.setItem('redirect_after_login', window.location.pathname + window.location.search + window.location.hash);
         window.location.href = 'login.html';
         return false;
     }
@@ -439,11 +463,61 @@ function requireAuth() {
 }
 
 /**
+ * Where to go once signed in: the page the session was lost on, its view included.
+ *
+ * Only a page of this box is followed. The address is read by the browser's own parser,
+ * against this page's origin, and refused unless it stays on it — anything else
+ * ("//host", "/\host", a scheme, or a tab or a line break the parser drops: "/\t/host"
+ * reads as "//host") lands on the app's root, and so does the sign-in page itself,
+ * which would only send the reader back to the form. The app page under its file name
+ * is the root.
+ *
+ * @param {*} saved - What requireAuth() or public/session-boot.js wrote, or null.
+ * @param {string} [origin=window.location.origin] - This page's origin.
+ * @returns {string} A path on this box, query and `#view` kept: `/` when there is
+ *   nothing to follow.
+ */
+function afterLoginDestination(saved, origin = window.location.origin) {
+    if (typeof saved !== 'string' || !saved.startsWith('/')) return '/';
+    let url;
+    try {
+        url = new URL(saved, origin);
+    } catch {
+        return '/';
+    }
+    if (url.origin !== origin || url.pathname === '/login.html') return '/';
+    const path = url.pathname === '/index.html' ? '/' : url.pathname;
+    return path + url.search + url.hash;
+}
+
+/**
+ * Take the page to return to after signing in, and forget it.
+ *
+ * Read where requireAuth() and public/session-boot.js write it — localStorage. The
+ * sign-in page used to look in sessionStorage, where nothing ever wrote it: the
+ * destination was never read, and the key stayed behind.
+ *
+ * @returns {string} Where to go (see afterLoginDestination).
+ */
+function takeRedirectAfterLogin() {
+    let saved = null;
+    try {
+        saved = localStorage.getItem('redirect_after_login');
+        localStorage.removeItem('redirect_after_login');
+    } catch {
+        // Storage refused (a private mode): the root, as before.
+    }
+    return afterLoginDestination(saved);
+}
+
+/**
  * Rediriger vers dashboard si déjà authentifié (pour page login)
  */
 function redirectIfAuthenticated() {
     if (isAuthenticated()) {
-        window.location.href = 'index.html';
+        // Signed in meanwhile — in another tab, say: the page to come back to is taken
+        // here too, rather than left for the next sign-in of whichever tab comes next.
+        window.location.href = takeRedirectAfterLogin();
         return true;
     }
     return false;
@@ -476,6 +550,9 @@ export {
     login,
     logout,
     requireAuth,
+    tabAllowed,
+    afterLoginDestination,
+    takeRedirectAfterLogin,
     redirectIfAuthenticated,
     applyRoleClass
 };

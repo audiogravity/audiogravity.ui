@@ -372,7 +372,7 @@ describe('ag-package-card — configuration state', () => {
     });
 
     it('says it as a tint, unlike the badges beside it that are buttons', async () => {
-        // Outlined, it had the shape of "Set web password" and "Restart required",
+        // Outlined, it had the shape of "Set pwd" and "Restart required",
         // buttons drawn as badges, and read as one of them.
         el = await mountInstalled({ web_credentials: { username: 'mpd', port: 8080, already_set: false } },
             { configuredByAg: false });
@@ -511,7 +511,14 @@ describe('ag-package-card — a web interface with no password', () => {
 
     it('offers to set it', async () => {
         const card = await mount(HQPLAYERD);
-        expect(button(card).textContent).toContain('Set web password');
+        // The abbreviation is for the eye; a screen reader hears what it sets too, AFTER the
+        // words shown, so the name it reads starts with the label (WCAG 2.5.3): a voice
+        // command naming "Set pwd" finds the button. No aria-label to replace it.
+        const shown = [...button(card).childNodes].filter((n) => !n.classList?.contains('sr-only'))
+            .map((n) => n.textContent).join('').trim();
+        expect(shown).toBe('Set pwd');
+        expect(button(card).hasAttribute('aria-label')).toBe(false);
+        expect(button(card).textContent.trim()).toMatch(/^Set pwd: the web interface password$/);
         const asked = vi.fn();
         card.addEventListener('package-set-web-password', e => asked(e.detail));
         button(card).click();

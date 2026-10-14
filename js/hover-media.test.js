@@ -161,11 +161,10 @@ describe('every hover rule waits for a pointer that can hover', () => {
 describe('a touch screen shows the press instead', () => {
     // What hover showed under a mouse, a finger gets while it is on the button. The 4%
     // shrink alone could hardly be seen on an iPhone (user's test, 2026-10-10).
-    const press = styleRules(readFileSync('css/base.css', 'utf8'))
+    const pressRules = (file) => styleRules(readFileSync(file, 'utf8'))
         .filter((r) => r.media.some((m) => /\(\s*hover\s*:\s*none\s*\)/.test(m)) && r.selector.includes(':active'));
+    const press = pressRules('css/components/press.css');
 
-    // The stylesheets' reach: a shadow-DOM component (the audio pipeline diagram) is out
-    // of it, and traced in audiogravity.ops/BACKLOG.md (👇).
     it('fades a button under the finger', () => {
         expect(press).toHaveLength(1);
         const selectors = selectorList(press[0].selector);
@@ -193,6 +192,13 @@ describe('a touch screen shows the press instead', () => {
         // star, and the star twice over.
         const card = selectorList(press[0]?.selector ?? '').find((s) => s.startsWith('[role="button"]'));
         expect(card).toMatch(/:has\(:is\(button, \[role="button"\]\):active\)/);
+    });
+
+    it('has one home, which the pages load where base.css held it', () => {
+        // Kept apart so a shadow-DOM component can adopt the very same file.
+        expect(pressRules('css/base.css')).toEqual([]);
+        const main = readFileSync('css/main.css', 'utf8');
+        expect(main).toMatch(/@import 'base\.css';\s*@import 'components\/press\.css';/);
     });
 
     it('leaves the Now Playing cover still while its details bubble is touched', () => {

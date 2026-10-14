@@ -50,7 +50,7 @@
         var valid = session && session.user && readable(session.user) && session.expiry
             && new Date(session.expiry) > new Date();
         if (!valid) {
-            localStorage.setItem('redirect_after_login', location.pathname);
+            localStorage.setItem('redirect_after_login', location.pathname + location.search + location.hash);
             // replace, not href: Back must not land on a page that leaves at once.
             location.replace('login.html');
         }

@@ -19,12 +19,14 @@
  * so a mocked `html` is enough to make an undefined name throw.
  */
 import { describe, it, expect, vi } from 'vitest';
+import { readStylesheet } from '../../test-utils.js';
 
 vi.mock('lit', () => ({
     LitElement: class {},
     html: (strings, ...values) => ({ strings, values }),
     css: (strings, ...values) => ({ strings, values }),
     svg: (strings, ...values) => ({ strings, values }),
+    unsafeCSS: (cssText) => ({ cssText }),
     nothing: null,
 }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }));
@@ -116,5 +118,16 @@ describe('the node detail panel renders', () => {
     it('for a node with no manufacturer or model', () => {
         expect(() => open({ id: 'n', name: 'n', status: 'active', type: 'sink' })._renderNodeDetailPanel())
             .not.toThrow();
+    });
+});
+
+describe('the press on a touch screen reaches the diagram\'s buttons', () => {
+    // Its zoom, FIT, RESET, LEGEND, MINIMAP and NETWORK buttons showed nothing under the
+    // finger: the page's sheets do not reach a shadow root. It adopts the rule's one file.
+    it('carries css/components/press.css as is', () => {
+        const file = readStylesheet('css', 'components', 'press.css');
+        const adopted = AgAudioPipeline.styles.map((s) => s.cssText).filter(Boolean);
+        expect(adopted).toContain(file);
+        expect(file).toMatch(/@media \(hover: none\) and \(pointer: coarse\)/);
     });
 });

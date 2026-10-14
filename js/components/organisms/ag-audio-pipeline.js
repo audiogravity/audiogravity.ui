@@ -1,4 +1,7 @@
-import { LitElement, html, css, svg } from 'lit';
+import { LitElement, html, css, svg, unsafeCSS } from 'lit';
+// The press on a touch screen, from its one file: the page's sheets do not reach this
+// component's shadow root, and its buttons showed nothing under the finger.
+import pressCss from '../../../css/components/press.css?inline';
 import { apiPost } from '../../api.js';
 import { currentPipeline, isNewerPipeline } from '../../core/pipeline-state.js';
 import { latestThrottle } from '../../core/latest-throttle.js';
@@ -148,7 +151,7 @@ export class AgAudioPipeline extends LitElement {
         this._observer = null;
     }
 
-    static styles = css`
+    static styles = [unsafeCSS(pressCss), css`
         :host {
             display: block;
             width: 100%;
@@ -915,7 +918,7 @@ export class AgAudioPipeline extends LitElement {
             font-size: var(--font-size-xxs);
             color: var(--text-primary);
         }
-    `;
+    `];
 
     _handleMouseDown(e) {
         // Always record for click detection in mouseup

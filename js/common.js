@@ -2,7 +2,7 @@
 // ES6 MODULE IMPORTS (Phase 2)
 // =====================
 
-import { initAuth, logout, applyRoleClass, requireAuth } from './auth.js';
+import { initAuth, logout, applyRoleClass, requireAuth, tabAllowed } from './auth.js';
 import { apiCall, apiCallWithRetry, apiGet, apiPost, apiUpload } from './api.js';
 import { connectSSE, closeSSE, updateConnectionStatus, updateSystemMetrics, loadInitialMetrics, initVisibilityManager, startUptimeUpdates, sseStats } from './sse.js';
 import { showToast, showConfirm, handleError, getUserFriendlyError } from './ui-helpers.js';
@@ -530,11 +530,17 @@ function initNavigation() {
         }
     });
 
+    // A tab the address may open: one the bar holds, and this role may see (tabAllowed).
+    // Without the check a guest opened /#admin, its tab hidden, its calls refused.
+    const allowedOrDefault = (tabId) => {
+        const known = (tabsContainer?.tabs ?? []).map((t) => t.id);
+        return !known.length || tabAllowed(tabId, known) ? tabId : 'profiles';
+    };
+
     // Handle initial hash or persisted tab or default
     const getInitialTab = () => {
         const hash = window.location.hash.slice(1);
-        // Valid tabs check could be added here
-        return hash || AppState.currentTab || 'profiles';
+        return allowedOrDefault(hash || AppState.currentTab || 'profiles');
     };
 
     const switchToTab = (tabId) => {
@@ -557,7 +563,7 @@ function initNavigation() {
     // Guard against re-entry: the tab-changed handler itself sets window.location.hash,
     // which would otherwise trigger a second selectTab → second tab-changed → HUD flash.
     window.addEventListener('hashchange', () => {
-        const newTab = window.location.hash.slice(1);
+        const newTab = window.location.hash.slice(1) && allowedOrDefault(window.location.hash.slice(1));
         if (newTab && newTab !== AppState.currentTab && newTab !== tabsContainer?.activeTab) {
             switchToTab(newTab);
         }

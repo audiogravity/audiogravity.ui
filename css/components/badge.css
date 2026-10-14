@@ -290,11 +290,15 @@
     transform: scale(0.98);
 }
 
-/* A clickable <ag-badge> is sized by the compact box (components/button.css; user's
-   choice, 2026-10-08). Its colours stay the badge's. */
-ag-badge button.badge {
+/* A badge that can be pressed — a <button> or a clickable tag, wherever it sits — is
+   sized by the compact box (components/button.css; user's choice, 2026-10-06, then
+   2026-10-08 and 2026-10-14) and laid out as one: its icon and words centred. Its colours
+   stay the badge's; its frame says it can be pressed. */
+.badge:is(button, .clickable) {
     display: inline-flex;
     align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
 }
 
 /**
