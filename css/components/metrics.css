@@ -41,41 +41,6 @@
 }
 
 /* =====================
-   DETAILED CHARTS (Expanded views)
-   ===================== */
-
-.detailed-chart {
-    border: 1px solid var(--border-color);
-    padding: var(--spacing-sm);
-    background: var(--bg-primary);
-    border-radius: var(--radius-sm);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-    min-width: 0;
-}
-
-.detailed-chart-header {
-    display: flex;
-    flex-direction: column; /* Stacked to avoid overlap in narrow splits */
-    align-items: flex-start;
-    gap: 2px;
-}
-
-.detailed-chart-label {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--text-tertiary);
-
-    /* NO uppercase here: matches icon class cases and saves space */
-}
-
-.detailed-chart-value {
-    font-size: var(--font-size-md);
-    font-weight: 700;
-}
-
-/* =====================
    METRIC LABEL / VALUE
    ===================== */
 

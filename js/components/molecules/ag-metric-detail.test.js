@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { AgMetricDetail } from './ag-metric-detail.js';
-import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
+import { readStylesheet, cssRuleBody, cssRules, mediaBlock, filesUnder, appSources } from '../../test-utils.js';
 
 beforeAll(() => {
     // jsdom has no layout: the small chart sizes itself from a ResizeObserver.
@@ -84,8 +84,41 @@ describe('the header of an expanded chart', () => {
 
     it('sets label and figure on one line, the figure wrapping under rather than overlapping (2026-10-13)', () => {
         const body = cssRuleBody(css, '.detailed-chart-header');
-        expect(body).toMatch(/flex-flow:\s*row wrap/);       // components/metrics.css stacks them
+        expect(body).toMatch(/flex-flow:\s*row wrap/);
         expect(body).toMatch(/justify-content:\s*space-between/);
+    });
+
+    it('is styled from one sheet: three copies once overrode one another (2026-10-14)', () => {
+        // components/metrics.css stacked the label above the figure, components/sparkline.css
+        // set it in a second grey, services.css — loaded last — won, partly: what showed was
+        // a blend of the three, readable in none.
+        const elsewhere = filesUnder('css', /\.css$/)
+            .filter(file => file !== 'css/services.css')
+            .flatMap(file => cssRules(readStylesheet(file))
+                .flatMap(rule => rule.selectors)
+                .filter(selector => selector.includes('.detailed-chart'))
+                .map(selector => `${file}: ${selector}`));
+        expect(elsewhere).toEqual([]);
+    });
+
+    it('has no rule in a component or a page either, where a copy would win the same way', () => {
+        // A rule names the class right before its `{`; markup writes it without the dot,
+        // a query between quotes. Comments are dropped: one names the class in prose.
+        const RULE = /\.detailed-chart[\w-]*[^{};'"`<]*\{/;
+        const uncommented = text => text
+            .replace(/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->/g, '')
+            .replace(/(^|[^:])\/\/.*$/gm, '$1');
+        const inCode = appSources().filter(file => RULE.test(uncommented(readStylesheet(file))));
+        expect(inCode).toEqual([]);
+    });
+
+    it('states each of its rules once in that sheet', () => {
+        // Outside a screen-size block, a second rule for the same selector is a copy again.
+        const topLevel = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+        const selectors = cssRules(topLevel).flatMap(rule => rule.selectors)
+            .filter(selector => selector.includes('.detailed-chart'));
+        expect(selectors.length).toBeGreaterThan(0);
+        expect(selectors.filter((s, i) => selectors.indexOf(s) !== i)).toEqual([]);
     });
 
     it('keeps the label above where two charts share the width, so a pair stays level', () => {
