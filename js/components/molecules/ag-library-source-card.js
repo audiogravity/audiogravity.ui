@@ -8,10 +8,11 @@
  *
  * @element ag-library-source-card
  *
- * @attr {object}  .node    - Source descriptor: { id, name, status, kind }. `kind`
- *                            decides what a tap does: a catalogue opens, an input
- *                            does not (it hides its source behind it, so there is
- *                            nothing to browse on this side).
+ * @attr {object}  .node    - Source descriptor: { id, name, status, kind, running }.
+ *                            `kind` decides what a tap does: a catalogue opens, an
+ *                            input does not (it hides its source behind it, so there
+ *                            is nothing to browse on this side). `running: false` on
+ *                            an input reads "Off": its software is stopped.
  * @attr {boolean} active   - Whether this source is currently active
  * @attr {string}  zone-id  - Currently active zone ID (used to display zone name when active)
  *
@@ -136,8 +137,13 @@ export class AgLibrarySourceCard extends LitElement {
         const desc     = null;
         const isRoon   = this._isRoon();
         const expanded = isRoon && this._expanded;
-        const stCls    = node.status === 'active' ? 'up' : 'down';
-        const stLbl    = node.status === 'active' ? 'Active' : 'Idle';
+        // An input whose software is stopped is not waiting: a phone does not see
+        // the box at all. It says so twice — an empty ring with "Off", and its icon
+        // and name faded. One not installed never reaches this card (the core leaves
+        // it out); running unknown stays "Idle".
+        const off      = this._isInput() && node.status !== 'active' && node.running === false;
+        const stCls    = node.status === 'active' ? 'up' : off ? 'off' : 'down';
+        const stLbl    = node.status === 'active' ? 'Active' : off ? 'Off' : 'Idle';
 
         // For Roon active source, prefer the backend-provided display name.
         // Fall back to the picker's cached zones, then to the source name so the
@@ -153,7 +159,7 @@ export class AgLibrarySourceCard extends LitElement {
 
         return html`
             <div class="lib-src-card ${active ? 'active' : ''} ${expanded ? 'expanded' : ''}">
-                <div class="lib-src-card-hd ${inert ? 'inert' : ''}"
+                <div class="lib-src-card-hd ${inert ? 'inert' : ''} ${off ? 'off' : ''}"
                     @click=${() => this._toggleExpand()}>
                     <div class="lib-src-ic">${icon}</div>
                     <div class="lib-src-col">

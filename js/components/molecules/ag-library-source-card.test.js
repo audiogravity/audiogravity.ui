@@ -9,6 +9,7 @@
  * the two disagree again, silently.
  */
 import { describe, it, expect, vi } from 'vitest';
+import { readStylesheet, cssRuleBody, cssRules } from '../../test-utils.js';
 
 vi.mock('lit', () => ({
     LitElement: class { connectedCallback() {} },
@@ -61,5 +62,74 @@ describe('AgLibrarySourceCard — who names the source', () => {
         // the old table answered `undefined` for anything missing from it.
         expect(rendered({ id: 'src_newthing', name: 'New Thing', status: 'idle' }))
             .toContain('New Thing');
+    });
+});
+
+describe('AgLibrarySourceCard — an input switched off says so', () => {
+    // AirPlay or the UPnP bridge stopped read "Idle", the word of one waiting for a
+    // stream, while a phone could not even see the box. One not installed is left
+    // out by the core and never reaches the card.
+    const input = (extra) => ({ id: 'src_shairport-sync', name: 'AirPlay', kind: 'input', status: '', ...extra });
+
+    it('reads "Off" when its software is stopped, with an empty ring and a faded card', () => {
+        // Told apart twice (chosen on mock-ups): the indicator's 'off' state draws the
+        // ring, the header's 'off' class fades the icon and the name.
+        const values = rendered(input({ running: false }));
+        expect(values).toContain('Off');
+        // Twice: once the indicator's state (the ring), once the header's class (the fade).
+        expect(values.filter(v => v === 'off')).toHaveLength(2);
+        expect(values).not.toContain('Idle');
+        expect(values).not.toContain('down');
+    });
+
+    it.each([
+        ['running', true],
+        ['state unknown', null],
+        ['a core that does not send it', undefined],
+    ])('reads "Idle" when %s, with the filled grey dot and nothing faded', (_name, running) => {
+        const values = rendered(input({ running }));
+        expect(values).toContain('Idle');
+        expect(values).toContain('down');
+        expect(values).not.toContain('Off');
+        expect(values).not.toContain('off');
+    });
+
+    it('reads "Active" while it plays, whatever an old reading says', () => {
+        const values = rendered(input({ status: 'active', running: false }));
+        expect(values).toContain('Active');
+        expect(values).not.toContain('off');
+    });
+
+    it('never says "Off" of a catalogue', () => {
+        // Only an input can be switched off from this screen's point of view.
+        const values = rendered({ id: 'src_mpd', name: 'Local Library', kind: 'library', status: '', running: false });
+        expect(values).not.toContain('Off');
+        expect(values).not.toContain('off');
+    });
+});
+
+describe('AgLibrarySourceCard — how "Off" is drawn', () => {
+    const lib = readStylesheet('css', 'components', 'library-sources.css');
+    const tile = readStylesheet('css', 'components', 'tile.css');
+    const dots = readStylesheet('css', 'components', 'status-indicator.css');
+    const declared = (body, property) =>
+        body?.match(new RegExp(`(?:^|[;\\s])${property}:\\s*([^;]+);`))?.[1].trim();
+
+    it('fades the icon and the name as an unavailable tile, the state left out', () => {
+        const unavailable = cssRuleBody(tile, '.config-tile.unavailable > .service-body');
+        for (const part of ['.lib-src-ic', '.lib-src-name']) {
+            const body = cssRules(lib).find(r => r.selectors.includes(`.lib-src-card-hd.off ${part}`))?.body;
+            expect(declared(body, 'opacity')).toBe(declared(unavailable, 'opacity'));
+            expect(declared(body, 'filter')).toBe(declared(unavailable, 'filter'));
+        }
+        // The ring and the word must stay readable: nothing fades the indicator.
+        expect(lib).not.toMatch(/\.lib-src-card-hd\.off[^{]*(ag-status-indicator|service-state)/);
+    });
+
+    it('draws an empty ring in the grey of the filled dot at rest', () => {
+        const ring = cssRuleBody(dots, '.profile-status-dot.off');
+        const rest = cssRuleBody(dots, '.profile-status.inactive');
+        expect(declared(ring, 'background')).toBe('transparent');
+        expect(declared(ring, 'box-shadow')).toContain(declared(rest, 'background'));
     });
 });

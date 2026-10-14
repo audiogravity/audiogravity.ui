@@ -68,6 +68,15 @@
     background: var(--text-tertiary);
 }
 
+/* OFF State (empty ring): software installed and stopped, where DOWN's filled grey is
+   at rest. Told apart by its shape rather than a colour, so it reads the same in every
+   theme — the inset shadow draws the ring inside the dot's box, which keeps its size. */
+.service-state-dot.off,
+.profile-status-dot.off {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--text-tertiary);
+}
+
 /* PENDING State (Orange pulsing — activating/deactivating), no glow either */
 .service-state-dot.pending,
 .profile-status-dot.pending {
@@ -102,9 +111,11 @@
     color: var(--color-success-text);
 }
 
-/* DOWN Text (Gray) */
+/* DOWN and OFF Text (Gray) */
 .service-state-text.down,
-.profile-status-text.down {
+.profile-status-text.down,
+.service-state-text.off,
+.profile-status-text.off {
     color: var(--text-tertiary);
 }
 

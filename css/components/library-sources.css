@@ -49,6 +49,21 @@
     cursor: default;
 }
 
+/**
+ * @component .lib-src-card-hd.off
+ * @description An input whose software is stopped: a phone does not see the box, and
+ * nothing can arrive through it. Its icon and name fade as an unavailable tile does —
+ * the same opacity and filter as tile.css `.unavailable` — and its state, an empty ring
+ * and "Off", stays out of the fade (4.9:1 and up). Chosen on mock-ups (2026-10-14), the
+ * name included, though faded it falls under the 4.5:1 for text — measured on the pixels
+ * in Chromium: 3.4 / 2.7 / 2.9:1 in Minimal / Slate / Gravity light, 4.2 to 4.4:1 in dark.
+ */
+.lib-src-card-hd.off .lib-src-ic,
+.lib-src-card-hd.off .lib-src-name {
+    opacity: 0.45;
+    filter: grayscale(60%);
+}
+
 .lib-src-chevron {
     color: var(--text-tertiary);
     transition: transform var(--transition-fast);

@@ -58,6 +58,8 @@ export class AgLibrarySources extends LitElement {
         this._upnpDiscovered = false;
         this._upnpExtraHost  = '';
         this._playingKey     = '';
+        this._sourcesKey     = '';
+        this._liveSources    = false;
         this._unsubscribeState = null;
         this._swipe = new SwipeToDismissController(this, {
             onCommit: (id) => this._onSwipeRemove(id),
@@ -78,8 +80,10 @@ export class AgLibrarySources extends LitElement {
         // Which source is diffusing changes on its own — a station starts, a
         // phone pushes AirPlay — so the badge cannot be read once on mount. The
         // subscription is multiplexed with the page's, not a second stream.
-        this._unsubscribeState = subscribePlayerState(
-            (state) => { this._playingKey = this._playingKeyFrom(state); });
+        this._unsubscribeState = subscribePlayerState((state) => {
+            this._playingKey = this._playingKeyFrom(state);
+            this._adoptSources(state);
+        });
     }
 
     disconnectedCallback() {
@@ -87,6 +91,8 @@ export class AgLibrarySources extends LitElement {
         this.removeEventListener('sources-changed', this._boundSourcesChanged);
         this._unsubscribeState?.();
         this._unsubscribeState = null;
+        this._liveSources = false;
+        this._sourcesKey = '';
     }
 
     /**
@@ -207,8 +213,49 @@ export class AgLibrarySources extends LitElement {
         await loadWithState(this, async () => {
             const state = await getSnapshot({ force });
             this._playingKey = this._playingKeyFrom(state);
+            // A list already taken from the live stream is newer than a snapshot
+            // served from the cache: the stream answers on mount, often before it.
+            // A forced read follows a connection change and is fresh — it applies.
+            if (this._liveSources && !force) return;
             this._nodes = (state?.sources ?? []).map(AgLibrarySources.toNode);
+            this._sourcesKey = AgLibrarySources.sourcesKey(state?.sources ?? []);
         });
+    }
+
+    /**
+     * Take the source list from a live state, when what the cards show of it moved.
+     *
+     * The list used to be read on mount only, from a snapshot kept 30 s: an input
+     * started or stopped while the screen was open — or within those 30 s — kept
+     * "Off" or "Idle" wrongly, and one installed or removed kept or lacked its card.
+     * The stream this screen already follows carries the whole list at every state.
+     *
+     * Compared by key so a tick that changes nothing re-renders nothing: the core
+     * publishes about every three seconds while something plays.
+     *
+     * @param {object} state - PlayerState from the SSE stream.
+     */
+    _adoptSources(state) {
+        const sources = state?.sources;
+        // An event without the list says nothing of it (the page's own rule).
+        if (!Array.isArray(sources) || sources.length === 0) return;
+        this._liveSources = true;
+        const key = AgLibrarySources.sourcesKey(sources);
+        if (key === this._sourcesKey) return;
+        this._sourcesKey = key;
+        this._nodes = sources.map(AgLibrarySources.toNode);
+    }
+
+    /**
+     * What the cards show of a source list: which entries, in which order, of
+     * which kind, and whether an input runs.
+     *
+     * @param {Array<object>} sources - `sources[]` of a PlayerState.
+     * @returns {string} One line per entry.
+     */
+    static sourcesKey(sources) {
+        return sources.map(s => [s.source_id, s.name, s.kind, s.selectable, s.running].join('\t'))
+            .join('\n');
     }
 
     async _discoverUpnp() {
@@ -248,7 +295,8 @@ export class AgLibrarySources extends LitElement {
      * first attempt dropped them the fallback failed OPEN — every entry passed
      * as a source, the Inputs section came out empty, and an AirPlay card
      * offered itself as something to browse. The tests build their nodes through
-     * this, so dropping one breaks them.
+     * this, so dropping one breaks them. `running` is the card's: an input
+     * whose software is stopped reads "Off".
      *
      * @param {object} s - One `sources[]` entry from the player state.
      * @returns {object} The node the screen renders and filters on.
@@ -260,6 +308,7 @@ export class AgLibrarySources extends LitElement {
             kind:       s.kind,
             protocol:   s.protocol,
             selectable: s.selectable,
+            running:    s.running,
         };
     }
 

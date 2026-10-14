@@ -7,7 +7,7 @@ export default {
     argTypes: {
         state: {
             control: 'select',
-            options: ['up', 'down', 'active', 'inactive']
+            options: ['up', 'down', 'off', 'active', 'inactive']
         },
         type: {
             control: 'select',
@@ -39,6 +39,14 @@ ServiceDown.args = {
     state: 'down',
     type: 'service',
     label: 'DOWN'
+};
+
+/* Installed and stopped: an empty ring, told from DOWN's filled dot by its shape. */
+export const ServiceOff = Template.bind({});
+ServiceOff.args = {
+    state: 'off',
+    type: 'service',
+    label: 'Off'
 };
 
 export const ProfileActive = Template.bind({});
