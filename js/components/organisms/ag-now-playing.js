@@ -3,7 +3,7 @@ import { apiGet, apiPost } from '../../api.js';
 import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-store.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard, playPauseIntent } from '../../player-utils.js';
+import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, applyVolumeGuard, playPauseIntent, isLiveStream } from '../../player-utils.js';
 import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
@@ -761,7 +761,9 @@ export class AgNowPlaying extends LitElement {
                     ${isDsd(item.source_format) && !isSelfManagedDriver(item) ? html`<ag-dsd-lock></ag-dsd-lock>` : nothing}
                 </div>
             </div>
-            ${item.duration ? html`
+            <!-- No bar on a broadcast, whatever length its player reports: a station AG
+                 cast to a renderer is live by AG's word, as the full player shows it. -->
+            ${item.duration && !isLiveStream(item) ? html`
                 <ag-progress-bar
                     compact
                     .serverElapsed=${item.elapsed ?? 0}

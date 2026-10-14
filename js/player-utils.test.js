@@ -47,6 +47,25 @@ describe('isDsd', () => {
 import { isLiveStream, hiResLabel } from './player-utils.js';
 
 describe('isLiveStream', () => {
+    it('reads the core\'s answer, which holds for a station the radio module does not know', () => {
+        // A webradio another app started: origin 'upnp' (an address the radio
+        // module does not know), no length — the core calls it live, as the
+        // transport that reopens it on Play does.
+        expect(isLiveStream({ live: true, origin: 'upnp', duration: null })).toBe(true);
+    });
+    it('takes the core\'s word over the old reading, both ways', () => {
+        expect(isLiveStream({ live: false, origin: 'radio', duration: 0 })).toBe(false);
+        expect(isLiveStream({ live: true, origin: 'radio', duration: 1830 })).toBe(true);
+    });
+});
+
+describe('isLiveStream — a core that sends no `live`, or says it does not know', () => {
+    it('reads origin and length when the core has no rule for the player (null)', () => {
+        // A station AG pushed to HQPlayer: the core has no rule there and says null;
+        // "false" dropped the "Live" this reading had always shown (review, 2026-10-14).
+        expect(isLiveStream({ live: null, origin: 'radio', duration: null })).toBe(true);
+        expect(isLiveStream({ live: null, origin: 'airplay', duration: null })).toBe(false);
+    });
     it('is a radio station with no duration', () => {
         expect(isLiveStream({ origin: 'radio', duration: 0 })).toBe(true);
         expect(isLiveStream({ origin: 'radio' })).toBe(true);

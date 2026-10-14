@@ -312,19 +312,22 @@ export function hiResLabel(fmt) {
  * down to and no position to seek to. A progress bar there showed its knob
  * stuck at the start, the time listened on one side and "−0:00" on the other.
  *
- * Keyed on the origin the core publishes (`'radio'` for a station, whatever the
- * output), not on a missing duration alone: a track also has none while MPD
- * warms up its stream, and must not flash "live" meanwhile. A radio item that
- * does carry a duration is not treated as live.
+ * The core's answer (`live`), read as given: it is the rule the transport acts
+ * on — a station the radio module knows, or a stream that names itself and has
+ * no length — so a webradio another app started at an address the radio module
+ * does not know reads as one here too. This side used to decide by itself, from
+ * `origin` and the duration, and showed neither the "Live" marker nor greyed
+ * Repeat and Shuffle on such a station while the core greyed Previous and Next.
  *
- * @param {{origin?: string|null, duration?: number|null}|null|undefined} state -
+ * A core that predates the field sends none: the old reading answers then —
+ * origin `'radio'` and no length — since the two packages update separately.
+ *
+ * @param {{live?: boolean, origin?: string|null, duration?: number|null}|null|undefined} state -
  *   The player state rendered.
  * @returns {boolean}
  */
 export function isLiveStream(state) {
-    // BACKLOG: a station the radio module does not know (started by another app) is
-    // not `radio` and reads as no live stream here, while the core treats it as one —
-    // see ops BACKLOG.md, "Trois définitions du direct".
+    if (typeof state?.live === 'boolean') return state.live;
     return state?.origin === 'radio' && !(Number(state?.duration) > 0);
 }
 

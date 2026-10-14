@@ -167,6 +167,10 @@ export class AgNowPlayingFullscreen extends LitElement {
             can_prev:         item.can_prev ?? false,
             can_seek:         item.can_seek ?? false,
             can_set_volume:   item.can_set_volume ?? false,
+            // The core's word on a broadcast, kept: without it the screen opened on
+            // a webradio another app started showed a bar at "−0:00" until the
+            // first live state arrived (isLiveStream falls back on origin 'radio').
+            live:             item.live ?? null,
             control_id:       item.control_id ?? null,
             played_on:        item.played_on ?? null,
             format:           null,

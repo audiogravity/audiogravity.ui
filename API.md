@@ -498,6 +498,19 @@ queue and change while a source plays or sits paused, so read them from every `P
 - Both are `false` while MPD is stopped: it refuses `next` and `prev` then.
 - `can_seek` — a length is known (`duration`). `false` on a live stream.
 
+**`live`** — on the item and on each `sources[]` entry: what plays is a live broadcast — no
+end to count down to, no position to seek to, and `play` after a pause reopens the stream
+rather than resuming it. Read it rather than guessing from `origin` and `duration`: a
+webradio started by another app, at an address the radio module does not know, comes as
+`origin: "upnp"` with `live: true`.
+
+- `true` / `false` — on the box's MPD (a station the radio module knows, or a stream that
+  names itself and has no length — it may turn `true` a moment after the stream starts, once
+  it names itself), and on a network renderer for what AG cast to it.
+- `null` — the box cannot tell: HQPlayer, AirPlay, Roon, a stream another app cast to a
+  renderer, or nothing playing. A client then decides by itself — `origin: "radio"` with no
+  `duration` is a station.
+
 **`PlayerState` — routing and output fields**
 
 | Field | Meaning |
