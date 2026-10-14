@@ -19,6 +19,7 @@
 
 /* 1. ATOMS & BASE (Resets, HTML Base) */
 @import 'base.css';
+@import 'components/press.css';
 
 /* 2. DESIGN TOKENS (Variables, then Themes — order matters) */
 @import 'themes.css';

@@ -24,6 +24,7 @@ vi.mock('lit', () => ({
     html: (strings, ...values) => ({ strings, values }),
     css: (strings, ...values) => ({ strings, values }),
     svg: (strings, ...values) => ({ strings, values }),
+    unsafeCSS: (cssText) => ({ cssText }),
     nothing: null,
 }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }));

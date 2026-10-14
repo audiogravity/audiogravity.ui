@@ -1,0 +1,29 @@
+/**
+ * @module Press
+ * @description Press feedback on a touch screen, where hover is never shown: while the
+ * finger is on it, a button shrinks a little and fades. The fade is what the eye catches —
+ * a 4% shrink is under 2px on a 40px button. It is a filter, not `opacity`, so that it
+ * multiplies a button's own opacity (an inactive log filter sits at 0.35) instead of
+ * replacing it.
+ *
+ * This rule leaves a busy button (aria-disabled) alone. A role="button" card that holds
+ * buttons of its own — a radio's star — is :active too while one of them is pressed, as
+ * every ancestor of a pressed element is: it stays still, and only the pressed button fades.
+ * 60ms rather than --transition-fast (150ms): a press must show under the finger at once,
+ * not as the finger lifts.
+ *
+ * One file for every place it applies (rule 9 — DRY): css/main.css imports it right after
+ * base.css, where it used to sit; a component that draws in its own shadow root, out of the
+ * page sheets' reach, adopts it as is — `import press from '…/press.css?inline'` and
+ * `unsafeCSS(press)` in its `static styles` (the audio pipeline diagram: tablet, phone held
+ * sideways).
+ */
+
+@media (hover: none) and (pointer: coarse) {
+    button:active:where(:not(:disabled, [aria-disabled="true"])),
+    [role="button"]:active:where(:not([aria-disabled="true"], :has(:is(button, [role="button"]):active))) {
+        transform: scale(0.96);
+        filter: opacity(0.6);
+        transition: transform 60ms ease-out, filter 60ms ease-out;
+    }
+}
