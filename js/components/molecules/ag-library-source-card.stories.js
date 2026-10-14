@@ -51,6 +51,14 @@ InputPlaying.args = {
 /* The same card at rest: it answers no tap at all, and shows no pointer. */
 export const InputIdle = Template.bind({});
 InputIdle.args = {
-    node: { id: 'src_upmpdcli', name: 'UPnP Bridge', status: '', kind: 'input' },
+    node: { id: 'src_upmpdcli', name: 'UPnP Bridge', status: '', kind: 'input', running: true },
+    active: false, zoneId: '',
+};
+
+/* Its software stopped: "Off" rather than "Idle" — a phone does not see the box at
+ * all. One not installed is left out by the core and has no card. */
+export const InputOff = Template.bind({});
+InputOff.args = {
+    node: { id: 'src_shairport-sync', name: 'AirPlay', status: '', kind: 'input', running: false },
     active: false, zoneId: '',
 };

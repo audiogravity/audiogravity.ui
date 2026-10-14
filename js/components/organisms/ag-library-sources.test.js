@@ -30,6 +30,7 @@ vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false)
 
 const { AgLibrarySources } = await import('./ag-library-sources.js');
 const { BROWSE_KINDS, INPUT_KINDS } = await import('../library-constants.js');
+const { getSnapshot } = await import('../../library-store.js');
 
 /**
  * Build an instance with no DOM and no lifecycle.
@@ -293,6 +294,13 @@ describe('a core that does not send the type must not empty the screen', () => {
         expect(node.selectable).toBe(false);
     });
 
+    it('carries whether an input runs, for its card to read "Off"', () => {
+        const node = (running) => AgLibrarySources.toNode(
+            { source_id: 'src_upmpdcli', name: 'UPnP Bridge', kind: 'input', protocol: 'mpris', running });
+        expect(node(false).running).toBe(false);
+        expect(node(true).running).toBe(true);
+    });
+
     it('uses the type as soon as one entry carries it', () => {
         const mixed = [
             { id: 'src_radio', kind: 'radio', protocol: 'radio' },
@@ -301,6 +309,82 @@ describe('a core that does not send the type must not empty the screen', () => {
         const { libSources, inputs } = bare()._splitByType(mixed);
         expect(libSources.map(n => n.id)).toEqual(['src_radio']);
         expect(inputs.map(n => n.id)).toEqual(['src_shairport-sync']);
+    });
+});
+
+describe('the list follows the live stream', () => {
+    // Read on mount only, from a snapshot kept 30 s, the list showed an input
+    // started or stopped while the screen was open — or within those 30 s — in its
+    // old state, and an input installed or removed kept or lacked its card.
+
+    /** An instance with the fields _load and _adoptSources write, as own data. */
+    function screen() {
+        const el = Object.create(AgLibrarySources.prototype);
+        for (const [k, v] of Object.entries({
+            _nodes: [], _sourcesKey: '', _liveSources: false, _playingKey: '', _loading: false, _error: null,
+        })) Object.defineProperty(el, k, { value: v, writable: true });
+        return el;
+    }
+    const entry = (id, running) => ({ source_id: id, name: id, kind: 'input', protocol: 'mpris', selectable: true, running });
+    const STATE = (running) => ({ sources: [{ source_id: 'src_mpd', name: 'Local Library', kind: 'library' },
+        entry('src_shairport-sync', running)] });
+
+    it('takes an input switched off from the stream', () => {
+        const el = screen();
+        el._adoptSources(STATE(true));
+        el._adoptSources(STATE(false));
+        expect(el._nodes.find(n => n.id === 'src_shairport-sync').running).toBe(false);
+    });
+
+    it('drops the card of an input removed, and adds one installed', () => {
+        const el = screen();
+        el._adoptSources(STATE(true));
+        el._adoptSources({ sources: [{ source_id: 'src_mpd', name: 'Local Library', kind: 'library' }] });
+        expect(el._nodes.map(n => n.id)).toEqual(['src_mpd']);
+        el._adoptSources(STATE(false));
+        expect(el._nodes.map(n => n.id)).toEqual(['src_mpd', 'src_shairport-sync']);
+    });
+
+    it('re-renders nothing for a tick that changes nothing the cards show', () => {
+        // The core republishes about every three seconds while something plays.
+        const el = screen();
+        el._adoptSources(STATE(true));
+        const nodes = el._nodes;
+        el._adoptSources({ ...STATE(true), title: 'another track' });
+        expect(el._nodes).toBe(nodes);
+    });
+
+    it('keeps its list when an event carries none', () => {
+        const el = screen();
+        el._adoptSources(STATE(false));
+        el._adoptSources({});
+        el._adoptSources({ sources: [] });
+        expect(el._nodes.map(n => n.id)).toEqual(['src_mpd', 'src_shairport-sync']);
+    });
+
+    it('lets no cached snapshot replace a list already taken live', async () => {
+        // On mount the stream often answers first; the snapshot may be 30 s old.
+        const el = screen();
+        el._adoptSources(STATE(false));
+        getSnapshot.mockResolvedValueOnce(STATE(true));
+        await el._load();
+        expect(el._nodes.find(n => n.id === 'src_shairport-sync').running).toBe(false);
+    });
+
+    it('applies a forced read, which follows a connection and is fresh', async () => {
+        const el = screen();
+        el._adoptSources(STATE(false));
+        getSnapshot.mockResolvedValueOnce(STATE(true));
+        await el._load({ force: true });
+        expect(el._nodes.find(n => n.id === 'src_shairport-sync').running).toBe(true);
+    });
+
+    it('takes the snapshot while nothing came live yet', async () => {
+        const el = screen();
+        getSnapshot.mockResolvedValueOnce(STATE(false));
+        await el._load();
+        expect(el._nodes.map(n => n.id)).toEqual(['src_mpd', 'src_shairport-sync']);
+        expect(el._sourcesKey).toBe(AgLibrarySources.sourcesKey(STATE(false).sources));
     });
 });
 
