@@ -12,7 +12,7 @@ splashScreen.init();
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config.js';
 import './components/atoms/ag-license-badge.js';
 import './components/atoms/ag-theme-toggle.js';
-import { initAuth, login, saveAuth, redirectIfAuthenticated } from './auth.js';
+import { initAuth, login, saveAuth, redirectIfAuthenticated, takeRedirectAfterLogin } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
 import { applyStoredAppearance } from './appearance.js';
@@ -108,19 +108,8 @@ function redirectToDashboard() {
     // The same opening of the app: no second splash screen once signed in.
     skipNextSplash();
 
-    // Check if there's a saved redirect
-    // BACKLOG: read where js/auth.js requireAuth() and public/session-boot.js never write
-    // (localStorage) — see audiogravity.ops/BACKLOG.md, "redirect_after_login".
-    const redirect = sessionStorage.getItem('redirect_after_login');
-    sessionStorage.removeItem('redirect_after_login');
-
-    // Only redirect if it's a real page (not login.html, not simple index.html)
-    if (redirect && redirect !== '/login.html' && redirect !== '/index.html' && redirect !== 'login.html' && redirect !== 'index.html') {
-        window.location.href = redirect;
-    } else {
-        // Default: go to root
-        window.location.href = '/';
-    }
+    // Back where the session was lost, its view (#…) included — or the app's root.
+    window.location.href = takeRedirectAfterLogin();
 }
 
 /**

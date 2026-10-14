@@ -22,11 +22,12 @@ const DAY = 24 * 3600 * 1000;
 
 /**
  * Run the script against given storages, with a location that records where it went.
+ * @param {string} [hash=''] - The view the app was opened on (`#systemd`), as location.hash gives it.
  * @returns {{went: string|null}}
  */
-function run() {
+function run(hash = '') {
     const where = { went: null };
-    const location = { pathname: '/', replace: (url) => { where.went = url; } };
+    const location = { pathname: '/', search: '', hash, replace: (url) => { where.went = url; } };
     // The script reads globals by name: parameters of the same names stand in for them.
     new Function('localStorage', 'sessionStorage', 'location', SOURCE)(localStorage, sessionStorage, location);
     return where;
@@ -49,6 +50,11 @@ describe('a launch with no session', () => {
     it('saves where to come back, as requireAuth() does', () => {
         run();
         expect(localStorage.getItem('redirect_after_login')).toBe('/');
+    });
+
+    it('keeps the view the app was opened on', () => {
+        run('#systemd');
+        expect(localStorage.getItem('redirect_after_login')).toBe('/#systemd');
     });
 
     it('leaves with an expired session too', () => {
@@ -99,10 +105,10 @@ describe('the same session as js/auth.js', () => {
         expect(keys(boot)).toEqual(keys(auth));
     });
 
-    // Read by nothing yet: js/login.js looks in sessionStorage (BACKLOG.md, redirect_after_login).
-    it('the same trace as requireAuth(), where to come back', () => {
-        expect(AUTH).toMatch(/localStorage\.setItem\('redirect_after_login', window\.location\.pathname\)/);
-        expect(SOURCE).toMatch(/localStorage\.setItem\('redirect_after_login', location\.pathname\)/);
+    // Read back by js/login.js through takeRedirectAfterLogin(), from localStorage.
+    it('the same trace as requireAuth(), where to come back, its query and view included', () => {
+        expect(AUTH).toMatch(/localStorage\.setItem\('redirect_after_login', window\.location\.pathname \+ window\.location\.search \+ window\.location\.hash\)/);
+        expect(SOURCE).toMatch(/localStorage\.setItem\('redirect_after_login', location\.pathname \+ location\.search \+ location\.hash\)/);
     });
 });
 
