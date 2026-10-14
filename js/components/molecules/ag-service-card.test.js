@@ -46,7 +46,7 @@ vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 vi.mock('../atoms/ag-metric-detail.js', () => ({}));
 
 import { AgServiceCard, serviceStatus } from './ag-service-card.js';
-import { flat } from '../../test-utils.js';
+import { flat, readStylesheet, cssRules } from '../../test-utils.js';
 
 
 const NOTHING_MEASURED = {
@@ -187,5 +187,26 @@ describe('a failed service', () => {
         expect(serviceStatus('active', false)).toEqual({ statusClass: 'up', statusText: 'UP' });
         expect(serviceStatus('inactive', false)).toEqual({ statusClass: 'down', statusText: 'IDLE' });
         expect(serviceStatus('failed', true)).toEqual({ statusClass: 'pending', statusText: 'PENDING' });
+    });
+});
+
+describe('CRITICAL sits at the right edge of the tile', () => {
+    // Under the state it qualifies (UP, IDLE…), apart from the buttons (user, 2026-10-14).
+    const rules = cssRules(readStylesheet('css', 'services.css'));
+    const body = (selector) => rules.filter((r) => r.selectors.includes(selector)).map((r) => r.body).join('\n');
+
+    it('is pushed to the end of the row of actions', () => {
+        expect(body('.service-actions .critical-tag')).toMatch(/margin-left:\s*auto/);
+    });
+
+    it('in a row that takes the footer\'s width', () => {
+        expect(body('.service-footer .service-actions')).toMatch(/flex:\s*1 1 auto/);
+    });
+
+    it('is the last of the row, after the buttons and the other tags', () => {
+        const src = readStylesheet('js', 'components', 'molecules', 'ag-service-card.js');
+        const footer = src.slice(src.indexOf('<div class="service-actions">'), src.indexOf('service-last-action'));
+        expect(footer.lastIndexOf('critical-tag')).toBeGreaterThan(footer.lastIndexOf('<button'));
+        expect(footer.lastIndexOf('critical-tag')).toBeGreaterThan(footer.lastIndexOf('NOT INSTALLED'));
     });
 });

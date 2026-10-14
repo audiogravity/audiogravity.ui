@@ -118,13 +118,10 @@
    ===================== */
 
 
-/* A badge that works as a button, in the row of the tile's buttons: their height, so
-   the row reads as one — its padding alone left it at 18px beside 24px buttons. */
-.service-enabled-badge {
-    display: inline-flex;
-    align-items: center;
-    height: var(--button-height-compact);
-}
+/* ENABLED / DISABLED, a badge that works as a button in the row of the tile's buttons:
+   a pressable badge, sized as they are (components/badge.css, components/button.css) — it
+   had their height alone, in 10px type beside their 11px. Not clickable (a service not
+   installed), it is a tag like its neighbours. */
 
 /* Service Metrics */
 .service-metrics {
@@ -149,6 +146,18 @@
     flex-wrap: wrap;
     gap: var(--spacing-xs);
     margin-top: auto;
+}
+
+/* CRITICAL at the right edge of the tile, under the state (UP, IDLE…) it qualifies,
+   apart from the buttons — the row of actions takes the footer's width for it, and
+   keeps the time of the last action, when there is one, after it (user's request,
+   2026-10-14). Wrapped on a narrow phone, it starts its own line at the right. */
+.service-footer .service-actions {
+    flex: 1 1 auto;
+}
+
+.service-actions .critical-tag {
+    margin-left: auto;
 }
 
 /* Status indicator styles → components/status-indicator.css */

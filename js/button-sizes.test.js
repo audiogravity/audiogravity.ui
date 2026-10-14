@@ -45,8 +45,7 @@ const FAMILIES = [
     ['the panels\' compact buttons', '.btn-action', ['css', 'components', 'button.css'], ['.btn-action']],
     ['the .action-btn compact buttons', '.action-btn.compact', ['css', 'components', 'button.css'], ['.action-btn.compact']],
     ['the filters', '.filter-btn', ['css', 'components', 'filter-bar.css'], ['.filter-btn']],
-    ['the badges that are buttons in a tab\'s title', '.tab-zone .tab-title-container button.badge', ['css', 'components', 'tab-zone.css'], ['.tab-zone .tab-title-container button.badge']],
-    ['a clickable badge — the user card\'s Enabled / Disabled', 'ag-badge button.badge', ['css', 'components', 'badge.css'], ['ag-badge button.badge']],
+    ['a badge that can be pressed, wherever it sits — REFRESH, CONFIG, NEW USER, Set pwd, Restart required, ENABLED, a user card\'s Enabled', '.badge:is(button, .clickable)', ['css', 'components', 'badge.css'], ['.badge:is(button, .clickable)']],
     ['Library › Browse\'s pills', '.lib-pill', ['css', 'components', 'library-album-card.css'], ['.lib-pill']],
     ['Library › Search\'s sources', '.lib-src-badge', ['css', 'components', 'library-search.css'], ['.lib-src-badge']],
     ['Library › Radio\'s views, and its form\'s Cancel and Save', '.lib-radio-tab', ['css', 'components', 'library-radio.css'], ['.lib-radio-tab']],
@@ -89,6 +88,31 @@ describe('the compact buttons', () => {
         expect(SHARED.body).toMatch(/white-space:\s*nowrap/);
         // A row of filters that cannot hold its labels wraps instead (the queue's sources).
         expect(cssRuleBody(readStylesheet('css', 'components', 'filter-bar.css'), '.filter-bar')).toMatch(/flex-wrap:\s*wrap/);
+        // So does an Audio Software tile's footer, whose two pills ran 70px past the card
+        // at 320px once compact (measured 2026-10-14).
+        expect(rulesOf(readStylesheet('css', 'audio-software.css'))
+            .filter((r) => r.selectors.includes('.software-meta'))
+            .some((r) => /flex-wrap:\s*wrap/.test(r.body))).toBe(true);
+    });
+
+    it('leave the pressable badges out of a title\'s tag shape, which would undo their box', () => {
+        // .tab-zone .tab-title-container .badge is more specific than the shared rule: on a
+        // pressable badge its padding and letter spacing would win (CONFIG, NEW USER were 20px).
+        const shaped = rulesOf(readStylesheet('css', 'components', 'tab-zone.css'))
+            .filter((r) => r.selectors.some((s) => s.includes('.tab-title-container .badge')) && BOX_PROPERTY.test(r.body));
+        expect(shaped.length).toBeGreaterThan(0);
+        for (const rule of shaped) {
+            for (const s of rule.selectors) expect(s).toMatch(/\.badge:not\(button, \.clickable\)/);
+        }
+    });
+
+    it('leave no place its own box for a pressable badge — the list by place missed four', () => {
+        for (const file of [['css', 'services.css'], ['css', 'audio-software.css']]) {
+            for (const rule of rulesOf(readStylesheet(...file))) {
+                if (!rule.selectors.some((s) => /service-enabled-badge|web-password-badge|restart-badge|button\.badge/.test(s))) continue;
+                expect(rule.body, `${rule.selectors.join(', ')} restates the box`).not.toMatch(BOX_PROPERTY);
+            }
+        }
     });
 
     it.each(FAMILIES)('— %s — are in that rule, and restate none of it', (_, selector, file, own) => {
@@ -345,11 +369,6 @@ describe('what sits beside a compact button', () => {
     it('keeps its height: the Config tile\'s download icon, square', () => {
         expect(cssRuleBody(readStylesheet('css', 'config.css'), '.tile-action-btn--icon'))
             .toMatch(/min-width:\s*var\(--button-height-compact\)/);
-    });
-
-    it('keeps its height: the Services tile\'s start-at-boot badge, in the row of its buttons', () => {
-        expect(cssRuleBody(readStylesheet('css', 'services.css'), '.service-enabled-badge'))
-            .toMatch(/height:\s*var\(--button-height-compact\)/);
     });
 
     it('keeps its box: the network test\'s service state, beside its START button', () => {

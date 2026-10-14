@@ -436,8 +436,13 @@ export class AgPackageCard extends LitElement {
                         ${this._needsConfiguring() ? html`
                             <span class="badge warning">Not configured</span>` : ''}
                         ${this._needsWebPassword() ? html`
-                            <button class="badge warning web-password-badge" @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
-                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconKey}</svg> Set web password
+                            <!-- Short on the tile, which has little room. A screen reader is also told
+                                 what it sets, AFTER the words shown: the name it reads starts with
+                                 "Set pwd", so a voice command naming the label finds the button
+                                 (WCAG 2.5.3, label in name — an aria-label replacing it did not). -->
+                            <button class="badge warning web-password-badge"
+                                    @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
+                                <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconKey}</svg> Set pwd<span class="sr-only">: the web interface password</span>
                             </button>` : ''}
                         ${this.restartRequired && this.pkg.service_id ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>

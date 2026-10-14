@@ -304,8 +304,13 @@
     border-top: 1px solid var(--border-color);
 }
 
+/* Wraps: what the footer holds — the architecture, the tags, the two pills that are
+   buttons — ran past the card on a phone. At 320px it already did by 36px; the pills at
+   the compact size made it 34px at 390px and 70px at 320px, the manual's icon 27px out
+   of the card (measured in Chromium, 2026-10-14). */
 .software-meta {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
     gap: var(--spacing-sm);
     align-items: center;
@@ -322,16 +327,10 @@
     color: var(--text-tertiary);
 }
 
-/* Restart required — clickable badge button. It keeps the frame of its variant: a frame
-   says a badge can be pressed (components/badge.css), and this one was the only button
+/* The footer's buttons drawn as badges — Set pwd, Restart required — are pressable
+   badges (components/badge.css, components/button.css). They keep the frame of their
+   variant: a frame says a badge can be pressed, and Restart required was the only button
    among the badges drawn without one. */
-.restart-badge {
-    cursor: pointer;
-    font-family: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
 
 @media (hover: hover) {
     .restart-badge:hover {

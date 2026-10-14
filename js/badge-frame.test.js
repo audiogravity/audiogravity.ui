@@ -172,9 +172,10 @@ describe('a badge in a tab title', () => {
     });
 });
 
-describe('the restart badge', () => {
-    it('keeps the frame of its variant: it is a button', () => {
-        const body = cssRuleBody(readStylesheet('css', 'audio-software.css'), '.restart-badge');
+describe('a badge that can be pressed', () => {
+    it('keeps the frame of its variant — Set pwd and Restart required are buttons', () => {
+        const body = cssRuleBody(readStylesheet('css', 'components', 'badge.css'), '.badge:is(button, .clickable)');
+        expect(body).not.toBeNull();
         expect(body).not.toMatch(/(^|[\s;])border\s*:/);
     });
 });

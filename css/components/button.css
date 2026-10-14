@@ -236,14 +236,17 @@
    .test.js holds every family to this list. Two keep a copy, and say why: the Pipeline
    diagram's buttons (a shadow root this file does not reach) and performance.css's
    .service-status-badge (a status beside a button, at weight 700).
-   BACKLOG: a few buttons keep a size of their own — audiogravity.ops/BACKLOG.md,
-   "Quelques boutons restent hors des deux tailles communes". */
+   A badge that can be pressed is a small button too, whether a <button> or a clickable
+   tag — one rule for all of them rather than a list by place, which missed CONFIG,
+   NEW USER, an Audio Software tile's Set pwd and Restart required, and a Services
+   tile's ENABLED / DISABLED (18 to 20px high, or 10px type beside 11px buttons, until
+   2026-10-14). RETRY (offline banner) and Logout (settings), no badges, keep their own
+   size, by the user's choice (2026-10-08). */
 .btn-action,
 .tile-action-btn,
 .action-btn.compact,
 .filter-btn,
-.tab-zone .tab-title-container button.badge,
-ag-badge button.badge,
+.badge:is(button, .clickable),
 .lib-pill,
 .lib-src-badge,
 .lib-radio-tab,
