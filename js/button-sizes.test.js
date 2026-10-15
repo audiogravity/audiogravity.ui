@@ -9,8 +9,9 @@
  * the queue's Refresh and Clear, words of 12px in a line of text.
  *
  * Each family first restated the box in its own file — 16 copies, held together by this
- * test. The box is now one rule of components/button.css listing every family; a family
- * keeps its colours and layout and none of the seven declarations, so that none can drift.
+ * test. The box is now one rule listing every family, in components/compact-box.css since
+ * 2026-10-14 so that the pipeline diagram's shadow root can adopt it too; a family keeps
+ * its colours and layout and none of the seven declarations, so that none can drift.
  * Measured before and after that clean-up: 1721 buttons, property by property, identical.
  * jsdom lays nothing out, so this reads the declarations.
  */
@@ -69,8 +70,8 @@ const SQUARES = [
 const rulesOf = (css) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .map(([, list, body]) => ({ selectors: selectorList(list), body }));
 
-/** The shared rule: the one of button.css that lists the filters. */
-const SHARED = rulesOf(readStylesheet('css', 'components', 'button.css')).find((r) => r.selectors.includes('.filter-btn'));
+/** The shared rule: the one of compact-box.css, which lists the filters. */
+const SHARED = rulesOf(readStylesheet('css', 'components', 'compact-box.css')).find((r) => r.selectors.includes('.filter-btn'));
 
 describe('the compact buttons', () => {
     it('take their one height from a single token of the theme', () => {
@@ -79,9 +80,11 @@ describe('the compact buttons', () => {
         expect(themes).toMatch(/--button-height-compact:\s*24px;/);
     });
 
-    it('share one box, declared once in components/button.css: height, padding, 11px type at 600, letter spacing, line height, corners', () => {
+    it('share one box, declared once in components/compact-box.css: height, padding, 11px type at 600, letter spacing, line height, corners', () => {
         expect(SHARED, 'no shared rule').toBeTruthy();
         for (const declaration of BOX) expect(SHARED.body).toMatch(declaration);
+        // The page loads it where it sat, at the end of button.css: nothing in between.
+        expect(readStylesheet('css', 'main.css')).toMatch(/@import 'components\/button\.css';\n@import 'components\/compact-box\.css';/);
     });
 
     it('keep their label on one line: the height is fixed, a second line ran out of the frame at 320 and 360px', () => {
@@ -328,12 +331,19 @@ describe('the selectors that act as filters', () => {
         const source = readStylesheet(...PIPELINE);
         const body = cssRuleBody(source, '.zoom-btn');
 
-        it('take the compact box — the corners stay the diagram\'s own', () => {
-            expect(body).toMatch(/height:\s*var\(--button-height-compact\)/);
-            expect(body).toMatch(/padding:\s*0 var\(--spacing-sm\)/);
-            expect(body).toMatch(/font-size:\s*var\(--font-size-xs\)/);
-            expect(body).toMatch(/letter-spacing:\s*0\.3px/);
+        it('take the compact box from its one file, adopted in the shadow root the page\'s sheets do not reach', () => {
+            // They restated it until 2026-10-14: a copy this test held to the values of the
+            // day, not to the shared rule, and that read neither weight nor line height.
+            expect(SHARED.selectors).toContain('.zoom-btn');
+            expect(source).toMatch(/import (\w+) from '\.\.\/\.\.\/\.\.\/css\/components\/compact-box\.css\?inline';/);
+            const name = /import (\w+) from '[^']*compact-box\.css\?inline'/.exec(source)[1];
+            // Adopted before the component's own rules, which come later and win.
+            expect(source).toMatch(new RegExp(`static styles = \\[[^\\]]*unsafeCSS\\(${name}\\), css\``));
+        });
+
+        it('restate none of the box but their corners, the diagram\'s own', () => {
             expect(body).toMatch(/border-radius:\s*var\(--radius-pipeline\)/);
+            expect(body.replace(/border-radius:[^;]*;/, '')).not.toMatch(BOX_PROPERTY);
         });
 
         it('name the app\'s face: in a shadow root a button gets the browser\'s (Arial, measured)', () => {
