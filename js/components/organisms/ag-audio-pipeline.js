@@ -2,6 +2,8 @@ import { LitElement, html, css, svg, unsafeCSS } from 'lit';
 // The press on a touch screen, from its one file: the page's sheets do not reach this
 // component's shadow root, and its buttons showed nothing under the finger.
 import pressCss from '../../../css/components/press.css?inline';
+// The small buttons' box, from its one file too: this component used to restate it.
+import compactBoxCss from '../../../css/components/compact-box.css?inline';
 import { apiPost } from '../../api.js';
 import { currentPipeline, isNewerPipeline } from '../../core/pipeline-state.js';
 import { latestThrottle } from '../../core/latest-throttle.js';
@@ -151,7 +153,7 @@ export class AgAudioPipeline extends LitElement {
         this._observer = null;
     }
 
-    static styles = [unsafeCSS(pressCss), css`
+    static styles = [unsafeCSS(pressCss), unsafeCSS(compactBoxCss), css`
         :host {
             display: block;
             width: 100%;
@@ -294,13 +296,11 @@ export class AgAudioPipeline extends LitElement {
             padding-top: 8px;
         }
 
-        /* The compact buttons' box — height, padding, type, letter spacing (button.css,
-           .tile-action-btn; user's choice, 2026-10-08). It stood 28px. The corners stay
-           the diagram's, shared with its steering buttons. The face is named: in this
-           shadow root a button gets the browser's own, not the app's. */
+        /* The box — height, padding, type, letter spacing — is compact-box.css, adopted
+           above. The corners stay the diagram's, shared with its steering buttons: this
+           rule comes later and wins. The face is named: in this shadow root a button gets
+           the browser's own, not the app's. */
         .zoom-btn {
-            height: var(--button-height-compact);
-            padding: 0 var(--spacing-sm);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -310,10 +310,6 @@ export class AgAudioPipeline extends LitElement {
             color: var(--text-primary);
             cursor: pointer;
             font-family: var(--font-family);
-            font-size: var(--font-size-xs);
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            line-height: normal;
             transition: all 0.2s;
         }
 

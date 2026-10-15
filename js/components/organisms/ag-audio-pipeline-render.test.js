@@ -131,3 +131,17 @@ describe('the press on a touch screen reaches the diagram\'s buttons', () => {
         expect(file).toMatch(/@media \(hover: none\) and \(pointer: coarse\)/);
     });
 });
+
+describe('the small buttons\' box reaches the diagram\'s buttons', () => {
+    // It restated the box in its own rules until 2026-10-14: a change of the shared size
+    // would have left the diagram behind. It adopts the rule's one file instead.
+    it('carries css/components/compact-box.css as is, before its own rules, so its corners win', () => {
+        const file = readStylesheet('css', 'components', 'compact-box.css');
+        // An adopted file is unsafeCSS text; the component's own block, a css`` template.
+        const sheets = AgAudioPipeline.styles.map((s) => s.cssText ?? s.strings.join(''));
+        const at = sheets.indexOf(file);
+        expect(at).toBeGreaterThanOrEqual(0);
+        expect(file).toMatch(/\.zoom-btn\s*\{/);
+        expect(sheets.findIndex((text) => /\.zoom-btn\s*\{[^}]*--radius-pipeline/.test(text))).toBeGreaterThan(at);
+    });
+});

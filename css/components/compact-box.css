@@ -1,0 +1,51 @@
+/**
+ * @module CompactBox
+ * @description The compact box — one height, padding, type, weight, letter spacing, line
+ * height and corners for every small button of the interface (user's choice, 2026-10-06,
+ * then 2026-10-08 for the selectors and the small actions). Declared here only: each family
+ * keeps, in its own file, its colours and its layout, never these seven. js/button-sizes
+ * .test.js holds every family to this list.
+ *
+ * One file for every place it applies (rule 9 — DRY): css/main.css imports it right after
+ * components/button.css, where it used to sit; a component that draws in its own shadow
+ * root, out of the page sheets' reach, adopts it as is — `import box from
+ * '…/compact-box.css?inline'` and `unsafeCSS(box)` in its `static styles`, as it does
+ * components/press.css (the audio pipeline diagram's .zoom-btn, which keeps its own
+ * corners). Until 2026-10-14 the diagram restated the box in its component, a copy no
+ * test tied to this list.
+ *
+ * A badge that can be pressed is a small button too, whether a <button> or a clickable
+ * tag — one rule for all of them rather than a list by place, which missed CONFIG,
+ * NEW USER, an Audio Software tile's Set pwd and Restart required, and a Services
+ * tile's ENABLED / DISABLED (18 to 20px high, or 10px type beside 11px buttons, until
+ * 2026-10-14). RETRY (offline banner) and Logout (settings), no badges, keep their own
+ * size, by the user's choice (2026-10-08). performance.css's .service-status-badge keeps
+ * a copy, and says why: a status beside a button, at weight 700.
+ */
+
+.btn-action,
+.tile-action-btn,
+.action-btn.compact,
+.filter-btn,
+.badge:is(button, .clickable),
+.lib-pill,
+.lib-src-badge,
+.lib-radio-tab,
+.lib-radio-add-btn,
+.lib-queue-action,
+.event-toggle-btn.compact,
+.log-btn,
+.zoom-btn {
+    height: var(--button-height-compact);
+    padding: 0 var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: normal;
+    border-radius: var(--radius-xs);
+
+    /* One line: the height is fixed, a second line would run out of the frame — "My Live
+       Radio" did at 320px, the queue's "Local Library" at 360px. A row that cannot hold its
+       labels wraps instead (.filter-bar). */
+    white-space: nowrap;
+}

@@ -37,6 +37,7 @@
 @import 'components/grid.css';
 @import 'components/tile.css';
 @import 'components/button.css';
+@import 'components/compact-box.css';
 @import 'components/metrics.css';
 @import 'components/status-indicator.css';
 @import 'components/badge.css';
