@@ -7,16 +7,23 @@
  * @element ag-library-outputs
  *
  * @attr {string} source-id - Active source ID (used to derive service name for switch-output)
+ * @attr {boolean} locked - The source is a Pro one (Roon, HQPlayer) on a Starter box: its
+ *   outputs are Pro too — the core refuses the switch — so the padlock stands where READY
+ *   stood, and a tap leads to the licence panel.
  * @fires lib-output-change - Bubbles. detail: { outputId } — user selected an output
+ *
+ * @dependency ag-pro-lock - The padlock of a locked output
  */
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
 import { showToast, showConfirm } from '../../ui-helpers.js';
+import { openLicensePanel } from '../../license-tiers.js';
 import {
     iconConnectorUsbA, iconConnectorToslink,
     iconConnectorRj45, iconConnectorDefault,
 } from '../../ag-icons.js';
+import '../atoms/ag-pro-lock.js';
 
 /** Maps pipeline source IDs to their steerable service name when the two differ. */
 const SOURCE_TO_SERVICE = {
@@ -34,6 +41,7 @@ const CONNECTOR_ICONS = {
 export class AgLibraryOutputs extends LitElement {
     static properties = {
         sourceId: { type: String, attribute: 'source-id' },
+        locked: { type: Boolean },
         _outputs: { state: true },
         _loading: { state: true },
         _switching: { state: true },
@@ -44,6 +52,7 @@ export class AgLibraryOutputs extends LitElement {
     constructor() {
         super();
         this.sourceId = '';
+        this.locked = false;
         this._outputs = [];
         this._loading = false;
         this._switching = null;   // id of the output currently being switched to
@@ -63,6 +72,10 @@ export class AgLibraryOutputs extends LitElement {
     async _activate(output) {
         // Guard: ignore clicks on the active output or while a switch is in flight.
         if (output.active || this._switching) return;
+        if (this.locked) {
+            openLicensePanel();
+            return;
+        }
 
         const fallback = (this.sourceId || '').replace('src_', '') || 'mpd';
         const service  = SOURCE_TO_SERVICE[this.sourceId] ?? fallback;
@@ -125,11 +138,13 @@ export class AgLibraryOutputs extends LitElement {
             ? html`<span class="lib-out-badge line">SWITCHING…</span>`
             : isActive
                 ? html`<span class="lib-out-badge ok">ACTIVE</span>`
-                : html`<span class="lib-out-badge line">READY</span>`;
+                : this.locked
+                    ? html`<ag-pro-lock></ag-pro-lock>`
+                    : html`<span class="lib-out-badge line">READY</span>`;
 
         return html`
             <div
-                class="lib-out-card ${isActive ? 'active' : ''} ${isSwitching ? 'switching' : ''}"
+                class="lib-out-card ${isActive ? 'active' : ''} ${isSwitching ? 'switching' : ''} ${this.locked && !isActive && !isSwitching ? 'lib-out-card--locked' : ''}"
                 @click=${() => this._activate(output)}
             >
                 <div class="lib-out-hd">

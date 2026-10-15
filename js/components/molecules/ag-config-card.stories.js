@@ -31,6 +31,7 @@ const Template = (args) => html`
         .delayIndex="${0}"
         ?provisionable="${args.provisionable}"
         ?configured="${args.configured}"
+        ?locked="${args.locked}"
         @edit-config="${(e) => console.log('Edit config:', e.detail)}">
     </ag-config-card>
   </div>
@@ -85,4 +86,14 @@ Critical.args = {
     service: { ...serviceMock, id: 'naa', displayName: 'HQPlayer NAA',
                path: '/etc/networkaudiod/networkaudiod.xml', status: 'inactive',
                audioOutput: null, backupCount: 1, critical: true }
+};
+
+/** HQPlayer Embedded on a Starter box: HQPlayer is Pro whole, its file included. The tile
+ *  stays, with the Pro padlock; its buttons, faded, lead to the licence panel. */
+export const LockedOnStarter = Template.bind({});
+LockedOnStarter.args = {
+    service: { ...serviceMock, id: 'hqplayerd', displayName: 'HQPlayer Embedded',
+               path: '/etc/hqplayer/hqplayerd.xml', audioOutput: null, pro: true },
+    provisionable: false,
+    locked: true,
 };

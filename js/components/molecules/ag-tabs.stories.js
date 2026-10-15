@@ -77,8 +77,8 @@ const columnWithLibrary = (nav, unfolded = true) => {
     tabs.activeTab = 'library';
     tabs._libNav = nav;
     tabs._licenseStatus = 'lifetime';
-    // Storybook's fetch answers no licence, which locks Library — and a locked Library
-    // carries no bar. The story keeps the licence it was given.
+    tabs._license = { status: 'lifetime', pro: true };
+    // Storybook's fetch answers no licence; the story keeps the one it was given.
     tabs._fetchLicenseStatus = async () => {};
     tabs._libOpen = unfolded;
     return tabs;

@@ -17,7 +17,7 @@ vi.mock('lit/directives/class-map.js', () => ({ classMap: () => ({}) }));
 vi.mock('../../ag-icons.js', () => ({
     iconTabProfiles: '', iconTabServices: '', iconTabPipeline: '', iconTabSystem: '',
     iconTabPerformance: '', iconTabLibrary: '', iconHeadphones: '', iconSettingsSliders: '',
-    iconSliders: '', iconShield: '', iconDsdLock: '', iconBell: '', iconDownload: '',
+    iconSliders: '', iconShield: '', iconLock: '', iconBell: '', iconDownload: '',
     // ag-lib-tabbar's, which the column carries: read when its module loads.
     iconQueue: '', iconSearch: '', iconQueuePlay: '', iconLibraryGrid: '', iconRadio: '',
 }));
@@ -97,29 +97,135 @@ describe('ag-tabs — drag transform cleanup', () => {
 // ---------------------------------------------------------------------------
 
 describe('ag-tabs — licence gating', () => {
-    const gate = (tabId, status) => {
-        const el = makeEl({ _licenseStatus: status });
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    const gate = (tabId, license) => {
+        const el = makeEl({ _license: license });
         return AgTabs.prototype._isLocked.call(el, tabId);
     };
 
-    it('blocks the licensed tabs on Starter', () => {
-        for (const tab of ['systemd', 'performance', 'pipeline', 'library']) {
-            expect(gate(tab, 'starter')).toBe(true);
+    it('blocks the Pro tabs on Starter', () => {
+        for (const tab of ['systemd', 'performance', 'pipeline']) {
+            expect(gate(tab, STARTER)).toBe(true);
         }
+    });
+
+    it('opens the library on every edition — its padlocks are on the Pro sources inside', () => {
+        expect(gate('library', STARTER)).toBe(false);
     });
 
     it('leaves the config tab open on Starter', () => {
         // Editing a service's own configuration file is not a licensed feature,
         // and /audio_app_config/* carries no gate on the server either.
-        expect(gate('config', 'starter')).toBe(false);
-        expect(gate('config', 'version_expired')).toBe(false);
+        expect(gate('config', STARTER)).toBe(false);
+        expect(gate('config', { status: 'version_expired', pro: false })).toBe(false);
     });
 
-    it('blocks nothing once licensed', () => {
+    it('follows the core\'s verdict, so a tampered box is locked like the core locks it', () => {
+        expect(gate('pipeline', { status: 'tampered', pro: false })).toBe(true);
+    });
+
+    it('blocks nothing with Pro', () => {
         for (const tab of ['systemd', 'performance', 'pipeline', 'library', 'config']) {
-            expect(gate(tab, 'lifetime')).toBe(false);
-            expect(gate(tab, 'trial')).toBe(false);
+            expect(gate(tab, PRO)).toBe(false);
+            expect(gate(tab, { status: 'trial', pro: true })).toBe(false);
         }
+    });
+
+    it('blocks nothing before the licence is read', () => {
+        for (const tab of ['systemd', 'performance', 'pipeline']) {
+            expect(gate(tab, null)).toBe(false);
+        }
+    });
+});
+
+describe('ag-tabs — reading the licence', () => {
+    afterEach(() => { apiGet.mockReset(); });
+
+    it('shares the verdict, and leaves a tab it locks that opened before it arrived', async () => {
+        apiGet.mockResolvedValue({ status: 'starter', pro: false });
+        const heard = vi.fn();
+        window.addEventListener('license-status', heard);
+        try {
+            const el = makeEl({ activeTab: 'pipeline', _license: null });
+            el.selectTab = vi.fn();
+            el._isLocked = AgTabs.prototype._isLocked;
+            await AgTabs.prototype._fetchLicenseStatus.call(el);
+            expect(el._license).toEqual({ status: 'starter', pro: false });
+            expect(heard.mock.calls.at(-1)[0].detail).toEqual({ status: 'starter', pro: false });
+            expect(el.selectTab).toHaveBeenCalledWith('admin', { keepOpen: true });
+        } finally {
+            window.removeEventListener('license-status', heard);
+        }
+    });
+
+    it('asks once for triggers that arrive together', async () => {
+        // The connection back, a licence changed, a refusal of the core: one reading.
+        let answer;
+        apiGet.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+        const el = makeEl({ activeTab: 'library', _license: null });
+        el.selectTab = vi.fn();
+        const first = el._fetchLicenseStatus();
+        const second = el._fetchLicenseStatus();
+        expect(second).toBe(first);
+        answer({ status: 'trial', pro: true });
+        await first;
+        expect(apiGet).toHaveBeenCalledOnce();
+        // Over, the next trigger reads it again.
+        apiGet.mockResolvedValue({ status: 'trial', pro: true });
+        await el._fetchLicenseStatus();
+        expect(apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads it again when the core comes back, not while it stays reachable', () => {
+        // A reading that failed at mount left every Pro section waiting for the session
+        // (review, 2026-10-15).
+        const el = makeEl({ _connected: false });
+        el._fetchLicenseStatus = vi.fn();
+        el._onConnectionStatus({ connected: true });
+        expect(el._fetchLicenseStatus).toHaveBeenCalledOnce();
+        el._onConnectionStatus({ connected: true });
+        el._onConnectionStatus({ connected: false });
+        expect(el._fetchLicenseStatus).toHaveBeenCalledOnce();
+        expect(el._connected).toBe(false);
+        el._onConnectionStatus({ connected: true });
+        expect(el._fetchLicenseStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it('opens the licence panel for a locked tab, as every padlock does', () => {
+        const el = makeEl({
+            _license: { status: 'starter', pro: false }, activeTab: 'library',
+            tabs: [{ id: 'admin', label: 'ADMIN' }], _vertical: false, dispatchEvent: vi.fn(),
+        });
+        const emit = vi.fn();
+        window.EventEmitter = { emit };
+        const selectTab = vi.spyOn(el, 'selectTab');
+        try {
+            el.selectTab('pipeline', { keepOpen: true });
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: true });
+            expect(emit).toHaveBeenCalledWith('show-license-modal');
+        } finally {
+            delete window.EventEmitter;
+        }
+    });
+
+    it('takes an answer that names no status for no verdict, and locks nothing on it', async () => {
+        apiGet.mockResolvedValue({});
+        const el = makeEl({ activeTab: 'pipeline', _license: null });
+        el.selectTab = vi.fn();
+        el._isLocked = AgTabs.prototype._isLocked;
+        await AgTabs.prototype._fetchLicenseStatus.call(el);
+        expect(el._license).toBeNull();
+        expect(el.selectTab).not.toHaveBeenCalled();
+    });
+
+    it('stays on a tab the verdict leaves open', async () => {
+        apiGet.mockResolvedValue({ status: 'starter', pro: false });
+        const el = makeEl({ activeTab: 'library', _license: null });
+        el.selectTab = vi.fn();
+        el._isLocked = AgTabs.prototype._isLocked;
+        await AgTabs.prototype._fetchLicenseStatus.call(el);
+        expect(el.selectTab).not.toHaveBeenCalled();
     });
 });
 

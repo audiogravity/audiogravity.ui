@@ -13,10 +13,10 @@
  *     named to a screen reader, as a group of Library's views;
  *   - from another tab, the view the page was left on brings the page back as it was
  *     left; any other view goes to the page as a tab;
- *   - a tap on Library still opens the page on the horizontal bar, and still leads to
- *     the licence prompt when Library is locked;
- *   - it is not offered when the licence keeps Library closed, nor when Library is
- *     hidden: every tap would lead to the licence prompt, or nowhere;
+ *   - a tap on Library still opens the page on the horizontal bar;
+ *   - Library is open on every edition — Starter plays the box's music and the radio, its
+ *     padlocks are on the Pro sources inside — so a Starter box gets the bar too;
+ *   - it is not offered when Library is hidden: every tap would lead nowhere;
  *   - it shows what the page's bar shows (five tabs, three for the radio), and
  *     highlights one only while Library is the tab shown;
  *   - a tap hands the page a TAB, not a view, and closes the column — `selectTab`
@@ -224,10 +224,10 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         el._sidebarHidden = false;
         await el.updateComplete;
         await tapLibrary(el);
-        el._licenseStatus = 'starter';
+        el.tabs = TABS.map(t => (t.id === 'library' ? { ...t, hidden: true } : t));
         await el.updateComplete;
         expect(row(el)).toBeNull();
-        el._licenseStatus = 'lifetime';
+        el.tabs = TABS;
         await el.updateComplete;
         expect(row(el)).toBeNull();
         expect(libraryEntry(el).getAttribute('aria-expanded')).toBe('false');
@@ -323,13 +323,14 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         expect(row(el)).toBeNull();
     });
 
-    it('is not offered while the licence keeps Library closed: a tap leads to the licence prompt', async () => {
+    it('is offered on a Starter box: Library is open on every edition', async () => {
         el = await mount({ licence: 'starter' });
-        expect(libraryEntry(el).classList).toContain('tab-btn--locked');
-        expect(libraryEntry(el).hasAttribute('aria-expanded')).toBe(false);
+        el._sidebarHidden = false;
+        await el.updateComplete;
+        expect(libraryEntry(el).classList).not.toContain('tab-btn--locked');
+        expect(libraryEntry(el).getAttribute('aria-expanded')).toBe('false');
         await tapLibrary(el);
-        expect(el.activeTab).toBe('admin');
-        expect(row(el)).toBeNull();
+        expect(row(el)).not.toBeNull();
     });
 
     it('nor when the Library tab is hidden, even left unfolded', async () => {

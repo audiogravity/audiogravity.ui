@@ -72,6 +72,10 @@
        Its colours say it selects. */
     display: inline-flex;
     align-items: center;
+
+    /* Between the name and the Pro padlock: in a flex box the space before it was dropped,
+       and the padlock touched the name ("ROON🔒 PRO", 2026-10-15). */
+    gap: var(--spacing-xs);
     font-family: var(--font-family);
     text-transform: uppercase;
     color: var(--text-secondary);
@@ -79,6 +83,18 @@
     border: 1px solid var(--control-border);
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+/* A Pro source on a Starter box: the Pro tint, as every surface the Pro edition locks
+   (themes.css, --pro-tint). */
+.lib-src-badge.lib-src-badge--locked {
+    background: var(--pro-tint);
+}
+
+@media (hover: hover) {
+    .lib-src-badge.lib-src-badge--locked:hover {
+        background: var(--pro-tint-hover);
+    }
 }
 
 /* .lib-src-badge.active: the chosen look every row of selectors shares (components/button.css). */

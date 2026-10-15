@@ -1021,3 +1021,112 @@ describe('AgNowPlayingFullscreen — opened from the bar, it keeps the core\'s w
         expect(seeded({ origin: 'radio' }).live).toBeNull();
     });
 });
+
+describe('AgNowPlayingFullscreen — on each edition', () => {
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    const LIBRARY = { source_id: 'src_mpd', control_id: 'src_mpd', pro: false, title: 'A', volume: 20 };
+    const HQPLAYER = { source_id: 'src_hqplayer', control_id: 'src_hqplayer', pro: true, title: 'B' };
+
+    function fs(state, license) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_state', { value: state, writable: true, configurable: true });
+        Object.assign(el, {
+            _license: license, _targetSourceId: null, _volumePending: undefined,
+            _seekPending: null, _controlRecentTime: null,
+        });
+        el.requestUpdate = () => {};
+        return el;
+    }
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({}); });
+
+    it('opens on a Starter box: the player is no Pro feature', () => {
+        const el = fs(LIBRARY, STARTER);
+        el._connectSse = vi.fn();
+        Object.defineProperty(el, 'updateComplete', { value: Promise.resolve(), configurable: true });
+        el.querySelector = () => null;
+        el._openPlayer('src_mpd');
+        expect(el._open).toBe(true);
+        expect(el._connectSse).toHaveBeenCalled();
+        document.body.classList.remove('npfs-open');
+    });
+
+    it('plays the box\'s music on a Starter box', async () => {
+        await fs({ ...LIBRARY }, STARTER)._control('next');
+        expect(apiPost).toHaveBeenCalledWith('/player/control', expect.objectContaining({ action: 'next' }));
+    });
+
+    it('leads to the licence panel for HQPlayer on a Starter box, and sends nothing', async () => {
+        const selectTab = vi.fn();
+        const original = document.querySelector;
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+        try {
+            await fs({ ...HQPLAYER }, STARTER)._control('next');
+            expect(apiPost).not.toHaveBeenCalled();
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+        } finally {
+            document.querySelector = original;
+        }
+    });
+
+    it('controls HQPlayer with Pro', async () => {
+        await fs({ ...HQPLAYER }, PRO)._control('next');
+        expect(apiPost).toHaveBeenCalledOnce();
+    });
+
+    it('does not ask a Roon zone\'s queue of a Starter box', async () => {
+        const { apiGet } = await import('../../api.js');
+        apiGet.mockClear();
+        const roon = { source_id: 'src_mono-sgen', control_id: 'src_mono-sgen', zone_id: 'z', pro: true };
+        await fs(roon, STARTER)._fetchNextTrack(roon);
+        expect(apiGet).not.toHaveBeenCalled();
+        await fs(roon, PRO)._fetchNextTrack(roon);
+        expect(apiGet).toHaveBeenCalledOnce();
+    });
+});
+
+describe('AgNowPlayingFullscreen — "Add to playlist" on a Starter box', () => {
+    it('carries the padlock and leads to the licence panel, not to the picker', () => {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_rendererActive', { value: false });
+        el._license = { status: 'starter', pro: false };
+        const host = document.createElement('div');
+        litRender(el._renderMeta({
+            title: 'Tukuman', content_source_id: 'src_highresaudio', content_item_id: 't1_a1',
+        }), host);
+        const btn = host.querySelector('ag-library-playlist-btn');
+        expect(btn.classList.contains('pro-locked')).toBe(true);
+
+        let asked = null;
+        const listen = (e) => { asked = e.detail; };
+        const selectTab = vi.fn();
+        const original = document.querySelector;
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+        window.addEventListener(PLAYLIST_ADD_EVENT, listen);
+        try {
+            btn.dispatchEvent(new CustomEvent('playlist-add'));
+            expect(asked).toBeNull();
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+        } finally {
+            document.querySelector = original;
+            window.removeEventListener(PLAYLIST_ADD_EVENT, listen);
+        }
+    });
+});
+
+describe('AgNowPlayingFullscreen — follows the box\'s licence', () => {
+    // Built for real, so its own LicenseController is what is tested.
+    it('starts from the licence already read, and takes each new reading', async () => {
+        const { setLicense } = await import('../../license-tiers.js');
+        setLicense({ status: 'lifetime', pro: true });
+        try {
+            const el = document.createElement('ag-now-playing-fullscreen');
+            expect(el._license).toEqual({ status: 'lifetime', pro: true });
+            el._licenseCtl.handleEvent({ detail: { status: 'starter', pro: false } });
+            expect(el._license).toEqual({ status: 'starter', pro: false });
+        } finally {
+            setLicense(null);
+        }
+    });
+});

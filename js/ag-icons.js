@@ -75,8 +75,8 @@ export const iconListMusic = svg`
     <path d="M21 16V5"/>
     <circle cx="18" cy="16" r="3"/>`;
 
-/** Padlock — DSD-native volume-lock indicator. (Lucide: lock) */
-export const iconDsdLock = svg`
+/** Padlock — a feature locked (Pro, the DSD volume lock). (Lucide: lock) */
+export const iconLock = svg`
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>`;
 

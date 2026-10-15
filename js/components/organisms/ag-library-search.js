@@ -21,6 +21,8 @@ import { queueItem, queueWithFeedback, playWithFeedback } from '../../library-ap
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { iconSearch } from '../../ag-icons.js';
 import { canAddToPlaylist } from '../library-constants.js';
+import { isLockedSource, openLicensePanel } from '../../license-tiers.js';
+import '../atoms/ag-pro-lock.js';
 import '../molecules/ag-library-list-row.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import '../molecules/ag-hra-search-filters.js';
@@ -40,6 +42,7 @@ export class AgLibrarySearch extends LitElement {
         sourceId:  { type: String, attribute: 'source-id' },
         zoneId:    { type: String, attribute: 'zone-id' },
         sources:   { type: Array },
+        license:   { type: Object },
         _query:    { state: true },
         _results:  { state: true },
         _loading:  { state: true },
@@ -189,6 +192,12 @@ export class AgLibrarySearch extends LitElement {
 
     _switchSource(src) {
         if (this._isActive(src)) return;
+        if (isLockedSource(src, this.license)) {
+            // The page would refuse it and open the licence panel: the search stays as it
+            // was — the source does not change (review, 2026-10-15).
+            openLicensePanel(this.license);
+            return;
+        }
         this._query   = '';
         this._results = null;
         this.dispatchEvent(new CustomEvent('lib-source-change', {
@@ -383,9 +392,10 @@ export class AgLibrarySearch extends LitElement {
                 <div class="lib-src-badges">
                     ${this.sources.map(src => html`
                         <button
-                            class="lib-src-badge ${this._isActive(src) ? 'active' : ''}"
+                            class="lib-src-badge ${this._isActive(src) ? 'active' : ''} ${isLockedSource(src, this.license) ? 'lib-src-badge--locked' : ''}"
                             @click=${() => this._switchSource(src)}
-                        >${src.label}</button>
+                        >${src.label}${isLockedSource(src, this.license)
+                            ? html`<ag-pro-lock></ag-pro-lock>` : nothing}</button>
                     `)}
                 </div>
             ` : nothing}

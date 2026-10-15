@@ -3,7 +3,11 @@
  * @description Pure utilities shared by the AG player UI (mini + fullscreen).
  * Avoids duplicating identical helpers across `ag-now-playing` and
  * `ag-now-playing-fullscreen`.
+ *
+ * @dependency js/license-tiers.js - Whether this box has Pro, for the one label that
+ *   depends on it
  */
+import { proState } from './license-tiers.js';
 
 /** Suppression window for stale "stopped" events arriving just after a
  *  user-initiated control (prev/next/play). The backend can briefly publish a
@@ -110,13 +114,34 @@ export function activeOutputError(state) {
 }
 
 /**
+ * MPD's report of a track the box's relay of a streaming service refused, measured
+ * on MPD 0.24.5: `Failed to decode "http://<box>:8000/qobuz/stream/<id>"; got HTTP
+ * status 403`. Matched in two halves rather than as one sentence, so a rewording of
+ * the glue between them does not lose it.
+ */
+const STREAMING_RELAY = /\/(?:qobuz|tidal|highresaudio)\/stream\//;
+const REFUSED = /HTTP status 403\b/;
+
+/**
  * Plain-language rendering of {@link activeOutputError} — the raw ALSA/engine
  * string is never shown to the listener: this label is the message.
+ *
+ * On a box without Pro, the relays of the streaming services refuse every track,
+ * those queued before the trial ended included (decision of 2026-10-15): MPD skips
+ * them and plays what else the queue holds, reporting the refusal meanwhile. That is
+ * no failure of the output, and is said as what it is. On a box with Pro the same
+ * report means the service itself refused the track, and keeps the generic label.
+ * BACKLOG: a queue of streaming tracks alone stops without a word — audiogravity.ops/BACKLOG.md.
+ *
  * @param {string|null} raw - Value returned by {@link activeOutputError}.
  * @returns {string}
  */
 export function outputErrorLabel(raw) {
-    return /busy/i.test(raw ?? '')
+    const text = raw ?? '';
+    if (proState() === 'locked' && STREAMING_RELAY.test(text) && REFUSED.test(text)) {
+        return 'Streaming services are part of the Pro edition';
+    }
+    return /busy/i.test(text)
         ? 'Output in use by another player — stop it to play here'
         : 'Output unavailable';
 }

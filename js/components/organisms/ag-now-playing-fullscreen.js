@@ -13,6 +13,7 @@
  * @fires   window:np-collapse — Dispatched when the fullscreen closes
  *
  * @dependency css/components/now-playing-fullscreen.css
+ * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  */
 
 import { LitElement, html, nothing } from 'lit';
@@ -34,7 +35,8 @@ import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
+import { isLicensed, isLockedSource, openLicensePanel } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -99,10 +101,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._panelEl      = null;
         this._prevCoverToken  = null;
         this._pendingColorUrl = null;
-        this._licenseStatus     = 'no_license';
+        /** Keeps `_license`: the box's licence (/license/status) as ag-tabs read it, null
+         *  until read — and re-renders, the field not being reactive here. */
+        this._licenseCtl        = new LicenseController(this);
         this._controlRecentTime = null;
         this._boundOpen      = (e) => this._openPlayer(e.detail?.source_id ?? null, e.detail?.item ?? null);
-        this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
         this._boundTouchStart = this._onTouchStart.bind(this);
         this._boundTouchMove  = this._onTouchMove.bind(this);
         this._boundTouchEnd   = this._onTouchEnd.bind(this);
@@ -111,7 +114,6 @@ export class AgNowPlayingFullscreen extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('np-expand', this._boundOpen);
-        window.addEventListener('license-status', this._boundLicStatus);
         // Renderer routing, queue and "Up next" now come from PlayerState
         // (outputs[] / queue_next) — single source of truth, no separate
         // renderer_status subscription (spec decision #2).
@@ -123,7 +125,6 @@ export class AgNowPlayingFullscreen extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('np-expand', this._boundOpen);
-        window.removeEventListener('license-status', this._boundLicStatus);
         this._closeSse();
         // Only clear the local UI timeout — the backend timer must keep running.
         this._clearLocalSleepTimeout();
@@ -134,8 +135,15 @@ export class AgNowPlayingFullscreen extends LitElement {
     // Open / close
     // ------------------------------------------------------------------
 
-    _isLicensed() {
-        return isLicensed(this._licenseStatus);
+    /**
+     * Whether what plays here is behind a padlock: controlling Roon or HQPlayer is Pro and
+     * the box has no Pro (the core's `pro` on the player state). The player itself — what
+     * plays, the timer, the queue, the outputs — is open to every edition.
+     *
+     * @returns {boolean}
+     */
+    _isLocked() {
+        return isLockedSource(this._state, this._license);
     }
 
     /**
@@ -172,6 +180,9 @@ export class AgNowPlayingFullscreen extends LitElement {
             // first live state arrived (isLiveStream falls back on origin 'radio').
             live:             item.live ?? null,
             control_id:       item.control_id ?? null,
+            // Whether its controls are Pro (Roon, HQPlayer) — the padlock right from the
+            // first frame, before the live state confirms it.
+            pro:              item.pro ?? false,
             played_on:        item.played_on ?? null,
             format:           null,
             signal_path:      null,
@@ -183,12 +194,6 @@ export class AgNowPlayingFullscreen extends LitElement {
     }
 
     _openPlayer(sourceId = null, item = null) {
-        if (!this._isLicensed()) {
-            document.querySelector('ag-tabs')?.selectTab('admin');
-            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
-                window.EventEmitter.emit('show-license-modal');
-            return;
-        }
         this._targetSourceId = sourceId;
         this._userSourceOverride = false;
         if (sourceId && this._state?.source_id !== sourceId) {
@@ -510,6 +515,8 @@ export class AgNowPlayingFullscreen extends LitElement {
         // HQPlayer has no AG-visible queue — keyed on the routing identity
         // (control_id, spec §3), not the display identity.
         if (!s?.source_id || (s.control_id ?? s.source_id) === 'src_hqplayer') return;
+        // A Roon zone's queue is Pro: not asked of the core on a Starter box.
+        if (isLockedSource(s, this._license)) return;
 
         // Renderer casts never reach here: their queue comes from
         // state.queue_next in _applyState (the MPD queue is always empty when
@@ -536,6 +543,10 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     async _control(action, value) {
         if (!_ALLOWED_ACTIONS.has(action)) return;
+        if (this._isLocked()) {
+            openLicensePanel(this._license);
+            return;
+        }
         let toggleAnchor;
         if (action === 'toggle' && this._state) {
             // Pre-flip anchor: a refusal (503 — the transport state did not
@@ -894,7 +905,9 @@ export class AgNowPlayingFullscreen extends LitElement {
                     </div>
                     ${canAddToPlaylist(s?.content_source_id, s?.content_item_id) ? html`
                         <ag-library-playlist-btn variant="player"
-                            @playlist-add=${() => this._addPlayingToPlaylist(s)}
+                            class=${isLicensed(this._license) ? '' : 'pro-locked'}
+                            @playlist-add=${() => (isLicensed(this._license)
+                                ? this._addPlayingToPlaylist(s) : openLicensePanel(this._license))}
                         ></ag-library-playlist-btn>
                     ` : nothing}
                 </div>
@@ -1085,7 +1098,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                     <div class="npfs-info">
                         ${this._renderMeta(s)}
                         <ag-format-strip .format=${s?.format ?? null}></ag-format-strip>
-                        <div class="npfs-controls-row">
+                        <div class="npfs-controls-row ${this._isLocked() ? 'pro-locked' : ''}">
                             <ag-playback-controls
                                 ?playing=${s?.playing ?? false}
                                 ?can-next=${s?.can_next ?? false}

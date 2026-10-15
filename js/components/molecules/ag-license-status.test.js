@@ -111,7 +111,7 @@ describe('the purchase sentence — price as text node', () => {
 // ---------------------------------------------------------------------------
 
 /** Responses the mocked API hands back; each test sets them before rendering. */
-const api = vi.hoisted(() => ({ status: null, config: {} }));
+const api = vi.hoisted(() => ({ status: null, config: {}, upload: null }));
 
 vi.mock('../../api.js', () => ({
     apiGet: (path) => {
@@ -120,12 +120,14 @@ vi.mock('../../api.js', () => ({
         return Promise.reject(new Error(`unmocked: ${path}`));
     },
     apiCall: () => Promise.reject(new Error('unmocked')),
+    apiUpload: (path, file) => (api.upload ? api.upload(path, file) : Promise.reject(new Error('unmocked'))),
 }));
 
 vi.mock('../../ui-helpers.js', () => ({
     showPasswordConfirm: () => Promise.resolve(null),
     showToast: () => {},
     copyToClipboard: () => {},
+    getUserFriendlyError: (err) => String(err?.message ?? err),
 }));
 
 await import('./ag-license-status.js');
@@ -317,5 +319,35 @@ describe('the portal link', () => {
     it('is dropped for a javascript: address', async () => {
         const hrefs = await linkTargets('javascript:alert(1)');
         expect(hrefs.some(h => /^javascript:/i.test(h))).toBe(false);
+    });
+});
+
+describe('importing a licence file', () => {
+    it('tells the app the licence changed, so the padlocks follow without a reload', async () => {
+        api.upload = () => Promise.resolve({ status: 'lifetime', pro: true, expires_at: null });
+        const heard = vi.fn();
+        window.addEventListener('ag:license-changed', heard);
+        try {
+            const el = document.createElement('ag-license-status');
+            await el._handleFileSelected({ target: { files: [new Blob(['{}'])], value: 'x.lic' } });
+            expect(heard).toHaveBeenCalledOnce();
+        } finally {
+            window.removeEventListener('ag:license-changed', heard);
+            api.upload = null;
+        }
+    });
+
+    it('says nothing when the file is refused', async () => {
+        api.upload = () => Promise.reject(new Error('Invalid license'));
+        const heard = vi.fn();
+        window.addEventListener('ag:license-changed', heard);
+        try {
+            const el = document.createElement('ag-license-status');
+            await el._handleFileSelected({ target: { files: [new Blob(['{}'])], value: 'x.lic' } });
+            expect(heard).not.toHaveBeenCalled();
+        } finally {
+            window.removeEventListener('ag:license-changed', heard);
+            api.upload = null;
+        }
     });
 });

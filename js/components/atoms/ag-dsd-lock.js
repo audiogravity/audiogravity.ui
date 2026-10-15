@@ -13,7 +13,7 @@
  * @dependency css/components/dsd-lock.css
  */
 import { LitElement, html } from 'lit';
-import { iconDsdLock } from '../../ag-icons.js';
+import { iconLock } from '../../ag-icons.js';
 
 export class AgDsdLock extends LitElement {
     createRenderRoot() { return this; }
@@ -33,7 +33,7 @@ export class AgDsdLock extends LitElement {
         return html`
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                ${iconDsdLock}
+                ${iconLock}
             </svg>
         `;
     }

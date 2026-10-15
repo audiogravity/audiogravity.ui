@@ -112,6 +112,28 @@ function keylessGate(endpoint) {
     }
 }
 
+/**
+ * The words the core refuses a Pro feature with on a box without Pro — modules/license/
+ * router.py, require_full_license: "Full license required. …", "This license ended on …
+ * Renew it …", "This license has ended. …". No other 403 of the core names the licence
+ * (core/jwt_handler.py: tokens, sessions, administrators, guests).
+ */
+const LICENCE_REFUSAL = /\blicen[cs]e\b/i;
+
+/**
+ * Hear a refusal of the core for want of Pro: the licence this tab holds is out of date —
+ * a trial that ended, a licence removed from another device. It is asked for again (the
+ * tab bar listens to `ag:license-changed`), so the padlocks follow instead of every
+ * refusal reading as a failure (review, 2026-10-15).
+ *
+ * @param {{status?: number, detail?: string|null}} error - As throwForStatus builds it.
+ */
+function noticeLicenceRefusal(error) {
+    if (error?.status === 403 && LICENCE_REFUSAL.test(error.detail ?? '')) {
+        window.dispatchEvent(new CustomEvent('ag:license-changed'));
+    }
+}
+
 export async function apiCall(endpoint, options = {}) {
     keylessGate(endpoint);
     try {
@@ -156,6 +178,7 @@ export async function apiCall(endpoint, options = {}) {
         return await readJson(response);
     } catch (error) {
         console.error(`API Error [${endpoint}] on ${API_BASE_URL}:`, error);
+        noticeLicenceRefusal(error);
         // Add visual feedback for connection failure if on profiles tab
         if (AppState && AppState.currentTab === 'profiles' && !AppState.connected) {
             if (typeof updateConnectionStatus === 'function') {

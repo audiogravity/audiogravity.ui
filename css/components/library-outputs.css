@@ -20,6 +20,19 @@
     border-width: 1.5px;
 }
 
+/* An output a Starter box cannot switch to — the source is Pro (Roon, HQPlayer), and the
+   card shows the padlock: the Pro tint, as every surface the Pro edition locks
+   (themes.css, --pro-tint). */
+.lib-out-card.lib-out-card--locked {
+    background: var(--pro-tint);
+}
+
+@media (hover: hover) {
+    .lib-out-card.lib-out-card--locked:hover {
+        background: var(--pro-tint-hover);
+    }
+}
+
 /* Switch in flight: dim the card and disable the pointer affordance. */
 .lib-out-card.switching {
     opacity: 0.6;

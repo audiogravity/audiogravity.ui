@@ -292,3 +292,58 @@ describe('ag-library-search — "Add to playlist" on an album result', () => {
         });
     });
 });
+
+describe('ag-library-search — the Pro sources on a Starter box', () => {
+    const sources = [
+        { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '', pro: false },
+        { id: 'src_qobuz', label: 'Qobuz', group: 'qobuz', location: '', pro: true },
+    ];
+    /** The markup of one badge, by its label. */
+    const badge = (drawn, label) => drawn.split('</button>').find(b => b.includes(label)) ?? '';
+
+    it('marks the Pro sources with the padlock, and only them', () => {
+        const drawn = flat(el({ sourceId: 'src_mpd', sources, license: { status: 'starter', pro: false } }).render());
+        expect(badge(drawn, 'Qobuz')).toContain('<ag-pro-lock>');
+        expect(badge(drawn, 'Local Library')).not.toContain('<ag-pro-lock>');
+    });
+
+    it('gives the locked chips the Pro tint, and only them', () => {
+        const drawn = flat(el({ sourceId: 'src_mpd', sources, license: { status: 'starter', pro: false } }).render());
+        expect(badge(drawn, 'Qobuz')).toMatch(/class="lib-src-badge[^"]*\blib-src-badge--locked\b/);
+        expect(badge(drawn, 'Local Library')).not.toContain('lib-src-badge--locked');
+    });
+
+    it('marks nothing with Pro', () => {
+        const drawn = flat(el({ sourceId: 'src_mpd', sources, license: { status: 'lifetime', pro: true } }).render());
+        expect(drawn).not.toContain('<ag-pro-lock>');
+    });
+
+    it('keeps the search when a Pro source is tapped, and opens the licence panel instead', () => {
+        // The page refuses the source; the search used to be wiped first (review, 2026-10-15).
+        const emit = vi.fn();
+        window.EventEmitter = { emit };
+        try {
+            const search = el({
+                sourceId: 'src_mpd', sources, license: { status: 'starter', pro: false },
+                _query: 'Miles', _results: { albums: [1] }, dispatchEvent: vi.fn(),
+            });
+            search._switchSource(sources[1]);
+            expect(search._query).toBe('Miles');
+            expect(search._results).toEqual({ albums: [1] });
+            expect(search.dispatchEvent).not.toHaveBeenCalled();
+            expect(emit).toHaveBeenCalledWith('show-license-modal');
+        } finally {
+            delete window.EventEmitter;
+        }
+    });
+
+    it('switches to a free source as before', () => {
+        const search = el({
+            sourceId: 'src_qobuz', sources, license: { status: 'starter', pro: false },
+            _query: 'Miles', _results: {}, dispatchEvent: vi.fn(),
+        });
+        search._switchSource(sources[0]);
+        expect(search._query).toBe('');
+        expect(search.dispatchEvent).toHaveBeenCalledOnce();
+    });
+});

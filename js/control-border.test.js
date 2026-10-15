@@ -92,6 +92,7 @@ const NOT_CONTROLS = [
     ['css/login.css', '.form-group input', 'the sign-in page does not change (user\'s choice)'],
     ['css/components/library-radio.css', '.lib-radio-card', 'the rule under each station, not a button\'s edge'],
     ['css/audio-stack.css', '.ag-prov-card', 'a card that can be pressed: its words and layout tell it, as the Sources cards'],
+    ['css/components/library-sources.css', '.lib-src-card', 'a Sources card, now a real button for a Pro feature (ag-pro-lock-card): a card that can be pressed, as the source cards beside it'],
     ['css/config.css', '.config-editor', 'the code editor keeps its own look (user\'s choice, 2026-10-11)'],
 ];
 

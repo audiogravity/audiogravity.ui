@@ -50,12 +50,14 @@ const OUTPUTS = [
 /**
  * Mount the output selector with a fixed list (no backend).
  * @param {Array<object>} outputs - /steering/outputs-shaped entries.
+ * @param {boolean} [locked=false] - The source is a Pro one on a Starter box.
  * @returns {HTMLElement} Wrapped, ready-to-render element.
  */
-const mount = (outputs) => {
+const mount = (outputs, locked = false) => {
     injectLibStyles();
     const el = document.createElement('ag-library-outputs');
-    el.sourceId = 'src_mpd';
+    el.sourceId = locked ? 'src_mono-sgen' : 'src_mpd';
+    el.locked = locked;
     el._load = async () => {};
     el._outputs = outputs;
     const wrap = document.createElement('div');
@@ -71,3 +73,7 @@ export const Default = { render: () => mount(OUTPUTS) };
 
 /** No outputs detected — empty state. */
 export const Empty = { render: () => mount([]) };
+
+/** Roon playing on a Starter box: its zones are Pro, so the padlock stands where READY
+ *  stood, and a tap leads to the licence panel. */
+export const LockedOnStarter = { render: () => mount(OUTPUTS, true) };

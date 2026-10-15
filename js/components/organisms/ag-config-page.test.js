@@ -220,6 +220,65 @@ describe('HQPlayer Embedded: its output alone is set up here', () => {
     });
 });
 
+describe('a Pro service on a Starter box keeps its tile, behind the padlock', () => {
+    // The core refuses HQPlayer's file and its NAA's to a Starter box, and marks them
+    // `pro` on the list (review, 2026-10-15): the tile stays, padlocked, and leads to the
+    // licence panel rather than to an editor the core would refuse.
+
+    /** Whether the tile drawn for a service is locked, read off its `?locked=` binding. */
+    const lockedOf = (page, service) => {
+        let renderItem;
+        const find = (node) => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) { node.forEach(find); return; }
+            if (node.strings) {
+                node.strings.forEach((s, i) => {
+                    if (/\.renderItem=$/.test(s.trimEnd())) renderItem = node.values[i];
+                    find(node.values[i]);
+                });
+            }
+        };
+        find(page.render());
+        const tile = renderItem(service, 0);
+        return tile.values[tile.strings.findIndex(s => /\?locked=$/.test(s.trimEnd()))];
+    };
+
+    const HQPLAYER = { id: 'hqplayerd', pro: true };
+    const MPD = { id: 'mpd', pro: false };
+
+    it("carries the core's word on each service", async () => {
+        apiGet.mockResolvedValueOnce([
+            { id: 'hqplayerd', label: 'HQPlayer Embedded', config_file: '/etc/hqplayer/hqplayerd.xml', pro: true },
+            { id: 'mpd', label: 'MPD', config_file: '/etc/mpd.conf' },
+        ]);
+        const page = new AgConfigPage();
+        const services = await page.servicesFetch.opts.fetchFn();
+        // Absent (an older core), it reads as free: such a core refuses nothing.
+        expect(services.map(s => [s.id, s.pro])).toEqual([['hqplayerd', true], ['mpd', false]]);
+    });
+
+    it.each([
+        ['a Starter box', { status: 'starter', pro: false }, true],
+        ['a box with Pro', { status: 'lifetime', pro: true }, false],
+        ['a licence not read yet', null, false],
+    ])('locks it on %s', (_, license, locked) => {
+        const page = new AgConfigPage();
+        page.services = [HQPLAYER, MPD];
+        page._license = license;
+        expect(lockedOf(page, HQPLAYER)).toBe(locked);
+        expect(lockedOf(page, MPD)).toBe(false);
+    });
+
+    it('follows the licence as it is read', () => {
+        const page = new AgConfigPage();
+        page.services = [HQPLAYER];
+        page._licenseCtl.handleEvent({ detail: { status: 'starter', pro: false } });
+        expect(lockedOf(page, HQPLAYER)).toBe(true);
+        page._licenseCtl.handleEvent({ detail: { status: 'trial', pro: true } });
+        expect(lockedOf(page, HQPLAYER)).toBe(false);
+    });
+});
+
 describe('after a guided change, the tiles are read again', () => {
     // A tile shows the file's date, its backups and its output — all moved by an
     // apply. Reloading only the status left the tile on the old ones until the

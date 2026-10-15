@@ -9,10 +9,11 @@ export default {
     },
 };
 
-const Template = ({ node, active, zoneId }) => {
+const Template = ({ node, active, zoneId, locked = false }) => {
     const el = document.createElement('ag-library-source-card');
     el.node   = node;
     el.active = active;
+    el.locked = locked;
     if (zoneId) el.setAttribute('zone-id', zoneId);
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
     el.addEventListener('source-select', (e) => console.log('source-select', e.detail));
@@ -29,6 +30,14 @@ Roon.args = { node: { id: 'src_roon', name: 'Roon', status: 'active' }, active: 
 
 export const Qobuz = Template.bind({});
 Qobuz.args = { node: { id: 'src_qobuz', name: 'Qobuz', status: '' }, active: false, zoneId: '' };
+
+// A Pro source on a Starter box: the padlock in place of its state, a tap opens the
+// licence panel.
+export const QobuzOnStarter = Template.bind({});
+QobuzOnStarter.args = {
+    node: { id: 'src_qobuz', name: 'Qobuz', status: '', kind: 'streaming', pro: true },
+    active: false, zoneId: '', locked: true,
+};
 
 export const Radio = Template.bind({});
 Radio.args = {

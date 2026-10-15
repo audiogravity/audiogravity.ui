@@ -30,6 +30,12 @@
     background: var(--bg-secondary);
 }
 
+/* A Pro source on a Starter box (Roon, a streaming service the player lists): the Pro
+   tint, as every surface the Pro edition locks — over .active too, which comes before. */
+.lib-src-card.lib-src-card--locked {
+    background: var(--pro-tint);
+}
+
 .lib-src-card-hd {
     padding: 14px;
     display: grid;

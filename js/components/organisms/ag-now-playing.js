@@ -12,7 +12,8 @@ import '../atoms/ag-track-meta.js';
 import '../atoms/ag-source-badge.js';
 import '../molecules/ag-volume-popover.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
+import { isLockedSource, openLicensePanel } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 
 /**
  * @module AgNowPlaying
@@ -38,6 +39,7 @@ import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
  *
  * @dependency api.js - apiGet / apiPost for now-playing and control endpoints
  * @dependency css/layout.css - Sets --now-playing-height on :root
+ * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  */
 export class AgNowPlaying extends LitElement {
     static properties = {
@@ -58,7 +60,7 @@ export class AgNowPlaying extends LitElement {
         /** @type {Set<string>} Cover tokens whose image URL failed to load (404/network). */
         _brokenCovers: { state: true },
         /** @type {string} License status for gating controls */
-        _licenseStatus: { state: true },
+        _license: { state: true },
         /** @type {Array<object>} Runtime outputs from PlayerState (local DAC + selected renderer). */
         _outputs: { state: true },
         _activeOutputId: { state: true },
@@ -77,7 +79,8 @@ export class AgNowPlaying extends LitElement {
         /** @type {boolean} True when the user manually navigated sources — suspends auto-follow. */
         this._userSourceOverride = false;
         this._bgColors = new Map();
-        this._licenseStatus = 'no_license';
+        /** Keeps `_license`: the box's licence (/license/status) as ag-tabs read it, null until read. */
+        this._licenseCtl = new LicenseController(this);
         this._outputs = [];
         this._activeOutputId = null;
         this._offline = !navigator.onLine;
@@ -109,7 +112,6 @@ export class AgNowPlaying extends LitElement {
         this._boundTouchEnd = this._handleTouchEnd.bind(this);
 
         this._boundRestore   = () => { this._dismissed = false; this._reportHeight(); };
-        this._boundLicStatus = (e) => { this._licenseStatus = e.detail?.status ?? 'no_license'; };
         this._unsubscribeRenderer = null;
         this._boundOnline  = () => { this._offline = false; };
         this._boundOffline = () => { this._offline = true; };
@@ -129,7 +131,6 @@ export class AgNowPlaying extends LitElement {
         this.addEventListener('touchend', this._boundTouchEnd, { passive: true });
 
         document.addEventListener('ag-np-restore', this._boundRestore);
-        window.addEventListener('license-status', this._boundLicStatus);
         // Renderer routing now comes from PlayerState.outputs[] (single source
         // of truth) — no separate renderer_status subscription needed.
 
@@ -156,7 +157,6 @@ export class AgNowPlaying extends LitElement {
         }
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         document.removeEventListener('click', this._boundCloseDetail);
-        window.removeEventListener('license-status', this._boundLicStatus);
 
         // Options must match the addEventListener call to remove correctly
         this.removeEventListener('touchstart', this._boundTouchStart, { passive: false });
@@ -328,18 +328,24 @@ export class AgNowPlaying extends LitElement {
     // Controls
     // ------------------------------------------------------------------
 
-    _isLicensed() {
-        return isLicensed(this._licenseStatus);
+    /**
+     * Whether what this item plays is behind a padlock: controlling Roon or HQPlayer is
+     * Pro, and the box has no Pro. Every other player — the box's own, an input, a
+     * network speaker — is open to Starter (the core's `pro` on each source).
+     *
+     * @param {object} item - An entry of the player's `sources[]`.
+     * @returns {boolean}
+     */
+    _isLocked(item) {
+        return isLockedSource(item, this._license);
     }
 
     // BACKLOG: the mini-player posts to /audio_pipeline/control while the
     // fullscreen posts to /player/control with a different payload shape —
     // unify on one endpoint/contract. See audiogravity.ops/BACKLOG.md.
     async _sendControl(sourceId, action, volume = null, item = null) {
-        if (!this._isLicensed()) {
-            document.querySelector('ag-tabs')?.selectTab('admin');
-            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
-                window.EventEmitter.emit('show-license-modal');
+        if (this._isLocked(item)) {
+            openLicensePanel(this._license);
             return;
         }
         // The intent a play/pause tap carries, read from the screen before the
@@ -427,7 +433,9 @@ export class AgNowPlaying extends LitElement {
             this._closeDetailPopover();
         } else {
             this._detailOpenId = sourceId;
-            this._fetchAlbumTracks(sourceId);
+            // Not asked of a source behind a padlock: the core refuses it the tracklist.
+            const item = (this._items || []).find(i => i.source_id === sourceId);
+            if (!this._isLocked(item)) this._fetchAlbumTracks(sourceId);
             requestAnimationFrame(() => {
                 document.addEventListener('click', this._boundCloseDetail, { once: true });
                 this._detailListenerActive = true;
@@ -724,7 +732,7 @@ export class AgNowPlaying extends LitElement {
                 <!-- Transport controls. Previous / Next are greyed when they would go
                      nowhere, never removed: removed, Play slid into the place of a Next
                      that went away under the finger (the last track of an album). -->
-                <div class="np-controls ${this._isLicensed() ? '' : 'np-gated'}">
+                <div class="np-controls ${this._isLocked(item) ? 'pro-locked' : ''}">
                     <!-- Not on a phone (now-playing.css): the title needs the room,
                          and Previous is one tap away in the full player. -->
                     <button
