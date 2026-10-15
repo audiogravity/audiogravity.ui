@@ -40,6 +40,13 @@ _RE_HASHED = re.compile(r'-[A-Za-z0-9_]{8,}\.(js|css)$')
 # as opposed to a genuine TLS fault. A browser closing a tab does exactly this.
 _TLS_PEER_GONE = 'UNEXPECTED_EOF_WHILE_READING'
 
+# Seconds one client may take to finish the TLS handshake, then to send its request
+# line and headers. Both happen in that client's own thread: a client that never
+# finishes holds only its thread, this long, and nobody else waits. A handshake on
+# the LAN takes milliseconds; the margin is for a phone on weak Wi-Fi, whose lost
+# packets TCP resends after a wait that doubles each time.
+_CLIENT_TIMEOUT = 30
+
 # Tag-level patterns — capture the whole opening tag so attribute order is irrelevant.
 _RE_SCRIPT_TAG  = re.compile(r'<script\b[^>]+>', re.I)
 _RE_LINK_TAG    = re.compile(r'<link\b[^>]+>', re.I)
@@ -119,11 +126,28 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
             # tracebacks over three days, every one of them from this frame, this
             # reason, one browser closing its keep-alive connections. Nothing was
             # broken; the journal merely read as though something was.
-            # Only that reason is swallowed: a handshake or protocol failure is a
-            # real fault and must stay visible.
+            # Only that reason is swallowed: a protocol failure is a real fault
+            # and must stay visible. (A handshake failure never reaches this
+            # frame: the server reports it, see _log_handshake_failure.)
             if getattr(exc, "reason", None) != _TLS_PEER_GONE:
                 raise
             self.close_connection = True
+
+    def parse_request(self):
+        """Parse the request line and headers, then lift the client timeout.
+
+        The server arms ``_CLIENT_TIMEOUT`` on the connection before this handler
+        exists; it bounds the wait for the request line and headers only. What
+        follows may rightly take far longer — an SSE relay, the terminal's
+        tunnel, a large file to a slow phone, a body sent late — and must not be
+        cut by it.
+
+        Returns:
+            bool: Whether the request was well formed (as the inherited method).
+        """
+        ok = super().parse_request()
+        self.connection.settimeout(None)
+        return ok
 
     def finish(self):
         # Same rationale for the final wfile flush when the client is already gone.
@@ -428,6 +452,80 @@ class AudiogravityHandler(SimpleHTTPRequestHandler):
                     return
 
 
+def _log_handshake_failure(host, exc):
+    """Say in the journal why a client's TLS handshake failed.
+
+    A device that refuses the certificate, or that speaks plain HTTP to this
+    port, would otherwise leave no trace at all: it reads as a device that
+    "sends nothing". A client that merely went away mid-handshake is not a
+    fault, the same rule as ``AudiogravityHandler.handle_one_request``.
+
+    Args:
+        host: The client's address.
+        exc: What the handshake raised.
+    """
+    if isinstance(exc, TimeoutError):
+        logger.warning("TLS handshake with %s timed out after %s s", host, _CLIENT_TIMEOUT)
+    elif isinstance(exc, (BrokenPipeError, ConnectionResetError)) \
+            or getattr(exc, "reason", None) == _TLS_PEER_GONE:
+        logger.debug("TLS handshake with %s: the client went away (%s)", host, exc)
+    else:
+        logger.warning("TLS handshake with %s failed: %s", host, getattr(exc, "reason", None) or exc)
+
+
+class AudiogravityServer(ThreadingHTTPServer):
+    """The interface's server: one thread per connection, TLS negotiated in it.
+
+    ``ThreadingHTTPServer`` accepts every connection in a single loop and only
+    then starts the connection's thread. With the TLS handshake run at accept
+    time, one client that opened a connection and stayed silent stalled that
+    loop, and the interface for every device, for as long as it stayed open —
+    with no limit if it vanished without closing. The handshake is therefore
+    left to ``finish_request``, which runs in the connection's own thread.
+    """
+
+    def finish_request(self, request, client_address):
+        """Negotiate TLS when the socket carries it, then serve the connection.
+
+        Args:
+            request: The accepted socket; in TLS mode, wrapped but not yet
+                negotiated (see ``_make_server``).
+            client_address: The client's ``(host, port)``.
+        """
+        request.settimeout(_CLIENT_TIMEOUT)
+        if isinstance(request, ssl.SSLSocket):
+            try:
+                request.do_handshake()
+            except OSError as exc:
+                _log_handshake_failure(client_address[0], exc)
+                return
+        super().finish_request(request, client_address)
+
+
+def _make_server(server_address, use_ssl, cert_file=None, key_file=None):
+    """Build the interface server, TLS-wrapped when asked.
+
+    Args:
+        server_address: ``(host, port)`` to listen on.
+        use_ssl: Serve HTTPS rather than plain HTTP.
+        cert_file: Certificate chain, in TLS mode.
+        key_file: Its private key, in TLS mode.
+
+    Returns:
+        AudiogravityServer: The bound server, not yet serving.
+    """
+    httpd = AudiogravityServer(server_address, AudiogravityHandler)
+    if use_ssl:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        # Wrapped without negotiating: accept() must never wait on a client.
+        # AudiogravityServer.finish_request runs the handshake in the
+        # connection's thread.
+        httpd.socket = context.wrap_socket(
+            httpd.socket, server_side=True, do_handshake_on_connect=False)
+    return httpd
+
+
 class CABootstrapHandler(http.server.BaseHTTPRequestHandler):
     """Hands out the box's CA certificate over PLAIN HTTP, and nothing else.
 
@@ -513,17 +611,11 @@ def _start_ca_bootstrap(port: int, ca_path: str, https_port: int) -> None:
 def run(port, core, use_ssl, cert_file, key_file, ca_port=None, ca_file=None):
     AudiogravityHandler.core_url = core
     server_address = ('0.0.0.0', port)
-    
-    # Use ThreadingHTTPServer to handle multiple concurrent connections
-    httpd = ThreadingHTTPServer(server_address, AudiogravityHandler)
-    
+
+    # One thread per connection, TLS negotiated in it (AudiogravityServer)
+    httpd = _make_server(server_address, use_ssl, cert_file, key_file)
+
     if use_ssl:
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(certfile=cert_file, keyfile=key_file)
-        # BACKLOG: this makes accept() run the TLS handshake, so one silent client stalls every
-        # other, and a refused handshake is dropped unlogged — see audiogravity.ops/BACKLOG.md,
-        # "Le serveur de l'interface négocie le TLS en acceptant".
-        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
         logger.info(f"Serving HTTPS on 0.0.0.0:{port}, proxying /api to {core}")
         # Only in TLS mode: in plain-HTTP mode there is no CA to hand out, and
         # nothing to bootstrap.

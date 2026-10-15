@@ -23,8 +23,10 @@ import http.server
 import importlib.util
 import logging
 import os
+import shutil
 import socket
 import ssl
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -74,11 +76,18 @@ class _FakeSSEBackend(http.server.BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
         else:
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", "2")
-            self.end_headers()
-            self.wfile.write(b"{}")
+            self._send_empty_json()
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        self._send_empty_json()
+
+    def _send_empty_json(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", "2")
+        self.end_headers()
+        self.wfile.write(b"{}")
 
 
 @pytest.fixture
@@ -570,3 +579,198 @@ class TestAClientThatVanishesMidConnection:
         handler = self._handler_whose_read_raises(monkeypatch, exc)
         handler.handle_one_request()  # must not raise
         assert handler.close_connection is True
+
+
+# ── A client that never finishes ──────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def tls_cert(tmp_path_factory):
+    """A throwaway self-signed certificate; returns (cert_path, key_path)."""
+    openssl = shutil.which("openssl")
+    if not openssl:
+        pytest.skip("openssl is needed to make a throwaway certificate")
+    folder = tmp_path_factory.mktemp("tls")
+    cert, key = folder / "cert.pem", folder / "key.pem"
+    subprocess.run(
+        [openssl, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+         "-nodes", "-keyout", str(key), "-out", str(cert), "-days", "1", "-subj", "/CN=test"],
+        check=True, capture_output=True,
+    )
+    return str(cert), str(key)
+
+
+def _serve(use_ssl=False, cert=None):
+    """Start the real interface server (``_make_server``) on a free port.
+
+    Args:
+        use_ssl: Serve HTTPS, as a box installed with the default choice does.
+        cert: ``(cert_path, key_path)`` in TLS mode.
+
+    Returns:
+        tuple: The server and its port.
+    """
+    port = _free_port()
+    cert_file, key_file = cert or (None, None)
+    srv = serve_https._make_server(("127.0.0.1", port), use_ssl, cert_file, key_file)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, port
+
+
+def _stop(srv):
+    """Stop a server from ``_serve`` without waiting for its connections."""
+    srv.shutdown()
+    srv.socket.close()
+
+
+def _https_status(port, timeout):
+    """GET / over TLS, trusting any certificate; return the status line."""
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    with socket.create_connection(("127.0.0.1", port), timeout=timeout) as raw:
+        with context.wrap_socket(raw, server_hostname="test") as tls:
+            tls.sendall(b"GET / HTTP/1.1\r\nHost: test\r\nConnection: close\r\n\r\n")
+            return tls.recv(4096).split(b"\r\n", 1)[0]
+
+
+def _closed_by_server_within(sock, seconds):
+    """True when the server closes ``sock`` before ``seconds`` have passed."""
+    sock.settimeout(seconds)
+    try:
+        return sock.recv(1) == b""
+    except TimeoutError:
+        return False
+    except ConnectionResetError:
+        return True
+
+
+class TestAClientThatNeverFinishes:
+    """One client must never be able to stall the interface for everyone.
+
+    The TLS handshake used to run in the single loop that accepts connections:
+    a client that opened a connection and said nothing held that loop, so every
+    other device waited for as long as it stayed open — with no limit at all if
+    it vanished without closing (measured: still frozen after 60 s). A refused
+    certificate was dropped without a word in the journal. The handshake now
+    runs in the connection's own thread, both waits are bounded, and a failure
+    is reported.
+    """
+
+    @pytest.fixture
+    def tls_server(self, tls_cert, tmp_path, monkeypatch):
+        """The HTTPS interface server, serving a one-page web root."""
+        (tmp_path / "index.html").write_text("<p>ok</p>")
+        monkeypatch.chdir(tmp_path)
+        srv, port = _serve(use_ssl=True, cert=tls_cert)
+        time.sleep(0.2)
+        yield port
+        _stop(srv)
+
+    @pytest.fixture
+    def journal(self, caplog):
+        """The server's warnings, as the journal would show them."""
+        caplog.set_level(logging.WARNING, logger="serve_https")
+        return caplog
+
+    def test_the_box_runs_this_server(self, monkeypatch):
+        """``run()`` — what the box's service starts — builds it through ``_make_server``."""
+        built = {}
+
+        class _Built:
+            def serve_forever(self):
+                raise KeyboardInterrupt  # run() stops cleanly on it
+
+            def server_close(self):
+                pass
+
+        def _record(server_address, use_ssl, cert_file, key_file):
+            built.update(address=server_address, use_ssl=use_ssl)
+            return _Built()
+
+        def _built_elsewhere(*args, **kwargs):
+            # Fail rather than serve: a run() that builds its own server would
+            # otherwise bind 0.0.0.0 and serve forever, hanging the suite.
+            raise AssertionError("run() built a server without _make_server")
+
+        monkeypatch.setattr(serve_https, "_make_server", _record)
+        monkeypatch.setattr(serve_https, "ThreadingHTTPServer", _built_elsewhere)
+        serve_https.run(8443, "http://127.0.0.1:9", True, "cert.pem", "key.pem", ca_port=None)
+        assert built == {"address": ("0.0.0.0", 8443), "use_ssl": True}
+
+    def test_a_silent_client_does_not_hold_up_another(self, tls_server):
+        """The measured fault: before, this request waited until the silent one closed."""
+        silent = socket.create_connection(("127.0.0.1", tls_server))
+        try:
+            time.sleep(0.2)
+            assert _https_status(tls_server, timeout=3) == b"HTTP/1.0 200 OK"
+        finally:
+            silent.close()
+
+    def test_a_silent_client_is_let_go_and_reported(self, tls_server, journal, monkeypatch):
+        """A handshake that never comes is ended, and says so."""
+        monkeypatch.setattr(serve_https, "_CLIENT_TIMEOUT", 0.5)
+        silent = socket.create_connection(("127.0.0.1", tls_server))
+        try:
+            assert _closed_by_server_within(silent, 3)
+        finally:
+            silent.close()
+        time.sleep(0.1)
+        assert any("timed out" in r.getMessage() for r in journal.records)
+
+    def test_a_refused_certificate_is_reported(self, tls_server, journal):
+        """A device that does not trust the box used to leave no trace at all."""
+        with socket.create_connection(("127.0.0.1", tls_server), timeout=3) as raw:
+            with pytest.raises(ssl.SSLCertVerificationError):
+                ssl.create_default_context().wrap_socket(raw, server_hostname="test")
+        time.sleep(0.3)
+        messages = [r.getMessage() for r in journal.records]
+        assert any("127.0.0.1" in m and "UNKNOWN_CA" in m for m in messages), messages
+
+    def test_plain_http_on_the_tls_port_is_reported(self, tls_server, journal):
+        """An address typed with http:// instead of https:// shows up in the journal."""
+        with socket.create_connection(("127.0.0.1", tls_server), timeout=3) as raw:
+            raw.sendall(b"GET / HTTP/1.1\r\nHost: test\r\n\r\n")
+            assert _closed_by_server_within(raw, 3)
+        time.sleep(0.1)
+        assert any("HTTP_REQUEST" in r.getMessage() for r in journal.records)
+
+    def test_a_client_that_leaves_before_negotiating_is_not_reported(self, tls_server, journal):
+        """A connection opened and closed is not a fault, as for a closed tab."""
+        socket.create_connection(("127.0.0.1", tls_server)).close()
+        time.sleep(0.3)
+        assert journal.records == []
+        assert _https_status(tls_server, timeout=3) == b"HTTP/1.0 200 OK"
+
+    def test_a_request_that_never_comes_is_let_go(self, monkeypatch):
+        """Connected, then silent: the thread is freed, in plain HTTP mode too."""
+        monkeypatch.setattr(serve_https, "_CLIENT_TIMEOUT", 0.5)
+        srv, port = _serve()
+        try:
+            with socket.create_connection(("127.0.0.1", port)) as silent:
+                assert _closed_by_server_within(silent, 3)
+        finally:
+            _stop(srv)
+
+    def test_the_timeout_ends_once_the_headers_are_in(self, monkeypatch):
+        """A body sent late still goes through: the limit is for the headers only.
+
+        What follows the headers may rightly take long — an SSE relay, the
+        terminal's tunnel, a large file to a slow phone.
+        """
+        monkeypatch.setattr(serve_https, "_CLIENT_TIMEOUT", 0.3)
+        backend_port = _free_port()
+        backend = http.server.ThreadingHTTPServer(("127.0.0.1", backend_port), _FakeSSEBackend)
+        threading.Thread(target=backend.serve_forever, daemon=True).start()
+        monkeypatch.setattr(serve_https.AudiogravityHandler, "core_url",
+                            f"http://127.0.0.1:{backend_port}")
+        srv, port = _serve()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=5) as client:
+                client.sendall(b"POST /api/anything HTTP/1.1\r\nHost: test\r\n"
+                               b"Content-Length: 2\r\n\r\n")
+                time.sleep(0.8)
+                client.sendall(b"{}")
+                assert client.recv(4096).startswith(b"HTTP/1.0 200")
+        finally:
+            _stop(srv)
+            backend.shutdown()
