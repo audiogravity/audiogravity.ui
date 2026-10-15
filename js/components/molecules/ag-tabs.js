@@ -175,9 +175,12 @@ export class AgTabs extends LitElement {
 
         // Add container role and layout class
         this.classList.add('tabs');
-        // BACKLOG: the tablist also holds buttons that are not tabs (Manual, the library's
-        // bar) — see audiogravity.ops/BACKLOG.md, « La barre d'onglets se déclare… ».
-        this.setAttribute('role', 'tablist');
+        // A navigation, not a tablist: each entry changes the whole page, as a link does,
+        // and the bar holds more than its entries — the wordmark, the user, Manual and, in
+        // the column, the library's own bar between Library and the next entry. A tablist
+        // may hold tabs only, and a screen reader counted those among the tabs (2026-10-15).
+        // The page shown is marked aria-current, as the library's bar marks its view.
+        this.setAttribute('role', 'navigation');
         this.setAttribute('aria-label', 'Main navigation');
 
         // The layout's classes, before the first render
@@ -191,9 +194,6 @@ export class AgTabs extends LitElement {
         this._sidebarToggleEl.addEventListener('click', () => this._toggleVisibility());
         this._syncSidebarToggleEl();
         document.body.appendChild(this._sidebarToggleEl);
-
-        // Keyboard navigation trap
-        this.addEventListener('keydown', this._handleKeyDown.bind(this));
 
         // Use window-level listeners for more robust gesture capture on mobile
         window.addEventListener('touchstart', this._boundTouchStart, { passive: false });
@@ -410,7 +410,6 @@ export class AgTabs extends LitElement {
             window.removeEventListener('resize', this._orientationHandler);
         }
         
-        this.removeEventListener('keydown', this._handleKeyDown);
         if (this._mouseLeaveHandler) {
             this.removeEventListener('mouseleave', this._mouseLeaveHandler);
         }
@@ -716,43 +715,6 @@ export class AgTabs extends LitElement {
         });
     }
 
-    _handleKeyDown(e) {
-        // Only a key pressed on one of the tabs moves to another. The column holds more
-        // than tabs — the library's own bar, Manual — and an arrow pressed on one
-        // of those moved the app to the next tab.
-        if (!e.target?.closest?.('.tab-btn[data-tab]')) return;
-        const visibleTabs = this.tabs.filter(t => !t.hidden);
-        const currentIndex = visibleTabs.findIndex(t => t.id === this.activeTab);
-        if (currentIndex === -1) return;
-
-        let targetIndex = null;
-
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-            e.preventDefault();
-            targetIndex = (currentIndex + 1) % visibleTabs.length;
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            targetIndex = (currentIndex - 1 + visibleTabs.length) % visibleTabs.length;
-        } else if (e.key === 'Home') {
-            e.preventDefault();
-            targetIndex = 0;
-        } else if (e.key === 'End') {
-            e.preventDefault();
-            targetIndex = visibleTabs.length - 1;
-        }
-
-        if (targetIndex !== null) {
-            const targetTab = visibleTabs[targetIndex];
-            this.selectTab(targetTab.id);
-
-            // Focus after render
-            this.updateComplete.then(() => {
-                const btn = this.querySelector(`[data-tab="${targetTab.id}"]`);
-                if (btn) btn.focus();
-            });
-        }
-    }
-
     async _fetchInitialStats() {
         try {
             const stats = await apiGet('/stats/tabs');
@@ -824,12 +786,10 @@ export class AgTabs extends LitElement {
             return html`
                     <button class=${classMap(btnClasses)}
                             data-tab="${tab.id}"
-                            role="tab"
-                            aria-selected="${isActive ? 'true' : 'false'}"
-                            aria-controls="${unfolds && this._libOpen ? LIBRARY_VIEWS_ID : tab.id}"
+                            aria-current=${isActive ? 'page' : nothing}
+                            aria-controls=${unfolds && this._libOpen ? LIBRARY_VIEWS_ID : nothing}
                             aria-expanded=${unfolds ? String(this._libOpen) : nothing}
                             id="tab-${tab.id}"
-                            tabindex="${isActive ? '0' : '-1'}"
                             @click=${() => this._onTabClick(tab.id)}>
                         ${TAB_SVG_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24">${TAB_SVG_ICONS[tab.id]}</svg></span>` : TAB_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[tab.id]}</svg></span>` : ''}
                         ${tab.label}
@@ -903,8 +863,11 @@ export class AgTabs extends LitElement {
      */
     _libraryRow(isActive) {
         if (!this._libOpen) return nothing;
+        // A named group: a screen reader hears its views as Library's, not as entries of
+        // the main bar.
         return html`
             <ag-lib-tabbar class="lib-menu" id=${LIBRARY_VIEWS_ID}
+                role="group" aria-label="Library views"
                 .tab=${isActive ? this._libNav.tab : ''}
                 .tabs=${this._libNav.tabs}
                 @lib-tab-change=${this._onLibraryTab}></ag-lib-tabbar>`;

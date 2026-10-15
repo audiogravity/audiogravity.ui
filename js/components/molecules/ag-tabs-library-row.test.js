@@ -10,18 +10,20 @@
  *     closing the column; a second tap folds it, and it folds whenever the column
  *     closes — by any path — the layout changes, or Library cannot unfold, so the
  *     column always opens on Library folded; unfolded, it is scrolled into view and
- *     named to a screen reader;
+ *     named to a screen reader, as a group of Library's views;
  *   - from another tab, the view the page was left on brings the page back as it was
  *     left; any other view goes to the page as a tab;
  *   - a tap on Library still opens the page on the horizontal bar, and still leads to
- *     the licence prompt when Library is locked; an arrow key still opens the page;
+ *     the licence prompt when Library is locked;
  *   - it is not offered when the licence keeps Library closed, nor when Library is
  *     hidden: every tap would lead to the licence prompt, or nowhere;
  *   - it shows what the page's bar shows (five tabs, three for the radio), and
  *     highlights one only while Library is the tab shown;
  *   - a tap hands the page a TAB, not a view, and closes the column — `selectTab`
  *     leaves it open when Library is already shown;
- *   - an arrow key pressed on it does not move the app to another tab.
+ *   - the main bar is a navigation, not a tablist (2026-10-15): it holds more than its
+ *     entries, the page shown is marked aria-current, Tab reaches every entry, and an
+ *     arrow key moves nothing.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -255,10 +257,14 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
 
     it('says what it unfolds to a screen reader', async () => {
         el = await mount();
-        expect(libraryEntry(el).getAttribute('aria-controls')).toBe('library');
+        // Folded, the bar is not in the page: nothing to point at.
+        expect(libraryEntry(el).hasAttribute('aria-controls')).toBe(false);
         await tapLibrary(el);
         expect(libraryEntry(el).getAttribute('aria-controls')).toBe(row(el).id);
         expect(row(el).id).toBe('tab-library-views');
+        // Its views are Library's, not entries of the main bar.
+        expect(row(el).getAttribute('role')).toBe('group');
+        expect(row(el).getAttribute('aria-label')).toBe('Library views');
     });
 
     it('from another tab, the view the page was left on brings the page back as it was left', async () => {
@@ -335,15 +341,6 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         expect(libraryEntry(el).hasAttribute('aria-expanded')).toBe(false);
     });
 
-    it('an arrow key still opens the Library page, folded', async () => {
-        el = await mount({ active: 'admin' });
-        el.querySelector('.tab-btn[data-tab="admin"]')
-            .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-        await el.updateComplete;
-        expect(el.activeTab).toBe('library');
-        expect(row(el)).toBeNull();
-    });
-
     it('shows what the page\'s bar shows: three tabs for the radio', async () => {
         el = await mount({ active: 'library' });
         await tapLibrary(el);
@@ -394,21 +391,17 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         expect(row(el)).toBeNull();
     });
 
-    it('an arrow key pressed on it does not move the app to another tab', async () => {
+    it('an arrow key moves the app nowhere, wherever it is pressed', async () => {
+        // A navigation's entries are reached with Tab and opened with Enter, as any button:
+        // an arrow that changed the page, unannounced, was the tablist's.
         el = await mount({ active: 'library' });
         await tapLibrary(el);
-        const key = () => new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true });
-
-        row(el).querySelector('.lib-tab').dispatchEvent(key());
-        expect(el.activeTab).toBe('library');
-
-        // Nor on Manual: only a key pressed on one of the tabs moves to another.
-        el.querySelector('.tab-manual-btn').dispatchEvent(key());
-        expect(el.activeTab).toBe('library');
-
-        // The handler is live: the same key on the Library entry does move on.
-        el.querySelector('.tab-btn[data-tab="library"]').dispatchEvent(key());
-        expect(el.activeTab).toBe('admin');
+        for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'Home', 'End']) {
+            for (const target of [row(el).querySelector('.lib-tab'), el.querySelector('.tab-manual-btn'), libraryEntry(el)]) {
+                target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+                expect(el.activeTab).toBe('library');
+            }
+        }
     });
 
     it('stops listening to the page once removed', async () => {
@@ -416,5 +409,52 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         el.remove();
         window.dispatchEvent(new CustomEvent('lib-nav-changed', { detail: RADIO }));
         expect(el._libNav).toEqual({ tab: '', tabs: null });
+    });
+});
+
+describe('ag-tabs — what a screen reader is told', () => {
+    // A tablist may hold tabs only, and this bar holds more: the wordmark, the user, Manual,
+    // and in the column the library's bar between Library and the next entry. A screen
+    // reader counted Queue, Sources, Radio and Manual among the app's tabs (Chromium's
+    // accessibility tree, 2026-10-15). Each entry changes the whole page: a navigation.
+    let el;
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+    });
+    afterEach(() => {
+        el?.remove();
+        el = null;
+        vi.restoreAllMocks();
+    });
+
+    it.each([['the column, Library unfolded', true], ['the horizontal bar', false]])(
+        'is a navigation named Main navigation, with no tablist nor tab inside — %s', async (_, vertical) => {
+            el = await mount({ vertical, active: 'library' });
+            if (vertical) await tapLibrary(el);
+            expect(el.getAttribute('role')).toBe('navigation');
+            expect(el.getAttribute('aria-label')).toBe('Main navigation');
+            expect(el.querySelectorAll('[role="tab"], [role="tablist"], [aria-selected]')).toHaveLength(0);
+        });
+
+    it('marks the page shown, and only it', async () => {
+        el = await mount({ vertical: false, active: 'pipeline' });
+        const current = () => [...el.querySelectorAll('.tab-btn[aria-current="page"]')].map(b => b.dataset.tab);
+        expect(current()).toEqual(['pipeline']);
+        el.querySelector('.tab-btn[data-tab="admin"]').click();
+        await el.updateComplete;
+        expect(current()).toEqual(['admin']);
+        expect(el.querySelector('.tab-manual-btn').hasAttribute('aria-current')).toBe(false);
+    });
+
+    it('lets Tab reach every entry, not the page shown alone', async () => {
+        el = await mount({ vertical: false, active: 'admin' });
+        const entries = [...el.querySelectorAll('.tab-btn[data-tab]')];
+        expect(entries).toHaveLength(TABS.length);
+        for (const btn of entries) {
+            expect(btn.hasAttribute('tabindex')).toBe(false);
+            expect(btn.tabIndex).toBe(0);
+        }
     });
 });
