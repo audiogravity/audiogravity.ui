@@ -198,6 +198,22 @@ describe('the purchase sentence when the licence server gives no price', () => {
 });
 
 /**
+ * On a Starter box the sentence over the purchase steps read "Purchase a lifetime license
+ * to continue." — as if the box stopped with the trial, when it carries on in the Starter
+ * Edition, for free (2026-10-15).
+ */
+describe('the purchase sentence on a Starter box', () => {
+    it('says a licence brings the Pro features back, not that the box stops', async () => {
+        const text = await panelText({}, {
+            status: 'starter', days_remaining: 0, trial_days_total: 30, device_id: 'abc',
+            message: 'Trial expired. Audiogravity is running in Starter Edition.',
+        });
+        expect(text).toContain('Your trial has ended. A lifetime license brings the Pro features back.');
+        expect(text).not.toContain('to continue');
+    });
+});
+
+/**
  * The header carried an EDITIONS & LICENSE button that opened a hand-kept copy of the
  * editions and of the EULA. The editions are in the manual (01-introduction.md,
  * "Editions"), and the EULA is linked from the sign-in page and the footer; the user
