@@ -13,7 +13,7 @@ import path from 'node:path';
 import process from 'node:process';
 import {
     PHONE, endBefore, firstLanIPv4, fitClip, forgeToken, instanceUrls, lanAddress, manualFigures,
-    parseEnv, readSessionSecrets, roundClip, sessionStorageItems, toImageBox, union,
+    parseEnv, proWarning, readSessionSecrets, roundClip, sessionStorageItems, toImageBox, union,
 } from '../tools/manual-shots/harness.js';
 import { PLAYBACK, RECIPES, needsPlayback, selectRecipes } from '../tools/manual-shots/recipes.js';
 import { UNCHANGED_BELOW, escapeAttribute, reviewPage, verdict } from '../tools/manual-shots/review.js';
@@ -206,6 +206,32 @@ describe('instanceUrls', () => {
     it('takes a dev server named by its network address as that address', () => {
         expect(instanceUrls('10.0.4.254', { AG_DEV_URL: 'http://10.0.4.202:3000' }))
             .toMatchObject({ dev: 'http://10.0.4.202:3000', lan: 'http://10.0.4.202:3000' });
+    });
+});
+
+/**
+ * A dev core without Pro gives the figures of Pro features padlocks, with nothing in them to
+ * say why: the dev box was put on Starter to test it, and a retake would have gone unnoticed
+ * (review, 2026-10-15).
+ */
+describe('proWarning', () => {
+    it('says nothing when the dev core opens Pro', () => {
+        expect(proWarning({ status: 'lifetime', pro: true })).toBe(null);
+        expect(proWarning({ status: 'trial', pro: true })).toBe(null);
+    });
+
+    it('warns when the dev core runs without Pro, naming its status', () => {
+        expect(proWarning({ status: 'starter', pro: false })).toMatch(/without Pro \(starter\)/);
+        expect(proWarning({ status: 'expired', pro: false })).toMatch(/without Pro \(expired\)/);
+    });
+
+    it('reads a core that does not publish pro by its status, as the app does', () => {
+        expect(proWarning({ status: 'trial' })).toBe(null);
+        expect(proWarning({ status: 'starter' })).toMatch(/without Pro/);
+    });
+
+    it('warns when the licence could not be read', () => {
+        expect(proWarning(null)).toMatch(/could not be read/);
     });
 });
 

@@ -15,7 +15,7 @@ import path from 'node:path';
 import process from 'node:process';
 import {
     PHONE, compareFigures, dropDevBadge, encodeWebp, fitClip, instanceUrls, lanAddress, load, manualFigures,
-    openPhone, readSessionSecrets, roundClip, sessionStorageItems, toImageBox,
+    openPhone, proWarning, readSessionSecrets, roundClip, sessionStorageItems, toImageBox,
 } from './harness.js';
 import { manualSource } from '../../scripts/sync-manual.js';
 import { RECIPES, PLAYBACK, needsPlayback, selectRecipes } from './recipes.js';
@@ -151,6 +151,16 @@ async function main() {
                 prod: `no installed release answers at ${urls.prod} — set AG_PROD_URL to one served over HTTPS`,
             }[instance];
         }
+    }
+    // A dev core without Pro gives the figures of Pro features padlocks, and nothing in
+    // them says why: say it before taking anything.
+    if (!down.dev && storage) {
+        const licence = await api.get(`${urls.dev}/api/license/status`, {
+            timeout: 5000,
+            headers: { 'X-API-Key': storage.apiKey, Authorization: `Bearer ${storage.jwt_token}` },
+        }).then((r) => (r.ok() ? r.json() : null), () => null);
+        const warning = proWarning(licence);
+        if (warning) console.warn(`capture: ${warning}`);
     }
     await api.dispose();
     if (down.dev) {

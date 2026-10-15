@@ -158,6 +158,22 @@ const TRIAL_LICENCE = Object.freeze({
     trial_days_total: 30,
     device_id: `${'abc123def456'.repeat(5)}abcd`,
     issued: null,
+    pro: true,
+});
+
+/**
+ * A box whose trial has ended without a licence, as the core reports it
+ * (modules/license/service.py): the Starter Edition, Pro closed. Every padlock the app
+ * draws follows from this answer. Same synthetic Device ID as the trial's.
+ */
+const STARTER_LICENCE = Object.freeze({
+    status: 'starter',
+    days_remaining: 0,
+    trial_days_total: 30,
+    device_id: TRIAL_LICENCE.device_id,
+    issued: null,
+    message: 'Trial expired. Audiogravity is running in Starter Edition.',
+    pro: false,
 });
 
 /** A key of the right shape that belongs to no one: the figures never show a real one. */
@@ -167,20 +183,33 @@ const EXAMPLE_KEY = 'AG-7Q4M-K2XD-9PLW-3HTR';
 const STEP_TRANSITION_MS = 600;
 
 /**
- * Stage the licence figures: this box reports the trial's synthetic Device ID and, when
- * `check` is given, the licence server's answer to a key check is that — the example key
- * matches no order. The fields are those the core's CheckKeyResponse carries.
+ * Stage the licence figures: this box reports `licence` — the trial by default, or the
+ * Starter Edition — with its synthetic Device ID and, when `check` is given, the licence
+ * server's answer to a key check is that — the example key matches no order. The fields
+ * are those the core's CheckKeyResponse carries.
  *
- * @param {import('playwright').Page} page - The Admin tab.
+ * @param {import('playwright').Page} page - Any tab: every component reads the licence the
+ *   tab bar reads.
  * @param {?object} [check] - What /license/check answers, over a valid lifetime licence.
+ * @param {object} [licence=TRIAL_LICENCE] - What /license/status answers.
  * @returns {Promise<void>}
  */
-async function stageLicence(page, check = null) {
-    await page.route(/\/license\/status(\?|$)/, (route) => route.fulfill({ json: TRIAL_LICENCE }));
+async function stageLicence(page, check = null, licence = TRIAL_LICENCE) {
+    await page.route(/\/license\/status(\?|$)/, (route) => route.fulfill({ json: licence }));
     if (!check) return;
     await page.route(/\/license\/check(\?|$)/, (route) => route.fulfill({
         json: { valid: true, key: EXAMPLE_KEY, plan: 'lifetime', expires_at: null, ...check },
     }));
+}
+
+/**
+ * Stage a Starter box: the licence the core reports once a trial has ended without one.
+ *
+ * @param {import('playwright').Page} page - Any tab.
+ * @returns {Promise<void>}
+ */
+function stageStarter(page) {
+    return stageLicence(page, null, STARTER_LICENCE);
 }
 
 /**
@@ -195,6 +224,58 @@ async function openLicenceWindow(page) {
     await activation.waitFor({ timeout: 10000 });
     await page.waitForFunction(() => document.querySelector('ag-license-activation')?._deviceId);
     return activation;
+}
+
+/**
+ * The tab menu of a phone, Library unfolded into its views.
+ *
+ * @param {import('playwright').Page} page - The Library tab.
+ * @returns {Promise<Shot>}
+ */
+async function tabMenu(page) {
+    await page.evaluate(() => { document.querySelector('ag-tabs')._sidebarHidden = false; });
+    await page.waitForTimeout(800);
+    // Unfolded by a tap, as a reader would — the column opens on Library folded.
+    await page.locator('ag-tabs .tab-btn[data-tab="library"]').click();
+    await page.waitForTimeout(800);
+    const column = await box(page, 'ag-tabs');
+    const views = await box(page, 'ag-tabs ag-lib-tabbar.lib-menu');
+    // The pointer left on the entry would keep it under its hover tint. It moves
+    // to the empty column under the views, not out of it: leaving the column
+    // closes it half a second later (ag-tabs, mouseleave).
+    await page.mouse.move(column.x + column.width / 2, views.y + views.height + 60);
+    await page.waitForTimeout(400);
+    // The column down to the library's views: below them it is empty down to
+    // Manual, at its foot.
+    return { clip: { x: column.x, y: column.y, width: column.width, height: views.y + views.height + 16 - column.y } };
+}
+
+/**
+ * Open the library's Sources view.
+ *
+ * @param {import('playwright').Page} page - The Library tab.
+ * @returns {Promise<Clip>} The box of the whole view.
+ */
+async function sourcesView(page) {
+    await page.evaluate(`${LIB}._setView('library')`);
+    await page.waitForTimeout(4000);
+    return box(page, '.lib-view.active ag-library-sources');
+}
+
+/**
+ * The licence panel, once its badge is drawn.
+ *
+ * @param {import('playwright').Page} page - The Admin tab.
+ * @returns {Promise<Shot>}
+ */
+async function licencePanel(page) {
+    await page.locator('ag-license-status ag-license-badge').first().waitFor({ timeout: 15000 });
+    const panel = await box(page, 'ag-license-status');
+    // What follows can start inside the panel's last, fractional pixel: widened to a whole
+    // pixel, the figure took a stroke of it (the NEW USER button's border, on Starter).
+    const next = await boxIfShown(page.locator('ag-license-status + *'));
+    const end = panel.y + panel.height;
+    return { clip: { ...panel, height: (next ? Math.min(end, Math.floor(next.y)) : end) - panel.y } };
 }
 
 /** Where "Release notes" points in the staged update — not visible in the figure. */
@@ -248,23 +329,13 @@ export const RECIPES = {
         // The tab menu of a phone, Library unfolded into its views. Five of them unless
         // the library's source is the radio, which has no albums to browse: three.
         tab: 'library', needs: ['a source other than the radio in the library'],
-        async run(page) {
-            await page.evaluate(() => { document.querySelector('ag-tabs')._sidebarHidden = false; });
-            await page.waitForTimeout(800);
-            // Unfolded by a tap, as a reader would — the column opens on Library folded.
-            await page.locator('ag-tabs .tab-btn[data-tab="library"]').click();
-            await page.waitForTimeout(800);
-            const column = await box(page, 'ag-tabs');
-            const views = await box(page, 'ag-tabs ag-lib-tabbar.lib-menu');
-            // The pointer left on the entry would keep it under its hover tint. It moves
-            // to the empty column under the views, not out of it: leaving the column
-            // closes it half a second later (ag-tabs, mouseleave).
-            await page.mouse.move(column.x + column.width / 2, views.y + views.height + 60);
-            await page.waitForTimeout(400);
-            // The column down to the library's views: below them it is empty down to
-            // Manual, at its foot.
-            return { clip: { x: column.x, y: column.y, width: column.width, height: views.y + views.height + 16 - column.y } };
-        },
+        run: tabMenu,
+    },
+    'tab-menu-starter': {
+        // The same menu on a Starter box: the Pro tabs behind their padlocks.
+        tab: 'library', needs: ['a source other than the radio in the library'],
+        stage: stageStarter,
+        run: tabMenu,
     },
     outputs: {
         tab: 'library', height: 1400,
@@ -289,10 +360,31 @@ export const RECIPES = {
     sources: {
         tab: 'library', height: 2600,
         async run(page) {
-            await page.evaluate(`${LIB}._setView('library')`);
-            await page.waitForTimeout(4000);
-            const s = await box(page, '.lib-view.active ag-library-sources');
+            const s = await sourcesView(page);
             return { clip: { ...s, height: Math.min(s.height, 900) } };
+        },
+    },
+    'sources-starter': {
+        // A Starter box: the library's sources, the Pro ones behind their padlocks, down to
+        // the last of them — above the next group. A Pro source cannot be the active one there.
+        tab: 'library', height: 2600,
+        needs: ['the local library or the radio as the library\'s source'],
+        stage: stageStarter,
+        async run(page) {
+            const s = await sourcesView(page);
+            const view = page.locator('.lib-view.active ag-library-sources');
+            // Drawn for Starter only once the licence is read: its padlock cards say so.
+            await view.locator('ag-pro-lock-card').first().waitFor({ timeout: 15000 });
+            // "Other sources" under the active one; "Sources" when none is active.
+            const group = view.locator('.lib-src-list > .lib-src-lbl', { hasText: /^\s*(Other sources|Sources)\s*$/ });
+            const next = group.locator('xpath=following-sibling::*[contains(@class, "lib-src-lbl")][1]');
+            const followed = (await next.count()) > 0;
+            // The group's last card: the one before the next label, or the last of all.
+            const last = followed
+                ? next.locator('xpath=preceding-sibling::ag-library-source-card[1]')
+                : group.locator('xpath=following-sibling::ag-library-source-card[last()]');
+            const end = endBefore(await boxOf(last), followed ? await boxOf(next) : null, 16);
+            return { clip: { ...s, height: end - s.y } };
         },
     },
     radio: {
@@ -446,21 +538,21 @@ export const RECIPES = {
         async stage(page) {
             await stageLicence(page);
         },
-        async run(page) {
-            await page.locator('ag-license-status ag-license-badge').first().waitFor({ timeout: 15000 });
-            return { clip: await box(page, 'ag-license-status') };
-        },
+        run: licencePanel,
+    },
+    'license-starter': {
+        // The panel of a Starter box: where every padlock leads.
+        tab: 'admin', height: 1400,
+        stage: stageStarter,
+        run: licencePanel,
     },
     'license-active': {
         tab: 'admin', height: 1400,
         needs: ['an activated licence'],
         async run(page) {
-            await page.locator('ag-license-status ag-license-badge').first().waitFor({ timeout: 15000 });
+            const shot = await licencePanel(page);
             // The Order ID is the licence key; the Device ID ties it to this box.
-            return {
-                clip: await box(page, 'ag-license-status'),
-                blur: [await licenceValue(page, 'Device ID'), await licenceValue(page, 'Order ID')],
-            };
+            return { ...shot, blur: [await licenceValue(page, 'Device ID'), await licenceValue(page, 'Order ID')] };
         },
     },
     'license-activation': {

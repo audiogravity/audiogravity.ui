@@ -19,6 +19,10 @@ node tools/manual-shots/capture.js software login
 It needs the dev core's `.env.dev` beside this repository (`../audiogravity.core`): the admin
 session is forged from its JWT secret and API key, so no password is involved.
 
+The figures of Pro features show what the dev core opens: on a core without Pro (a box put
+on Starter) they come out with padlocks. The tool reads the core's licence first and says
+so; the figures that stage their own licence (`license…`, `…-starter`) do not depend on it.
+
 Each figure is written as `ios-<name>.webp` in `$TMPDIR/ag-manual-shots` (`--out DIR` or
 `AG_MANUAL_SHOTS_OUT` to change it), with `review.html`: every new figure beside the
 published one, and the share of pixels that changed. A figure that fails leaves
@@ -70,6 +74,10 @@ and writes nothing to the core:
 
 - `license` — a trial, 22 days of 30 left, with the synthetic Device ID of the component's
   story: restoring a real trial would mean deleting the licence.
+- `tab-menu-starter`, `sources-starter`, `license-starter` — a Starter box: the licence the
+  core reports once a trial has ended without one, with the same Device ID. Every padlock
+  follows from it. `sources-starter` needs the local library or the radio as the library's
+  source: on a Starter box, a Pro source cannot be the active one.
 - `license-activation`, `license-activated`, `license-verify` — the licence window with an
   example key that belongs to no order, the same synthetic Device ID, and the licence
   server's answer rewritten (a key free to activate, then one already active). The
