@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { isLicensed } from '../../js/license-tiers.js';
 
 const UI_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -260,6 +261,24 @@ export function instanceUrls(host, env = process.env) {
         lan: trim(lan.href),
         prod: trim(env.AG_PROD_URL || `https://${host}`),
     };
+}
+
+/**
+ * What to tell the person taking figures about the dev core's licence. The figures of Pro
+ * features show what the core opens: on a core without Pro they come out with padlocks, and
+ * nothing in them says why. The figures that stage their own licence (license…, …-starter)
+ * do not depend on it.
+ *
+ * @param {?{status?: string, pro?: boolean}} status - The dev core's /license/status, or
+ *   null when it could not be read.
+ * @returns {?string} The warning, or null when Pro is open — read as the app reads it
+ *   (js/license-tiers.js).
+ */
+export function proWarning(status) {
+    if (!status) return 'the dev core\'s licence could not be read: figures of Pro features may show padlocks';
+    if (isLicensed(status)) return null;
+    return `the dev core runs without Pro (${status.status}): figures of Pro features will show padlocks — `
+        + 'only those that stage their licence (license…, …-starter) are faithful';
 }
 
 /**

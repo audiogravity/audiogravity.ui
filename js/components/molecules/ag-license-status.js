@@ -430,7 +430,8 @@ export class AgLicenseStatus extends LitElement {
             <div style="margin-top: var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-sm);">
                 <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">
                     ${status === 'starter'
-                        ? 'Your trial has ended. Purchase a lifetime license to continue.'
+                        // Not "to continue": the box carries on in the Starter Edition, for free.
+                        ? 'Your trial has ended. A lifetime license brings the Pro features back.'
                         : this._priceDisplay
                             // The price arrives from the licence server, so it is empty until the
                             // first fetch lands — and stays empty if none is configured. Dropping
