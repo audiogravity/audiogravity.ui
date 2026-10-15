@@ -14,6 +14,9 @@
  *                            is nothing to browse on this side). `running: false` on
  *                            an input reads "Off": its software is stopped.
  * @attr {boolean} active   - Whether this source is currently active
+ * @attr {boolean} locked   - A Pro source on a Starter box: the card shows the Pro padlock
+ *                            instead of its state, wears the Pro tint, and a tap opens
+ *                            the licence panel.
  * @attr {string}  zone-id  - Currently active zone ID (used to display zone name when active)
  *
  * @fires source-select - Bubbles. detail: { sourceId: string, zoneId: string }
@@ -22,6 +25,8 @@ import { LitElement, html, nothing } from 'lit';
 import { getRoonZones } from '../../library-store.js';
 import { ROON_IDS, SOURCE_ICONS } from '../library-constants.js';
 import { iconChevronDown, iconOutput, iconCheck } from '../../ag-icons.js';
+import { openLicensePanel } from '../../license-tiers.js';
+import '../atoms/ag-pro-lock.js';
 import '../atoms/ag-status-indicator.js';
 import './ag-roon-status.js';
 
@@ -29,6 +34,7 @@ export class AgLibrarySourceCard extends LitElement {
     static properties = {
         node:            { type: Object },
         active:          { type: Boolean },
+        locked:          { type: Boolean },
         zoneId:          { type: String, attribute: 'zone-id' },
         zoneDisplayName: { type: String, attribute: 'zone-display-name' },
         _expanded:       { state: true },
@@ -42,6 +48,7 @@ export class AgLibrarySourceCard extends LitElement {
         super();
         this.node            = null;
         this.active          = false;
+        this.locked          = false;
         this.zoneId          = '';
         this.zoneDisplayName = '';
         this._expanded       = false;
@@ -59,6 +66,10 @@ export class AgLibrarySourceCard extends LitElement {
     }
 
     async _toggleExpand() {
+        if (this.locked) {
+            openLicensePanel();
+            return;
+        }
         if (this._isInput()) {
             // An input has nothing to browse: what a phone pushes over AirPlay is
             // played by a source AG cannot see, on the far side of the door. So
@@ -135,7 +146,7 @@ export class AgLibrarySourceCard extends LitElement {
         // Source cards carry no subtitle — the label ('Local Library', 'Qobuz'…)
         // is self-explanatory and every source stays visually consistent.
         const desc     = null;
-        const isRoon   = this._isRoon();
+        const isRoon   = this._isRoon() && !this.locked;
         const expanded = isRoon && this._expanded;
         // An input whose software is stopped is not waiting: a phone does not see
         // the box at all. It says so twice — an empty ring with "Off", and its icon
@@ -158,7 +169,7 @@ export class AgLibrarySourceCard extends LitElement {
         const inert = this._isInput() && node.status !== 'active';
 
         return html`
-            <div class="lib-src-card ${active ? 'active' : ''} ${expanded ? 'expanded' : ''}">
+            <div class="lib-src-card ${active ? 'active' : ''} ${expanded ? 'expanded' : ''} ${this.locked ? 'lib-src-card--locked' : ''}">
                 <div class="lib-src-card-hd ${inert ? 'inert' : ''} ${off ? 'off' : ''}"
                     @click=${() => this._toggleExpand()}>
                     <div class="lib-src-ic">${icon}</div>
@@ -166,7 +177,9 @@ export class AgLibrarySourceCard extends LitElement {
                         <span class="lib-src-name">${name}</span>
                         ${displayDesc ? html`<span class="lib-src-desc">${displayDesc}</span>` : nothing}
                     </div>
-                    <ag-status-indicator state="${stCls}" label="${stLbl}"></ag-status-indicator>
+                    ${this.locked
+                        ? html`<ag-pro-lock></ag-pro-lock>`
+                        : html`<ag-status-indicator state="${stCls}" label="${stLbl}"></ag-status-indicator>`}
                     ${isRoon ? html`
                         <svg class="lib-src-chevron ${expanded ? 'open' : ''}"
                             viewBox="0 0 24 24" width="14" height="14"

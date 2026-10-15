@@ -1,7 +1,7 @@
 /**
  * Unit tests for player-utils.js — player helper functions.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TRANSITION_GUARD_MS, inTransition, isDsd, isSelfManagedDriver } from './player-utils.js';
 
 describe('TRANSITION_GUARD_MS', () => {
@@ -265,6 +265,51 @@ describe('activeOutputError', () => {
     it('returns the message when the active output is the failing one', () => {
         const state = { outputs: [{ id: 'local', name: 'DAC', active: true, error: 'busy' }] };
         expect(activeOutputError(state)).toBe('busy');
+    });
+});
+
+import { outputErrorLabel } from './player-utils.js';
+import { setLicense } from './license-tiers.js';
+
+describe('outputErrorLabel', () => {
+    // On a box without Pro, the streaming relays refuse every track, those queued
+    // before the trial ended included (2026-10-15): MPD skips them and plays the rest
+    // of the queue, reporting the refusal meanwhile — measured on MPD 0.24.5.
+    const REFUSED = (service) =>
+        `Failed to decode "http://192.0.2.10:8000/${service}/stream/12345"; got HTTP status 403`;
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    const PRO_EDITION = 'Streaming services are part of the Pro edition';
+
+    afterEach(() => setLicense(null));
+
+    it.each(['qobuz', 'tidal', 'highresaudio'])('says a %s track is Pro on a Starter box', (service) => {
+        setLicense(STARTER);
+        expect(outputErrorLabel(REFUSED(service))).toBe(PRO_EDITION);
+    });
+
+    it('keeps the generic label on a box with Pro: the service itself refused the track', () => {
+        setLicense(PRO);
+        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Output unavailable');
+    });
+
+    it('says nothing of Pro while the licence is not read', () => {
+        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Output unavailable');
+    });
+
+    it('says nothing of Pro for a refusal that is not a relay, nor for a relay that did not refuse', () => {
+        setLicense(STARTER);
+        expect(outputErrorLabel('Failed to decode "http://radio.example/live.aac"; got HTTP status 403'))
+            .toBe('Output unavailable');
+        expect(outputErrorLabel('Failed to decode "http://192.0.2.10:8000/qobuz/stream/1"; got HTTP status 503'))
+            .toBe('Output unavailable');
+    });
+
+    it('still names a busy device, and falls back for the rest', () => {
+        setLicense(STARTER);
+        expect(outputErrorLabel('Failed to open ALSA device "hw:0,0": Device or resource busy'))
+            .toMatch(/in use by another player/);
+        expect(outputErrorLabel(null)).toBe('Output unavailable');
     });
 });
 

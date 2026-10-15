@@ -463,7 +463,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above |
+| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above. On a box without Pro: **403** when the command reaches Roon or HQPlayer — judged on the device it reaches, once resolved — and **503** with what to do when a `play` would start the box's own player while its own HQPlayer holds the DAC ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 | POST | `/player/source` | Select the active source |
 | GET | `/player/sleep-timer` | Current sleep-timer state |
 | POST | `/player/sleep-timer` | Arm the sleep timer (pause after N minutes) |
@@ -516,6 +516,8 @@ webradio started by another app, at an address the radio module does not know, c
 | Field | Meaning |
 |---|---|
 | `control_id` | Routing handle of the active item — send it back on `/player/control`. While nothing plays: the player `play` reaches — the selected renderer, else the box's MPD when it was the last source or none is known — or `null` |
+| `pro` | Controlling what this state names is Pro (Roon, HQPlayer): read on `control_id`, else `source_id` |
+| `sources[].pro` | Browsing, queueing from or controlling this source is Pro ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 | `played_on` | Where the audio comes out: `"local"` or a renderer UDN. Display only |
 | `outputs[]` | Runtime outputs: the local chain + the selected renderer |
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
@@ -968,6 +970,12 @@ A package with **`web_credentials`** (HQPlayer Embedded) needs the password of i
 **`GET /license/status`** — `status` is one of `trial`, `lifetime`, `starter`, `expired`,
 `version_expired`, `tampered`, `no_license`.
 
+**`pro`** (boolean) — whether this box has the Pro edition open: `true` on `lifetime` and
+`trial`, `false` on every other status. Read it rather than deriving it from `status`: it is
+the rule every Pro route applies. A licence with no end date is not checked against the
+clock; a trial or a licence with an end date is, and a clock the box cannot trust answers
+`tampered`. What a box without Pro is refused: [Editions](#editions--what-a-box-without-pro-is-refused).
+
 Two of them are easy to confuse and mean different things:
 
 - **`expired`** — a licence that carried an end date and reached it. The customer paid; his
@@ -1040,15 +1048,63 @@ license server is unconfigured/unreachable. **License-independent** like
 surfaces this — it performs no version comparison and downloads nothing on its own.
 
 
+### Editions — what a box without Pro is refused
+
+Starter plays the music on the box and the internet radio, through the box's DAC or a
+network speaker, with the queue, the players and the sleep timer. Pro adds the streaming
+services (Qobuz, Tidal, HIGHRESAUDIO), the UPnP media servers, Roon, HQPlayer — as the
+output and its settings, the box's own HQPlayer Embedded and the NAA included — the
+Pipeline, systemd tuning and Performance.
+
+The core publishes the rule; a client reads it and keeps no list of its own:
+
+| Field | Where | Meaning |
+|---|---|---|
+| `pro` | `GET /license/status` | This box has Pro |
+| `pro` | each `sources[]` entry, and `PlayerState` | Browsing, queueing from or controlling this source is Pro (Roon, HQPlayer, a streaming service, a media server). On the state it reads the device the commands reach (`control_id`, else `source_id`) |
+| `pro` | each `GET /audio_app_config/services` entry | This service's settings are Pro (`hqplayerd`, `naa`) |
+
+On a box without Pro the core answers **403** — `detail`: `Full license required. …`, or
+`This license ended on … Renew it to use this feature.` — to:
+
+- every route of `/hqplayer/*` and `/performance/*`; `/audio_pipeline/*` but `now-playing`,
+  `cover` and `library-cover`; `/services/{name}/properties*`;
+  `/library/{roon,qobuz,tidal,highresaudio,upnp}-*`, and `POST /{qobuz,tidal,highresaudio}/connection`
+  (with `/tidal/connection/submit` and `/qobuz/oauth/callback`);
+- the `/library/*` routes given a Pro `source_id` (albums, search, queue, favourites,
+  playlists), `/audio_pipeline/album-tracks` and `/audio_pipeline/control` for a Pro source,
+  and `/player/source` for one. A source id is read with or without its `src_` prefix;
+- `/player/control` when the command reaches Roon or HQPlayer;
+- an address of a streaming service's track handed over as one — `/library/queue` (a "file"
+  for the box's own queue), `/radio/play` (a station saved with it), `/upnp-renderer/{udn}/play`;
+- `/steering/switch-output` for `hqplayer`, `hqplayerd`, `naa`, `roonbridge` and `roon`;
+  `/audio_app_config/{hqplayerd,naa}/*` and `/audio-stack/output` for `hqplayerd`;
+- the relays `/{qobuz,tidal,highresaudio}/stream/{id}` and `/library/remote-flac/*`: a player
+  or a speaker fetching one gets the 403 — tracks queued while the box had Pro included. The
+  box's MPD skips such a track and reports `Failed to decode "…/qobuz/stream/…"; got HTTP status 403`
+  in the local output's `error`.
+
+Starting and stopping a service (`/services/{name}/start|stop|…`) stays open on every
+edition. `GET`/`DELETE /{qobuz,tidal,highresaudio}/connection` too: what an account is, and
+forgetting it.
+
+While a box without Pro runs its own HQPlayer (HQPlayer Embedded, holding the DAC), a play
+on the box's own player is refused with what to do — **503** on `/library/queue`,
+`/radio/play` and a `play` on `/player/control`: `HQPlayer Embedded runs on this box and holds
+its DAC, and HQPlayer is part of the Pro edition. Stop HQPlayer Embedded from Services to play
+here, or activate Pro.` Nothing is ever sent to HQPlayer.
+
 ### Output steering — `/steering/*`
 | Method | Path | Description |
 |---|---|---|
 | GET | `/steering/status` | Which service drives which ALSA device — for MPD on several outputs, the one it has enabled, not the first of its configuration |
 | GET | `/steering/outputs` | Outputs a service can be switched to |
-| POST | `/steering/switch-output` | Point a service at another output. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else the NAA (`naa`) |
+| POST | `/steering/switch-output` | Point a service at another output. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else the NAA (`naa`). HQPlayer's and Roon's (`roonbridge`) are Pro: **403** without it ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 
 ### Service config editor — `/audio_app_config/*`
-Editing a service's own configuration file needs **no licence**.
+Editing a service's own configuration file needs **no licence** — except HQPlayer Embedded's
+(`hqplayerd`) and the NAA's (`naa`), which are Pro: their entry carries `pro: true`, and their
+routes answer **403** on a box without Pro ([Editions](#editions--what-a-box-without-pro-is-refused)).
 
 The editable set and each file's location come from the core's service registry, **not**
 from `audio-config.json`: its `appconfigfile` field is ignored. A path can only name one
@@ -1058,7 +1114,7 @@ across both layouts instead. A service the core does not know has no editable co
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry). `audio_output` is the device each one plays on — for MPD on several outputs, the one it has enabled |
+| GET | `/audio_app_config/services` | Services whose config file is editable (from the core registry). `audio_output` is the device each one plays on — for MPD on several outputs, the one it has enabled; `pro` whether its settings are Pro |
 | GET | `/audio_app_config/{service_id}/config` | Read the config file (`?type=raw` for the file itself) |
 | POST | `/audio_app_config/{service_id}/config` | Write it back; optionally restart the service |
 | GET | `/audio_app_config/{service_id}/backups` | List the timestamped copies kept before each save |

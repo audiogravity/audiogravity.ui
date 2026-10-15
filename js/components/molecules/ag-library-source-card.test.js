@@ -9,7 +9,7 @@
  * the two disagree again, silently.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { readStylesheet, cssRuleBody, cssRules } from '../../test-utils.js';
+import { readStylesheet, cssRuleBody, cssRules, flat } from '../../test-utils.js';
 
 vi.mock('lit', () => ({
     LitElement: class { connectedCallback() {} },
@@ -131,5 +131,57 @@ describe('AgLibrarySourceCard — how "Off" is drawn', () => {
         const rest = cssRuleBody(dots, '.profile-status.inactive');
         expect(declared(ring, 'background')).toBe('transparent');
         expect(declared(ring, 'box-shadow')).toContain(declared(rest, 'background'));
+    });
+});
+
+describe('AgLibrarySourceCard — a Pro source on a Starter box', () => {
+    const markup = flat;
+
+    const card = (locked, node = { id: 'src_qobuz', name: 'Qobuz', kind: 'streaming', status: 'idle' }) => {
+        const el = Object.create(AgLibrarySourceCard.prototype);
+        Object.assign(el, { node, active: false, locked, zoneId: '', zoneDisplayName: '' });
+        el.dispatchEvent = vi.fn();
+        return el;
+    };
+
+    it('shows the Pro padlock in place of its state', () => {
+        const drawn = markup(card(true).render());
+        expect(drawn).toContain('<ag-pro-lock>');
+        expect(drawn).not.toContain('<ag-status-indicator');
+    });
+
+    it('shows its state when it is not locked', () => {
+        const drawn = markup(card(false).render());
+        expect(drawn).toContain('<ag-status-indicator');
+        expect(drawn).not.toContain('<ag-pro-lock>');
+    });
+
+    it('wears the Pro tint when locked, and only then', () => {
+        // The tint itself is the brand colour's, pinned in js/pro-tint.test.js.
+        expect(markup(card(true).render())).toMatch(/class="lib-src-card[^"]*\blib-src-card--locked\b/);
+        expect(markup(card(false).render())).not.toContain('lib-src-card--locked');
+    });
+
+    it('opens the licence panel on a tap, and selects nothing', async () => {
+        const tabs = document.createElement('ag-tabs');
+        tabs.selectTab = vi.fn();
+        document.body.appendChild(tabs);
+        try {
+            const el = card(true);
+            await el._toggleExpand();
+            expect(tabs.selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+            expect(el.dispatchEvent).not.toHaveBeenCalled();
+        } finally {
+            tabs.remove();
+        }
+    });
+
+    it('does not unfold Roon\'s zones: Roon is Pro', async () => {
+        const { getRoonZones } = await import('../../library-store.js');
+        getRoonZones.mockClear();
+        const el = card(true, { id: 'src_mono-sgen', name: 'Roon', kind: 'roon', status: 'idle' });
+        await el._toggleExpand();
+        expect(getRoonZones).not.toHaveBeenCalled();
+        expect(markup(el.render())).not.toContain('lib-src-chevron');
     });
 });

@@ -21,12 +21,17 @@
  * @prop {boolean} provisionable - Whether Audiogravity sets this service up — its whole
  *   config, or its output alone for HQPlayer Embedded: shows the CONFIGURED badge.
  * @prop {boolean} configured - Whether Audiogravity has set it up.
+ * @prop {boolean} locked - A Pro service on a Starter box (HQPlayer, the NAA it streams
+ *   to): the Pro padlock shows, the tile wears the Pro tint, and both buttons lead to the
+ *   licence panel instead of asking for a file the core refuses.
  *
  * @fires edit-config - Dispatched when edit button clicked, detail: { serviceId }
  *
  * @dependency ag-audio-output - Used for displaying audio device
+ * @dependency ag-pro-lock - The padlock of a locked service
  * @dependency css/components/tile.css - Tile layout classes
  * @dependency css/config.css - Configuration card styling
+ * @dependency css/components/pro-lock.css - The padlock and the locked buttons
  */
 import { LitElement, html, nothing } from 'lit';
 import { iconDownload } from '../../ag-icons.js';
@@ -34,6 +39,8 @@ import { AgAudioOutput } from '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
 import { downloadTextFile } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';
+import { openLicensePanel } from '../../license-tiers.js';
+import '../atoms/ag-pro-lock.js';
 
 /** Format an ISO 8601 mtime string to a compact locale-aware relative label. */
 const _fmtMtime = (iso) => {
@@ -52,13 +59,15 @@ export class AgConfigCard extends LitElement {
         service: { type: Object },
         delayIndex: { type: Number },
         provisionable: { type: Boolean },
-        configured: { type: Boolean }
+        configured: { type: Boolean },
+        locked: { type: Boolean }
     };
 
     constructor() {
         super();
         this.provisionable = false;
         this.configured = false;
+        this.locked = false;
     }
 
     createRenderRoot() {
@@ -68,6 +77,10 @@ export class AgConfigCard extends LitElement {
 
     handleEdit(e) {
         e.stopPropagation();
+        if (this.locked) {
+            openLicensePanel();
+            return;
+        }
         this.dispatchEvent(new CustomEvent('edit-config', {
             detail: { serviceId: this.service.id },
             bubbles: true,
@@ -77,6 +90,10 @@ export class AgConfigCard extends LitElement {
 
     async handleDownload(e) {
         e.stopPropagation();
+        if (this.locked) {
+            openLicensePanel();
+            return;
+        }
         try {
             const data = await apiGet(`/audio_app_config/${this.service.id}/config?type=raw`);
             const filename = this.service.path.split('/').pop();
@@ -113,6 +130,9 @@ export class AgConfigCard extends LitElement {
         // it. Its backups are not lost either — they come back with the package.
         const canDownload = hasFile;
 
+        // Faded but tappable, as every control a Starter box sees but cannot use.
+        const lockedClass = this.locked ? ' pro-locked' : '';
+
         const status = this.service.status;
         const statusVariant = status === 'active' ? 'running'
             : status === 'failed' ? 'failed'
@@ -124,12 +144,13 @@ export class AgConfigCard extends LitElement {
             : null;
 
         return html`
-            <div class="config-tile animate-fade-in ${criticalClass} ${tileClasses} ${isInstalled ? '' : 'unavailable'}"
+            <div class="config-tile animate-fade-in ${criticalClass} ${tileClasses} ${isInstalled ? '' : 'unavailable'} ${this.locked ? 'config-tile--locked' : ''}"
                  data-service-id="${this.service.id}"
                  style=${tileStyle}>
                 <div class="service-header">
                     <div class="config-service-name">${this.service.displayName}</div>
                     <div class="config-header-badges">
+                        ${this.locked ? html`<ag-pro-lock></ag-pro-lock>` : nothing}
                         ${!isInstalled ? html`
                             <span class="badge error">UNAVAILABLE</span>
                         ` : nothing}
@@ -169,14 +190,14 @@ export class AgConfigCard extends LitElement {
                 <div class="service-footer">
                     <div class="config-footer-left">
                         ${!isGuest() ? html`
-                        <button class="tile-action-btn" ?disabled=${!canEdit}
+                        <button class="tile-action-btn${lockedClass}" ?disabled=${!canEdit}
                                 @click="${this.handleEdit}">EDIT CONFIG</button>
                         ` : nothing}
                         ${this.service.critical ? html`
                             <span class="badge warning critical-tag">CRITICAL</span>
                         ` : nothing}
                     </div>
-                    <button class="tile-action-btn tile-action-btn--icon" ?disabled=${!canDownload}
+                    <button class="tile-action-btn tile-action-btn--icon${lockedClass}" ?disabled=${!canDownload}
                             @click="${this.handleDownload}" aria-label="Download config">
                         <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDownload}</svg>
                     </button>

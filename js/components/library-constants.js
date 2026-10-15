@@ -383,13 +383,14 @@ export function normalizeSearchSources(rawSources, upnpServers = []) {
         const meta = SOURCE_META[s.source_id] ?? { label: s.name ?? s.source_id, group: s.source_id };
         if (seen.has(meta.group)) return acc;
         seen.add(meta.group);
-        acc.push({ id: s.source_id, label: meta.label, group: meta.group, location: '' });
+        acc.push({ id: s.source_id, label: meta.label, group: meta.group, location: '', pro: s.pro === true });
         return acc;
     }, []);
     for (const srv of upnpServers ?? []) {
         if (seen.has(srv.id)) continue;
         seen.add(srv.id);
-        sources.push({ id: srv.id, label: srv.friendly_name || 'UPnP', group: srv.id, location: srv.location || '' });
+        // A media server is Pro (the core's editions): only a box with Pro lists one.
+        sources.push({ id: srv.id, label: srv.friendly_name || 'UPnP', group: srv.id, location: srv.location || '', pro: true });
     }
     return sources;
 }

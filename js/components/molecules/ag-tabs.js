@@ -20,7 +20,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { keepInView } from '../../core/keep-in-view.js';
-import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconDsdLock, iconBell, iconDownload, iconManual, iconChevronDown } from '../../ag-icons.js';
+import { iconTabProfiles, iconTabServices, iconTabPipeline, iconTabSystem, iconTabPerformance, iconTabLibrary, iconHeadphones, iconSettingsSliders, iconSliders, iconShield, iconLock, iconBell, iconDownload, iconManual, iconChevronDown } from '../../ag-icons.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { getCurrentUser } from '../../auth.js';
 import { apiGet } from '../../api.js';
@@ -28,7 +28,7 @@ import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-license-badge.js';
 import './ag-lib-tabbar.js';
 import { PANEL_OPEN_EDGE_PX, GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { isLicensed, shouldPromptForLicense } from '../../license-tiers.js';
+import { isLicensed, openLicensePanel, setLicense } from '../../license-tiers.js';
 
 const TAB_ICONS = {
     'audio-software': iconHeadphones,
@@ -46,7 +46,11 @@ const TAB_SVG_ICONS = {
     library:     iconTabLibrary,
 };
 
-/** Tabs that require an active trial or full license.
+/** Tabs that require the Pro edition — locked when the core's verdict says so.
+ *
+ * `library` is deliberately absent: Starter plays the music on the box and the radio, so
+ * the tab opens on every edition and puts its padlocks on the Pro sources inside it
+ * (core modules/license/editions.py, `pro` on each source).
  *
  * `config` is deliberately absent: editing a service's own configuration file
  * is not a licensed feature, and its endpoints (`/audio_app_config/*`) carry no
@@ -55,7 +59,7 @@ const TAB_SVG_ICONS = {
  * server but not licence-gated: `/audio-stack/*` (core
  * modules/audio_app_config/router.py, create_provision_router). The manual's
  * table of editions (01-introduction.md, "Editions") follows this set. */
-const GATED_TABS = new Set(['systemd', 'performance', 'pipeline', 'library']);
+const GATED_TABS = new Set(['systemd', 'performance', 'pipeline']);
 
 /** The id of the library's bar the column unfolds under Library (aria-controls). */
 const LIBRARY_VIEWS_ID = 'tab-library-views';
@@ -87,6 +91,7 @@ export class AgTabs extends LitElement {
         _userRole: { type: String, state: true },
         _connected: { type: Boolean, state: true },
         _licenseStatus: { type: String, state: true },
+        _license: { state: true },
         _licenseDaysRemaining: { type: Number, state: true },
         _licenseExpiresAt: { type: String, state: true },
         _tabStats: { type: Object, state: true },
@@ -117,6 +122,8 @@ export class AgTabs extends LitElement {
         this._userRole = _user?.role || '';
         this._connected = window.AppState?.connected ?? true;
         this._licenseStatus = 'no_license';
+        /** The core's /license/status answer; null until read (nothing locked meanwhile). */
+        this._license = null;
         this._licenseDaysRemaining = null;
         this._licenseExpiresAt = null;
         this._tabStats = {};
@@ -261,7 +268,7 @@ export class AgTabs extends LitElement {
             this._userRole = isAuthenticated && user ? user.role : '';
         };
         if (window.EventEmitter) {
-            this._handleConnectionStatus = ({ connected }) => { this._connected = connected; };
+            this._handleConnectionStatus = (status) => this._onConnectionStatus(status);
             window.EventEmitter.on('connection-status', this._handleConnectionStatus);
             window.EventEmitter.on('auth-changed', this._handleAuthChanged);
 
@@ -304,6 +311,11 @@ export class AgTabs extends LitElement {
         // Fetch initial counts so all tabs show stats immediately (before pages load)
         this._fetchInitialStats();
         this._fetchLicenseStatus();
+
+        // A licence activated, imported or removed changes what is locked: read it again
+        // rather than leave the padlocks as they were until the page is reloaded.
+        this._handleLicenseChanged = () => this._fetchLicenseStatus();
+        window.addEventListener('ag:license-changed', this._handleLicenseChanged);
     }
 
     /**
@@ -392,6 +404,8 @@ export class AgTabs extends LitElement {
             window.removeEventListener('announcement-badge', this._handleAnnouncementBadge);
         if (this._handleUpdateBadge)
             window.removeEventListener('update-badge', this._handleUpdateBadge);
+        if (this._handleLicenseChanged)
+            window.removeEventListener('ag:license-changed', this._handleLicenseChanged);
         if (this._handleAnimationsChanged)
             window.removeEventListener('animations-changed', this._handleAnimationsChanged);
         if (window.EventEmitter) {
@@ -425,14 +439,13 @@ export class AgTabs extends LitElement {
      * @returns {boolean}
      */
     _isLocked(tabId) {
-        return GATED_TABS.has(tabId) && !isLicensed(this._licenseStatus);
+        return GATED_TABS.has(tabId) && !isLicensed(this._license);
     }
 
     selectTab(tabId, { keepOpen = false } = {}) {
         if (this._isLocked(tabId)) {
-            this.selectTab('admin', { keepOpen });
-            if (shouldPromptForLicense(this._licenseStatus) && window.EventEmitter)
-                window.EventEmitter.emit('show-license-modal');
+            // What every padlock does (license-tiers.openLicensePanel), handed this bar.
+            openLicensePanel(this._license, { keepOpen, tabs: this });
             return;
         }
         if (this.activeTab === tabId) return;
@@ -733,14 +746,52 @@ export class AgTabs extends LitElement {
         }
     }
 
-    async _fetchLicenseStatus() {
+    /**
+     * The core reachable or not (sse.js, `connection-status`): the dot of the logo bar,
+     * and the licence read again when the core comes back — the app back from the
+     * background, the core restarted. One reading that failed at mount left every Pro
+     * section waiting for the whole session, and a trial can end while the app sits in
+     * the background (review, 2026-10-15).
+     *
+     * @param {{connected: boolean}} status
+     */
+    _onConnectionStatus({ connected }) {
+        const back = connected && !this._connected;
+        this._connected = connected;
+        if (back) this._fetchLicenseStatus();
+    }
+
+    /**
+     * Read the box's licence and hand it to every padlock (license-tiers.setLicense).
+     *
+     * One reading at a time: the triggers can arrive together — the connection back, a
+     * licence changed, a refusal of the core — and are answered by the one in flight.
+     *
+     * @returns {Promise<void>}
+     */
+    _fetchLicenseStatus() {
+        if (!this._licenseReading) {
+            this._licenseReading = this._readLicenseStatus()
+                .finally(() => { this._licenseReading = null; });
+        }
+        return this._licenseReading;
+    }
+
+    /** One reading of /license/status (see {@link _fetchLicenseStatus}). */
+    async _readLicenseStatus() {
         try {
             const data = await apiGet('/license/status');
-            if (data) {
+            // An answer that names no status is no verdict: nothing is locked on it.
+            if (data?.status) {
                 this._licenseStatus = data.status ?? 'no_license';
                 this._licenseDaysRemaining = data.days_remaining ?? null;
                 this._licenseExpiresAt = data.expires_at ?? null;
-                window.dispatchEvent(new CustomEvent('license-status', { detail: { status: this._licenseStatus } }));
+                this._license = data;
+                setLicense(data);
+                // The tab opened before the verdict arrived (the last one, remembered)
+                // may be one it locks: leave it, as a tap on it would — the column
+                // left as it is, since no one tapped anything.
+                if (this._isLocked(this.activeTab)) this.selectTab('admin', { keepOpen: true });
             }
         } catch (_) {
             // Non-blocking
@@ -793,7 +844,7 @@ export class AgTabs extends LitElement {
                             @click=${() => this._onTabClick(tab.id)}>
                         ${TAB_SVG_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24">${TAB_SVG_ICONS[tab.id]}</svg></span>` : TAB_ICONS[tab.id] ? html`<span class="tab-icon tab-icon-svg"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[tab.id]}</svg></span>` : ''}
                         ${tab.label}
-                        ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconDsdLock}</svg>` : ''}
+                        ${locked ? html`<svg class="tab-lock-icon" aria-label="Locked" style="margin-left:.3em" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconLock}</svg>` : ''}
                         ${!locked && tab.badgeCount ? html`<span class="badge ${tab.badgeType} tab-badge ml-sm">${tab.badgeCount}</span>` : ''}
                         ${!locked && tab.id === 'admin' && this._announcementCount > 0 ? html`
                             <span class="${this._animationsEnabled ? 'tab-bell-anim' : ''}" role="img" aria-label="New announcement" style="margin-left:.3em;color:var(--color-warning-text);flex-shrink:0;display:inline-block"><svg viewBox="0 0 24 24" width=".9em" height=".9em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconBell}</svg></span>

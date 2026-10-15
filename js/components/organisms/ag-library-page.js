@@ -19,6 +19,7 @@
  * @dependency ag-library-queue
  * @dependency ag-library-sources
  * @dependency ag-library-outputs
+ * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  * @dependency ag-library-roon-browser
  * @dependency ag-library-upnp-browser
  */
@@ -27,6 +28,8 @@ import { apiGet, apiPost } from '../../api.js';
 import { getSnapshot, getRoonZones, subscribePlayerState } from '../../library-store.js';
 import { iconBack, iconQueue, iconRefresh, iconOutput, iconInfo } from '../../ag-icons.js';
 import { SOURCE_MARKS, SOURCE_META, normalizeSearchSources, resolvePlayingSource } from '../library-constants.js';
+import { isLockedSource, openLicensePanel, proState } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 import '../molecules/ag-lib-tabbar.js';
 import './ag-library-browse.js';
 import './ag-library-outputs.js';
@@ -400,6 +403,7 @@ export class AgLibraryPage extends LitElement {
         _upnpLocation:    { state: true },
         _upnpName:        { state: true },
         _sources:         { state: true },
+        _license:         { state: true },
         _upnpServers:     { state: true },
         /** Non-null when an external source change is detected — drives the banner. */
         _pendingSource:   { state: true },
@@ -421,6 +425,8 @@ export class AgLibraryPage extends LitElement {
         this._upnpLocation    = '';
         this._upnpName        = '';
         this._sources         = [];
+        /** Keeps `_license`: the box's licence (/license/status) as ag-tabs read it, null until read. */
+        this._licenseCtl      = new LicenseController(this, (license, previous) => this._onLicense(license, previous));
         this._upnpServers     = [];
         this._pendingSource   = null;
         /** Source GROUP the reader waved away; not rendered, so not a Lit property. */
@@ -503,6 +509,8 @@ export class AgLibraryPage extends LitElement {
     }
 
     async _loadUpnpServers() {
+        // The media servers are Pro: asked once the licence is read and opens them.
+        if (proState(this._license) !== 'open') return;
         try {
             const servers = await apiGet('/library/upnp-known-servers');
             if (Array.isArray(servers)) {
@@ -727,9 +735,46 @@ export class AgLibraryPage extends LitElement {
      */
     _isBrowsable(sources, id) {
         if (!id) return false;
-        if (this._isUpnp(id)) return true;
+        // A Pro source is no source a Starter box can browse: the core refuses it.
+        if (this._isUpnp(id)) return proState(this._license) !== 'locked';
         const node = sources?.find(s => s.source_id === id);
-        return node !== undefined && node.selectable !== false;
+        return node !== undefined && node.selectable !== false && !isLockedSource(node, this._license);
+    }
+
+    /**
+     * Whether a source is behind a padlock on this box: a Pro source (the core's `pro`), the
+     * media servers included, and Pro not open.
+     *
+     * @param {string} id - A source id.
+     * @returns {boolean}
+     */
+    _isLockedSourceId(id) {
+        if (this._isUpnp(id)) return proState(this._license) === 'locked';
+        return isLockedSource(this._rawSources?.find(s => s.source_id === id), this._license);
+    }
+
+    /**
+     * The licence was read, or changed (LicenseController, `_license` already holds it).
+     * Opened, the media servers can be asked for. Locked, a Pro source adopted before the
+     * verdict arrived is left for what Starter browses — or for "Select a source" when
+     * nothing playing is one; and the outputs view, which steers the source it was handed,
+     * falls back to the box's own player: left on Roon, it showed every output behind a
+     * padlock with no source chosen (review, 2026-10-15).
+     *
+     * @param {object|null} license - The /license/status answer.
+     * @param {object|null} previous - The one before.
+     */
+    async _onLicense(license, previous) {
+        const now = proState(license);
+        if (now === 'open' && proState(previous) !== 'open') this._loadUpnpServers();
+        if (now !== 'locked') return;
+        if (this._outputsSourceId && this._isLockedSourceId(this._outputsSourceId)) {
+            this._outputsSourceId = '';
+        }
+        if (this._sourceId && this._isLockedSourceId(this._sourceId)) {
+            await this._syncActiveSource({ navigate: true });
+            if (this._isLockedSourceId(this._sourceId)) this._sourceId = '';
+        }
     }
 
     /**
@@ -933,6 +978,10 @@ export class AgLibraryPage extends LitElement {
         this._artistId = '';
         this._artistName = '';
         const { sourceId, zoneId = '', zoneDisplayName = '', location = '', serverName = '' } = e.detail;
+        if (this._isLockedSourceId(sourceId)) {
+            openLicensePanel(this._license);
+            return;
+        }
         if (this._isRoon(sourceId) && !zoneId) {
             this._fetchRoonZoneAndSwitch(sourceId);
         } else if (this._isUpnp(sourceId)) {
@@ -1234,6 +1283,7 @@ export class AgLibraryPage extends LitElement {
                                 source-id=${_sourceId}
                                 zone-id=${_zoneId}
                                 .sources=${this._sources}
+                                .license=${this._license}
                                 @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
                                 @lib-source-change=${this._onSourceChange}
                                 @lib-open-artist=${this._onOpenArtist}
@@ -1303,6 +1353,7 @@ export class AgLibraryPage extends LitElement {
                         <div class="lib-scroll">
                             <ag-library-outputs
                                 source-id=${this._outputsSourceId || _sourceId}
+                                ?locked=${this._isLockedSourceId(this._outputsSourceId || _sourceId)}
                                 @lib-output-change=${() => this._navigate('library')}
                             ></ag-library-outputs>
                         </div>

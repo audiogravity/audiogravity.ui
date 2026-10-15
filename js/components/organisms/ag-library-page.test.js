@@ -744,6 +744,58 @@ describe('ag-library-page — the outputs view is bound to the transport', () =>
     });
 });
 
+describe('ag-library-page — the outputs of a Pro source, on a Starter box', () => {
+    // Roon's zones and HQPlayer's output are Pro: the core refuses the switch, so the
+    // outputs view is handed `locked` and shows its padlock (review, 2026-10-15).
+
+    /** The value bound to `?locked=` on <ag-library-outputs>, in whatever string carries it. */
+    function lockedOutputs(node) {
+        if (Array.isArray(node)) {
+            for (const n of node) {
+                const v = lockedOutputs(n);
+                if (v !== undefined) return v;
+            }
+            return undefined;
+        }
+        if (!node || typeof node !== 'object' || !node.strings) return undefined;
+        const start = node.strings.findIndex(s => typeof s === 'string' && s.includes('<ag-library-outputs'));
+        if (start !== -1) {
+            for (let i = start; i < node.strings.length; i++) {
+                if (node.strings[i].trimEnd().endsWith('?locked=')) return node.values[i];
+                if (node.strings[i].includes('</ag-library-outputs>')) break;
+            }
+        }
+        for (const v of node.values ?? []) {
+            const found = lockedOutputs(v);
+            if (found !== undefined) return found;
+        }
+        return undefined;
+    }
+
+    const SOURCES = [
+        { source_id: 'src_mpd',       selectable: true, pro: false },
+        { source_id: 'src_mono-sgen', selectable: true, pro: true },
+    ];
+    const STARTER = { status: 'starter', pro: false };
+
+    it('locks them while Roon is the source', () => {
+        const el = makeEl({ _outputsSourceId: 'src_mono-sgen', _rawSources: SOURCES, _license: STARTER });
+        expect(lockedOutputs(el.render())).toBe(true);
+    });
+
+    it("leaves the box's own player free", () => {
+        const el = makeEl({ _outputsSourceId: 'src_mpd', _rawSources: SOURCES, _license: STARTER });
+        expect(lockedOutputs(el.render())).toBe(false);
+    });
+
+    it('leaves Roon free on a box with Pro, and while the licence is not read', () => {
+        for (const license of [{ status: 'lifetime', pro: true }, null]) {
+            const el = makeEl({ _outputsSourceId: 'src_mono-sgen', _rawSources: SOURCES, _license: license });
+            expect(lockedOutputs(el.render())).toBe(false);
+        }
+    });
+});
+
 describe('ag-library-page — what the third review caught', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -1137,5 +1189,120 @@ describe('ag-library-page — the copy of its tab bar in the tab menu', () => {
         expect(on).toMatch(/background:\s*var\(--color-warning-bg\)/);
         // The amber made for text: the bright one is under 3:1 on the tray in light themes.
         expect(on).toMatch(/box-shadow:\s*inset 0 -3px 0 var\(--color-warning-text\)/);
+    });
+});
+
+describe('AgLibraryPage — what a Starter box browses', () => {
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    /** The page's usual sources, flagged as the core flags them. */
+    const flagged = () => makeEl()._rawSources.map(s => ({
+        ...s, pro: ['src_qobuz', 'src_mono-sgen', 'src_roon'].includes(s.source_id),
+    }));
+
+    beforeEach(() => { apiGet.mockClear(); apiPost.mockClear(); });
+
+    it('browses the box\'s music and the radio, and none of the Pro sources', () => {
+        const el = makeEl({ _license: STARTER, _rawSources: flagged() });
+        for (const id of ['src_mpd', 'src_radio']) expect(el._isBrowsable(el._rawSources, id)).toBe(true);
+        for (const id of ['src_qobuz', 'src_mono-sgen', 'upnp:uuid:abc']) {
+            expect(el._isBrowsable(el._rawSources, id)).toBe(false);
+        }
+    });
+
+    it('browses every source with Pro', () => {
+        const el = makeEl({ _license: PRO, _rawSources: flagged() });
+        for (const id of ['src_mpd', 'src_qobuz', 'src_mono-sgen', 'upnp:uuid:abc']) {
+            expect(el._isBrowsable(el._rawSources, id)).toBe(true);
+        }
+    });
+
+    it('opens the licence panel when a Pro source is picked, and asks the core nothing', () => {
+        // Stubbed rather than mounted: a describe above replaces document.querySelector.
+        const selectTab = vi.fn();
+        const original = document.querySelector;
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+        try {
+            const el = makeEl({ _license: STARTER, _rawSources: flagged() });
+            el._onSourceChange({ detail: { sourceId: 'src_qobuz' } });
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+            expect(apiPost).not.toHaveBeenCalled();
+            expect(el._sourceId).toBe('src_mpd');
+        } finally {
+            document.querySelector = original;
+        }
+    });
+
+    it('asks for the media servers only once the licence opens them', async () => {
+        const el = makeEl({ _license: null });
+        await el._loadUpnpServers();
+        el._license = STARTER;
+        await el._loadUpnpServers();
+        expect(apiGet).not.toHaveBeenCalled();
+        el._license = PRO;
+        await el._loadUpnpServers();
+        expect(apiGet).toHaveBeenCalledWith('/library/upnp-known-servers');
+    });
+
+    /**
+     * A page built by its own constructor — its LicenseController wired as in the app —
+     * then given the state the test needs. The verdict is handed to that controller.
+     */
+    function wired(overrides) {
+        const el = new AgLibraryPage();
+        Object.assign(el, { _refreshBrowse: vi.fn(), _license: null, ...overrides });
+        return el;
+    }
+
+    it('leaves a Pro source adopted before the verdict for what Starter browses', async () => {
+        const el = wired({ _sourceId: 'src_qobuz', _rawSources: flagged() });
+        el._syncActiveSource = vi.fn(async function () { this._sourceId = 'src_mpd'; });
+        await el._licenseCtl.handleEvent({ detail: STARTER });
+        expect(el._syncActiveSource).toHaveBeenCalledWith({ navigate: true });
+        expect(el._sourceId).toBe('src_mpd');
+    });
+
+    it('…or for "Select a source" when what plays is Pro too', async () => {
+        const el = wired({ _sourceId: 'src_qobuz', _rawSources: flagged() });
+        el._syncActiveSource = vi.fn(async () => {});
+        await el._licenseCtl.handleEvent({ detail: STARTER });
+        expect(el._sourceId).toBe('');
+    });
+
+    it('stays on a Starter source when the verdict arrives', async () => {
+        const el = wired({ _sourceId: 'src_mpd', _rawSources: flagged() });
+        el._syncActiveSource = vi.fn(async () => {});
+        el._loadUpnpServers = vi.fn();
+        await el._licenseCtl.handleEvent({ detail: STARTER });
+        expect(el._syncActiveSource).not.toHaveBeenCalled();
+        expect(el._loadUpnpServers).not.toHaveBeenCalled();
+    });
+
+    it('asks for the media servers when the verdict opens them', async () => {
+        const el = wired({ _sourceId: 'src_mpd', _rawSources: flagged() });
+        el._loadUpnpServers = vi.fn();
+        await el._licenseCtl.handleEvent({ detail: PRO });
+        expect(el._loadUpnpServers).toHaveBeenCalledOnce();
+        await el._licenseCtl.handleEvent({ detail: PRO });
+        expect(el._loadUpnpServers).toHaveBeenCalledOnce();   // not again
+    });
+
+    it('takes the outputs view off a Pro source adopted before the verdict', async () => {
+        // Left on Roon, it showed every output behind a padlock with no source chosen
+        // (review, 2026-10-15): it falls back to the box's own player.
+        const el = wired({ _sourceId: '', _outputsSourceId: 'src_mono-sgen', _rawSources: flagged() });
+        el._syncActiveSource = vi.fn(async () => {});
+        await el._licenseCtl.handleEvent({ detail: STARTER });
+        expect(el._outputsSourceId).toBe('');
+    });
+
+    it('leaves the outputs view on a Starter source, and on Roon with Pro', async () => {
+        const free = wired({ _sourceId: 'src_mpd', _outputsSourceId: 'src_mpd', _rawSources: flagged() });
+        await free._licenseCtl.handleEvent({ detail: STARTER });
+        expect(free._outputsSourceId).toBe('src_mpd');
+        const pro = wired({ _sourceId: '', _outputsSourceId: 'src_mono-sgen', _rawSources: flagged() });
+        pro._loadUpnpServers = vi.fn();
+        await pro._licenseCtl.handleEvent({ detail: PRO });
+        expect(pro._outputsSourceId).toBe('src_mono-sgen');
     });
 });

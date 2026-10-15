@@ -199,6 +199,9 @@ export class AgLicenseStatus extends LitElement {
             // and an iPad in front of a switched-off box read WebKit's raw "Load failed" here,
             // the very sentence the sign-in fix had just retired.
             this._status = await apiUpload('/license/upload', file);
+            // What is locked changes with it: the tab bar reads the licence again, and with
+            // it every padlock — as after an activation or a removal.
+            window.dispatchEvent(new CustomEvent('ag:license-changed'));
             // Wording follows what was actually installed. Hardcoded "lifetime", it told a
             // customer renewing a one-year licence that he had just bought a perpetual one.
             const ends = this._status?.expires_at;

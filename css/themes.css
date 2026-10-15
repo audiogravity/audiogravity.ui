@@ -361,6 +361,14 @@ body {
    --critical-mark-text: var(--color-warning-text);  /* its CRITICAL tag */
    --critical-mark-bg: var(--color-warning-bg);
    --installed-mark: var(--color-success);           /* stripe of an installed package */
+
+   /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
+      locked Config tile: one tint, from the brand colour. Not from red: red, orange and
+      green carry a meaning that holds only while they stay rare (UI guidelines rule 10),
+      and the locked tabs wore a rosy tint of the error colour until 2026-10-15. 8 % on a
+      light surface, deeper on hover; the dark variants raise it (below). */
+   --pro-tint: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+   --pro-tint-hover: color-mix(in srgb, var(--accent-primary) 14%, transparent);
    --chart-past-opacity: 0.8;
 }
 
@@ -401,6 +409,13 @@ body.dark-mode {
     --validation-info-border: rgb(96 165 250 / 0.4);
     --validation-success-border: rgb(52 211 153 / 0.4);
     --validation-warning-border: rgb(251 191 36 / 0.4);
+
+    /* A tint of 8 % all but vanishes on a near-black surface: the rosy one measured 1.07:1
+       in Minimal and Gravity dark, "almost invisible" in Minimal black. 16 % reads in the
+       three dark themes: 1.26 to 1.47:1 against the bar and the page, painted in Chromium
+       (2026-10-15); 1.10 to 1.19:1 in the light ones at 8 %. */
+    --pro-tint: color-mix(in srgb, var(--accent-primary) 16%, transparent);
+    --pro-tint-hover: color-mix(in srgb, var(--accent-primary) 24%, transparent);
 }
 
 /* =========================================

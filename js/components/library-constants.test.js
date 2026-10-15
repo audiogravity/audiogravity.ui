@@ -267,10 +267,15 @@ describe('normalizeSearchSources', () => {
     const sgen = { source_id: 'src_mono-sgen', protocol: 'roon' };
     const airplay = { source_id: 'src_shairport', protocol: 'mpris' };
 
-    it('maps a pipeline source to {id,label,group,location}', () => {
+    it('maps a pipeline source to {id,label,group,location,pro}', () => {
         expect(normalizeSearchSources([mpd])).toEqual([
-            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '' },
+            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '', pro: false },
         ]);
+    });
+
+    it('keeps whether a source is Pro, as the core publishes it, for the padlock', () => {
+        const qobuz = { source_id: 'src_qobuz', protocol: 'qobuz', pro: true };
+        expect(normalizeSearchSources([qobuz])[0].pro).toBe(true);
     });
 
     it('dedups Roon (src_roon + src_mono-sgen → one)', () => {
@@ -290,7 +295,7 @@ describe('normalizeSearchSources', () => {
         const cast = { source_id: 'upnp_renderer', protocol: 'upnp', selectable: false };
         const hqp  = { source_id: 'src_hqplayer', protocol: 'hqplayer', selectable: false };
         expect(normalizeSearchSources([mpd, cast, hqp])).toEqual([
-            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '' },
+            { id: 'src_mpd', label: 'Local Library', group: 'mpd', location: '', pro: false },
         ]);
     });
 
@@ -305,6 +310,7 @@ describe('normalizeSearchSources', () => {
         expect(out).toHaveLength(2);
         expect(out[1]).toEqual({
             id: 'upnp:abc', label: 'MinimServer', group: 'upnp:abc', location: 'http://srv/device.xml',
+            pro: true,
         });
     });
 

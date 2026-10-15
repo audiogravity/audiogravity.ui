@@ -12,9 +12,13 @@ vi.mock('../../ag-icons.js', () => ({ iconDownload: '' }));
 vi.mock('../atoms/ag-audio-output.js', () => ({ AgAudioOutput: class {} }));
 vi.mock('../../auth.js', () => ({ isGuest: () => false }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));
+vi.mock('../../license-tiers.js', () => ({ openLicensePanel: vi.fn() }));
+vi.mock('../atoms/ag-pro-lock.js', () => ({}));
 
 import { AgConfigCard } from './ag-config-card.js';
 import { flat } from '../../test-utils.js';
+import { apiGet } from '../../api.js';
+import { openLicensePanel } from '../../license-tiers.js';
 
 function makeCard() {
     const el = Object.create(AgConfigCard.prototype);
@@ -116,6 +120,62 @@ const GONE = { isInstalled: false, fileExists: false, fileMtime: null, backupCou
 
 /** The class that drives the greyed-out CSS, as written on the tile itself. */
 const TILE_UNAVAILABLE = /class="config-tile[^"]*\bunavailable\b/;
+
+describe('a Pro service on a Starter box (HQPlayer, its NAA)', () => {
+    /** A locked tile, its two buttons pressed on a fresh mock. */
+    function locked() {
+        vi.mocked(openLicensePanel).mockClear();
+        vi.mocked(apiGet).mockClear();
+        const el = makeCard();
+        el.service = { ...el.service, id: 'hqplayerd', displayName: 'HQPlayer Embedded' };
+        el.locked = true;
+        return el;
+    }
+
+    it('shows the Pro padlock', () => {
+        const el = locked();
+        el.provisionable = false;
+        expect(flat(el.render())).toContain('<ag-pro-lock></ag-pro-lock>');
+    });
+
+    it('leads EDIT CONFIG to the licence panel instead of a file the core refuses', () => {
+        const el = locked();
+        el.handleEdit({ stopPropagation: vi.fn() });
+        expect(openLicensePanel).toHaveBeenCalledTimes(1);
+        expect(el.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('leads the download there too, without asking for the file', async () => {
+        const el = locked();
+        await el.handleDownload({ stopPropagation: vi.fn() });
+        expect(openLicensePanel).toHaveBeenCalledTimes(1);
+        expect(apiGet).not.toHaveBeenCalled();
+    });
+
+    it('fades both buttons, still tappable, as every locked control', () => {
+        const el = locked();
+        const out = flat(el.render());
+        expect(isDisabled(out, `${EDIT} pro-locked`)).toBe(false);
+        expect(isDisabled(out, `${DOWNLOAD} pro-locked`)).toBe(false);
+    });
+
+    it('wears the Pro tint, and a free service does not', () => {
+        // The tint itself is the brand colour's, pinned in js/pro-tint.test.js.
+        const el = locked();
+        expect(flat(el.render())).toMatch(/class="config-tile[^"]*\bconfig-tile--locked\b/);
+        expect(renderCard()).not.toContain('config-tile--locked');
+    });
+
+    it('shows no padlock and no fading on a free service', () => {
+        const out = renderCard();
+        expect(out).not.toContain('ag-pro-lock');
+        expect(out).not.toContain('pro-locked');
+    });
+
+    it('defaults to unlocked', () => {
+        expect(new AgConfigCard().locked).toBe(false);
+    });
+});
 
 describe('critical service', () => {
     it('is tagged CRITICAL with a tint, not an outline shaped like EDIT CONFIG beside it', () => {

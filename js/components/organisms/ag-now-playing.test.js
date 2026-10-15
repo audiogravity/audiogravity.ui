@@ -334,9 +334,8 @@ describe('AgNowPlaying — volume in flight (real _sendControl)', () => {
         for (const [k, v] of Object.entries({ _items: items, _volumePending: undefined })) {
             Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
         }
-        el._isLicensed = () => true;
         // Reactive properties too: their accessors expect a live element.
-        for (const k of ['_licenseStatus', '_outputs', '_activeOutputId',
+        for (const k of ['_license', '_outputs', '_activeOutputId',
                          '_activeSourceIdx', '_userSourceOverride', '_hasItems']) {
             Object.defineProperty(el, k,
                 { value: undefined, writable: true, configurable: true });
@@ -546,8 +545,7 @@ describe('AgNowPlaying — a play/pause tap sends the intent (real _sendControl)
         for (const [k, v] of Object.entries({ _items: items, _volumePending: undefined })) {
             Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
         }
-        el._isLicensed = () => true;
-        for (const k of ['_licenseStatus', '_outputs', '_activeOutputId',
+        for (const k of ['_license', '_outputs', '_activeOutputId',
                          '_activeSourceIdx', '_userSourceOverride', '_hasItems']) {
             Object.defineProperty(el, k, { value: undefined, writable: true, configurable: true });
         }
@@ -601,7 +599,6 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
         })) {
             Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
         }
-        el._isLicensed = () => true;
         const host = document.createElement('div');
         litRender(el._renderItem({ source_id: 'src_mpd', playback_status: 'Playing', title: 'So What', ...item }), host);
         return [...host.querySelectorAll('.np-controls > button')]
@@ -642,7 +639,6 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
         })) {
             Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
         }
-        el._isLicensed = () => true;
         const host = document.createElement('div');
         litRender(el._renderItem({ source_id: 'src_mpd', playback_status: 'Playing', title: 'X', ...item }), host);
         expect(!!host.querySelector('ag-progress-bar')).toBe(bar);
@@ -652,5 +648,72 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
         const css = readStylesheet('css', 'components', 'now-playing.css');
         expect(cssRuleBody(css, '.np-btn:disabled')).toMatch(/opacity:\s*\.3/);
         expect(css).toMatch(/\.np-btn:hover:not\(:disabled\)/);
+    });
+});
+
+describe('AgNowPlaying — the buttons on each edition', () => {
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    function np(items, license) {
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({
+            _items: items, _volumePending: undefined, _license: license, _outputs: [],
+            _activeOutputId: null, _activeSourceIdx: 0, _userSourceOverride: false, _hasItems: true,
+        })) Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        el.requestUpdate = () => {};
+        el._reportHeight = () => {};
+        return el;
+    }
+    const library = { source_id: 'src_mpd', control_id: 'src_mpd', pro: false, playback_status: 'Playing' };
+    const roon = { source_id: 'src_mono-sgen', control_id: 'src_mono-sgen', pro: true,
+                   playback_status: 'Playing', zone_id: 'z1' };
+
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({ success: true }); });
+
+    it('plays the box\'s music on a Starter box', async () => {
+        await np([library], STARTER)._sendControl('src_mpd', 'next', null, library);
+        expect(apiPost).toHaveBeenCalledWith('/audio_pipeline/control', expect.objectContaining({ action: 'next' }));
+    });
+
+    it('leads to the licence panel for Roon on a Starter box, and sends nothing', async () => {
+        const selectTab = vi.fn();
+        const original = document.querySelector;
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+        try {
+            await np([roon], STARTER)._sendControl('src_mono-sgen', 'next', null, roon);
+            expect(apiPost).not.toHaveBeenCalled();
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+        } finally {
+            document.querySelector = original;
+        }
+    });
+
+    it('controls Roon with Pro', async () => {
+        await np([roon], PRO)._sendControl('src_mono-sgen', 'next', null, roon);
+        expect(apiPost).toHaveBeenCalledOnce();
+    });
+
+    it('fades the buttons of a locked source only', () => {
+        const el = np([library, roon], STARTER);
+        expect(el._isLocked(roon)).toBe(true);
+        expect(el._isLocked(library)).toBe(false);
+        expect(np([roon], PRO)._isLocked(roon)).toBe(false);
+    });
+});
+
+describe('AgNowPlaying — follows the box\'s licence', () => {
+    // Its padlocks read `_license`; built for real, so its own LicenseController is what is
+    // tested — removing it went unnoticed by the tests above, which set the field by hand.
+    it('starts from the licence already read, and takes each new reading', async () => {
+        const { setLicense } = await import('../../license-tiers.js');
+        setLicense({ status: 'lifetime', pro: true });
+        try {
+            const el = document.createElement('ag-now-playing');
+            expect(el._license).toEqual({ status: 'lifetime', pro: true });
+            el._licenseCtl.handleEvent({ detail: { status: 'starter', pro: false } });
+            expect(el._license).toEqual({ status: 'starter', pro: false });
+        } finally {
+            setLicense(null);
+        }
     });
 });

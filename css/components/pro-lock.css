@@ -1,0 +1,53 @@
+/**
+ * @module ProLock
+ * @description What a Starter box shows of the Pro edition: the padlock mark, the card that
+ * stands in for a Pro feature, and the control left visible but locked.
+ */
+
+/**
+ * @component ag-pro-lock
+ * @description A padlock and the word "Pro", beside what Starter shows but does not open.
+ * Neutral grey: it names an edition, not a state (UI guidelines rule 10).
+ */
+ag-pro-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-shrink: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+/**
+ * @component .pro-lock-card
+ * @description The card standing in for a Pro feature: a real button, drawn as a source
+ * card (library-sources.css), the whole width — with the Pro tint (--pro-tint, the brand
+ * colour), as every surface the Pro edition locks.
+ */
+.pro-lock-card {
+    display: block;
+    width: 100%;
+    cursor: pointer;
+    background: var(--pro-tint);
+}
+
+@media (hover: hover) {
+    .pro-lock-card:hover {
+        background: var(--pro-tint-hover);
+    }
+}
+
+/**
+ * @component .pro-locked
+ * @description Controls a Starter box sees but cannot use — the players' buttons on Roon or
+ * HQPlayer. Faded, still tappable: a tap leads to the licence panel.
+ */
+.pro-locked {
+    opacity: 0.35;
+    pointer-events: auto;
+    cursor: pointer;
+}

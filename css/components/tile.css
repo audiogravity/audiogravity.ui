@@ -110,6 +110,16 @@
     border-left-color: var(--critical-mark);
 }
 
+/**
+ * @state .config-tile--locked
+ * @description A service whose settings are Pro, on a Starter box (HQPlayer, its NAA): the
+ * Pro tint (--pro-tint), laid over the tile's own background as an image so the tile keeps
+ * it underneath — and keeps it through the hover, which only moves the border.
+ */
+.config-tile.config-tile--locked {
+    background-image: linear-gradient(var(--pro-tint), var(--pro-tint));
+}
+
 /* Systemd: Has Override (bordure top) */
 .systemd-tile.has-override {
     border-top-width: 3px;

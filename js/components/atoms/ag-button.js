@@ -9,7 +9,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import {
     iconRepeat, iconPause, iconPlay, iconShuffle, iconSkipBack, iconUpNext,
     iconMusicNote, iconVolume, iconSettings, iconClose, iconDownload, iconUpload,
-    iconDsdLock, iconUnlock, iconKey, iconDocs, iconApiTree, iconArrowLeft,
+    iconLock, iconUnlock, iconKey, iconDocs, iconApiTree, iconArrowLeft,
     iconCode, iconCheck, iconWarning, iconSave, iconSliders, iconHistory,
     iconTrash, iconInfo, iconWifi, iconCpu, iconThermometer, iconMemory,
     iconHardDrive, iconConnection, iconClock, iconLogout, iconCopy, iconPencil,
@@ -37,7 +37,7 @@ const ICON_MAP = {
     'icon-download3':        iconDownload,
     'icon-upload':           iconUpload,
     'icon-upload3':          iconUpload,
-    'icon-lock':             iconDsdLock,
+    'icon-lock':             iconLock,
     'icon-unlocked':         iconUnlock,
     'icon-key':              iconKey,
     'icon-books':            iconDocs,

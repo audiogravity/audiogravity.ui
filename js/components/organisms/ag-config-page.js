@@ -11,13 +11,20 @@
  * @property {string} rawContent - Raw text content of the config file
  * @property {string} configFormat - File format (conf, etc.)
  * @property {Array} backups - List of available backups for the selected service
- * 
+ *
+ * A Pro service on a Starter box — HQPlayer, the NAA it streams to, as the core marks them
+ * (`pro` on `/audio_app_config/services`) — keeps its tile, behind the Pro padlock.
+ *
  * @dependency ag-card-grid
  * @dependency ag-config-card
  * @dependency ag-config-editor
+ * @dependency js/license-tiers.js - The padlock rule
+ * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  */
 import { LitElement, html } from 'lit';
 import { getUserFriendlyError } from '../../ui-helpers.js';
+import { isLockedSource } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 import {
     apiGet,
     apiPost,
@@ -49,6 +56,7 @@ export class AgConfigPage extends LitElement {
         _librarySources: { state: true },
         _statusServices: { state: true },
         _showInitModal: { state: true },
+        _license: { state: true },
     };
 
     constructor() {
@@ -65,6 +73,7 @@ export class AgConfigPage extends LitElement {
         this._librarySources = [];
         this._statusServices = [];
         this._showInitModal = false;
+        this._licenseCtl = new LicenseController(this);
         // Starts true so the first context notification, which arrives while
         // connectedCallback's own load is still the freshest data there is, is
         // not read as a return to the tab and does not fetch the list twice.
@@ -103,6 +112,8 @@ export class AgConfigPage extends LitElement {
                     // too would collapse the tri-state before the card sees it.
                     isInstalled: s.is_installed,
                     fileExists: s.file_exists,
+                    // The core's word on whether its settings are Pro (HQPlayer, its NAA).
+                    pro: s.pro === true,
                 }));
             },
             onSuccess: (data) => {
@@ -444,7 +455,8 @@ export class AgConfigPage extends LitElement {
                             .service=${service}
                             .delayIndex=${index}
                             ?provisionable=${this._provisionableIds.includes(service.id)}
-                            ?configured=${this._serviceConfigured(service.id)}>
+                            ?configured=${this._serviceConfigured(service.id)}
+                            ?locked=${isLockedSource(service, this._license)}>
                         </ag-config-card>
                     `}
                     @edit-config=${this._handleServiceSelect}>

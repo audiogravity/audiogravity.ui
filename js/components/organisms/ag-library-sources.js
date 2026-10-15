@@ -6,6 +6,9 @@
  * Source list is fetched from GET /api/player/state/snapshot (sources[] field).
  * UPnP servers are loaded from GET /api/library/upnp-known-servers (backend-persisted) on mount;
  * a manual scan calls GET /api/library/upnp-servers and the backend auto-saves results.
+ * On a Starter box the Pro sources keep their card behind a padlock, and the media servers,
+ * the streaming services and HQPlayer show what they offer instead of calling routes the
+ * core refuses — nothing at all until the licence is read.
  *
  * @element ag-library-sources
  *
@@ -18,8 +21,11 @@ import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiDelete } from '../../api.js';
 import { loadWithState } from '../utils-lit.js';
 import { getSnapshot, subscribePlayerState } from '../../library-store.js';
-import { resolvePlayingSource, BROWSE_KINDS, INPUT_KINDS } from '../library-constants.js';
+import { resolvePlayingSource, BROWSE_KINDS, INPUT_KINDS, SOURCE_ICONS } from '../library-constants.js';
 import { iconWifi } from '../../ag-icons.js';
+import { isLockedSource, proState } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
+import '../molecules/ag-pro-lock-card.js';
 import '../atoms/ag-status-indicator.js';
 import '../molecules/ag-library-source-card.js';
 import '../molecules/ag-upnp-renderer-card.js';
@@ -42,6 +48,7 @@ export class AgLibrarySources extends LitElement {
         _upnpDiscovered: { state: true },
         _upnpExtraHost:  { state: true },
         _playingKey:     { state: true },
+        _license:        { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -58,6 +65,8 @@ export class AgLibrarySources extends LitElement {
         this._upnpDiscovered = false;
         this._upnpExtraHost  = '';
         this._playingKey     = '';
+        /** Keeps `_license`: the box's licence (/license/status) as ag-tabs read it, null until read. */
+        this._licenseCtl     = new LicenseController(this, (license, previous) => this._onLicense(license, previous));
         this._sourcesKey     = '';
         this._liveSources    = false;
         this._unsubscribeState = null;
@@ -68,7 +77,8 @@ export class AgLibrarySources extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this._loadKnownUpnpServers();
+        // The media servers are Pro: asked once the licence is read and opens them.
+        if (proState(this._license) === 'open') this._loadKnownUpnpServers();
         this._load();
         // The connection cards below are OUR children, and connecting or
         // disconnecting one changes the very list rendered here. Without this
@@ -149,6 +159,17 @@ export class AgLibrarySources extends LitElement {
     /** @returns {Set<string>} The sources diffusing right now. */
     get _playingIds() {
         return new Set(this._playingKey ? this._playingKey.split('\n') : []);
+    }
+
+    /**
+     * The licence was read, or changed (LicenseController, `_license` already holds it):
+     * opened, the media servers can be asked for.
+     *
+     * @param {object|null} license - The /license/status answer.
+     * @param {object|null} previous - The one before.
+     */
+    _onLicense(license, previous) {
+        if (proState(previous) !== 'open' && proState(license) === 'open') this._loadKnownUpnpServers();
     }
 
     /**
@@ -309,6 +330,7 @@ export class AgLibrarySources extends LitElement {
             protocol:   s.protocol,
             selectable: s.selectable,
             running:    s.running,
+            pro:        s.pro,
         };
     }
 
@@ -353,6 +375,168 @@ export class AgLibrarySources extends LitElement {
         }));
     }
 
+    /**
+     * The media servers: Pro. Nothing until the licence is read, their padlock on Starter,
+     * the list and the scan with Pro.
+     *
+     * @param {Set<string>} playing - Ids of the sources diffusing now.
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderUpnpServers(playing) {
+        const state = proState(this._license);
+        if (state === 'unknown') return nothing;
+        if (state === 'locked') {
+            return html`
+                <span class="lib-src-lbl">UPnP servers</span>
+                <ag-pro-lock-card name="UPnP media servers"
+                    description="MinimServer and the other servers of your network"
+                    .icon=${'./pics/minimserver.webp'}></ag-pro-lock-card>
+                <div style="height:6px"></div>
+            `;
+        }
+        return html`
+            <div class="lib-upnp-header">
+                <span class="lib-src-lbl">UPnP servers</span>
+                ${this._upnpDiscovered ? html`
+                    <button class="lib-upnp-rescan" @click=${this._rescanUpnp}>
+                        Re-scan
+                    </button>
+                ` : nothing}
+            </div>
+            ${this._upnpDiscovered
+                ? this._upnpServers.length === 0
+                    ? html`<div class="lib-empty" style="padding:16px 0">No UPnP server found</div>`
+                    : this._upnpServers.map(srv => {
+                        return html`
+                            <div class="ag-swipe-wrap lib-upnp-wrap">
+                                <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
+                                <div class="lib-src-card ${this.sourceId === srv.id ? 'active' : ''}"
+                                    ${swipeRow(this._swipe, srv.id)}
+                                    @click=${() => !this._swipe.swiping && this._selectUpnpServer(srv)}>
+                                    <div class="lib-src-card-hd">
+                                        <div class="lib-src-ic">${srv.manufacturer?.toLowerCase().includes('minimserver')
+                                            ? html`<img src="./pics/minimserver.webp" alt="MinimServer" width="28" height="28" style="object-fit:contain">`
+                                            : 'UP'
+                                        }</div>
+                                        <div class="lib-src-col">
+                                            <span class="lib-src-name">${srv.friendly_name}</span>
+                                            <span class="lib-src-desc">${srv.location ? new URL(srv.location).host : ''}</span>
+                                        </div>
+                                        <ag-status-indicator state="up"
+                                            label=${playing.has(srv.id) ? 'Active' : 'Online'}
+                                        ></ag-status-indicator>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    })
+                : html`
+                    <div class="lib-upnp-discover">
+                        <div class="lib-inline-row">
+                            <input
+                                class="form-control lib-inline-input"
+                                type="text"
+                                placeholder="IP, host:port or http://host:port/uuid/Upnp/device.xml"
+                                .value=${this._upnpExtraHost}
+                                @input=${(e) => { this._upnpExtraHost = e.target.value; }}
+                                @keydown=${(e) => e.key === 'Enter' && !this._upnpLoading && this._discoverUpnp()}
+                            />
+                            <button
+                                class="action-btn compact"
+                                @click=${() => this._discoverUpnp()}
+                                ?disabled=${this._upnpLoading}
+                            >
+                                ${this._upnpLoading
+                                    ? html`<span>Scanning…</span>`
+                                    : html`
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                                            stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                                            ${iconWifi}
+                                        </svg>
+                                        <span>Scan</span>
+                                    `
+                                }
+                            </button>
+                        </div>
+                        <p class="lib-inline-help">
+                            <b>Cross-subnet</b> (ohnet / MinimServer) — enter the full device URL.<br>
+                            Find it in your MinimServer config:
+                            <code>http://&lt;host&gt;:9791/&lt;minimserver.udn&gt;/Upnp/device.xml</code>
+                        </p>
+                    </div>
+                `
+            }
+        `;
+    }
+
+    /**
+     * The streaming services: Pro. Their padlocks on Starter, their connection cards with Pro.
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderStreamingServices() {
+        const state = proState(this._license);
+        if (state === 'unknown') return nothing;
+        if (state === 'locked') {
+            return html`
+                <div class="lib-settings-section">
+                    <div class="lib-hqp-header">
+                        <span class="lib-src-lbl">Streaming Services</span>
+                    </div>
+                    <ag-pro-lock-card name="Qobuz" description="Hi-Res streaming"
+                        .icon=${SOURCE_ICONS.src_qobuz}></ag-pro-lock-card>
+                    <ag-pro-lock-card name="Tidal" description="Hi-Res streaming"
+                        .icon=${SOURCE_ICONS.src_tidal}></ag-pro-lock-card>
+                    <ag-pro-lock-card name="HIGHRESAUDIO" description="Hi-Res streaming"
+                        .icon=${SOURCE_ICONS.src_highresaudio}></ag-pro-lock-card>
+                </div>
+            `;
+        }
+        return html`
+            <div class="lib-settings-section">
+                <div class="lib-hqp-header">
+                    <span class="lib-src-lbl">Streaming Services</span>
+                </div>
+                <ag-qobuz-connection></ag-qobuz-connection>
+                <ag-tidal-connection></ag-tidal-connection>
+                <ag-highresaudio-connection></ag-highresaudio-connection>
+            </div>
+        `;
+    }
+
+    /**
+     * HQPlayer: Pro, as the output and for its settings. Its padlock on Starter — the card
+     * is not mounted, so nothing asks the core for it — and the card with Pro.
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderHqplayer() {
+        const state = proState(this._license);
+        if (state === 'unknown') return nothing;
+        if (state === 'locked') {
+            return html`
+                <div class="lib-hqp-section">
+                    <div class="lib-hqp-header">
+                        <span class="lib-src-lbl">HQPlayer</span>
+                    </div>
+                    <ag-pro-lock-card name="HQPlayer" description="Upsampling, filters and DSD conversion"
+                        .icon=${'./pics/hqplayer.webp'}></ag-pro-lock-card>
+                </div>
+            `;
+        }
+        return html`
+            <div class="lib-hqp-section">
+                <div class="lib-hqp-header">
+                    <span class="lib-src-lbl">HQPlayer</span>
+                    <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-hqplayer-output')?._refresh()}>
+                        Re-scan
+                    </button>
+                </div>
+                <ag-hqplayer-output></ag-hqplayer-output>
+            </div>
+        `;
+    }
+
     render() {
         if (this._loading) return html`<div class="lib-loading">Loading…</div>`;
 
@@ -372,6 +556,7 @@ export class AgLibrarySources extends LitElement {
                         <ag-library-source-card
                             .node=${this._withStatus(n, playing)}
                             ?active=${true}
+                            ?locked=${isLockedSource(n, this._license)}
                             zone-id=${this.zoneId}
                             zone-display-name=${this.zoneDisplayName}
                             @source-select=${this._onSourceSelect}
@@ -386,6 +571,7 @@ export class AgLibrarySources extends LitElement {
                     ? others.map(n => html`
                         <ag-library-source-card
                             .node=${this._withStatus(n, playing)}
+                            ?locked=${isLockedSource(n, this._license)}
                             @source-select=${this._onSourceSelect}
                         ></ag-library-source-card>
                     `)
@@ -403,95 +589,9 @@ export class AgLibrarySources extends LitElement {
                     <div style="height:6px"></div>
                 ` : nothing}
 
-                <div class="lib-upnp-header">
-                    <span class="lib-src-lbl">UPnP servers</span>
-                    ${this._upnpDiscovered ? html`
-                        <button class="lib-upnp-rescan" @click=${this._rescanUpnp}>
-                            Re-scan
-                        </button>
-                    ` : nothing}
-                </div>
-                ${this._upnpDiscovered
-                    ? this._upnpServers.length === 0
-                        ? html`<div class="lib-empty" style="padding:16px 0">No UPnP server found</div>`
-                        : this._upnpServers.map(srv => {
-                            return html`
-                                <div class="ag-swipe-wrap lib-upnp-wrap">
-                                    <div class="ag-swipe-reveal" aria-hidden="true">Remove</div>
-                                    <div class="lib-src-card ${this.sourceId === srv.id ? 'active' : ''}"
-                                        ${swipeRow(this._swipe, srv.id)}
-                                        @click=${() => !this._swipe.swiping && this._selectUpnpServer(srv)}>
-                                        <div class="lib-src-card-hd">
-                                            <div class="lib-src-ic">${srv.manufacturer?.toLowerCase().includes('minimserver')
-                                                ? html`<img src="./pics/minimserver.webp" alt="MinimServer" width="28" height="28" style="object-fit:contain">`
-                                                : 'UP'
-                                            }</div>
-                                            <div class="lib-src-col">
-                                                <span class="lib-src-name">${srv.friendly_name}</span>
-                                                <span class="lib-src-desc">${srv.location ? new URL(srv.location).host : ''}</span>
-                                            </div>
-                                            <ag-status-indicator state="up"
-                                                label=${playing.has(srv.id) ? 'Active' : 'Online'}
-                                            ></ag-status-indicator>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        })
-                    : html`
-                        <div class="lib-upnp-discover">
-                            <div class="lib-inline-row">
-                                <input
-                                    class="form-control lib-inline-input"
-                                    type="text"
-                                    placeholder="IP, host:port or http://host:port/uuid/Upnp/device.xml"
-                                    .value=${this._upnpExtraHost}
-                                    @input=${(e) => { this._upnpExtraHost = e.target.value; }}
-                                    @keydown=${(e) => e.key === 'Enter' && !this._upnpLoading && this._discoverUpnp()}
-                                />
-                                <button
-                                    class="action-btn compact"
-                                    @click=${() => this._discoverUpnp()}
-                                    ?disabled=${this._upnpLoading}
-                                >
-                                    ${this._upnpLoading
-                                        ? html`<span>Scanning…</span>`
-                                        : html`
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-                                                stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-                                                ${iconWifi}
-                                            </svg>
-                                            <span>Scan</span>
-                                        `
-                                    }
-                                </button>
-                            </div>
-                            <p class="lib-inline-help">
-                                <b>Cross-subnet</b> (ohnet / MinimServer) — enter the full device URL.<br>
-                                Find it in your MinimServer config:
-                                <code>http://&lt;host&gt;:9791/&lt;minimserver.udn&gt;/Upnp/device.xml</code>
-                            </p>
-                        </div>
-                    `
-                }
-                <div class="lib-settings-section">
-                    <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">Streaming Services</span>
-                    </div>
-                    <ag-qobuz-connection></ag-qobuz-connection>
-                    <ag-tidal-connection></ag-tidal-connection>
-                    <ag-highresaudio-connection></ag-highresaudio-connection>
-                </div>
-
-                <div class="lib-hqp-section">
-                    <div class="lib-hqp-header">
-                        <span class="lib-src-lbl">HQPlayer</span>
-                        <button class="lib-upnp-rescan" @click=${() => this.querySelector('ag-hqplayer-output')?._refresh()}>
-                            Re-scan
-                        </button>
-                    </div>
-                    <ag-hqplayer-output></ag-hqplayer-output>
-                </div>
+                ${this._renderUpnpServers(playing)}
+                ${this._renderStreamingServices()}
+                ${this._renderHqplayer()}
 
                 <div class="lib-hqp-section">
                     <div class="lib-hqp-header">

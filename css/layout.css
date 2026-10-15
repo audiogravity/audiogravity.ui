@@ -356,12 +356,12 @@ ag-tabs:not(:defined) {
 }
 
 .tab-btn--locked {
-    background: color-mix(in srgb, var(--color-error) 8%, transparent);
+    background: var(--pro-tint);
 }
 
 @media (hover: hover) {
     .tab-btn--locked:hover {
-        background: color-mix(in srgb, var(--color-error) 14%, transparent);
+        background: var(--pro-tint-hover);
     }
 }
 

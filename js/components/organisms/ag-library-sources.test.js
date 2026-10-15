@@ -31,6 +31,8 @@ vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false)
 const { AgLibrarySources } = await import('./ag-library-sources.js');
 const { BROWSE_KINDS, INPUT_KINDS } = await import('../library-constants.js');
 const { getSnapshot } = await import('../../library-store.js');
+const { nothing } = await import('lit');
+const { flat } = await import('../../test-utils.js');
 
 /**
  * Build an instance with no DOM and no lifecycle.
@@ -510,5 +512,77 @@ describe('a swiped UPnP server is removed only once confirmed', () => {
 
         expect(confirmRemoval).toHaveBeenCalledOnce();
         expect(apiDelete).not.toHaveBeenCalled();
+    });
+});
+
+describe('AgLibrarySources — the Pro sections on each edition', () => {
+    const markup = flat;
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+
+    const view = (license) => {
+        const el = bare('');
+        for (const [k, v] of Object.entries({
+            _license: license, _upnpServers: [], _upnpDiscovered: false,
+            _upnpLoading: false, _upnpExtraHost: '', sourceId: '',
+        })) Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        return el;
+    };
+    const sections = (el) => markup([
+        el._renderUpnpServers(new Set()), el._renderStreamingServices(), el._renderHqplayer(),
+    ]);
+
+    it('shows nothing of them, and asks nothing, until the licence is read', () => {
+        const el = view(null);
+        expect(el._renderUpnpServers(new Set())).toBe(nothing);
+        expect(el._renderStreamingServices()).toBe(nothing);
+        expect(el._renderHqplayer()).toBe(nothing);
+    });
+
+    it('shows what Pro offers on a Starter box, without the cards that call the core', () => {
+        const drawn = sections(view(STARTER));
+        expect(drawn.match(/<ag-pro-lock-card/g)).toHaveLength(5);   // servers, 3 services, HQPlayer
+        for (const card of ['ag-qobuz-connection', 'ag-tidal-connection',
+                            'ag-highresaudio-connection', 'ag-hqplayer-output', 'Scan']) {
+            expect(drawn).not.toContain(card);
+        }
+    });
+
+    it("gives the streaming services' cards the source cards' own marks", () => {
+        // Tidal's black image vanished on a dark theme; its mark follows the theme
+        // (2026-10-15). Read off the bindings: each card is handed a drawn mark, not a path.
+        const tpl = view(STARTER)._renderStreamingServices();
+        const icons = tpl.strings
+            .map((s, i) => (/\.icon=$/.test(s.trimEnd()) ? tpl.values[i] : undefined))
+            .filter((v) => v !== undefined);
+        expect(icons).toHaveLength(3);
+        for (const icon of icons) expect(typeof icon).not.toBe('string');
+        expect(flat(icons)).toContain('lib-src-logo-tidal');
+    });
+
+    it('shows the real cards with Pro', () => {
+        const drawn = sections(view(PRO));
+        expect(drawn).not.toContain('<ag-pro-lock-card');
+        for (const card of ['ag-qobuz-connection', 'ag-tidal-connection',
+                            'ag-highresaudio-connection', 'ag-hqplayer-output']) {
+            expect(drawn).toContain(card);
+        }
+    });
+
+    it('asks for the media servers once the licence opens them, not on a Starter box', () => {
+        // Built for real, so the component's own wiring to its LicenseController is tested.
+        const el = document.createElement('ag-library-sources');
+        el._loadKnownUpnpServers = vi.fn();
+        el._licenseCtl.handleEvent({ detail: STARTER });
+        expect(el._loadKnownUpnpServers).not.toHaveBeenCalled();
+        el._licenseCtl.handleEvent({ detail: PRO });
+        expect(el._loadKnownUpnpServers).toHaveBeenCalledOnce();
+        el._licenseCtl.handleEvent({ detail: PRO });
+        expect(el._loadKnownUpnpServers).toHaveBeenCalledOnce();   // not again
+    });
+
+    it('keeps whether each source is Pro, as the core publishes it', () => {
+        expect(AgLibrarySources.toNode({ source_id: 'src_qobuz', name: 'Qobuz', pro: true }).pro).toBe(true);
+        expect(AgLibrarySources.toNode({ source_id: 'src_mpd', name: 'Library', pro: false }).pro).toBe(false);
     });
 });
