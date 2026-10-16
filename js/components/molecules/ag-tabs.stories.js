@@ -91,17 +91,18 @@ export const VerticalWithLibraryFolded = () => html`
   </div>
 `;
 
-// Every source but the radio: the five tabs, the one shown highlighted.
+// Every source but the radio: the six tabs, the one shown highlighted. They take two
+// lines in the column, and the second starts at the left (lib-nav--wrapped).
 export const VerticalWithLibrary = () => html`
   <div style="position: relative; height: 560px; overflow: hidden;">
     ${columnWithLibrary({ tab: 'queue', tabs: null })}
   </div>
 `;
 
-// The radio offers three: Browse and Search lead nowhere for stations.
+// The radio offers four: Browse and Search lead nowhere for stations. One line, shared.
 export const VerticalWithLibraryRadio = () => html`
   <div style="position: relative; height: 560px; overflow: hidden;">
-    ${columnWithLibrary({ tab: 'radio', tabs: ['queue', 'library', 'radio'] })}
+    ${columnWithLibrary({ tab: 'radio', tabs: ['queue', 'library', 'radio', 'stats'] })}
   </div>
 `;
 

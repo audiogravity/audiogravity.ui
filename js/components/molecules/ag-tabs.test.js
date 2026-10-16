@@ -20,6 +20,7 @@ vi.mock('../../ag-icons.js', () => ({
     iconSliders: '', iconShield: '', iconLock: '', iconBell: '', iconDownload: '',
     // ag-lib-tabbar's, which the column carries: read when its module loads.
     iconQueue: '', iconSearch: '', iconQueuePlay: '', iconLibraryGrid: '', iconRadio: '',
+    iconBarChart: '',
 }));
 vi.mock('../../auth.js', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn() }));

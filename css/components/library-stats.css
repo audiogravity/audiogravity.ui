@@ -1,0 +1,517 @@
+/**
+ * @module LibraryStats
+ * @description Styles for the ag-library-stats organism and its ag-stats-* molecules: the
+ * listening history of the box. Prefix: lib-stats-
+ *
+ * The charts follow one rule set (the data-visualisation guidelines of the project):
+ *  - one series per chart, so one colour — the accent, an area colour that reads at 3:1 or
+ *    more on the page in every theme — and what names nothing (Unknown, Other) in a
+ *    receding grey;
+ *  - marks no thicker than 24px, a 4px rounded end on the value side, square at the base;
+ *  - a 2px gap between touching marks, never a stroke around them;
+ *  - hairline grid, text in the text colours only — never in the data's.
+ * The sound-quality classes are ordered: steps of the text's colour, the best the strongest.
+ */
+
+.lib-stats {
+    display: flex;
+    flex-direction: column;
+
+    /* 20px: the library's own gutter (.lib-context, .lib-filters), between two steps of
+       the scale — the view lines up with the other Library views. */
+    padding: var(--spacing-md) 20px var(--spacing-xl);
+    font-family: var(--font-family);
+    color: var(--text-primary);
+}
+
+/* ─── Header ─── */
+.lib-stats-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-stats-title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.lib-stats-since {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+.lib-stats-selector {
+    padding: var(--spacing-md) 0;
+}
+
+.lib-stats-lock {
+    padding: var(--spacing-md) 0;
+}
+
+/* ─── Sections ─── */
+.lib-stats-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.lib-stats-heading {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.lib-stats-hint {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+.lib-stats-empty {
+    margin: 0;
+    padding: var(--spacing-xl) 0;
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+}
+
+.lib-stats-footnote {
+    padding-top: var(--spacing-md);
+}
+
+/* Another period on its way: the last one stays, faded, rather than an empty page. */
+.lib-stats-figures {
+    transition: opacity var(--transition-fast);
+}
+
+.lib-stats-figures--loading {
+    opacity: 0.5;
+}
+
+/* ─── Headline: the time listened, and three tiles ─── */
+.lib-stats-headline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0 var(--spacing-lg);
+}
+
+.lib-stats-hero {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* The view's one headline figure: the largest step of the scale, proportional figures. */
+.lib-stats-hero-value {
+    font-size: var(--font-size-xxl);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.lib-stats-hero-caption {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+}
+
+.lib-stats-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+}
+
+.lib-stats-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-width: 0;
+}
+
+.lib-stats-tile-value {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.lib-stats-tile-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* ─── The chart: one bar per day or month ─── */
+.lib-stats-bars {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.lib-stats-bars-readout {
+    min-height: 1.4em;
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+}
+
+.lib-stats-bars-readout strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lib-stats-bars-plot {
+    display: flex;
+    gap: var(--spacing-sm);
+
+    /* The chart's own geometry, not a spacing: the plot is drawn this tall. */
+    height: 140px;
+}
+
+.lib-stats-bars-scale {
+    position: relative;
+    flex: 0 0 3.2em;
+}
+
+.lib-stats-bars-tick {
+    position: absolute;
+    right: 0;
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transform: translateY(-50%);
+}
+.lib-stats-bars-tick--top { top: 0; }
+.lib-stats-bars-tick--mid { top: 50%; }
+.lib-stats-bars-tick--zero { top: 100%; }
+
+.lib-stats-bars-area {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.lib-stats-bars-grid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid var(--chart-grid);
+}
+.lib-stats-bars-grid--top { top: 0; }
+.lib-stats-bars-grid--mid { top: 50%; }
+
+.lib-stats-bars-grid--zero {
+    top: 100%;
+    border-top-color: var(--control-border);
+}
+
+.lib-stats-bars-row {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 2px;      /* the surface gap between touching bars */
+}
+
+/* The whole column answers a tap, not the painted bar alone: a day of nothing is a bar
+   of no height, and still a day to ask about. */
+.lib-stats-bar-hit {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.lib-stats-bar {
+    display: block;
+    width: 100%;
+    max-width: 24px;
+    background: var(--accent-primary);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: opacity var(--transition-fast);
+}
+
+/* Faded as the past bars of the system's charts are: still 3:1 on the page. */
+.lib-stats-bar--dim {
+    opacity: var(--chart-past-opacity);
+}
+
+.lib-stats-bars-labels {
+    display: flex;
+    gap: 2px;
+    padding-left: calc(3.2em + var(--spacing-sm));
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+}
+
+.lib-stats-bars-labels span {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+/* Three labels over thirty bars or more: centred on the first and last bars, their words
+   ran past the chart's edges (11px beyond the right one at 390px, measured). They start at
+   the first bar and end at the last instead. */
+.lib-stats-bars-labels--sparse span:first-child { justify-content: flex-start; }
+.lib-stats-bars-labels--sparse span:last-child { justify-content: flex-end; }
+
+/* ─── Shares: sources, outputs, genres ─── */
+.lib-stats-shares {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lib-stats-share {
+    display: grid;
+    grid-template-columns: minmax(0, 8em) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.lib-stats-share-label {
+    font-size: var(--font-size-md);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-stats-share-track {
+    display: block;
+    height: 12px;
+}
+
+.lib-stats-share-bar {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    background: var(--accent-primary);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.lib-stats-share--muted .lib-stats-share-label { color: var(--text-secondary); }
+
+/* A grey of the text family: the border's grey nearly vanished on the page in Slate light
+   and Gravity dark (measured in Chromium, 2026-10-16). */
+.lib-stats-share--muted .lib-stats-share-bar { background: var(--text-tertiary); }
+
+.lib-stats-share-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    text-align: right;
+}
+.lib-stats-share-pct { color: var(--text-tertiary); }
+
+/* ─── Sound quality: one bar cut in its classes, and its legend ─── */
+.lib-stats-quality {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.lib-stats-quality-bar {
+    display: flex;
+    gap: 2px;      /* the surface gap between segments */
+    height: 16px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    overflow: hidden;
+}
+
+.lib-stats-quality-seg {
+    display: block;
+    flex: 1 1 0;
+    min-width: 2px;
+}
+
+.lib-stats-quality-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lib-stats-quality-row {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.lib-stats-quality-swatch {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.lib-stats-quality-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-md);
+}
+
+/* The ordered steps: the text's colour, then mixes of it with the page — not the accent,
+   which cannot step down to a fourth class still at 2:1 on the page (Slate and Gravity's
+   indigo) or step up at all (Minimal's black, Gravity's dark cyan). 100/75/56/40 % pass
+   the ordinal checks of the data-visualisation validator in the six palettes: lightness in
+   order, gaps of 0.06 or more, the lightest at 2.3:1 to 3.7:1 on the page (2026-10-16; the
+   one warning, Minimal light's "single hue", is the hue of pure greys, which have none).
+   Unknown is no step of the order: the border's grey, and its legend says it. */
+.lib-stats-q--dsd { background: var(--text-primary); }
+.lib-stats-q--hires { background: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary)); }
+.lib-stats-q--cd { background: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary)); }
+.lib-stats-q--lossy { background: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary)); }
+.lib-stats-q--unknown { background: var(--border-color); }
+
+/* ─── Lists: most played, recently played ─── */
+.lib-stats-top {
+    display: flex;
+    flex-direction: column;
+}
+
+.lib-stats-top .lib-stats-selector {
+    padding-top: 0;
+}
+
+.lib-stats-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lib-stats-list-row {
+    display: grid;
+    grid-template-columns: 1.5em 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lib-stats-list-row--recent {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+}
+
+.lib-stats-rank {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.lib-stats-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+}
+
+.lib-stats-list-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 0;
+}
+
+.lib-stats-list-title,
+.lib-stats-list-sub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-stats-list-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.lib-stats-list-sub {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.lib-stats-where {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 1px var(--spacing-sm);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lib-stats-list-figures {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-xs);
+    white-space: nowrap;
+}
+
+.lib-stats-list-time {
+    font-size: var(--font-size-md);
+    font-variant-numeric: tabular-nums;
+}
+
+.lib-stats-list-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* ─── Recording ─── */
+.lib-stats-recording {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+}
+
+.lib-stats-recording-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    align-self: stretch;
+}
+
+.lib-stats-recording-label {
+    font-size: var(--font-size-md);
+}
+
+@media (width <= 640px) {
+    .lib-stats { padding-inline: var(--spacing-md); }
+    .lib-stats-share { grid-template-columns: minmax(0, 6.5em) minmax(0, 1fr) auto; }
+}

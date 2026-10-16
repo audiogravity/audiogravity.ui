@@ -1,7 +1,7 @@
 /**
  * Unit tests for ag-lib-tabbar — tab selection and keeping the active tab in view.
  *
- * The scroll matters because the bar can be wider than its room: five labelled tabs
+ * The scroll matters because the bar can be wider than its room: six labelled tabs
  * share the library top bar with a source badge and an action button, so it scrolls
  * sideways. The tab can change without anyone touching the bar — the global content
  * swipe (js/gestures.js) switches tabs, and so do links deeper in the page — and the
@@ -54,9 +54,9 @@ function labels(el) {
 }
 
 describe('ag-lib-tabbar — a source is only offered what it can serve', () => {
-    it('shows the five tabs when no restriction is given', async () => {
+    it('shows the six tabs when no restriction is given', async () => {
         const el = await mount('browse');
-        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio']);
+        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio', 'Stats']);
         el.remove();
     });
 
@@ -64,14 +64,68 @@ describe('ag-lib-tabbar — a source is only offered what it can serve', () => {
         // Stations are neither albums nor artists: Browse returned an empty grid
         // and /library/search?source_id=src_radio answers 400. The radio's own
         // catalogue is on its own screen, with its own filters.
-        const el = await mount('radio', ['queue', 'library', 'radio']);
-        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio']);
+        const el = await mount('radio', ['queue', 'library', 'radio', 'stats']);
+        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio', 'Stats']);
         el.remove();
     });
 
     it('keeps the declared order, not the order it was asked in', async () => {
         const el = await mount('radio', ['radio', 'queue']);
         expect(labels(el)).toEqual(['Queue', 'Radio']);
+        el.remove();
+    });
+});
+
+describe('ag-lib-tabbar — a bar whose tabs ran onto a new line says so', () => {
+    /** Put each tab at a given height, as a layout would: jsdom lays nothing out. */
+    function placeTabs(el, tops) {
+        el.querySelectorAll('.lib-tab').forEach((tab, i) => {
+            Object.defineProperty(tab, 'offsetTop', { configurable: true, value: tops[i] ?? 0 });
+        });
+    }
+
+    it('marks the bar when its last tab sits below its first', async () => {
+        const el = await mount('browse');
+        placeTabs(el, [0, 0, 0, 0, 0, 48]);
+        el._markWrap();
+        expect(el.querySelector('.lib-nav').classList).toContain('lib-nav--wrapped');
+        el.remove();
+    });
+
+    it('leaves a bar that fits on one line unmarked, and unmarks one that fits again', async () => {
+        const el = await mount('browse');
+        placeTabs(el, [0, 0, 0, 0, 0, 48]);
+        el._markWrap();
+        placeTabs(el, [0, 0, 0, 0, 0, 0]);
+        el._markWrap();
+        expect(el.querySelector('.lib-nav').classList).not.toContain('lib-nav--wrapped');
+        el.remove();
+    });
+
+    it('only the copy in the tab menu watches its size: the page\'s bars never wrap', async () => {
+        const watched = [];
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class { observe(el) { watched.push(el); } disconnect() {} };
+        try {
+            const pageBar = await mount('browse');
+            const menuCopy = document.createElement('ag-lib-tabbar');
+            menuCopy.className = 'lib-menu';
+            document.body.appendChild(menuCopy);
+            await menuCopy.updateComplete;
+            expect(watched).toEqual([menuCopy]);
+            pageBar.remove();
+            menuCopy.remove();
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
+
+    it('looks again when its tabs change — the radio offers four', async () => {
+        const el = await mount('browse');
+        const spy = vi.spyOn(el, '_markWrap');
+        el.tabs = ['queue', 'library', 'radio', 'stats'];
+        await el.updateComplete;
+        expect(spy).toHaveBeenCalled();
         el.remove();
     });
 });
@@ -85,10 +139,10 @@ describe('ag-lib-tabbar', () => {
     });
     afterEach(() => { el?.remove(); });
 
-    it('renders one labelled tab per destination, radio included', async () => {
+    it('renders one labelled tab per destination, radio and the history included', async () => {
         el = await mount();
         const labels = [...el.querySelectorAll('.lib-tab span')].map(s => s.textContent);
-        expect(labels).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio']);
+        expect(labels).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio', 'Stats']);
     });
 
     it('names the sources view Sources — Library is the tab it lives in', async () => {

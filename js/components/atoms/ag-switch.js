@@ -4,7 +4,7 @@
  * Encapsulates the .switch CSS structure for forms/settings.
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
 /**
@@ -15,6 +15,8 @@ import { classMap } from 'lit/directives/class-map.js';
  * @attr {boolean} disabled - Whether the switch is disabled
  * @attr {boolean} compact - Whether the switch is in compact mode
  * @attr {string} variant - CSS variant class (e.g. 'notification' for orange)
+ * @attr {string} label - What the switch turns on, for assistive technologies: its
+ *   checkbox has no text of its own, so a screen reader announced a bare "checkbox".
  * 
  * @dependency css/components/forms.css - Classes .switch, .slider
  * @fires ag-change - Dispatched when the switch value changes
@@ -24,7 +26,8 @@ export class AgSwitch extends LitElement {
         checked: { type: Boolean, reflect: true },
         disabled: { type: Boolean },
         compact: { type: Boolean },
-        variant: { type: String }
+        variant: { type: String },
+        label: { type: String }
     };
 
     constructor() {
@@ -33,6 +36,7 @@ export class AgSwitch extends LitElement {
         this.disabled = false;
         this.compact = false;
         this.variant = '';
+        this.label = '';
     }
 
     createRenderRoot() {
@@ -71,6 +75,7 @@ export class AgSwitch extends LitElement {
                     type="checkbox"
                     .checked=${this.checked}
                     ?disabled=${this.disabled}
+                    aria-label=${this.label || nothing}
                     @change=${this.handleChange}
                 >
                 <span class="slider"></span>

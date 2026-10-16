@@ -129,22 +129,36 @@ export const pickPrimaryCoverToken = (item, { swapped = false, preferStation = f
 };
 
 /**
- * Format a bare ISO date (`YYYY-MM-DD`) for display, without shifting the day.
+ * A bare ISO date (`YYYY-MM-DD`) as a Date at its local midnight, so that the day never
+ * moves.
  *
  * `new Date('2026-12-31')` is parsed as **UTC midnight**, and `toLocaleDateString()` then
  * renders it in the viewer's timezone — so it reads 30/12/2026 anywhere west of Greenwich.
- * The core compares licence expiry against the UTC date, so the interface would have
- * announced the end a day before the core enforced it.
+ * Constructed in local time from the parts instead. The one reading of such a date: the
+ * licence's end (fmtIsoDate) and the listening history's days (stats-format.js) use it.
+ *
+ * @param {string|null|undefined} iso - A date-only string, `YYYY-MM-DD`.
+ * @returns {Date|null} The day, or null when the string is not a bare date.
+ */
+export const localDay = (iso) => {
+    const [y, m, d] = String(iso || '').split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+};
+
+/**
+ * Format a bare ISO date (`YYYY-MM-DD`) for display, without shifting the day.
+ *
+ * The core compares licence expiry against the UTC date: parsed as UTC midnight, the
+ * interface would have announced the end a day before the core enforced it (localDay).
  *
  * @param {string|null|undefined} iso - A date-only string, `YYYY-MM-DD`.
  * @returns {string} The same calendar day, formatted for the viewer, or '' when absent.
  */
 export const fmtIsoDate = (iso) => {
     if (!iso) return '';
-    const [y, m, d] = String(iso).split('-').map(Number);
-    if (!y || !m || !d) return String(iso);      // not a bare date — show it as authored
-    // Constructed in local time from the parts, so the calendar day cannot move.
-    return new Date(y, m - 1, d).toLocaleDateString();
+    const day = localDay(iso);
+    return day ? day.toLocaleDateString() : String(iso);   // not a bare date — show it as authored
 };
 
 /**

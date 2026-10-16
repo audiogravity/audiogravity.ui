@@ -17,7 +17,7 @@
  *   - Library is open on every edition — Starter plays the box's music and the radio, its
  *     padlocks are on the Pro sources inside — so a Starter box gets the bar too;
  *   - it is not offered when Library is hidden: every tap would lead nowhere;
- *   - it shows what the page's bar shows (five tabs, three for the radio), and
+ *   - it shows what the page's bar shows (six tabs, four for the radio), and
  *     highlights one only while Library is the tab shown;
  *   - a tap hands the page a TAB, not a view, and closes the column — `selectTab`
  *     leaves it open when Library is already shown;
@@ -43,7 +43,7 @@ const TABS = [
     { id: 'library',  label: 'Library',  hidden: false, badgeCount: null },
 ];
 
-const RADIO = { tab: 'radio', tabs: ['queue', 'library', 'radio'] };
+const RADIO = { tab: 'radio', tabs: ['queue', 'library', 'radio', 'stats'] };
 
 /**
  * Mount the tabs as the app does, the licence answered by the (mocked) core.
@@ -307,10 +307,10 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         expect(sent).toEqual([{ tab: 'queue' }, { tab: 'browse' }]);
     });
 
-    it('offers the five tabs before the page has said anything', async () => {
+    it('offers the six tabs before the page has said anything', async () => {
         el = await mount();
         await tapLibrary(el);
-        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio']);
+        expect(labels(el)).toEqual(['Browse', 'Search', 'Queue', 'Sources', 'Radio', 'Stats']);
     });
 
     it('leaves the horizontal bar alone — the page\'s own bar sits under the Library tab there', async () => {
@@ -342,11 +342,11 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         expect(libraryEntry(el).hasAttribute('aria-expanded')).toBe(false);
     });
 
-    it('shows what the page\'s bar shows: three tabs for the radio', async () => {
+    it('shows what the page\'s bar shows: four tabs for the radio', async () => {
         el = await mount({ active: 'library' });
         await tapLibrary(el);
         await announce(el, RADIO);
-        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio']);
+        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio', 'Stats']);
         expect(row(el).querySelector('.lib-tab.on').textContent).toContain('Radio');
     });
 
@@ -364,7 +364,7 @@ describe('ag-tabs — the library\'s tab bar in the column', () => {
         document.body.appendChild(page);
         el = await mount({ active: 'library' });
         await tapLibrary(el);
-        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio']);
+        expect(labels(el)).toEqual(['Queue', 'Sources', 'Radio', 'Stats']);
     });
 
     it('a tap hands the page a tab, not a view', async () => {
