@@ -6,12 +6,20 @@
  * /api/library/queue/{queue_id} — keyed on the stable MPD song id, not the
  * position, so removal is reindex-safe.
  *
+ * On a box without Pro, a track of a streaming service (`pro` on the item, as the core
+ * answers it) wears the Pro tint and the padlock: its relay refuses it there and the
+ * player skips it, those queued during the trial included. Tapping the padlock leads to
+ * the licence panel; the track can still be removed.
+ *
  * @element ag-library-queue
  *
  * @attr {string} source-id - Active library source ID
  * @attr {string} zone-id   - Roon zone ID (required for Roon sources)
  *
  * @fires lib-open-np - Bubbles. Navigate to Now Playing
+ *
+ * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
+ * @dependency ag-pro-lock - The padlock of a track a box without Pro skips
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet } from '../../api.js';
@@ -21,7 +29,10 @@ import { removeQueueItem } from '../../library-api.js';
 import { showToast } from '../../ui-helpers.js';
 import { iconPause, iconDragHandle, iconArrowLeft } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
+import { isLockedSource, openLicensePanel } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 import '../atoms/ag-library-cover.js';
+import '../atoms/ag-pro-lock.js';
 import '../atoms/ag-source-badge.js';
 import '../atoms/ag-filter-bar.js';
 
@@ -56,6 +67,7 @@ export class AgLibraryQueue extends LitElement {
         this._swipe = new SwipeToDismissController(this, {
             onCommit: (queueId) => this._remove(queueId),
         });
+        this._licenseCtl = new LicenseController(this);
     }
 
     updated(changed) {
@@ -116,6 +128,30 @@ export class AgLibraryQueue extends LitElement {
 
     _isRoon() {
         return this.sourceId === 'src_roon' || this.sourceId === 'src_mono-sgen';
+    }
+
+    /**
+     * Whether a queued track is one this box will skip: a streaming service's, and Pro
+     * not open. Nothing is locked while the licence is not read yet.
+     * @param {{pro?: boolean}} item - Queue item.
+     * @returns {boolean}
+     */
+    _isLocked(item) {
+        return isLockedSource(item, this._license);
+    }
+
+    /**
+     * The padlock of a track this box will skip: a real button, leading to the licence
+     * panel as every padlock does. Not at the end of a swipe — the row moved under the
+     * finger, as for the Remove button.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderLock() {
+        return html`
+            <button class="plain-btn pro-lock-btn"
+                @click=${() => !this._swipe.swiping && openLicensePanel(this._license)}>
+                <ag-pro-lock></ag-pro-lock>
+            </button>`;
     }
 
     async _load() {
@@ -203,7 +239,7 @@ export class AgLibraryQueue extends LitElement {
                 <span class="lib-queue-ctx-val">${ctxLabel}</span>
             </div>
             ${current ? html`
-                <div class="lib-queue-now">
+                <div class="lib-queue-now ${this._isLocked(current) ? 'lib-queue-now--locked' : ''}">
                     <div class="lib-queue-lbl">Now playing</div>
                     <div class="lib-queue-now-row">
                         <ag-library-cover
@@ -216,6 +252,7 @@ export class AgLibraryQueue extends LitElement {
                             <span class="lib-queue-now-a">${current.artist ?? ''}</span>
                             ${current.album ? html`<span class="lib-queue-now-meta">${current.album}</span>` : nothing}
                         </div>
+                        ${this._isLocked(current) ? this._renderLock() : nothing}
                         <button
                             class="lib-queue-now-play"
                             @click=${() => this.dispatchEvent(new CustomEvent('lib-open-np', { bubbles: true }))}
@@ -266,10 +303,11 @@ export class AgLibraryQueue extends LitElement {
                 // Roon queues can't be edited; and removal needs the stable song id,
                 // so a row without queue_id is not swipeable/removable.
                 const swipeable = !this._isRoon() && item.queue_id != null;
+                const locked = this._isLocked(item);
                 return html`
                 <div class="ag-swipe-wrap">
                     ${swipeable ? html`<div class="ag-swipe-reveal" aria-hidden="true">Remove</div>` : nothing}
-                    <div class="lib-queue-row" ${swipeRow(this._swipe, item.queue_id, swipeable)}>
+                    <div class="lib-queue-row ${locked ? 'lib-queue-row--locked' : ''}" ${swipeRow(this._swipe, item.queue_id, swipeable)}>
                         <div class="lib-queue-grip">
                             <svg viewBox="0 0 24 24">${iconDragHandle}</svg>
                         </div>
@@ -286,7 +324,9 @@ export class AgLibraryQueue extends LitElement {
                                  stations read alike. The players show the name. See /BACKLOG.md. -->
                             ${mixed ? html`<ag-source-badge origin=${item.origin}></ag-source-badge>` : nothing}
                         </div>
-                        <span class="lib-queue-dur">${fmtDuration(item.duration)}</span>
+                        ${locked
+                            ? this._renderLock()
+                            : html`<span class="lib-queue-dur">${fmtDuration(item.duration)}</span>`}
                         ${swipeable ? html`
                         <button class="lib-queue-more" @click=${() => !this._swipe.swiping && this._remove(item.queue_id)} aria-label="Remove">
                             <svg viewBox="0 0 24 24">${iconArrowLeft}</svg>

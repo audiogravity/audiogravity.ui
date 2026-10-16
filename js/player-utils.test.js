@@ -381,6 +381,13 @@ describe('toggleRefusalRollback', () => {
             .toEqual({ title: 'Alice', playing: true, playback_status: 'Playing' });
     });
 
+    it('restores it on a 403 too: refused for want of Pro, before anything was sent', () => {
+        const stopped = { playing: false, playback_status: 'Stopped', title: 'So What' };
+        const shown = { title: 'So What', playing: true, playback_status: 'Playing' };
+        expect(toggleRefusalRollback(shown, stopped, 403))
+            .toEqual({ title: 'So What', playing: false, playback_status: 'Stopped' });
+    });
+
     it('does nothing on other statuses — the toggle may in fact have landed', () => {
         expect(toggleRefusalRollback(flipped, anchor, 500)).toBeNull();
         expect(toggleRefusalRollback(flipped, anchor, undefined)).toBeNull();

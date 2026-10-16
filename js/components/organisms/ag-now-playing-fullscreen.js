@@ -14,6 +14,7 @@
  *
  * @dependency css/components/now-playing-fullscreen.css
  * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
+ * @dependency ag-pro-lock - The padlock of a next track a box without Pro skips
  */
 
 import { LitElement, html, nothing } from 'lit';
@@ -25,6 +26,7 @@ import '../molecules/ag-format-strip.js';
 import '../molecules/ag-volume-popover.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
+import '../atoms/ag-pro-lock.js';
 import '../atoms/ag-track-meta.js';
 import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
@@ -37,6 +39,7 @@ import { canAddToPlaylist, originBadge, originBadgeName } from '../library-const
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, isLockedSource, openLicensePanel } from '../../license-tiers.js';
 import { LicenseController } from '../../core/LicenseController.js';
+import { showToast, TOAST_DURATION_LONG } from '../../ui-helpers.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -606,6 +609,15 @@ export class AgNowPlayingFullscreen extends LitElement {
             if (action === 'next' || action === 'prev') this._controlRecentTime = Date.now();
             await apiPost('/player/control', body);
         } catch (e) {
+            // Play refused for want of Pro (403), before anything was sent: the core says why
+            // and what to do — a queue of streaming tracks alone, or the box's own HQPlayer
+            // holding the DAC, on a box without Pro — shown as the output's own failures
+            // are (library-store, notifyOutputError). The Play button only: a volume drag
+            // posts one command per movement, and would stack one toast each (review,
+            // 2026-10-16). A device that declined (503) stays silent, below.
+            if (action === 'toggle' && e?.status === 403 && e.detail) {
+                showToast('error', 'Playback blocked', e.detail, TOAST_DURATION_LONG);
+            }
             // A refused seek is truthful: 503 means the position did not move
             // (API.md). Restore the anchor and drop the guard, so the state
             // the backend publishes right after a refusal passes through
@@ -1032,8 +1044,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         const t = this._nextTrack;
         if (!t) return nothing;
         const cover = t.cover_token ? coverUrl(t.cover_token) : null;
+        // A streaming service's track (`pro` on the box's queue item), on a box without
+        // Pro: the player will skip it. Marked as the queue view marks it.
+        const locked = isLockedSource(t, this._license);
         return html`
-            <div class="npfs-up-next">
+            <div class="npfs-up-next ${locked ? 'npfs-up-next--locked' : ''}">
                 <span class="npfs-up-next-lbl">Next</span>
                 <div class="npfs-up-next-cv">
                     <svg class="npfs-up-next-cv-ph" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1045,6 +1060,11 @@ export class AgNowPlayingFullscreen extends LitElement {
                     <span class="npfs-up-next-title">${t.title ?? '—'}</span>
                     ${t.artist ? html`<span class="npfs-up-next-artist">${t.artist}</span>` : nothing}
                 </div>
+                ${locked ? html`
+                    <button class="plain-btn pro-lock-btn" @click=${() => openLicensePanel(this._license)}>
+                        <ag-pro-lock></ag-pro-lock>
+                    </button>
+                ` : nothing}
             </div>
         `;
     }

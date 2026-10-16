@@ -42,6 +42,26 @@ ag-pro-lock {
 }
 
 /**
+ * @component .pro-lock-btn
+ * @description The padlock as a button of its own, beside what it marks — a queued track a
+ * box without Pro will skip, the player's "Next" — a real button (.plain-btn) leading to the
+ * licence panel. It draws 39 x 20px (Chromium, 2026-10-16): an invisible margin around it
+ * takes the finger — some 55 x 40px —, as the progress bar's does, without moving anything;
+ * where it sits, a row's padding and gap leave it that room.
+ */
+.pro-lock-btn {
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.pro-lock-btn::before {
+    content: '';
+    position: absolute;
+    inset: -10px -8px;
+}
+
+/**
  * @component .pro-locked
  * @description Controls a Starter box sees but cannot use — the players' buttons on Roon or
  * HQPlayer. Faded, still tappable: a tap leads to the licence panel.

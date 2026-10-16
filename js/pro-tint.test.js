@@ -11,7 +11,8 @@
  * Covers:
  * 1. the tint is the brand colour's, never a state colour, and the dark variants raise it
  * 2. each surface the Pro edition locks wears it: tab, Pro source card, source card, Config tile,
- *    search chip, output card — and the chip's padlock is not glued to its name
+ *    search chip, output card, a queued track the box will skip (queue row, the track
+ *    playing, the player's "Next") — and the chip's padlock is not glued to its name
  */
 import { describe, it, expect } from 'vitest';
 import { readStylesheet, cssRuleBody } from './test-utils.js';
@@ -50,6 +51,9 @@ describe('the surfaces the Pro edition locks wear it', () => {
         ['a locked Config tile', ['components', 'tile.css'], '.config-tile.config-tile--locked'],
         ["a Pro source's chip in the search", ['components', 'library-search.css'], '.lib-src-badge.lib-src-badge--locked'],
         ['an output a Starter box cannot switch to', ['components', 'library-outputs.css'], '.lib-out-card.lib-out-card--locked'],
+        ['a queued track a Starter box will skip', ['components', 'library-queue.css'], '.lib-queue-row.lib-queue-row--locked'],
+        ['the track playing, when it is one', ['components', 'library-queue.css'], '.lib-queue-now.lib-queue-now--locked'],
+        ["the player's next track, when it is one", ['components', 'now-playing-fullscreen.css'], '.npfs-up-next.npfs-up-next--locked'],
     ])('%s', (_, file, selector) => {
         const body = cssRuleBody(readStylesheet('css', ...file), selector);
         expect(body, selector).toMatch(/var\(--pro-tint\)/);

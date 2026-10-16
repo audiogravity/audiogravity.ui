@@ -355,6 +355,40 @@ describe('ag-library-radio — announcing a station that actually started', () =
         expect(el._error).toMatch(/Could not start/);
     });
 
+    it.each([
+        ["the box's own HQPlayer holding the DAC", 'HQPlayer Embedded runs on this box and holds its DAC, '
+            + 'and HQPlayer is part of the Pro edition. Stop HQPlayer Embedded from Services to play here, '
+            + 'or activate a license.'],
+        ["a station that plays a streaming service's relay",
+            'Full license required. Activate your trial or purchase a license.'],
+    ])('shows the core\'s words when the start is refused for want of Pro: %s', async (_, words) => {
+        // User decision, 2026-10-16: those refusals are worded for the listener.
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const { radioPlay } = await import('../../radio-api.js');
+        radioPlay.mockRejectedValue(Object.assign(new Error(words), { status: 403, detail: words }));
+        const el = new AgLibraryRadio();
+        const seen = [];
+        el.dispatchEvent = (e) => seen.push(e.type);
+
+        await el._onPlay({ detail: { station: { uuid: 'u1' } } });
+
+        expect(el._error).toBe(words);
+        expect(seen).not.toContain('radio-started');
+    });
+
+    it('keeps an output failure in HQPlayer\'s own words neutral', async () => {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const { radioPlay } = await import('../../radio-api.js');
+        radioPlay.mockRejectedValue(Object.assign(new Error('Device or resource busy'),
+            { status: 503, detail: 'Device or resource busy' }));
+        const el = new AgLibraryRadio();
+        el.dispatchEvent = () => {};
+
+        await el._onPlay({ detail: { station: { uuid: 'u1' } } });
+
+        expect(el._error).toMatch(/^Could not start this station/);
+    });
+
     it('announces the station once it plays', async () => {
         const { AgLibraryRadio } = await import('./ag-library-radio.js');
         const { radioPlay } = await import('../../radio-api.js');
