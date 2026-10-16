@@ -6,7 +6,7 @@ export default {
     argTypes: {
         tab: {
             control: { type: 'select' },
-            options: ['browse', 'search', 'queue', 'library', 'radio'],
+            options: ['browse', 'search', 'queue', 'library', 'radio', 'stats'],
         },
     },
 };
@@ -35,3 +35,8 @@ Sources.args = { tab: 'library' };
 
 export const Radio = Template.bind({});
 Radio.args = { tab: 'radio' };
+
+// The listening history. The copy in the tab menu, where the six tabs take two lines, is
+// in the stories of ag-tabs (VerticalWithLibrary).
+export const Stats = Template.bind({});
+Stats.args = { tab: 'stats' };

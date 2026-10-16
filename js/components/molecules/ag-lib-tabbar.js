@@ -1,13 +1,13 @@
 /**
  * @module AgLibTabbar
  * @description Inner navigation tabbar for the library player overlay.
- * Renders five tabs: Browse, Search, Queue, Sources, Radio.
+ * Renders six tabs: Browse, Search, Queue, Sources, Radio, Stats.
  *
  * @element ag-lib-tabbar
  *
- * @attr {string} tab - Active tab key: 'browse' | 'search' | 'queue' | 'library' | 'radio'
+ * @attr {string} tab - Active tab key: 'browse' | 'search' | 'queue' | 'library' | 'radio' | 'stats'
  * @attr {Array<string>} tabs - Which tabs to show, in order. Omitted shows all
- *   five. A source that holds no /library catalogue passes a shorter list rather
+ *   six. A source that holds no /library catalogue passes a shorter list rather
  *   than leaving tabs that lead nowhere: the radio's stations are neither albums
  *   nor artists, so Browse answered an empty grid and Search an error.
  *
@@ -15,7 +15,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { keepInView } from '../../core/keep-in-view.js';
-import { iconQueue, iconSearch, iconQueuePlay, iconLibraryGrid, iconRadio } from '../../ag-icons.js';
+import { iconQueue, iconSearch, iconQueuePlay, iconLibraryGrid, iconRadio, iconBarChart } from '../../ag-icons.js';
 
 // The 'library' tab opens the list of sources to browse, and says so: called Library,
 // it read twice in the tab menu, right under the Library entry it belongs to. The key
@@ -26,6 +26,8 @@ const TABS = [
     { key: 'queue',   label: 'Queue',   icon: iconQueuePlay   },
     { key: 'library', label: 'Sources', icon: iconLibraryGrid },
     { key: 'radio',   label: 'Radio',   icon: iconRadio       },
+    // The listening history: what the box played, whatever the source browsed.
+    { key: 'stats',   label: 'Stats',   icon: iconBarChart    },
 ];
 
 export class AgLibTabbar extends LitElement {
@@ -45,6 +47,30 @@ export class AgLibTabbar extends LitElement {
          *  instant, so the bar does not glide into place as the page appears.
          *  @type {boolean} */
         this._hasScrolled = false;
+        /** Watches the bar's size, to say when its tabs ran onto a new line. */
+        this._resizeObserver = null;
+    }
+
+    /**
+     * Start watching the bar's size: a wrap follows the bar's width and the text size,
+     * neither of which re-renders it.
+     *
+     * The copy in the tab menu only (`lib-menu`, set by ag-tabs as it creates it): the
+     * page's bars scroll and never wrap, and the page holds one per view — eleven
+     * watchers for nothing (review, 2026-10-16).
+     *
+     * @returns {void}
+     */
+    firstUpdated() {
+        if (typeof ResizeObserver === 'undefined' || !this.classList.contains('lib-menu')) return;
+        this._resizeObserver = new ResizeObserver(() => this._markWrap());
+        this._resizeObserver.observe(this);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._resizeObserver?.disconnect();
+        this._resizeObserver = null;
     }
 
     /**
@@ -54,9 +80,29 @@ export class AgLibTabbar extends LitElement {
      * @returns {void}
      */
     updated(changed) {
+        if (changed.has('tabs')) this._markWrap();
         if (!changed.has('tab')) return;
         keepInView(this.querySelector('.lib-tab.on'), { first: !this._hasScrolled });
         this._hasScrolled = true;
+    }
+
+    /**
+     * Say on the bar whether its tabs ran onto a new line (`lib-nav--wrapped`).
+     *
+     * Only the copy in the tab menu wraps — the page's bar scrolls — and there the tabs
+     * share their line's width. A tab sent alone to a new line took all of it, its label
+     * centred under the row above (Stats, the sixth tab, 2026-10-16): the class lets the
+     * menu's styles start that line at the left instead (LIB_STYLES, `.lib-menu`), and a
+     * bar that fits on one line keeps sharing it.
+     *
+     * @returns {void}
+     */
+    _markWrap() {
+        const nav = this.querySelector('.lib-nav');
+        const tabs = this.querySelectorAll('.lib-tab');
+        if (!nav) return;
+        const wrapped = tabs.length > 1 && tabs[tabs.length - 1].offsetTop > tabs[0].offsetTop;
+        nav.classList.toggle('lib-nav--wrapped', wrapped);
     }
 
     /**

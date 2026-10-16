@@ -22,6 +22,7 @@
  * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  * @dependency ag-library-roon-browser
  * @dependency ag-library-upnp-browser
+ * @dependency ag-library-stats
  */
 import { LitElement, html, nothing } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
@@ -38,6 +39,7 @@ import './ag-library-radio.js';
 import './ag-library-roon-browser.js';
 import './ag-library-search.js';
 import './ag-library-sources.js';
+import './ag-library-stats.js';
 import './ag-library-upnp-browser.js';
 
 /* ─── shared CSS injected once into <head> ─── */
@@ -294,6 +296,16 @@ ag-lib-tabbar.lib-menu {
     flex: 1 1 auto;
     padding-inline: 0;
 }
+
+/* A tab sent to a new line starts it at the left, at its own width (user's choice,
+   2026-10-16): sharing the line, Stats alone took the tray's whole width under the five
+   others, its label centred. A filler takes the line's free space instead — the last
+   item, it only ever sits on the last line, and only when the tabs did wrap
+   (ag-lib-tabbar marks it): a row that fits on one line still shares it. */
+.lib-menu .lib-nav--wrapped::after {
+    content: '';
+    flex: 1000 1 0;
+}
 .lib-menu .lib-tab svg {
     width: var(--size-sm);
     height: var(--size-sm);
@@ -375,7 +387,7 @@ ag-library-page {
 const VIEW_TAB = {
     browse: 'browse', search: 'search', queue: 'queue',
     library: 'library', outputs: 'library',
-    radio: 'radio',
+    radio: 'radio', stats: 'stats',
     'roon-browser': 'browse', 'upnp-browser': 'browse',
     artist: 'browse',
 };
@@ -929,7 +941,7 @@ export class AgLibraryPage extends LitElement {
     _onTabChange(e) {
         this._artistId = '';
         this._artistName = '';
-        const map = { browse: 'browse', search: 'search', queue: 'queue', library: 'library', radio: 'radio' };
+        const map = { browse: 'browse', search: 'search', queue: 'queue', library: 'library', radio: 'radio', stats: 'stats' };
         this._setView(map[e.detail.tab] ?? 'browse');
     }
 
@@ -959,7 +971,7 @@ export class AgLibraryPage extends LitElement {
      */
     get _sourceTabs() {
         const kind = this._rawSources?.find(s => s.source_id === this._sourceId)?.kind;
-        return kind === 'radio' ? ['queue', 'library', 'radio'] : null;
+        return kind === 'radio' ? ['queue', 'library', 'radio', 'stats'] : null;
     }
 
     /**
@@ -1160,6 +1172,7 @@ export class AgLibraryPage extends LitElement {
         const isRoonBrow = _view === 'roon-browser';
         const isUpnpBrow = _view === 'upnp-browser';
         const isRadio    = _view === 'radio';
+        const isStats    = _view === 'stats';
 
         const srcName = this._isUpnp(_sourceId)
             ? (this._upnpName || 'UPnP')
@@ -1402,6 +1415,17 @@ export class AgLibraryPage extends LitElement {
                     <div class="lib-body">
                         <div class="lib-scroll">
                             <ag-library-radio></ag-library-radio>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lib-view lib-view--list ${isStats ? 'active' : ''}">
+                    <div class="lib-topbar">
+                        <ag-lib-tabbar tab=${VIEW_TAB[_view] ?? 'browse'} .tabs=${this._sourceTabs} @lib-tab-change=${this._onTabChange}></ag-lib-tabbar>
+                    </div>
+                    <div class="lib-body">
+                        <div class="lib-scroll">
+                            <ag-library-stats ?visible=${isStats}></ag-library-stats>
                         </div>
                     </div>
                 </div>

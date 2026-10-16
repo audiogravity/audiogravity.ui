@@ -185,6 +185,12 @@ describe('ag-library-page — one home for the view mapping', () => {
         expect(viaNavigate._view).toBe('radio');
     });
 
+    it('the Stats tab opens the listening history', () => {
+        const el = makeEl();
+        el._onTabChange({ detail: { tab: 'stats' } });
+        expect(el._view).toBe('stats');
+    });
+
     it('an unknown tab lands on the browse rather than nowhere', () => {
         const el = makeEl();
         el._onTabChange({ detail: { tab: 'someday-a-new-tab' } });
@@ -1116,11 +1122,12 @@ describe('ag-library-page — the copy of its tab bar in the tab menu', () => {
         expect(makeEl({ _view: 'artist' }).navState.tab).toBe('browse');
         expect(makeEl({ _view: 'upnp-browser' }).navState.tab).toBe('browse');
         expect(makeEl({ _view: 'radio' }).navState.tab).toBe('radio');
+        expect(makeEl({ _view: 'stats' }).navState.tab).toBe('stats');
     });
 
-    it('and which tabs the browsed source offers — three for the radio', () => {
+    it('and which tabs the browsed source offers — four for the radio, the history kept', () => {
         expect(makeEl({ _sourceId: 'src_radio', _rawSources: RAW }).navState.tabs)
-            .toEqual(['queue', 'library', 'radio']);
+            .toEqual(['queue', 'library', 'radio', 'stats']);
         expect(makeEl({ _sourceId: 'src_mpd', _rawSources: RAW }).navState.tabs).toBeNull();
     });
 
@@ -1146,7 +1153,7 @@ describe('ag-library-page — the copy of its tab bar in the tab menu', () => {
         });
         expect(sent).toEqual([
             { tab: 'queue', tabs: null },
-            { tab: 'queue', tabs: ['queue', 'library', 'radio'] },
+            { tab: 'queue', tabs: ['queue', 'library', 'radio', 'stats'] },
         ]);
     });
 
@@ -1169,6 +1176,16 @@ describe('ag-library-page — the copy of its tab bar in the tab menu', () => {
         const tab = cssRuleBody(css, '.lib-menu .lib-tab');
         expect(tab).toMatch(/flex:\s*1 1 auto/);
         expect(tab).toMatch(/padding-inline:\s*0/);
+    });
+
+    it('a tab sent to a new line starts it at the left, only once the tabs wrapped', () => {
+        // Stats, the sixth tab, went alone to a second line and took the tray's whole
+        // width, its label centred (measured 2026-10-16). A filler takes the free space
+        // of the last line — only on a bar ag-lib-tabbar marked as wrapped.
+        const filler = cssRuleBody(LIB_STYLES_TEXT(), '.lib-menu .lib-nav--wrapped::after');
+        expect(filler).toMatch(/content:\s*''/);
+        expect(filler).toMatch(/flex:\s*1000 1 0/);
+        expect(cssRuleBody(LIB_STYLES_TEXT(), '.lib-menu .lib-nav::after')).toBeNull();
     });
 
     it('and they show it as a part of Library: a tray, set in, with smaller icons', () => {

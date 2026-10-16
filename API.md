@@ -909,6 +909,37 @@ saving from the topology editor — errors block the save, warnings ask for conf
 destinations and same refusal statuses as `/library/queue` (see above). The stream is
 badged `origin: "radio"`.
 
+### Listening history — `/listening/*`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/listening/summary?period=` | What the box played over a period (Pro) — `period`: `7d`, `30d` (default), `12m`, `all`; any other value answers 422 |
+| GET | `/listening/settings` | `{ recording, listens, since }` — whether the box records, the listens it counts, the local day it begins (`YYYY-MM-DD`, or null) |
+| PUT | `/listening/settings` | Switch the recording — body `{ recording }`; answers the settings. Off, the listen in progress is dropped |
+| DELETE | `/listening/history` | Erase the history — 204 |
+
+The writes answer 403 to a guest account.
+
+`GET /listening/summary` — the whole view in one answer. Days and months are the box's
+local ones; a listen counts on the day it started. A listen is at least 30 s actually
+played; a station is one listen however many songs it announced. Roon and HQPlayer are not
+counted.
+
+| Field | Meaning |
+|---|---|
+| `period`, `unit` | The period asked; `unit` is `day` (`7d`, `30d`) or `month` (`12m`, `all`): what a `buckets` entry is |
+| `recording` | Whether the box records |
+| `since` | The local day the history begins (`YYYY-MM-DD`), or null while it is empty |
+| `total_seconds`, `listens`, `albums`, `active_days` | Time listened, listens, distinct albums, days with at least one listen — over the period |
+| `days` | Days the period spans, today included; for `all`, since `since` |
+| `buckets[]` | `{ start, seconds }` — every day or month of the period, oldest first, empty ones included; `start` is its first day |
+| `sources[]`, `outputs[]` | `{ label, seconds }`, largest first. `label` is the source's name as the player shows it (`Qobuz`, `Local Library`, a media server's name), or the output's (DAC, speaker); null when unknown |
+| `quality[]` | `{ key, seconds }` — `dsd`, `hires` (above 16 bit or 48 kHz), `cd`, `lossy`, always in this order; then `unknown` when there is some |
+| `genres[]` | `{ label, seconds, kind }`, largest first — `kind` `genre` (the first six), then `other` (the rest, added up) and `unknown`, whose `label` is null |
+| `top_artists[]` | `{ artist, seconds, plays }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked |
+| `top_albums[]` | `{ album, artist, seconds, plays }` — same |
+| `top_tracks[]` | `{ title, artist, album, seconds, plays }` — same |
+| `recent[]` | The ten latest listens whatever the period, newest first: `{ started_at, seconds, title, artist, album, station, live, source, output }` — `started_at` in UTC; a broadcast has `live: true`, its `station` and no `title` |
+
 ### Audio software packages — `/packages/*`
 | Method | Path | Description |
 |---|---|---|
@@ -1074,7 +1105,7 @@ On a box without Pro the core answers **403** — `detail`: `Full license requir
 `This license ended on … Renew it to use this feature.` — to:
 
 - every route of `/hqplayer/*` and `/performance/*`; `/audio_pipeline/*` but `now-playing`,
-  `cover` and `library-cover`; `/services/{name}/properties*`;
+  `cover` and `library-cover`; `/services/{name}/properties*`; `/listening/summary`;
   `/library/{roon,qobuz,tidal,highresaudio,upnp}-*`, and `POST /{qobuz,tidal,highresaudio}/connection`
   (with `/tidal/connection/submit` and `/qobuz/oauth/callback`);
 - the `/library/*` routes given a Pro `source_id` (albums, search, queue, favourites,
@@ -1092,7 +1123,8 @@ On a box without Pro the core answers **403** — `detail`: `Full license requir
 
 Starting and stopping a service (`/services/{name}/start|stop|…`) stays open on every
 edition. `GET`/`DELETE /{qobuz,tidal,highresaudio}/connection` too: what an account is, and
-forgetting it.
+forgetting it. And the listening history's switch and erase — `GET`/`PUT /listening/settings`,
+`DELETE /listening/history`: the box records on every edition.
 
 While a box without Pro runs its own HQPlayer (HQPlayer Embedded, holding the DAC), a play
 on the box's own player is refused with what to do — **403** on `/library/queue`,

@@ -65,6 +65,7 @@ export class AgFilterBar extends LitElement {
                 ${this.options.map(opt => html`
                     <button
                         class="filter-btn ${this.value === opt.value ? 'active' : ''}"
+                        aria-pressed=${this.value === opt.value ? 'true' : 'false'}
                         @click=${() => this._select(opt.value)}>
                         ${opt.label}
                     </button>

@@ -125,6 +125,13 @@ import './components/molecules/ag-progress-bar.js';
 import './components/molecules/ag-format-strip.js';
 import './components/molecules/ag-library-source-card.js';
 import './components/molecules/ag-pro-lock-card.js';
+import './components/molecules/ag-stats-bars.js';
+import './components/molecules/ag-stats-headline.js';
+import './components/molecules/ag-stats-quality.js';
+import './components/molecules/ag-stats-recent.js';
+import './components/molecules/ag-stats-recording.js';
+import './components/molecules/ag-stats-shares.js';
+import './components/molecules/ag-stats-top.js';
 import './components/molecules/ag-roon-status.js';
 import './components/molecules/ag-upnp-item.js';
 import './components/molecules/ag-radio-card.js';
@@ -191,6 +198,7 @@ import './components/organisms/ag-library-outputs.js';
 import './components/organisms/ag-library-roon-browser.js';
 import './components/organisms/ag-library-upnp-browser.js';
 import './components/organisms/ag-library-radio.js';
+import './components/organisms/ag-library-stats.js';
 import './components/organisms/ag-library-page.js';
 
 // =====================
