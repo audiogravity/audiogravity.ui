@@ -11,7 +11,7 @@
  * - Override lifted: when user-chosen source stops playing, auto-follow resumes
  * - _switchSource is a no-op when already on the target source
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1113,6 +1113,139 @@ describe('AgNowPlayingFullscreen — "Add to playlist" on a Starter box', () => 
             window.removeEventListener(PLAYLIST_ADD_EVENT, listen);
         }
     });
+});
+
+describe('AgNowPlayingFullscreen — a Play the core refuses for want of Pro', () => {
+    // A queue of streaming tracks alone, or the box's own HQPlayer holding the DAC, on a box
+    // without Pro: the core refuses the Play (403) before sending anything, with what to do.
+    // The screen says it, as it says the output's own failures; a device that declined
+    // (503) stays silent, as decided.
+    const WORDS = 'Only streaming tracks are left in the queue, and streaming services are part '
+        + 'of the Pro edition. Add music from the box or a station, or activate a license.';
+    const DAC_HELD = 'HQPlayer Embedded runs on this box and holds its DAC, and HQPlayer is part '
+        + 'of the Pro edition. Stop HQPlayer Embedded from Services to play here, or activate a license.';
+    const STOPPED = { source_id: 'src_mpd', control_id: 'src_mpd', playing: false,
+        playback_status: 'Stopped', title: 'So What' };
+
+    function fs(state) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_state', { value: state, writable: true, configurable: true });
+        Object.assign(el, { _targetSourceId: 'src_mpd', _volumePending: undefined,
+            _seekPending: null, _controlRecentTime: null });
+        el.requestUpdate = () => {};
+        return el;
+    }
+
+    /** The toasts shown, as ui-helpers puts them in the page. */
+    const toasts = () => [...document.querySelectorAll('#toastContainer ag-toast-notification')];
+
+    beforeEach(() => {
+        apiPost.mockReset();
+        document.body.append(Object.assign(document.createElement('div'), { id: 'toastContainer' }));
+    });
+
+    afterEach(() => {
+        document.getElementById('toastContainer')?.remove();
+    });
+
+    it.each([
+        ['a queue of streaming tracks alone', WORDS],
+        ["the box's own HQPlayer holding the DAC", DAC_HELD],
+    ])('shows its words for %s, and the button returns to Play', async (_, words) => {
+        apiPost.mockRejectedValueOnce(Object.assign(new Error(words), { status: 403, detail: words }));
+        const el = fs({ ...STOPPED });
+        await el._control('toggle');
+        expect(apiPost).toHaveBeenCalledWith('/player/control', expect.objectContaining({ action: 'play' }));
+        expect(el._state.playing).toBe(false);
+        expect(toasts().map((t) => [t.type, t.title, t.message]))
+            .toEqual([['error', 'Playback blocked', words]]);
+    });
+
+    it('says nothing of a refusal met by another control than Play', async () => {
+        // A volume drag posts one command per movement: one toast each, stacked (review,
+        // 2026-10-16). The licence is read again all the same (api.js), padlocks follow.
+        apiPost.mockRejectedValueOnce(Object.assign(new Error(WORDS), { status: 403, detail: WORDS }));
+        const el = fs({ ...STOPPED, volume: 20 });
+        await el._control('set_volume', 30);
+        expect(toasts()).toEqual([]);
+    });
+
+    it('keeps a device that declined silent', async () => {
+        apiPost.mockRejectedValueOnce(Object.assign(new Error('declined'),
+            { status: 503, detail: 'The device refused the command or no source could take it' }));
+        const el = fs({ ...STOPPED });
+        await el._control('toggle');
+        expect(el._state.playing).toBe(false);
+        expect(toasts()).toEqual([]);
+    });
+});
+
+describe('AgNowPlayingFullscreen — a next track the box will skip', () => {
+    // On a box without Pro the relays refuse a streaming service's track, and the player
+    // skips it: "Next" says so as the queue view does, from the core's `pro` on the item.
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    const QOBUZ = { title: 'So What', artist: 'Miles Davis', origin: 'qobuz', pro: true };
+
+    /** Render "Next" for a track and a licence; return the line. */
+    function upNext(next, license) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_nextTrack', { value: next, writable: true, configurable: true });
+        el._license = license;
+        const host = document.createElement('div');
+        litRender(el._renderUpNext(), host);
+        return host.querySelector('.npfs-up-next');
+    }
+
+    it('wears the Pro tint and the padlock, a real button, on a box without Pro', () => {
+        const line = upNext(QOBUZ, STARTER);
+        expect(line.classList.contains('npfs-up-next--locked')).toBe(true);
+        expect(line.querySelector('button.plain-btn.pro-lock-btn > ag-pro-lock')).not.toBeNull();
+    });
+
+    it.each([
+        ['with Pro', QOBUZ, PRO],
+        ['while the licence is not read yet', QOBUZ, null],
+        ['for what a Starter box plays', { title: 'A', origin: 'library', pro: false }, STARTER],
+        // A core older than the mark sends a speaker's next track without it.
+        ['from a core that does not mark it', { title: 'A', artist: 'B' }, STARTER],
+    ])('is a track like any other %s', (_, next, license) => {
+        const line = upNext(next, license);
+        expect(line.classList.contains('npfs-up-next--locked')).toBe(false);
+        expect(line.querySelector('ag-pro-lock')).toBeNull();
+    });
+
+    it("marks a network speaker's next track as the core marks it", () => {
+        // The speaker's queue is the box's own, and its next track travels on the state
+        // (queue_next), with the core's `pro` — through the real _applyState.
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({ _state: null, _nextTrack: null, _sources: [],
+            _open: true, _coverSwapped: false, _coverErrorToken: null })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        Object.assign(el, { _license: STARTER, _userSourceOverride: false,
+            _targetSourceId: 'src_qobuz', _seekPending: null, _volumePending: undefined,
+            _controlRecentTime: null, _setPrimaryCover: () => {} });
+        el._applyState({ source_id: 'src_qobuz', control_id: 'upnp_renderer', played_on: 'uuid:speaker',
+            title: 'So What', playing: true,
+            queue_next: { title: 'Freddie Freeloader', artist: 'Miles Davis', pro: true } });
+        const host = document.createElement('div');
+        litRender(el._renderUpNext(), host);
+        expect(host.querySelector('.npfs-up-next--locked > button.pro-lock-btn > ag-pro-lock')).not.toBeNull();
+    });
+
+    it('leads its padlock to the licence panel', () => {
+        const selectTab = vi.fn();
+        const original = document.querySelector;
+        document.querySelector = (sel) => (sel === 'ag-tabs' ? { selectTab } : null);
+        try {
+            upNext(QOBUZ, STARTER).querySelector('button').click();
+            expect(selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+        } finally {
+            document.querySelector = original;
+        }
+    });
+
 });
 
 describe('AgNowPlayingFullscreen — follows the box\'s licence', () => {

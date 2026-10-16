@@ -131,7 +131,9 @@ const REFUSED = /HTTP status 403\b/;
  * them and plays what else the queue holds, reporting the refusal meanwhile. That is
  * no failure of the output, and is said as what it is. On a box with Pro the same
  * report means the service itself refused the track, and keeps the generic label.
- * BACKLOG: a queue of streaming tracks alone stops without a word — audiogravity.ops/BACKLOG.md.
+ * A queue of streaming tracks alone reports nothing here: MPD skips them all and stops,
+ * and a stopped MPD is left out of the playing items. The queue view says it in advance,
+ * with a padlock on each of those tracks (`pro` on the queue item).
  *
  * @param {string|null} raw - Value returned by {@link activeOutputError}.
  * @returns {string}
@@ -284,6 +286,10 @@ export function playPauseIntent(playing) {
  * (user decision: a control that visibly does not act is the honest message,
  * a toast would be noise for cases as rare as a mixerless output).
  *
+ * A 403 is as truthful: refused for want of Pro, before anything was sent — a queue of
+ * streaming tracks alone, or the box's own HQPlayer holding the DAC, on a box without
+ * Pro. That one carries what to do, and the caller shows it; the rollback is the same.
+ *
  * @param {object|null} state - Current displayed state (already flipped).
  * @param {{playing: boolean, playback_status: string, title: string|null}|null} anchor -
  *        Pre-flip values captured when the toggle was applied.
@@ -292,7 +298,7 @@ export function playPauseIntent(playing) {
  *          (other status, no anchor, or the track changed meanwhile).
  */
 export function toggleRefusalRollback(state, anchor, status) {
-    if (status !== 503 || !anchor || !state) return null;
+    if ((status !== 503 && status !== 403) || !anchor || !state) return null;
     if ((state.title ?? null) !== anchor.title) return null;
     return { ...state, playing: anchor.playing, playback_status: anchor.playback_status };
 }

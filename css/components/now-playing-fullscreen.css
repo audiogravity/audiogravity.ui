@@ -687,6 +687,13 @@ body:not(.npfs-open) .topbar {
     text-overflow: ellipsis;
 }
 
+/* The next track is a streaming service's, on a box without Pro, which the player will
+   skip: the Pro tint (themes.css, --pro-tint) laid over the line's own background, and
+   the padlock (.pro-lock-btn, pro-lock.css). */
+.npfs-up-next.npfs-up-next--locked {
+    background-image: linear-gradient(var(--pro-tint), var(--pro-tint));
+}
+
 /* ── Wide, landscape screens: two columns ──
    The single column scattered on a computer: a 340px cover centred, the title flush
    left, the signal path flush right 1,400px away, the four format cells stretched

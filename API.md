@@ -423,6 +423,11 @@ Qobuz/Tidal/HIGHRESAUDIO **and the radio** share the MPD engine, so asking with 
 `source_id` returns that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
 an error. **`?limit=<n>`** returns the current track plus up to `n` following items —
 `position` stays the absolute queue position; omit it for the whole queue.
+**`pro`** is `true` on a track of a streaming service (Qobuz, Tidal, HIGHRESAUDIO), judged on
+its address — a station saved with a relay address included: a box without Pro refuses it and
+the player skips it, so show it locked while `/license/status` says `pro: false`
+([Editions](#editions--what-a-box-without-pro-is-refused)). `false` for Roon, whose queue needs
+Pro whole.
 
 **Removing from the queue** — `DELETE /library/queue/{queue_id}?source_id=…`, keyed on
 the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not
@@ -448,7 +453,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | GET | `/upnp-renderer/{udn}/connection` | Connection state + capabilities for a specific renderer |
 | PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output). Returns **400** for a co-located (`is_local`) renderer — it receives external casts and duplicates the Local DAC, so it cannot be selected as an output |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
-| GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`** |
+| GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`**, **`queue_next_pro`** (the next track is a streaming service's — see `pro` on `/library/queue`) |
 | POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
 | POST | `/upnp-renderer/{udn}/stop` | Stop |
 | POST | `/upnp-renderer/{udn}/pause` | Pause |
@@ -463,7 +468,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
-| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above. On a box without Pro: **403** when the command reaches Roon or HQPlayer — judged on the device it reaches, once resolved — and **503** with what to do when a `play` would start the box's own player while its own HQPlayer holds the DAC ([Editions](#editions--what-a-box-without-pro-is-refused)) |
+| POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above. On a box without Pro: **403** when the command reaches Roon or HQPlayer — judged on the device it reaches, once resolved — and **403** with what to do when a `play` cannot sound: the box's own HQPlayer holds the DAC, or only streaming tracks are left in the queue it would play, the box's own or the network speaker's ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 | POST | `/player/source` | Select the active source |
 | GET | `/player/sleep-timer` | Current sleep-timer state |
 | POST | `/player/sleep-timer` | Arm the sleep timer (pause after N minutes) |
@@ -521,7 +526,7 @@ webradio started by another app, at an address the radio module does not know, c
 | `played_on` | Where the audio comes out: `"local"` or a renderer UDN. Display only |
 | `outputs[]` | Runtime outputs: the local chain + the selected renderer |
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
-| `queue_next` | `{title, artist, album, cover_token}` — upcoming track of a renderer cast |
+| `queue_next` | `{title, artist, album, cover_token, pro}` — upcoming track of a renderer cast; `pro` as on a `/library/queue` item |
 | `sources[].selectable` | `false` on an entry that is a routing handle, not a source: listed so the player can render it, never offered as something to browse |
 | `sources[].kind` | What the source **is**: `library` \| `radio` \| `streaming` \| `roon` \| `input`. `protocol` cannot answer it — it mixes transport (`mpd`, `mpris`) with provider (`qobuz`) and grows by one value per provider, while this stays a closed vocabulary a client can branch on. `null` on a routing handle (see `selectable`). An `input` (AirPlay, the UPnP bridge) is a source — it does put out sound — but it **hides** the source behind it, so it holds no catalogue to browse |
 | `sources[].running` | On an `input`: `true` while its software runs, `false` when it is installed but stopped (a phone does not see the box — shown **Off**), `null` when the box could not tell. `null` on every other kind. An input whose software is **not installed** is not listed at all. An input installed, removed, started or stopped is reflected in the next `state` event |
@@ -1063,6 +1068,7 @@ The core publishes the rule; a client reads it and keeps no list of its own:
 | `pro` | `GET /license/status` | This box has Pro |
 | `pro` | each `sources[]` entry, and `PlayerState` | Browsing, queueing from or controlling this source is Pro (Roon, HQPlayer, a streaming service, a media server). On the state it reads the device the commands reach (`control_id`, else `source_id`) |
 | `pro` | each `GET /audio_app_config/services` entry | This service's settings are Pro (`hqplayerd`, `naa`) |
+| `pro` | each `GET /library/queue` item, and `PlayerState.queue_next` | A track of a streaming service: a box without Pro refuses it, and the player skips it |
 
 On a box without Pro the core answers **403** — `detail`: `Full license required. …`, or
 `This license ended on … Renew it to use this feature.` — to:
@@ -1089,10 +1095,17 @@ edition. `GET`/`DELETE /{qobuz,tidal,highresaudio}/connection` too: what an acco
 forgetting it.
 
 While a box without Pro runs its own HQPlayer (HQPlayer Embedded, holding the DAC), a play
-on the box's own player is refused with what to do — **503** on `/library/queue`,
+on the box's own player is refused with what to do — **403** on `/library/queue`,
 `/radio/play` and a `play` on `/player/control`: `HQPlayer Embedded runs on this box and holds
 its DAC, and HQPlayer is part of the Pro edition. Stop HQPlayer Embedded from Services to play
-here, or activate Pro.` Nothing is ever sent to HQPlayer.
+here, or activate a license.` Nothing is ever sent to HQPlayer.
+
+A `play` on `/player/control` that nothing in its queue can answer on a box without Pro is
+refused **403**: the box's own queue holding only streaming tracks, or the network speaker's
+holding only streaming tracks from the one it is on — `Only streaming tracks are left in the
+queue, and streaming services are part of the Pro edition. Add music from the box or a station,
+or activate a license.` A queue holding anything else is played: the streaming tracks are skipped.
+Both refusals name the license, as the ones above do: their words are meant for the listener.
 
 ### Output steering — `/steering/*`
 | Method | Path | Description |

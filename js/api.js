@@ -115,8 +115,9 @@ function keylessGate(endpoint) {
 /**
  * The words the core refuses a Pro feature with on a box without Pro — modules/license/
  * router.py, require_full_license: "Full license required. …", "This license ended on …
- * Renew it …", "This license has ended. …". No other 403 of the core names the licence
- * (core/jwt_handler.py: tokens, sessions, administrators, guests).
+ * Renew it …", "This license has ended. …"; and a play it refuses for want of Pro,
+ * core/playback_output.py RefusedWithoutPro: "… or activate a license." No other 403 of
+ * the core names the licence (core/jwt_handler.py: tokens, sessions, administrators, guests).
  */
 const LICENCE_REFUSAL = /\blicen[cs]e\b/i;
 

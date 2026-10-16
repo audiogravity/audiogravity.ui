@@ -263,6 +263,14 @@ export class AgLibraryRadio extends LitElement {
                 detail: { station }, bubbles: true,
             }));
         } catch (err) {
+            // A start refused for want of Pro (403) comes in the core's words for the
+            // listener, with what to do — the box's own HQPlayer holding the DAC, a station
+            // that plays a streaming service's relay — and is shown as it comes (user
+            // decision, 2026-10-16).
+            if (err?.status === 403 && err.detail) {
+                this._error = err.detail;
+                return;
+            }
             // Deliberately NOT `catalogueErrorMessage`: two unrelated failures
             // reach this catch as a 503. The catalogue one is worded for a
             // listener, but the output one carries HQPlayer's own words

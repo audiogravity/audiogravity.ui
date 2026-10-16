@@ -5,7 +5,8 @@ import { injectLibStyles } from './ag-library-page.js';
  * The organism normally fetches GET /api/library/queue on show; in Storybook
  * (no backend) `_load` is stubbed out and the queue state is set directly, so
  * the stories exercise the real render paths: current track, up-next rows,
- * per-source badges and the source filter bar (mixed queues only).
+ * per-source badges and the source filter bar (mixed queues only), and the
+ * padlock of a streaming track on a box without Pro.
  */
 
 export default {
@@ -23,6 +24,12 @@ export default {
     },
 };
 
+/** Origins of the streaming services: the core marks their tracks `pro`. */
+const STREAMING = ['qobuz', 'tidal', 'highresaudio'];
+
+/** A box whose trial ended: the Starter edition. */
+const STARTER = { status: 'starter', pro: false };
+
 /** Build one queue item with the GET /library/queue shape. */
 const item = (queueId, position, origin, title, artist, album, duration, extra = {}) => ({
     queue_id: queueId,
@@ -34,6 +41,7 @@ const item = (queueId, position, origin, title, artist, album, duration, extra =
     album,
     duration,
     cover_token: `demo:${album ? album.toLowerCase().replace(/[^a-z0-9]+/g, '-') : origin}`,
+    pro: STREAMING.includes(origin),
     ...extra,
 });
 
@@ -55,14 +63,17 @@ const SINGLE_ITEMS = [
 /**
  * Mount the queue with a fixed state (no backend).
  * @param {Array<object>} items - Queue items (one flagged `is_current`).
+ * @param {object} [license] - The box's /license/status; unread when omitted, which
+ *   locks nothing.
  * @returns {HTMLElement} Wrapped, ready-to-render element.
  */
-const mount = (items) => {
+const mount = (items, license) => {
     injectLibStyles();
     const el = document.createElement('ag-library-queue');
     el.sourceId = 'src_mpd';
     el._load = async () => {};
     el._queue = { items };
+    if (license) el._license = license;
     const wrap = document.createElement('div');
     wrap.style.cssText =
         'background: var(--bg-primary); color: var(--text-primary); '
@@ -76,3 +87,10 @@ export const MixedSources = { render: () => mount(MIXED_ITEMS) };
 
 /** Single provider: no badges, no filter — the header already names it. */
 export const SingleSource = { render: () => mount(SINGLE_ITEMS) };
+
+/**
+ * The mixed queue on a box whose trial ended: the streaming tracks wear the Pro tint
+ * and the padlock — their relay refuses them there and the player skips them. A tap
+ * on a padlock leads to the licence panel; each track can still be removed.
+ */
+export const AfterTheTrial = { render: () => mount(MIXED_ITEMS, STARTER) };

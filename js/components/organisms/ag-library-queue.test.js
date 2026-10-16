@@ -1,9 +1,11 @@
 /**
- * Unit tests for ag-library-queue.js — the per-source badge + filter logic.
+ * Unit tests for ag-library-queue.js — the per-source badge + filter logic, and the
+ * padlock of a streaming track on a box without Pro.
  * Logic-only (no DOM mount): lit and the component's imports are mocked so the
  * class imports cleanly, then the view/filter helpers are exercised on a bare
- * instance. The filter is display-only — filtered items keep their real MPD
- * position so removal/playback are unaffected, and Clear acts on the shown set.
+ * instance, and the templates read flattened (test-utils `flat`). The filter is
+ * display-only — filtered items keep their real MPD position so removal/playback are
+ * unaffected, and Clear acts on the shown set.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -29,10 +31,18 @@ const showToastMock = vi.fn();
 vi.mock('../../ui-helpers.js', () => ({ showToast: (...a) => showToastMock(...a) }));
 vi.mock('../../ag-icons.js', () => ({ iconPause: '', iconDragHandle: '', iconArrowLeft: '' }));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
+vi.mock('../atoms/ag-pro-lock.js', () => ({}));
 vi.mock('../atoms/ag-source-badge.js', () => ({}));
 vi.mock('../atoms/ag-filter-bar.js', () => ({}));
+// The real rule (isLockedSource); only the way to the licence panel is stood in for.
+const openLicensePanelMock = vi.fn();
+vi.mock('../../license-tiers.js', async (importOriginal) => ({
+    ...(await importOriginal()),
+    openLicensePanel: (...a) => openLicensePanelMock(...a),
+}));
 
 import { AgLibraryQueue } from './ag-library-queue.js';
+import { cssRuleBody, flat, readStylesheet } from '../../test-utils.js';
 
 /** Bare instance with sane defaults (no DOM, no lifecycle). */
 const el = (overrides = {}) =>
@@ -49,6 +59,7 @@ beforeEach(() => {
     apiGetMock.mockReset();
     removeQueueItemMock.mockReset().mockResolvedValue(undefined);
     showToastMock.mockReset();
+    openLicensePanelMock.mockReset();
 });
 
 describe('ag-library-queue — source filter', () => {
@@ -206,5 +217,85 @@ describe('ag-library-queue — truthful removal', () => {
         const i = inst([{ ...item('qobuz', 0), queue_id: 1 }]);
         await i._clear();
         expect(showToastMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('ag-library-queue — a streaming track on a box without Pro', () => {
+    // There the relays refuse every streaming track, those queued during the trial
+    // included, and the player skips them: a queue of nothing else stops without a word
+    // on screen. The core marks each such track (`pro`); the view says it in advance.
+    const STARTER = { status: 'starter', pro: false };
+    const PRO = { status: 'lifetime', pro: true };
+    const track = (over = {}) => ({ origin: 'qobuz', position: 1, queue_id: '91', title: 'T',
+        duration: 200, is_current: false, pro: true, ...over });
+    const view = (license, ...items) => el({ _license: license, _queue: { items } });
+    /** The rendered up-next rows, one string each. */
+    const rows = (e) => flat(e.render()).split('<div class="ag-swipe-wrap">').slice(1);
+
+    it('wears the Pro tint, and the padlock where its duration stood', () => {
+        const [row] = rows(view(STARTER, track()));
+        expect(row).toContain('lib-queue-row--locked');
+        expect(row).toContain('<ag-pro-lock></ag-pro-lock>');
+        expect(row).not.toContain('lib-queue-dur');
+    });
+
+    it('can still be removed, by its button or by a swipe', () => {
+        const [row] = rows(view(STARTER, track()));
+        expect(row).toContain('ag-swipe-reveal');
+        expect(row).toContain('lib-queue-more');
+    });
+
+    it.each([
+        ['on a box with Pro', PRO, track()],
+        ['while the licence is not read yet', null, track()],
+        ['for what a Starter box plays', STARTER, track({ origin: 'library', pro: false })],
+        ['from a core that does not mark its tracks', STARTER, track({ pro: undefined })],
+    ])('is a track like any other %s', (_, license, queued) => {
+        const [row] = rows(view(license, queued));
+        expect(row).not.toContain('lib-queue-row--locked');
+        expect(row).not.toContain('ag-pro-lock');
+        expect(row).toContain('lib-queue-dur');
+    });
+
+    it('marks only the tracks it will skip in a mixed queue', () => {
+        const marked = rows(view(STARTER, track({ origin: 'library', pro: false, queue_id: '90' }),
+            track(), track({ origin: 'radio', pro: false, queue_id: '92' })))
+            .map((row) => row.includes('lib-queue-row--locked'));
+        expect(marked).toEqual([false, true, false]);
+    });
+
+    it('marks the track playing when it is one', () => {
+        const out = flat(view(STARTER, track({ is_current: true, position: 0 })).render());
+        expect(out).toContain('lib-queue-now--locked');
+        expect(out).toContain('<ag-pro-lock></ag-pro-lock>');
+        const free = flat(view(PRO, track({ is_current: true, position: 0 })).render());
+        expect(free).not.toContain('lib-queue-now--locked');
+        expect(free).not.toContain('ag-pro-lock');
+    });
+
+    it('leads its padlock to the licence panel', () => {
+        const e = view(STARTER);
+        const tap = e._renderLock().values.find((v) => typeof v === 'function');
+        tap();
+        expect(openLicensePanelMock).toHaveBeenCalledWith(STARTER);
+    });
+
+    it('does not open the panel at the end of a swipe', () => {
+        const e = view(STARTER);
+        e._swipe.swiping = true;
+        e._renderLock().values.find((v) => typeof v === 'function')();
+        expect(openLicensePanelMock).not.toHaveBeenCalled();
+    });
+
+    it('draws its padlock as a real button, in the padlock button\'s one style', () => {
+        expect(flat(view(STARTER)._renderLock())).toMatch(/<button class="plain-btn pro-lock-btn"/);
+    });
+
+    it('gives that small mark a finger\'s room, without moving the row', () => {
+        // An invisible margin, as the progress bar's (progress-bar.css). One style for every
+        // padlock button (pro-lock.css): the player's "Next" wears it too.
+        const sheet = readStylesheet('css', 'components', 'pro-lock.css');
+        expect(cssRuleBody(sheet, '.pro-lock-btn')).toMatch(/position:\s*relative/);
+        expect(cssRuleBody(sheet, '.pro-lock-btn::before')).toMatch(/position:\s*absolute;[\s\S]*inset:\s*-10px -8px/);
     });
 });

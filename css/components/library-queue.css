@@ -86,6 +86,16 @@
     align-items: center;
 }
 
+/* The track playing is a streaming service's, on a box without Pro: the Pro tint, and
+   the padlock in a column of its own, between the text and the button. */
+.lib-queue-now.lib-queue-now--locked {
+    background: var(--pro-tint);
+}
+
+.lib-queue-now--locked .lib-queue-now-row {
+    grid-template-columns: 54px 1fr auto auto;
+}
+
 .lib-queue-now-col {
     display: flex;
     flex-direction: column;
@@ -182,6 +192,14 @@
        as the row slides. The gesture's touch-action / user-select are stamped by
        the swipeRow directive. */
     background: var(--bg-primary);
+}
+
+/* A streaming service's track on a box without Pro, which the player will skip: the
+   Pro tint (themes.css, --pro-tint), laid over the row's own background as an image so
+   the row stays opaque for the swipe reveal. Its padlock (.pro-lock-btn, pro-lock.css)
+   takes the duration's place. */
+.lib-queue-row.lib-queue-row--locked {
+    background-image: linear-gradient(var(--pro-tint), var(--pro-tint));
 }
 
 /* Per-row provider badge, stacked under the artist so the title keeps full

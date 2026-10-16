@@ -1,9 +1,9 @@
 import { html } from 'lit';
 import { isNetworkError, isGatewayError } from './net-errors.js';
 
-// Toast durations (ms)
+// Toast durations (ms). The long one is for a message of a sentence or two, to be read.
 const TOAST_DURATION_DEFAULT = 4000;
-const TOAST_DURATION_LONG = 6000;
+export const TOAST_DURATION_LONG = 6000;
 const TOAST_ANIMATION_DELAY = 10;
 const TOAST_REMOVE_DELAY = 300;
 
