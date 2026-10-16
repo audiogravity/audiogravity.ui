@@ -13,6 +13,10 @@
  * background. While another period loads, the last one stays, faded, rather than leaving
  * an empty page.
  *
+ * While the recording is off, a line at the top says so, and leads to the switch: at the
+ * bottom of the view, under the rankings, it went unseen, and Stats looked as if the box
+ * had stopped counting (user report, 2026-10-16).
+ *
  * @element ag-library-stats
  *
  * @attr {boolean} visible - Whether the view is the one shown; it reads the core only then.
@@ -125,6 +129,33 @@ export class AgLibraryStats extends LitElement {
     }
 
     /**
+     * Bring the recording's switch into view, and give it the focus.
+     *
+     * @returns {void}
+     */
+    _goToSwitch() {
+        const input = this.querySelector('ag-stats-recording ag-switch input');
+        input?.scrollIntoView?.({ block: 'center' });
+        input?.focus({ preventScroll: true });
+    }
+
+    /**
+     * The line that says the recording is off, while it is.
+     *
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _offNotice() {
+        if (this._summary?.recording !== false) return nothing;
+        return html`
+            <div class="lib-stats-off" role="status">
+                <span>Recording is off: nothing new is recorded.</span>
+                <button type="button" class="plain-btn lib-stats-off-link"
+                        @click=${this._goToSwitch}>Go to the switch</button>
+            </div>
+        `;
+    }
+
+    /**
      * The history's header: whose it is, and since when.
      *
      * @returns {import('lit').TemplateResult}
@@ -215,6 +246,7 @@ export class AgLibraryStats extends LitElement {
         return html`
             <div class="lib-stats">
                 ${this._header()}
+                ${this._offNotice()}
                 <div class="lib-stats-selector">
                     <ag-filter-bar .options=${LISTENING_PERIODS} value=${this._period}
                         @filter-change=${this._onPeriod}></ag-filter-bar>

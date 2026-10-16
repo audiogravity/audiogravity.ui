@@ -49,6 +49,31 @@
     padding: var(--spacing-md) 0;
 }
 
+/* The recording is off: a state that waits for the user, so the warning's border and tint —
+   as .lib-hqp-pairing on a source card. The words in the text's own colour: the warning's
+   text colour read 4.35:1 on that tint in Slate light (measured in Chromium, 2026-10-16).
+   Its button leads to the switch, at the bottom. */
+.lib-stats-off {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-sm);
+    background: var(--color-warning-bg);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.lib-stats-off-link {
+    font-weight: 600;
+    text-decoration: underline;
+    color: inherit;
+    cursor: pointer;
+}
+
 .lib-stats-lock {
     padding: var(--spacing-md) 0;
 }

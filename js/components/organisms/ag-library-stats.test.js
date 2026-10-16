@@ -155,6 +155,23 @@ describe('ag-library-stats — with Pro', () => {
         expect(api.listeningSummary).toHaveBeenCalledTimes(2);
     });
 
+    it('says at the top when the recording is off, and leads to the switch', async () => {
+        api.listeningSummary.mockImplementation(async (period) => summary(period, { recording: false }));
+        const el = await mount();
+        const notice = el.querySelector('.lib-stats-off');
+        expect(notice.textContent).toContain('Recording is off');
+        // At the top: before the period's selector and every figure.
+        expect(notice.compareDocumentPosition(el.querySelector('.lib-stats-selector'))
+            & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        notice.querySelector('button').click();
+        expect(document.activeElement).toBe(el.querySelector('ag-stats-recording ag-switch input'));
+    });
+
+    it('says nothing while the box records', async () => {
+        const el = await mount();
+        expect(el.querySelector('.lib-stats-off')).toBeNull();
+    });
+
     it('the genres that name nothing are named and greyed', () => {
         expect(genreRows([{ label: 'Jazz', seconds: 1, kind: 'genre' }, { label: null, seconds: 2, kind: 'other' },
                           { label: null, seconds: 3, kind: 'unknown' }]))
