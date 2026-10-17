@@ -104,6 +104,12 @@ Every other write route answers **403** to a guest token.
 > failure into a 500. The local-library, queue, Roon-status, UPnP and favourites routes
 > keep their own codes too (favourites answer **502**).
 
+> **`genre` on a `LibraryTrack`** — the track's genre in the box's common list of 23
+> (`Jazz`, `Pop/Rock`, `Soul & R&B`…), filled where the service names it with the track:
+> Qobuz (albums, playlists, search) and HIGHRESAUDIO albums. `null` elsewhere — Tidal and
+> HIGHRESAUDIO playlists name it only once a track plays (`sources[].genre` on the player),
+> and the local library's tracks.
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/library/albums` | List albums — `?source_id=`, optional `?artist_id=`, optional `?sort=title\|added`, optional `?refresh=true` (re-scan the library instead of serving the core's cached list — send it for a Refresh control, never for paging or for changing `sort`. Not needed to see a re-indexed library: the cached list is dropped as soon as MPD's own database changes. Only local (MPD) sources hold such a list; streaming sources and Roon page from the provider and ignore the parameter, so it is accepted on any source and acted on by those). **503** with a message meant to be shown as-is when the local source cannot answer for a reason that is not an empty collection: MPD stopped, or **no music library configured on the box** |
@@ -527,6 +533,7 @@ webradio started by another app, at an address the radio module does not know, c
 | `outputs[]` | Runtime outputs: the local chain + the selected renderer |
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
 | `queue_next` | `{title, artist, album, cover_token, pro}` — upcoming track of a renderer cast; `pro` as on a `/library/queue` item |
+| `sources[].genre` | What the source plays, by genre. For a streaming track the box serves (Qobuz, Tidal, HIGHRESAUDIO), the genre in the box's common list — the one the listening history counts; when the service is asked once the track plays, it arrives a moment later, in a further `state` event. For anything else, the engine's own word: a file's Genre tag. `null` when there is none |
 | `sources[].selectable` | `false` on an entry that is a routing handle, not a source: listed so the player can render it, never offered as something to browse |
 | `sources[].kind` | What the source **is**: `library` \| `radio` \| `streaming` \| `roon` \| `input`. `protocol` cannot answer it — it mixes transport (`mpd`, `mpris`) with provider (`qobuz`) and grows by one value per provider, while this stays a closed vocabulary a client can branch on. `null` on a routing handle (see `selectable`). An `input` (AirPlay, the UPnP bridge) is a source — it does put out sound — but it **hides** the source behind it, so it holds no catalogue to browse |
 | `sources[].running` | On an `input`: `true` while its software runs, `false` when it is installed but stopped (a phone does not see the box — shown **Off**), `null` when the box could not tell. `null` on every other kind. An input whose software is **not installed** is not listed at all. An input installed, removed, started or stopped is reflected in the next `state` event |
@@ -934,7 +941,7 @@ announced. Roon and HQPlayer are not counted.
 | `buckets[]` | `{ start, seconds }` — every day or month of the period, oldest first, empty ones included; `start` is its first day |
 | `sources[]`, `outputs[]` | `{ label, seconds }`, largest first. `label` is the source's name as the player shows it (`Qobuz`, `Local Library`, a media server's name), or the output's (DAC, speaker); null when unknown |
 | `quality[]` | `{ key, seconds }` — `dsd`, `hires` (above 16 bit or 48 kHz), `cd`, `lossy`, always in this order; then `unknown` when there is some |
-| `genres[]` | `{ label, seconds, kind }`, largest first — `kind` `genre` (the first six), then `other` (the rest, added up) and `unknown`, whose `label` is null |
+| `genres[]` | `{ label, seconds, kind }`, largest first — `kind` `genre` (the first six), then `other` (the rest, added up) and `unknown`, whose `label` is null. `label` is a genre of the box's common list (`Soul & R&B`…) — or, for a file or a station, its own word when no source uses it |
 | `week_hours` | Seven arrays, Monday first, of 24 numbers — the local hours 0 to 23: seconds listened in that hour on average per week over the period, i.e. its time divided by how many times that weekday comes in the period (counted from `since` when the history began later). Pauses count in no hour. All zeros while nothing was recorded |
 | `top_artists[]` | `{ artist, seconds, plays }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked |
 | `top_albums[]` | `{ album, artist, seconds, plays }` — same |
