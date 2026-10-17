@@ -127,6 +127,7 @@ import './components/molecules/ag-library-source-card.js';
 import './components/molecules/ag-pro-lock-card.js';
 import './components/molecules/ag-stats-bars.js';
 import './components/molecules/ag-stats-headline.js';
+import './components/molecules/ag-stats-hours.js';
 import './components/molecules/ag-stats-quality.js';
 import './components/molecules/ag-stats-recent.js';
 import './components/molecules/ag-stats-recording.js';

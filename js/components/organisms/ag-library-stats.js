@@ -1,8 +1,8 @@
 /**
  * @module AgLibraryStats
  * @description The listening history: what this box played over a period — its time,
- * days, sources, outputs, sound quality and genres, the most played and the latest
- * listens — and the switch that keeps it.
+ * days, the hours of the week it fills, sources, outputs, sound quality and genres, the
+ * most played and the latest listens — and the switch that keeps it.
  *
  * The box records on every edition; this view's figures are Pro. On a Starter box it
  * shows what Pro adds, under the padlock, and the recording's switch and erase all the
@@ -23,8 +23,9 @@
  *
  * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
  * @dependency js/listening-api.js - /listening/summary
- * @dependency ag-stats-headline, ag-stats-bars, ag-stats-shares, ag-stats-quality,
- *   ag-stats-top, ag-stats-recent, ag-stats-recording, ag-pro-lock-card, ag-filter-bar
+ * @dependency ag-stats-headline, ag-stats-bars, ag-stats-hours, ag-stats-shares,
+ *   ag-stats-quality, ag-stats-top, ag-stats-recent, ag-stats-recording, ag-pro-lock-card,
+ *   ag-filter-bar
  * @dependency css/components/library-stats.css
  */
 import { LitElement, html, nothing } from 'lit';
@@ -37,6 +38,7 @@ import '../atoms/ag-filter-bar.js';
 import '../molecules/ag-pro-lock-card.js';
 import '../molecules/ag-stats-bars.js';
 import '../molecules/ag-stats-headline.js';
+import '../molecules/ag-stats-hours.js';
 import '../molecules/ag-stats-quality.js';
 import '../molecules/ag-stats-recent.js';
 import '../molecules/ag-stats-recording.js';
@@ -62,6 +64,16 @@ export function genreRows(genres) {
         seconds: g.seconds,
         muted: g.kind !== 'genre',
     }));
+}
+
+/**
+ * Whether the week's hours hold any music: a week of nothing is no section under its heading.
+ *
+ * @param {number[][]|undefined} week - The summary's `week_hours`; absent from an older core.
+ * @returns {boolean}
+ */
+export function hasWeek(week) {
+    return Array.isArray(week) && week.some(row => Array.isArray(row) && row.some(v => Number(v) > 0));
 }
 
 export class AgLibraryStats extends LitElement {
@@ -203,6 +215,8 @@ export class AgLibraryStats extends LitElement {
                 <ag-stats-headline .summary=${s} caption=${caption}></ag-stats-headline>
                 ${this._section('Listening time',
                     html`<ag-stats-bars .buckets=${s.buckets} unit=${s.unit}></ag-stats-bars>`)}
+                ${hasWeek(s.week_hours) ? this._section('When you listen',
+                    html`<ag-stats-hours .week=${s.week_hours}></ag-stats-hours>`) : nothing}
                 ${s.sources?.length ? this._section('By source',
                     html`<ag-stats-shares .rows=${s.sources} .total=${s.total_seconds}></ag-stats-shares>`) : nothing}
                 ${s.outputs?.length ? this._section('By output',

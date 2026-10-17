@@ -920,9 +920,9 @@ badged `origin: "radio"`.
 The writes answer 403 to a guest account.
 
 `GET /listening/summary` — the whole view in one answer. Days and months are the box's
-local ones; a listen counts on the day it started. A listen is at least 30 s actually
-played; a station is one listen however many songs it announced. Roon and HQPlayer are not
-counted.
+local ones; a listen counts on the day it started, and in the hours it actually played. A
+listen is at least 30 s actually played; a station is one listen however many songs it
+announced. Roon and HQPlayer are not counted.
 
 | Field | Meaning |
 |---|---|
@@ -935,6 +935,7 @@ counted.
 | `sources[]`, `outputs[]` | `{ label, seconds }`, largest first. `label` is the source's name as the player shows it (`Qobuz`, `Local Library`, a media server's name), or the output's (DAC, speaker); null when unknown |
 | `quality[]` | `{ key, seconds }` — `dsd`, `hires` (above 16 bit or 48 kHz), `cd`, `lossy`, always in this order; then `unknown` when there is some |
 | `genres[]` | `{ label, seconds, kind }`, largest first — `kind` `genre` (the first six), then `other` (the rest, added up) and `unknown`, whose `label` is null |
+| `week_hours` | Seven arrays, Monday first, of 24 numbers — the local hours 0 to 23: seconds listened in that hour on average per week over the period, i.e. its time divided by how many times that weekday comes in the period (counted from `since` when the history began later). Pauses count in no hour. All zeros while nothing was recorded |
 | `top_artists[]` | `{ artist, seconds, plays }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked |
 | `top_albums[]` | `{ album, artist, seconds, plays }` — same |
 | `top_tracks[]` | `{ title, artist, album, seconds, plays }` — same |

@@ -295,6 +295,84 @@
 .lib-stats-bars-labels--sparse span:first-child { justify-content: flex-start; }
 .lib-stats-bars-labels--sparse span:last-child { justify-content: flex-end; }
 
+/* ─── The week's hours: seven rows of 24 squares ─── */
+.lib-stats-hours {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.lib-stats-hours-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;      /* the surface gap between touching squares */
+}
+
+.lib-stats-hours-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.lib-stats-hours-day {
+    flex: 0 0 2.6em;
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+}
+
+/* The square's own geometry, not a spacing: the grid is drawn 14px a row, as the validated
+   mock-up — 24 squares share the width, 13px each at 390px. */
+.lib-stats-hour {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+/* Picked or reached by the keyboard: a ring of the accent around the square, in the gap —
+   no step of the ramp, so it reads on the darkest square as on the palest. */
+.lib-stats-hour[aria-pressed="true"],
+.lib-stats-hour:focus-visible {
+    position: relative;
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
+}
+
+/* A hover never thins the ring of the square picked. */
+@media (hover: hover) {
+    .lib-stats-hour:not([aria-pressed="true"]):hover {
+        outline: 1px solid var(--accent-primary);
+        outline-offset: 1px;
+    }
+}
+
+.lib-stats-hours-marks {
+    display: flex;
+    padding-left: calc(2.6em + 2px);
+    font-size: var(--font-size-xxs);
+    color: var(--text-tertiary);
+}
+
+.lib-stats-hours-marks span {
+    flex: 6 1 0;
+    min-width: 0;
+}
+
+.lib-stats-hours-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.lib-stats-hours-note {
+    margin-left: auto;
+    color: var(--text-tertiary);
+}
+
 /* ─── Shares: sources, outputs, genres ─── */
 .lib-stats-shares {
     display: flex;
@@ -383,7 +461,10 @@
     gap: var(--spacing-md);
 }
 
-.lib-stats-quality-swatch {
+/* A legend's key, the same in both legends: a 12px square, the size of the validated
+   mock-up's keys — the key's geometry, not a spacing, so off the spacing scale. */
+.lib-stats-quality-swatch,
+.lib-stats-hours-swatch {
     display: block;
     width: 12px;
     height: 12px;
@@ -404,11 +485,25 @@
    the ordinal checks of the data-visualisation validator in the six palettes: lightness in
    order, gaps of 0.06 or more, the lightest at 2.3:1 to 3.7:1 on the page (2026-10-16; the
    one warning, Minimal light's "single hue", is the hue of pure greys, which have none).
-   Unknown is no step of the order: the border's grey, and its legend says it. */
-.lib-stats-q--dsd { background: var(--text-primary); }
-.lib-stats-q--hires { background: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary)); }
-.lib-stats-q--cd { background: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary)); }
-.lib-stats-q--lossy { background: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary)); }
+   Unknown is no step of the order: the border's grey, and its legend says it.
+   The week's hours (ag-stats-hours) are drawn in the same four steps, the busiest hour the
+   strongest — one declaration per step serves both charts. Dark mode flips the anchor by
+   itself, the text being the light end there. An hour of no music: a tint of the same
+   colour at 10 %, which is no step — 1.21 to 1.30:1 on the page, 1.9 to 3.0:1 against the
+   palest step (dataviz validator, the six palettes, 2026-10-17). */
+.lib-stats-q--dsd,
+.lib-stats-heat--4 { background: var(--text-primary); }
+
+.lib-stats-q--hires,
+.lib-stats-heat--3 { background: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary)); }
+
+.lib-stats-q--cd,
+.lib-stats-heat--2 { background: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary)); }
+
+.lib-stats-q--lossy,
+.lib-stats-heat--1 { background: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary)); }
+
+.lib-stats-heat--0 { background: color-mix(in srgb, var(--text-primary) 10%, var(--bg-primary)); }
 .lib-stats-q--unknown { background: var(--border-color); }
 
 /* ─── Lists: most played, recently played ─── */

@@ -7,7 +7,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-    bucketLabels, fmtBucket, fmtListened, fmtShare, fmtWhen, niceCeiling,
+    HEAT_LEVELS, bucketLabels, fmtBucket, fmtHour, fmtListened, fmtShare, fmtWhen, heatLevel,
+    niceCeiling, weekdayNames,
 } from './stats-format.js';
 import { fmtIsoDate, localDay } from './utils-lit.js';
 
@@ -93,5 +94,33 @@ describe('fmtWhen', () => {
         expect(fmtWhen(new Date(2025, 8, 1, 10, 0).toISOString(), now))
             .toBe(new Date(2025, 8, 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }));
         expect(fmtWhen('nonsense', now)).toBe('');
+    });
+});
+
+describe('heatLevel', () => {
+    it.each([
+        [0, 3600, 0], [null, 3600, 0], [-5, 3600, 0], [600, 0, 0],
+        [1, 3600, 1], [900, 3600, 1], [901, 3600, 2], [1800, 3600, 2],
+        [2700, 3600, 3], [2701, 3600, 4], [3600, 3600, 4], [5000, 3600, HEAT_LEVELS],
+    ])('%s s against a busiest hour of %s s is step %s', (seconds, busiest, expected) => {
+        expect(heatLevel(seconds, busiest)).toBe(expected);
+    });
+
+    it('any time at all is drawn: never the step of nothing', () => {
+        expect(heatLevel(0.5, 100_000)).toBe(1);
+    });
+});
+
+describe('the week', () => {
+    it('names its seven days Monday first', () => {
+        const short = weekdayNames('short');
+        expect(short).toHaveLength(7);
+        expect(short[0]).toBe(new Date(2026, 9, 12).toLocaleDateString(undefined, { weekday: 'short' }));
+        expect(short[6]).toBe(new Date(2026, 9, 18).toLocaleDateString(undefined, { weekday: 'short' }));
+        expect(new Set(weekdayNames('long')).size).toBe(7);
+    });
+
+    it.each([[0, '00:00'], [7, '07:00'], [21, '21:00']])('hour %s reads %s', (hour, expected) => {
+        expect(fmtHour(hour)).toBe(expected);
     });
 });

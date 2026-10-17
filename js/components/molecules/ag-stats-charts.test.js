@@ -1,6 +1,6 @@
 /**
- * Tests for the listening history's charts and lists: ag-stats-bars, ag-stats-shares,
- * ag-stats-quality, ag-stats-headline, ag-stats-top, ag-stats-recent.
+ * Tests for the listening history's charts and lists: ag-stats-bars, ag-stats-hours,
+ * ag-stats-shares, ag-stats-quality, ag-stats-headline, ag-stats-top, ag-stats-recent.
  *
  * Rendered for real. Pinned: every value is readable without the colours — written out,
  * or in a bar's label; a bar is a button a finger and a keyboard reach; what names nothing
@@ -9,6 +9,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 
 import './ag-stats-bars.js';
+import './ag-stats-hours.js';
 import './ag-stats-shares.js';
 import './ag-stats-quality.js';
 import './ag-stats-headline.js';
@@ -201,5 +202,82 @@ describe('ag-stats-recent', () => {
     it('says when nothing played', async () => {
         const el = await mount('ag-stats-recent', { listens: [] });
         expect(el.textContent).toContain('Nothing played yet.');
+    });
+});
+
+/** A week of nothing but Saturday from 21:00 (30 min) and Monday at 07:00 (5 min). */
+function week() {
+    return Array.from({ length: 7 }, (_, day) => Array.from({ length: 24 }, (_, hour) =>
+        (day === 5 && hour === 21 ? 1800 : day === 0 && hour === 7 ? 300 : 0)));
+}
+
+describe('ag-stats-hours', () => {
+    it('draws seven rows of 24 squares, each a button saying its day, hour and time', async () => {
+        const el = await mount('ag-stats-hours', { week: week() });
+        const rows = [...el.querySelectorAll('.lib-stats-hours-row')];
+        expect(rows).toHaveLength(7);
+        expect(rows.every(r => r.querySelectorAll('button.lib-stats-hour').length === 24)).toBe(true);
+        const saturday = rows[5].querySelectorAll('button.lib-stats-hour')[21];
+        expect(saturday.getAttribute('type')).toBe('button');
+        expect(saturday.getAttribute('aria-label')).toMatch(/21:00: 30 min on average$/);
+        expect(rows[3].querySelectorAll('button')[3].getAttribute('aria-label')).toMatch(/nothing on average$/);
+    });
+
+    it('the busiest hour is the strongest step, any time at all at least the first, nothing the pale tint', async () => {
+        const el = await mount('ag-stats-hours', { week: week() });
+        const cell = (day, hour) => el.querySelectorAll('.lib-stats-hours-row')[day]
+            .querySelectorAll('button.lib-stats-hour')[hour];
+        expect(cell(5, 21).classList.contains('lib-stats-heat--4')).toBe(true);
+        expect(cell(0, 7).classList.contains('lib-stats-heat--1')).toBe(true);
+        expect(cell(2, 12).classList.contains('lib-stats-heat--0')).toBe(true);
+    });
+
+    it('a tap puts the square in the readout, a new week clears it', async () => {
+        const el = await mount('ag-stats-hours', { week: week() });
+        expect(el.querySelector('.lib-stats-bars-readout').textContent).toContain('Tap a square');
+        const saturday = el.querySelectorAll('.lib-stats-hours-row')[5].querySelectorAll('button')[21];
+        saturday.click();
+        await el.updateComplete;
+        expect(el.querySelector('.lib-stats-bars-readout strong').textContent).toBe('30 min');
+        expect(el.querySelector('.lib-stats-bars-readout').textContent).toContain('21:00');
+        expect(saturday.getAttribute('aria-pressed')).toBe('true');
+        el.querySelectorAll('.lib-stats-hours-row')[3].querySelectorAll('button')[3].click();
+        await el.updateComplete;
+        expect(el.querySelector('.lib-stats-bars-readout strong').textContent).toBe('Nothing');
+
+        el.week = week();
+        await el.updateComplete;
+        expect(el.querySelector('.lib-stats-bars-readout').textContent).toContain('Tap a square');
+    });
+
+    it('the keyboard reaches a square as a tap does', async () => {
+        const el = await mount('ag-stats-hours', { week: week() });
+        el.querySelectorAll('.lib-stats-hours-row')[0].querySelectorAll('button')[7].focus();
+        await el.updateComplete;
+        expect(el.querySelector('.lib-stats-bars-readout strong').textContent).toBe('5 min');
+    });
+
+    it('a week of nothing, or none at all, draws nothing', async () => {
+        const empty = await mount('ag-stats-hours', { week: Array.from({ length: 7 }, () => Array(24).fill(0)) });
+        expect(empty.querySelector('.lib-stats-hours')).toBeNull();
+        const none = await mount('ag-stats-hours', { week: undefined });
+        expect(none.querySelector('.lib-stats-hours')).toBeNull();
+    });
+
+    it('a short or damaged week reads its missing hours as nothing', async () => {
+        const el = await mount('ag-stats-hours', { week: [[600, 'x', null]] });
+        const buttons = el.querySelectorAll('button.lib-stats-hour');
+        expect(buttons).toHaveLength(168);
+        expect(buttons[0].classList.contains('lib-stats-heat--4')).toBe(true);
+        expect(buttons[1].classList.contains('lib-stats-heat--0')).toBe(true);
+    });
+
+    it('its legend runs from nothing to the strongest step', async () => {
+        const el = await mount('ag-stats-hours', { week: week() });
+        const swatches = [...el.querySelectorAll('.lib-stats-hours-swatch')];
+        expect(swatches.map(s => [...s.classList].find(c => c.startsWith('lib-stats-heat--'))))
+            .toEqual(['lib-stats-heat--0', 'lib-stats-heat--1', 'lib-stats-heat--2',
+                      'lib-stats-heat--3', 'lib-stats-heat--4']);
+        expect(el.querySelector('.lib-stats-hours-legend').textContent).toContain('average per week');
     });
 });
