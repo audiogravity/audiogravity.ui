@@ -59,6 +59,8 @@ function summary(period = '30d', extra = {}) {
         genres: [{ label: 'Jazz', seconds: 6000, kind: 'genre' }, { label: null, seconds: 1200, kind: 'unknown' }],
         top_artists: [{ artist: 'Miles Davis', seconds: 7200, plays: 30 }], top_albums: [], top_tracks: [],
         recent: [{ started_at: new Date().toISOString(), seconds: 300, title: 'So What', live: false }],
+        week_hours: Array.from({ length: 7 }, (_, day) =>
+            Array.from({ length: 24 }, (_, hour) => (day === 5 && hour === 21 ? 1800 : 0))),
         ...extra,
     };
 }
@@ -93,10 +95,25 @@ describe('ag-library-stats — with Pro', () => {
         const el = await mount();
         expect(api.listeningSummary).toHaveBeenCalledExactlyOnceWith('30d');
         const headings = [...el.querySelectorAll('.lib-stats-heading')].map(h => h.textContent);
-        expect(headings).toEqual(['Listening time', 'By source', 'By output', 'Sound quality',
-                                  'Genres', 'Most played', 'Recently played', 'Recording']);
+        expect(headings).toEqual(['Listening time', 'When you listen', 'By source', 'By output',
+                                  'Sound quality', 'Genres', 'Most played', 'Recently played',
+                                  'Recording']);
         expect(el.textContent).toContain('Roon and HQPlayer are not counted yet.');
         expect(el.textContent).toContain('Unknown: AirPlay and some streams carry no genre.');
+    });
+
+    it('the week is drawn from the summary, and left out when it brings none', async () => {
+        const el = await mount();
+        expect(el.querySelector('ag-stats-hours').week[5][21]).toBe(1800);
+
+        for (const week of [undefined, Array.from({ length: 7 }, () => Array(24).fill(0))]) {
+            api.listeningSummary.mockImplementation(async (period) => summary(period, { week_hours: week }));
+            el._onPeriod({ detail: { value: '7d' } });
+            await new Promise(r => setTimeout(r, 0));
+            await el.updateComplete;
+            const headings = [...el.querySelectorAll('.lib-stats-heading')].map(h => h.textContent);
+            expect(headings).not.toContain('When you listen');
+        }
     });
 
     it('asks the routes of the history, and nothing else', async () => {

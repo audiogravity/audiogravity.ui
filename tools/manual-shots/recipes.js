@@ -278,6 +278,71 @@ async function licencePanel(page) {
     return { clip: { ...panel, height: (next ? Math.min(end, Math.floor(next.y)) : end) - panel.y } };
 }
 
+/**
+ * An example listening history for the Stats figure: a household's month, summed as the
+ * core sums one. The dev box's own history is a few listens, which draw nothing to read;
+ * this one is set in the page (`/listening/summary` rewritten), never written to the core.
+ *
+ * Evenings every day, mornings on weekdays, afternoons at the weekend, late on Friday and
+ * Saturday; two days away from home.
+ *
+ * @param {Date} [now] - Today, for the days of the period.
+ * @returns {object} A `ListeningSummary` for the last 30 days.
+ */
+export function exampleHistory(now = new Date()) {
+    // Minutes per hour of the week, on average per week, Monday first.
+    const week = Array.from({ length: 7 }, (_, day) => {
+        const weekend = day >= 5;
+        return Array.from({ length: 24 }, (_, hour) => {
+            let minutes = 0;
+            if (hour < 2) minutes = day === 4 || day === 5 ? 7 : 0;
+            else if (hour >= 7 && hour <= 8) minutes = weekend ? 0 : 6;
+            else if (hour >= 10 && hour <= 13) minutes = weekend ? 11 : 1;
+            else if (hour >= 14 && hour <= 18) minutes = weekend ? 16 : 0;
+            else if (hour >= 19 && hour <= 21) minutes = 19;
+            else if (hour >= 22) minutes = day === 4 || day === 5 ? 26 : 10;
+            return minutes * 60;
+        });
+    });
+    const perWeekday = week.map(hours => hours.reduce((a, b) => a + b, 0));
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const away = new Set([11, 12]);                 // days back from today
+    const swing = [1, 0.8, 1.15, 0.9, 1.05, 1.2, 0.85];
+    const buckets = Array.from({ length: 30 }, (_, i) => {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (29 - i));
+        const back = 29 - i;
+        const seconds = away.has(back) ? 0 : Math.round(perWeekday[(day.getDay() + 6) % 7] * swing[i % 7]);
+        return { start: iso(day), seconds };
+    });
+    const total = buckets.reduce((s, b) => s + b.seconds, 0);
+    const share = (x) => Math.round(x * total);
+    const listens = Math.round(total / 265);
+    return {
+        period: '30d', unit: 'day', recording: true, since: '2025-03-03',
+        total_seconds: total, listens, albums: Math.round(listens / 9),
+        active_days: buckets.filter(b => b.seconds).length, days: 30, buckets,
+        sources: [['Qobuz', 0.41], ['Local Library', 0.29], ['Radio', 0.13], ['HIGHRESAUDIO', 0.09],
+                  ['Tidal', 0.05], ['AirPlay', 0.03]].map(([label, s]) => ({ label, seconds: share(s) })),
+        outputs: [{ label: 'Heed Abacus', seconds: share(0.78) }, { label: 'Living room', seconds: share(0.22) }],
+        quality: [{ key: 'dsd', seconds: share(0.05) }, { key: 'hires', seconds: share(0.44) },
+                  { key: 'cd', seconds: share(0.38) }, { key: 'lossy', seconds: share(0.13) }],
+        genres: [['Jazz', 0.27], ['Classical', 0.19], ['Electronic', 0.14], ['Rock', 0.12], ['Soul', 0.06],
+                 ['Folk', 0.04]].map(([label, s]) => ({ label, seconds: share(s), kind: 'genre' }))
+            .concat([{ label: null, seconds: share(0.06), kind: 'other' },
+                     { label: null, seconds: share(0.12), kind: 'unknown' }]),
+        week_hours: week,
+        top_artists: [['Miles Davis', 0.05, 38], ['Nils Frahm', 0.04, 31], ['Anna Calvi', 0.03, 22],
+                      ['Bill Evans', 0.03, 19], ['Max Richter', 0.02, 14]]
+            .map(([artist, s, plays]) => ({ artist, seconds: share(s), plays })),
+        top_albums: [{ album: 'Kind of Blue', artist: 'Miles Davis', seconds: share(0.03), plays: 6 }],
+        top_tracks: [{ title: 'So What', artist: 'Miles Davis', album: 'Kind of Blue', seconds: share(0.01), plays: 7 }],
+        recent: [
+            { started_at: new Date(now.getTime() - 600e3).toISOString(), seconds: 540, title: 'So What',
+              artist: 'Miles Davis', album: 'Kind of Blue', live: false, source: 'Qobuz', output: 'Heed Abacus' },
+        ],
+    };
+}
+
 /** Where "Release notes" points in the staged update — not visible in the figure. */
 const RELEASE_NOTES_URL = 'https://audiogravity.app/releases';
 
@@ -326,8 +391,8 @@ export const RECIPES = {
         },
     },
     'tab-menu': {
-        // The tab menu of a phone, Library unfolded into its views. Five of them unless
-        // the library's source is the radio, which has no albums to browse: three.
+        // The tab menu of a phone, Library unfolded into its views. Six of them unless
+        // the library's source is the radio, which has no albums to browse: four.
         tab: 'library', needs: ['a source other than the radio in the library'],
         run: tabMenu,
     },
@@ -394,6 +459,34 @@ export const RECIPES = {
             await page.waitForTimeout(4000);
             const r = await box(page, '.lib-view.active ag-library-radio');
             return { clip: { ...r, height: Math.min(r.height, 376) } };
+        },
+    },
+    stats: {
+        // The listening history, from its header down to the week's hours, with an
+        // example month (exampleHistory) and a square tapped to show how one is read.
+        tab: 'library', height: 1500,
+        async stage(page) {
+            await page.route(/\/listening\/summary(\?|$)/, (route) => route.fulfill({ json: exampleHistory() }));
+            await page.route(/\/listening\/settings(\?|$)/, (route) =>
+                route.fulfill({ json: { recording: true, listens: 4180, since: '2025-03-03' } }));
+        },
+        async run(page) {
+            await page.evaluate(`${LIB}._setView('stats')`);
+            const view = page.locator('.lib-view.active ag-library-stats');
+            const hours = view.locator('ag-stats-hours');
+            await hours.locator('.lib-stats-hours-grid').waitFor({ timeout: 15000 });
+            // Saturday from 21:00: the readout above the grid names it.
+            await hours.locator('.lib-stats-hours-row').nth(5).locator('button').nth(21).click();
+            await page.waitForTimeout(500);
+            const top = await boxOf(view.locator('.lib-stats-header'));
+            // `has` reads its locator from inside the section: one built from the page
+            // would match nothing there.
+            const section = await boxOf(view.locator('.lib-stats-section', { has: page.locator('ag-stats-hours') }));
+            // 12px of the page around it: the header's words and the grid's last column
+            // would otherwise touch the figure's edge.
+            const m = 12;
+            return { clip: { x: section.x - m, y: top.y - m, width: section.width + 2 * m,
+                             height: section.y + section.height - top.y + 2 * m } };
         },
     },
     'hqplayer-output': {

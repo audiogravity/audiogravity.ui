@@ -88,6 +88,9 @@ and writes nothing to the core:
 - `hqplayer-output` — *Use as output* switched on: for real, it would send every play of
   the box to that HQPlayer.
 - `hqplayer-embedded-install` — a first install, which asks for a web password.
+- `stats` — an example listening history, a household's month (`exampleHistory` in
+  `recipes.js`): the dev box's own history is a few listens, which draw nothing to read.
+  Saturday 21:00 is tapped, so the figure shows how a square is read.
 
 `license-active` shows the real licence, with its **Device ID and Order ID blurred** — the
 Order ID is the licence key. Their pixels are replaced by the blur, never blended with it.

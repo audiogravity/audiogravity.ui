@@ -100,6 +100,46 @@ export function niceCeiling(seconds) {
     return hours * 3600;
 }
 
+/** How many steps of colour the week's hours are drawn in, nothing aside. */
+export const HEAT_LEVELS = 4;
+
+/**
+ * The step of colour an hour of the week is drawn in: its share of the busiest hour, in
+ * quarters.
+ *
+ * @param {number} seconds - The hour's time listened.
+ * @param {number} busiest - The busiest hour's.
+ * @returns {number} 0 for nothing, then 1 to HEAT_LEVELS; any time at all is step 1 or more.
+ */
+export function heatLevel(seconds, busiest) {
+    const s = Number(seconds) || 0;
+    const top = Number(busiest) || 0;
+    if (s <= 0 || top <= 0) return 0;
+    return Math.min(HEAT_LEVELS, Math.max(1, Math.ceil((s / top) * HEAT_LEVELS)));
+}
+
+/**
+ * The days of the week, Monday first, in the browser's language: `Mon` … `Sun`.
+ *
+ * @param {'short'|'long'} [style] - How long a name.
+ * @returns {string[]} Seven names.
+ */
+export function weekdayNames(style = 'short') {
+    // 5 January 2026 is a Monday.
+    return Array.from({ length: 7 }, (_, w) =>
+        new Date(2026, 0, 5 + w).toLocaleDateString(undefined, { weekday: style }));
+}
+
+/**
+ * An hour of the day as the week's chart names it: `21:00`.
+ *
+ * @param {number} hour - 0 to 23.
+ * @returns {string}
+ */
+export function fmtHour(hour) {
+    return `${String(hour).padStart(2, '0')}:00`;
+}
+
 /**
  * When a listen started, as the latest listens show it: the time today, `Yesterday`, the
  * day this week, else the date.
