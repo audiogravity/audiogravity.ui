@@ -8,6 +8,7 @@ import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, icon
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
+import '../atoms/ag-dsd-delivery.js';
 import '../atoms/ag-track-meta.js';
 import '../atoms/ag-source-badge.js';
 import '../molecules/ag-volume-popover.js';
@@ -726,7 +727,8 @@ export class AgNowPlaying extends LitElement {
                             .artist=${item.artist ?? ''}
                         ></ag-track-meta>
                     </div>
-                    ${item.source_format ? html`<span class="np-format">${item.source_format}</span>` : nothing}
+                    ${item.source_format ? html`<span class="np-format">${item.source_format}<ag-dsd-delivery
+                        .delivery=${item.dsd_delivery ?? null}></ag-dsd-delivery></span>` : nothing}
                 </div>
 
                 <!-- Transport controls. Previous / Next are greyed when they would go

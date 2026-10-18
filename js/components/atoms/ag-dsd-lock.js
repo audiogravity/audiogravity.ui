@@ -1,8 +1,9 @@
 /**
  * @module AgDsdLock
  * @description Padlock indicator shown next to the volume control when the
- * active source is decoding native DSD — volume is forced to 100% by the
- * pipeline and cannot be changed.
+ * active source plays a DSD track — volume is forced to 100% by the pipeline
+ * and cannot be changed. Whether the DSD reaches the DAC as DSD, as DoP or
+ * converted to PCM, the lock is the same (ag-dsd-delivery says which).
  *
  * Used by both the mini player (`ag-now-playing`) and the fullscreen player
  * (`ag-now-playing-fullscreen`). Positioning (inline vs absolute) is left to
@@ -26,7 +27,7 @@ export class AgDsdLock extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this.setAttribute('role', 'img');
-        this.setAttribute('aria-label', 'Volume locked at 100% for native DSD');
+        this.setAttribute('aria-label', 'Volume locked at 100% while DSD plays');
     }
 
     render() {

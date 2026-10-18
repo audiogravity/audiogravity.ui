@@ -13,6 +13,8 @@
  * @prop {Boolean} isGuest - Whether the user is a guest (cannot save)
  * @prop {Boolean} guided - Whether the service has a guided view (opens in it)
  * @prop {Boolean} regenerable - Whether its guided view offers "Reset to default"
+ * @prop {Boolean|null} serviceDop - Whether MPD sends DSD as DoP, for its guided view
+ *   (null when MPD cannot say)
  *
  * A service whose schema declares no field (HQPlayer Embedded: its file is edited
  * in place, never rewritten from a form) has no structured view — it opens in the
@@ -47,6 +49,7 @@ export class AgConfigEditor extends LitElement {
         outputs: { type: Array },
         librarySources: { type: Array },
         serviceOutput: { type: Object },
+        serviceDop: { type: Object },
         regenerable: { type: Boolean },
 
         currentMode: { state: true },
@@ -71,6 +74,7 @@ export class AgConfigEditor extends LitElement {
         this.outputs = [];
         this.librarySources = [];
         this.serviceOutput = null;
+        this.serviceDop = null;
         this.regenerable = true;
 
         this.currentMode = 'form';
@@ -541,6 +545,7 @@ export class AgConfigEditor extends LitElement {
                     <div class="config-guided-editor active">
                         <ag-guided-config .serviceId=${this.service?.id} .outputs=${this.outputs}
                             .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}
+                            .serviceDop=${this.serviceDop}
                             .regenerable=${this.regenerable}></ag-guided-config>
                     </div>
                 ` : html`

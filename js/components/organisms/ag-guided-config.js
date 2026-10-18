@@ -2,9 +2,9 @@
  * @module AgGuidedConfig
  * @description Guided ("zero-conf") editor for a provisionable audio service,
  * shown as the default mode of ag-config-editor. Presents package-specific,
- * hardware-aware fields (audio output, music library) driven by a per-service
+ * hardware-aware fields (audio output, DoP, music library) driven by a per-service
  * descriptor, and applies them as TARGETED patches (POST /audio-stack/output,
- * /audio-stack/library) that preserve the rest of the config. Also offers a
+ * /audio-stack/dop, /audio-stack/library) that preserve the rest of the config. Also offers a
  * "Reset to default" action that regenerates a minimal working config
  * (POST /audio-stack/provision, admin password required) — for the services
  * whose config Audiogravity generates only: HQPlayer Embedded's belongs to its
@@ -20,11 +20,14 @@
  * @prop {Array} outputs - Detected output candidates (from /audio-stack/status).
  * @prop {Array} librarySources - Detected library sources.
  * @prop {Object} serviceOutput - The service's currently pinned output, or null.
+ * @prop {boolean|null} serviceDop - Whether MPD sends DSD as DoP to the output it plays
+ *   on, as MPD says it (from /audio-stack/status); null when it cannot say.
  * @fires guided-changed - Bubbles, after a successful apply or reset (parent refreshes).
  * @dependency js/api.js
  * @dependency js/ui-helpers.js
  * @dependency js/components/utils-lit.js
  * @dependency js/components/molecules/ag-prov-output-picker.js
+ * @dependency js/components/molecules/ag-prov-dop-switch.js
  * @dependency js/components/molecules/ag-prov-library-picker.js
  * @dependency css/audio-stack.css
  */
@@ -34,6 +37,7 @@ import { showToast, handleError, showConfirm, showPasswordConfirm } from '../../
 import { svgIcon } from '../utils-lit.js';
 import { iconRefresh } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';
+import '../molecules/ag-prov-dop-switch.js';
 import '../molecules/ag-prov-library-picker.js';
 import '../molecules/ag-library-scan-indicator.js';
 import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
@@ -43,7 +47,9 @@ import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
  * "name" field for airplay/upmpdcli lands here once a targeted patch exists).
  */
 export const GUIDED_FIELDS = {
-    mpd: ['output', 'library'],
+    // DoP is MPD's alone: AirPlay carries no DSD, and HQPlayer Embedded sets its DSD
+    // in its own web page.
+    mpd: ['output', 'dop', 'library'],
     airplay: ['output'],
     upmpdcli: [],
     hqplayerd: ['output'],
@@ -55,8 +61,10 @@ export class AgGuidedConfig extends LitElement {
         outputs: { type: Array },
         librarySources: { type: Array },
         serviceOutput: { type: Object },
+        serviceDop: { type: Object },
         regenerable: { type: Boolean },
         _selectedOutputId: { state: true },
+        _dop: { state: true },
         _libraryChoice: { state: true },
         _manualPath: { state: true },
         _busy: { state: true },
@@ -68,10 +76,13 @@ export class AgGuidedConfig extends LitElement {
         this.outputs = [];
         this.librarySources = [];
         this.serviceOutput = null;
+        this.serviceDop = null;
         // True unless the status says otherwise: a core that predates the field
         // generates every service it lists.
         this.regenerable = true;
         this._selectedOutputId = null;
+        // The DoP switch as the user left it; null until flipped (serviceDop shows).
+        this._dop = null;
         this._libraryChoice = null;
         this._manualPath = '';
         this._busy = false;
@@ -103,8 +114,22 @@ export class AgGuidedConfig extends LitElement {
 
     _initialOutputId() {
         const pin = this.serviceOutput;
-        const match = pin && this.outputs.find(o => o.usb_id === pin.usb_id && o.card_name === pin.card_name);
+        // The device too, as _outputChanged compares it: a card with several outputs
+        // (HDMI's hw:0,3 beside the jack's hw:0,0) shares its usb_id and card_name.
+        const match = pin && this.outputs.find(o => o.usb_id === pin.usb_id
+            && o.card_name === pin.card_name && (o.device_id ?? 0) === (pin.device_id ?? 0));
         return match?.hw || this.outputs.find(o => o.recommended)?.hw || this.outputs[0]?.hw || null;
+    }
+
+    /** The DoP switch as shown: the user's flip, else what MPD applies. */
+    get _dopValue() {
+        return this._dop ?? this.serviceDop;
+    }
+
+    /** True when the user flipped the DoP switch away from what MPD applies — never while
+     * another output is chosen: DoP is set on the output MPD plays on, one DAC's own. */
+    get _dopChanged() {
+        return !this._outputChanged && this._dop !== null && this._dop !== this.serviceDop;
     }
 
     get _selectedOutput() {
@@ -156,7 +181,8 @@ export class AgGuidedConfig extends LitElement {
         if (this._busy) return false;
         const outChange = this._fields.includes('output') && this._outputChanged;
         const libChange = this._fields.includes('library') && !!this._libraryPayload;
-        return outChange || libChange;
+        const dopChange = this._fields.includes('dop') && this._dopChanged;
+        return outChange || libChange || dopChange;
     }
 
     /** Apply the changed fields as targeted patches (preserves the rest of the config). */
@@ -193,12 +219,18 @@ export class AgGuidedConfig extends LitElement {
                 );
                 if (!ok) return;
             }
+            // After the output — DoP is set on the output MPD plays on, the one just
+            // chosen — and before the library, whose change restarts MPD.
+            if (this._fields.includes('dop') && this._dopChanged) {
+                await apiPost('/audio-stack/dop', { dop: this._dop });
+            }
             if (libraryChanged) {
                 await apiPost('/audio-stack/library', libPayload);
             }
             showToast('success', 'Applied', `${this.serviceId} configuration updated.`);
             this._libraryChoice = null;
             this._manualPath = '';
+            this._dop = null;
             this._emitChanged();
             // A library change triggers an MPD rescan server-side — surface it.
             // Not when the library was removed: the core skips the rescan there
@@ -244,9 +276,14 @@ export class AgGuidedConfig extends LitElement {
                 services: [this.serviceId],
                 regenerate: true,
                 ...(this._libraryPayload || {}),
+                // Kept through the reset, as the output is — but off for another output
+                // chosen in the same gesture: what the switch holds is the other DAC's.
+                ...(this._fields.includes('dop')
+                    ? { dop: !this._outputChanged && this._dopValue === true } : {}),
                 admin_password: password,
             });
             showToast('success', 'Reset', `${this.serviceId} reset to a working default.`);
+            this._dop = null;
             this._emitChanged();
         } catch (e) {
             handleError(e, `Failed to reset ${this.serviceId}`);
@@ -267,7 +304,15 @@ export class AgGuidedConfig extends LitElement {
                     <div class="ag-guided-field">
                         <h4>Audio output</h4>
                         <ag-prov-output-picker .outputs=${this.outputs} .selected=${this._selectedOutputId}
-                            @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; }}></ag-prov-output-picker>
+                            @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; this._dop = null; }}></ag-prov-output-picker>
+                    </div>` : nothing}
+
+                ${fields.includes('dop') ? html`
+                    <div class="ag-guided-field">
+                        <h4>DSD</h4>
+                        <ag-prov-dop-switch .checked=${this._dopValue} ?pending=${this._outputChanged}
+                            ?disabled=${this._busy}
+                            @dop-change=${(e) => { this._dop = e.detail.checked; }}></ag-prov-dop-switch>
                     </div>` : nothing}
 
                 ${fields.includes('library') ? html`
