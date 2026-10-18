@@ -213,6 +213,25 @@ function stageStarter(page) {
 }
 
 /**
+ * MPD's DSD switches as the guided setup leaves them on a reader's box: DoP off, the
+ * DAC's volume at full during DSD. The lab box sends DoP (its own MPD configuration);
+ * the rest of the status is the dev core's, rewritten on its way in.
+ *
+ * @param {import('playwright').Page} page - The page, before it loads.
+ * @returns {Promise<void>}
+ */
+async function stageDsdDefaults(page) {
+    await page.route(/\/audio-stack\/status(\?|$)/, async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+        for (const service of json.services || []) {
+            if (service.service_id === 'mpd') Object.assign(service, { dop: false, dsd_full_volume: true });
+        }
+        await route.fulfill({ response, json });
+    });
+}
+
+/**
  * Open the licence window with its LICENSE KEY button, and wait for its Device ID.
  *
  * @param {import('playwright').Page} page - The Admin tab.
@@ -365,12 +384,24 @@ export const RECIPES = {
         },
     },
     guided: {
-        tab: 'config', height: 1800,
+        tab: 'config', height: 2200,
+        stage: stageDsdDefaults,
         async run(page) {
             await openConfigEditor(page, 'Music Player');
             const field = await box(page, '.ag-guided-field');
             const actions = await box(page, '.ag-guided-actions');
             return { clip: union(field, actions) };
+        },
+    },
+    'guided-dsd': {
+        tab: 'config', height: 2200,
+        stage: stageDsdDefaults,
+        async run(page) {
+            await openConfigEditor(page, 'Music Player');
+            // The DSD heading and its two switches: DoP, and the DAC's volume during DSD.
+            return { clip: await boxOf(page.locator('.ag-guided-field', {
+                has: page.locator('ag-prov-dsd-volume-switch'),
+            }).first()) };
         },
     },
     'network-mount': {

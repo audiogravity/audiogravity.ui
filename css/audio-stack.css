@@ -255,27 +255,38 @@
     font-size: var(--font-size-sm);
 }
 
-/* ── ag-prov-dop-switch (the DoP switch of MPD's guided view) ──────────── */
-.ag-prov-dop {
+/* ── ag-prov-guided-switch (the switches of MPD's guided view: DoP, the DAC's
+      volume during DSD) ─────────────────────────────────────────────────── */
+.ag-prov-switch {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
     max-width: 640px;
 }
 
-.ag-prov-dop-row {
+/* Two switches under one heading (DSD): the second set apart from the first's hint. */
+ag-prov-dop-switch,
+ag-prov-dsd-volume-switch {
+    display: block;
+}
+
+ag-prov-dop-switch + ag-prov-dsd-volume-switch {
+    margin-top: var(--spacing-md);
+}
+
+.ag-prov-switch-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--spacing-md);
 }
 
-.ag-prov-dop-label {
+.ag-prov-switch-label {
     font-size: var(--font-size-sm);
     color: var(--text-primary);
 }
 
-.ag-prov-dop-hint {
+.ag-prov-switch-hint {
     margin: 0;
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);

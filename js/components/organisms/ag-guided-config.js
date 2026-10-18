@@ -2,9 +2,10 @@
  * @module AgGuidedConfig
  * @description Guided ("zero-conf") editor for a provisionable audio service,
  * shown as the default mode of ag-config-editor. Presents package-specific,
- * hardware-aware fields (audio output, DoP, music library) driven by a per-service
- * descriptor, and applies them as TARGETED patches (POST /audio-stack/output,
- * /audio-stack/dop, /audio-stack/library) that preserve the rest of the config. Also offers a
+ * hardware-aware fields (audio output, DoP, the DAC's volume during DSD, music library)
+ * driven by a per-service descriptor, and applies them as TARGETED patches (POST
+ * /audio-stack/output, /audio-stack/dop, /audio-stack/dsd-full-volume, /audio-stack/library)
+ * that preserve the rest of the config. Also offers a
  * "Reset to default" action that regenerates a minimal working config
  * (POST /audio-stack/provision, admin password required) — for the services
  * whose config Audiogravity generates only: HQPlayer Embedded's belongs to its
@@ -22,12 +23,16 @@
  * @prop {Object} serviceOutput - The service's currently pinned output, or null.
  * @prop {boolean|null} serviceDop - Whether MPD sends DSD as DoP to the output it plays
  *   on, as MPD says it (from /audio-stack/status); null when it cannot say.
+ * @prop {boolean|null} serviceDsdFullVolume - Whether the DAC MPD plays on has its own
+ *   volume brought to full while it receives DSD (from /audio-stack/status); null when
+ *   it cannot be read.
  * @fires guided-changed - Bubbles, after a successful apply or reset (parent refreshes).
  * @dependency js/api.js
  * @dependency js/ui-helpers.js
  * @dependency js/components/utils-lit.js
  * @dependency js/components/molecules/ag-prov-output-picker.js
  * @dependency js/components/molecules/ag-prov-dop-switch.js
+ * @dependency js/components/molecules/ag-prov-dsd-volume-switch.js
  * @dependency js/components/molecules/ag-prov-library-picker.js
  * @dependency css/audio-stack.css
  */
@@ -38,6 +43,7 @@ import { svgIcon } from '../utils-lit.js';
 import { iconRefresh } from '../../ag-icons.js';
 import '../molecules/ag-prov-output-picker.js';
 import '../molecules/ag-prov-dop-switch.js';
+import '../molecules/ag-prov-dsd-volume-switch.js';
 import '../molecules/ag-prov-library-picker.js';
 import '../molecules/ag-library-scan-indicator.js';
 import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
@@ -48,8 +54,9 @@ import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
  */
 export const GUIDED_FIELDS = {
     // DoP is MPD's alone: AirPlay carries no DSD, and HQPlayer Embedded sets its DSD
-    // in its own web page.
-    mpd: ['output', 'dop', 'library'],
+    // in its own web page. The DAC's volume during DSD is a setting of the DAC MPD
+    // plays on, which every player that sends it DSD follows: set here, beside DoP.
+    mpd: ['output', 'dop', 'dsd_volume', 'library'],
     airplay: ['output'],
     upmpdcli: [],
     hqplayerd: ['output'],
@@ -62,9 +69,11 @@ export class AgGuidedConfig extends LitElement {
         librarySources: { type: Array },
         serviceOutput: { type: Object },
         serviceDop: { type: Object },
+        serviceDsdFullVolume: { type: Object },
         regenerable: { type: Boolean },
         _selectedOutputId: { state: true },
         _dop: { state: true },
+        _dsdVolume: { state: true },
         _libraryChoice: { state: true },
         _manualPath: { state: true },
         _busy: { state: true },
@@ -77,12 +86,15 @@ export class AgGuidedConfig extends LitElement {
         this.librarySources = [];
         this.serviceOutput = null;
         this.serviceDop = null;
+        this.serviceDsdFullVolume = null;
         // True unless the status says otherwise: a core that predates the field
         // generates every service it lists.
         this.regenerable = true;
         this._selectedOutputId = null;
         // The DoP switch as the user left it; null until flipped (serviceDop shows).
         this._dop = null;
+        // The DAC volume switch as the user left it; null until flipped.
+        this._dsdVolume = null;
         this._libraryChoice = null;
         this._manualPath = '';
         this._busy = false;
@@ -130,6 +142,18 @@ export class AgGuidedConfig extends LitElement {
      * another output is chosen: DoP is set on the output MPD plays on, one DAC's own. */
     get _dopChanged() {
         return !this._outputChanged && this._dop !== null && this._dop !== this.serviceDop;
+    }
+
+    /** The DAC volume switch as shown: the user's flip, else the DAC's setting. */
+    get _dsdVolumeValue() {
+        return this._dsdVolume ?? this.serviceDsdFullVolume;
+    }
+
+    /** True when the user flipped the DAC volume switch away from the DAC's setting —
+     * never while another output is chosen: the setting is the DAC's MPD plays on. */
+    get _dsdVolumeChanged() {
+        return !this._outputChanged && this._dsdVolume !== null
+            && this._dsdVolume !== this.serviceDsdFullVolume;
     }
 
     get _selectedOutput() {
@@ -182,7 +206,8 @@ export class AgGuidedConfig extends LitElement {
         const outChange = this._fields.includes('output') && this._outputChanged;
         const libChange = this._fields.includes('library') && !!this._libraryPayload;
         const dopChange = this._fields.includes('dop') && this._dopChanged;
-        return outChange || libChange || dopChange;
+        const volumeChange = this._fields.includes('dsd_volume') && this._dsdVolumeChanged;
+        return outChange || libChange || dopChange || volumeChange;
     }
 
     /** Apply the changed fields as targeted patches (preserves the rest of the config). */
@@ -224,6 +249,10 @@ export class AgGuidedConfig extends LitElement {
             if (this._fields.includes('dop') && this._dopChanged) {
                 await apiPost('/audio-stack/dop', { dop: this._dop });
             }
+            // Kept for the DAC MPD plays on: the output first, like DoP.
+            if (this._fields.includes('dsd_volume') && this._dsdVolumeChanged) {
+                await apiPost('/audio-stack/dsd-full-volume', { enabled: this._dsdVolume });
+            }
             if (libraryChanged) {
                 await apiPost('/audio-stack/library', libPayload);
             }
@@ -231,6 +260,7 @@ export class AgGuidedConfig extends LitElement {
             this._libraryChoice = null;
             this._manualPath = '';
             this._dop = null;
+            this._dsdVolume = null;
             this._emitChanged();
             // A library change triggers an MPD rescan server-side — surface it.
             // Not when the library was removed: the core skips the rescan there
@@ -284,6 +314,9 @@ export class AgGuidedConfig extends LitElement {
             });
             showToast('success', 'Reset', `${this.serviceId} reset to a working default.`);
             this._dop = null;
+            // Not sent: it is the DAC's setting, not MPD's configuration — a reset
+            // leaves it as it is, and the switch shows it again.
+            this._dsdVolume = null;
             this._emitChanged();
         } catch (e) {
             handleError(e, `Failed to reset ${this.serviceId}`);
@@ -304,7 +337,7 @@ export class AgGuidedConfig extends LitElement {
                     <div class="ag-guided-field">
                         <h4>Audio output</h4>
                         <ag-prov-output-picker .outputs=${this.outputs} .selected=${this._selectedOutputId}
-                            @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; this._dop = null; }}></ag-prov-output-picker>
+                            @output-select=${(e) => { this._selectedOutputId = e.detail.output.hw; this._dop = null; this._dsdVolume = null; }}></ag-prov-output-picker>
                     </div>` : nothing}
 
                 ${fields.includes('dop') ? html`
@@ -313,6 +346,11 @@ export class AgGuidedConfig extends LitElement {
                         <ag-prov-dop-switch .checked=${this._dopValue} ?pending=${this._outputChanged}
                             ?disabled=${this._busy}
                             @dop-change=${(e) => { this._dop = e.detail.checked; }}></ag-prov-dop-switch>
+                        ${fields.includes('dsd_volume') ? html`
+                            <ag-prov-dsd-volume-switch .checked=${this._dsdVolumeValue}
+                                ?pending=${this._outputChanged} ?disabled=${this._busy}
+                                @dsd-volume-change=${(e) => { this._dsdVolume = e.detail.checked; }}></ag-prov-dsd-volume-switch>`
+                            : nothing}
                     </div>` : nothing}
 
                 ${fields.includes('library') ? html`

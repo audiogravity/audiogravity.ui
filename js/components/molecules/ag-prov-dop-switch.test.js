@@ -25,10 +25,10 @@ function makeEl(overrides = {}) {
     return el;
 }
 
-/** The bound values of the switch, in template order. */
+/** The bound values of the switch, in template order (ag-prov-guided-switch). */
 function switchOf(el) {
-    const [checked, disabled, , hint] = el.render().values;
-    return { checked, disabled, hint };
+    const [label, checked, disabled, switchLabel, , hint] = el.render().values;
+    return { label, checked, disabled, switchLabel, hint };
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -37,6 +37,12 @@ describe('ag-prov-dop-switch', () => {
     it('shows what MPD applies', () => {
         expect(switchOf(makeEl({ checked: true })).checked).toBe(true);
         expect(switchOf(makeEl({ checked: false })).checked).toBe(false);
+    });
+
+    it('names the switch the same for the eye and for assistive technology', () => {
+        const s = switchOf(makeEl());
+        expect(s.label).toBe('Send DSD as DoP (DSD over PCM)');
+        expect(s.switchLabel).toBe(s.label);
     });
 
     it('says what the switch does when MPD says what it applies', () => {

@@ -15,6 +15,8 @@
  * @prop {Boolean} regenerable - Whether its guided view offers "Reset to default"
  * @prop {Boolean|null} serviceDop - Whether MPD sends DSD as DoP, for its guided view
  *   (null when MPD cannot say)
+ * @prop {Boolean|null} serviceDsdFullVolume - Whether the DAC MPD plays on goes to full
+ *   volume during DSD, for its guided view (null when it cannot be read)
  *
  * A service whose schema declares no field (HQPlayer Embedded: its file is edited
  * in place, never rewritten from a form) has no structured view — it opens in the
@@ -50,6 +52,7 @@ export class AgConfigEditor extends LitElement {
         librarySources: { type: Array },
         serviceOutput: { type: Object },
         serviceDop: { type: Object },
+        serviceDsdFullVolume: { type: Object },
         regenerable: { type: Boolean },
 
         currentMode: { state: true },
@@ -75,6 +78,7 @@ export class AgConfigEditor extends LitElement {
         this.librarySources = [];
         this.serviceOutput = null;
         this.serviceDop = null;
+        this.serviceDsdFullVolume = null;
         this.regenerable = true;
 
         this.currentMode = 'form';
@@ -546,6 +550,7 @@ export class AgConfigEditor extends LitElement {
                         <ag-guided-config .serviceId=${this.service?.id} .outputs=${this.outputs}
                             .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}
                             .serviceDop=${this.serviceDop}
+                            .serviceDsdFullVolume=${this.serviceDsdFullVolume}
                             .regenerable=${this.regenerable}></ag-guided-config>
                     </div>
                 ` : html`

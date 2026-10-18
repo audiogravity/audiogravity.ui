@@ -100,6 +100,7 @@ import './components/molecules/ag-config-card.js';
 import './components/molecules/ag-systemd-card.js';
 import './components/molecules/ag-prov-output-picker.js';
 import './components/molecules/ag-prov-dop-switch.js';
+import './components/molecules/ag-prov-dsd-volume-switch.js';
 import './components/molecules/ag-prov-library-picker.js';
 import './components/molecules/ag-network-mount-form.js';
 import './components/molecules/ag-library-scan-indicator.js';
