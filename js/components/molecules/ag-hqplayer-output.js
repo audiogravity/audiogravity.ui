@@ -2,8 +2,15 @@
  * @module AgHqplayerOutput
  * @description HQPlayer output card molecule for the sources view.
  * Shows connection state, discovery panel (local-subnet scan + manual IP
- * entry for cross-subnet hosts), DSP controls (filter, shaper, mode
- * dropdowns + volume slider), and disconnect action.
+ * entry for cross-subnet hosts), HQPlayer's volume, DSP controls (filter,
+ * shaper, mode dropdowns), and disconnect action.
+ *
+ * The volume is on the card's face, for whichever HQPlayer the card shows —
+ * this box's own or one on the network, playing through the box or not. It is
+ * HQPlayer's, in dB, over the range set in HQPlayer (*Volume min* / *Volume
+ * max*, −60 to −3 on the Mac's, 2026-10-18), and follows HQPlayer while the
+ * card is on screen: the status is read again every VOLUME_POLL_MS, and not at
+ * all while the card or the page is out of sight.
  *
  * Self-contained: fetches its own state from the /hqplayer/* endpoints.
  * The parent organism only needs to render `<ag-hqplayer-output>`.
@@ -28,10 +35,32 @@ import { apiGet, apiPut, apiPost, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
 import { showToast } from '../../ui-helpers.js';
 import { iconSliders, iconChevronDown, iconWifi, iconExternalLink } from '../../ag-icons.js';
+import { AgTimerManager } from '../../timer.js';
 import '../atoms/ag-status-indicator.js';
 import '../atoms/ag-switch.js';
 
+/** Numbers the cards, so each one's timer has an id of its own. */
+let cardCount = 0;
+
 class AgHqplayerOutput extends LitElement {
+
+    /**
+     * How often the status is read again while the card is on screen, so the
+     * volume shown follows a change made in HQPlayer itself or by Roon. A read
+     * costs the core one connection to HQPlayer — answered in 0.46 s by this
+     * box's own, in 2.43 s by the Mac's (measured 2026-10-18) — and none is made
+     * while the card or the page is out of sight.
+     * @type {number}
+     */
+    static VOLUME_POLL_MS = 5000;
+
+    /**
+     * How long after the finger lets go of the slider the value under it is
+     * released when nothing was sent (see _endDrag). Measured in Chromium on
+     * letting go: pointerup, then the card's render, then `change`.
+     * @type {number}
+     */
+    static DRAG_RELEASE_MS = 250;
 
     static properties = {
         _connection:  { state: true },
@@ -46,6 +75,7 @@ class AgHqplayerOutput extends LitElement {
         _dspExpanded:  { state: true },
         _applying:     { state: true },
         _useAsOutput:  { state: true },
+        _volumeDrag:   { state: true },
     };
 
     constructor() {
@@ -62,6 +92,11 @@ class AgHqplayerOutput extends LitElement {
         this._dspExpanded = false;
         this._applying    = false;
         this._useAsOutput = false;  // seeded from the server in _loadConnection()
+        this._volumeDrag  = null;   // the dB under the finger while the slider moves
+        this._statusSeq   = 0;      // which status read is the latest asked
+        this._onScreen    = false;
+        this._timerId     = `hqplayer-volume-${++cardCount}`;
+        this._watching    = false;
     }
 
     /** @override Light DOM — inherits global CSS. */
@@ -76,6 +111,18 @@ class AgHqplayerOutput extends LitElement {
             window.EventEmitter.on('service-metrics-sse', this._boundHandleNaaMetrics);
             window.EventEmitter.on('service-metrics-sse', this._boundHandleLocalMetrics);
         }
+        // A browser without it shows the card as always on screen.
+        if (typeof IntersectionObserver === 'undefined') {
+            this._onScreen = true;
+        } else {
+            // The last entry: several queue up when the card leaves the screen and
+            // comes back before the callback runs, the oldest first.
+            this._observer = new IntersectionObserver((entries) => {
+                this._onScreen = entries[entries.length - 1].isIntersecting;
+                this._syncVolumeWatch();
+            });
+            this._observer.observe(this);
+        }
     }
 
     disconnectedCallback() {
@@ -83,6 +130,46 @@ class AgHqplayerOutput extends LitElement {
         if (window.EventEmitter && this._boundHandleNaaMetrics) {
             window.EventEmitter.off('service-metrics-sse', this._boundHandleNaaMetrics);
             window.EventEmitter.off('service-metrics-sse', this._boundHandleLocalMetrics);
+        }
+        this._observer?.disconnect();
+        this._observer = null;
+        this._onScreen = false;
+        this._syncVolumeWatch();
+        clearTimeout(this._dragRelease);
+    }
+
+    /**
+     * Read the status again every VOLUME_POLL_MS while the card shows an
+     * HQPlayer that answers and is on screen; stop otherwise. The timer manager
+     * also holds it while the page is hidden. Starting reads the status at once:
+     * the volume appears with the card, not one interval later.
+     */
+    _syncVolumeWatch() {
+        const wanted = this._onScreen && !!this._connection?.available;
+        if (wanted === this._watching) return;
+        this._watching = wanted;
+        if (wanted) {
+            AgTimerManager.setInterval(this._timerId, () => this._followStatus(),
+                AgHqplayerOutput.VOLUME_POLL_MS);
+            this._followStatus();
+        } else {
+            AgTimerManager.clearInterval(this._timerId);
+        }
+    }
+
+    /**
+     * One read of the watch. Skipped while a change is being applied or the
+     * slider moves — the change reads the status back itself, and a value read
+     * before it would put the slider back under the finger — and while the
+     * previous read has not answered, so a slow HQPlayer is never asked twice.
+     */
+    async _followStatus() {
+        if (this._applying || this._volumeDrag !== null || this._following) return;
+        this._following = true;
+        try {
+            await this._loadStatus();
+        } finally {
+            this._following = false;
         }
     }
 
@@ -127,7 +214,9 @@ class AgHqplayerOutput extends LitElement {
 
     /** Fetch current connection state. DSP options loaded lazily on panel open. */
     async _loadConnection() {
+        const shown = this._instanceKey();
         await loadConnection(this, () => apiGet('/hqplayer/connection'), 'hqplayer');
+        if (this._instanceKey() !== shown) this._forgetInstance();
         // The "use as output" choice is server-side: adopt whatever it says, so
         // every client shows the same state (it used to be per-browser).
         this._useAsOutput = !!this._connection?.use_as_output;
@@ -136,6 +225,38 @@ class AgHqplayerOutput extends LitElement {
         // (no declaration) would have the next event reload again, for ever.
         if (this._localRunning === undefined && this._connection) {
             this._localRunning = !!this._connection.local;
+        }
+        this._syncVolumeWatch();
+    }
+
+    /**
+     * Which HQPlayer the card shows: this box's own, or one on the network.
+     * @returns {string|null} A key that changes with it, null with no connection.
+     */
+    _instanceKey() {
+        const c = this._connection;
+        return c ? `${c.local ? 'local' : 'network'}|${c.host}|${c.port}` : null;
+    }
+
+    /**
+     * Drop what was read from the HQPlayer the card showed, now that it shows
+     * another — this box's own started or stopped, or one was forgotten. Its
+     * volume and range are not the other's, nor are its lists: a filter is sent
+     * as a POSITION in the list, and the Mac's Desktop 5 and the x86 box's
+     * Embedded 6.1 name different filters at 54 of the 70 positions they share
+     * (measured 2026-09-29). A read still in flight for the one left is dropped
+     * as well. What the panel or the watch needs is read again from the new one.
+     */
+    _forgetInstance() {
+        this._statusSeq++;
+        this._status  = null;
+        this._filters = [];
+        this._shapers = [];
+        this._modes   = [];
+        if (this._connection?.available) {
+            if (this._dspExpanded) this._loadDspOptions();
+            // Not through _followStatus, which waits for a read of the one left.
+            if (this._watching) this._loadStatus();
         }
     }
 
@@ -163,6 +284,7 @@ class AgHqplayerOutput extends LitElement {
             if (this._connection.available) {
                 await Promise.all([this._loadDspOptions(), this._loadStatus()]);
             }
+            this._syncVolumeWatch();
             this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
         } catch (e) {
             console.warn('[hqplayer] Connect failed:', e.message);
@@ -200,8 +322,11 @@ class AgHqplayerOutput extends LitElement {
         // What forgetting the chosen instance leaves: this box's own HQPlayer,
         // while it runs, is still the one the core plays through.
         if (remaining?.local) {
+            const shown = this._instanceKey();
             this._connection  = remaining;
             this._useAsOutput = !!remaining.use_as_output;
+            if (this._instanceKey() !== shown) this._forgetInstance();
+            this._syncVolumeWatch();
             this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
             return;
         }
@@ -213,6 +338,7 @@ class AgHqplayerOutput extends LitElement {
         this._modes        = [];
         this._dspExpanded  = false;
         this._useAsOutput  = false;   // the backend clears it with the connection
+        this._syncVolumeWatch();
         this.dispatchEvent(new CustomEvent('sources-changed', { bubbles: true }));
     }
 
@@ -232,13 +358,21 @@ class AgHqplayerOutput extends LitElement {
         }
     }
 
-    /** Fetch current HQPlayer status (active filter/shaper/mode/volume). */
+    /**
+     * Fetch current HQPlayer status (active filter/shaper/mode, volume and its range).
+     *
+     * Only the latest read asked is kept: a read of the watch still in flight
+     * when a change is applied answers with HQPlayer as it was, and landing
+     * after the read the change made, it put the old volume back on screen.
+     */
     async _loadStatus() {
+        const seq = ++this._statusSeq;
         try {
-            this._status = await apiGet('/hqplayer/status');
+            const status = await apiGet('/hqplayer/status');
+            if (seq === this._statusSeq) this._status = status;
         } catch (e) {
             console.debug('[hqplayer] Status load failed:', e.message);
-            this._status = null;
+            if (seq === this._statusSeq) this._status = null;
         }
     }
 
@@ -264,9 +398,45 @@ class AgHqplayerOutput extends LitElement {
         await this._loadDspOptions();
     }
 
-    /** @param {Event} e */
+    /**
+     * Show the value under the finger while the slider moves; nothing is sent
+     * until it is let go (see _setVolume).
+     * @param {Event} e
+     */
+    _dragVolume(e) {
+        this._volumeDrag = parseFloat(e.target.value);
+    }
+
+    /**
+     * The finger let go: release the value under it, unless it is being sent.
+     *
+     * A drag that ends on the value it started from fires no `change` (measured
+     * in Chromium, 2026-10-18), so _setVolume never runs, and the card would stop
+     * following HQPlayer for good. Not released at once: on letting go the card
+     * renders before `change` comes (pointerup, render, change — measured), and
+     * the slider put back on the old value would lose the gesture. DRAG_RELEASE_MS
+     * later a `change` has run, and _setVolume holds the value while it applies.
+     */
+    _endDrag() {
+        clearTimeout(this._dragRelease);
+        this._dragRelease = setTimeout(() => {
+            if (!this._applying) this._volumeDrag = null;
+        }, AgHqplayerOutput.DRAG_RELEASE_MS);
+    }
+
+    /**
+     * Send the volume the slider was let go on, then show what HQPlayer took —
+     * the status read back after it, which may be the end of its range.
+     * @param {Event} e
+     */
     async _setVolume(e) {
-        await this._applyDsp('volume', '/hqplayer/volume', { db: parseFloat(e.target.value) });
+        const db = parseFloat(e.target.value);
+        this._volumeDrag = db;
+        try {
+            await this._applyDsp('volume', '/hqplayer/volume', { db });
+        } finally {
+            this._volumeDrag = null;
+        }
     }
 
     /**
@@ -591,6 +761,8 @@ class AgHqplayerOutput extends LitElement {
                     </div>
                 ` : nothing}
 
+                ${available ? this._renderVolume() : nothing}
+
                 <div class="lib-hqp-actions">
                     ${available ? html`
                         <button class="action-btn compact" @click=${this._toggleDsp}>
@@ -627,7 +799,51 @@ class AgHqplayerOutput extends LitElement {
         `;
     }
 
-    /** Render the DSP controls panel (filter, shaper, mode dropdowns + volume slider). */
+    /**
+     * Render HQPlayer's volume, on the card's face.
+     *
+     * In dB, as HQPlayer shows it, over the range the core gives with the status
+     * — the one set in HQPlayer, or −60 to 0 when HQPlayer has not said one: the
+     * core decides, the card uses it as given. A dash when the volume is not
+     * known — it read 0.0 dB, the loudest setting there is. No slider when
+     * HQPlayer's volume is fixed in its settings: it refuses every change then
+     * (measured on HQPlayer Embedded 6.2.6, 2026-10-18).
+     */
+    _renderVolume() {
+        const status = this._status;
+        const db = this._volumeDrag ?? status?.volume_db;
+        const known = typeof db === 'number' && Number.isFinite(db);
+        const fixed = !!status?.volume_fixed;
+        const min = status?.volume_min_db;
+        const max = status?.volume_max_db;
+        const ranged = Number.isFinite(min) && Number.isFinite(max);
+        const shown = known ? `${db.toFixed(1)} dB` : '—';
+        return html`
+            <div class="lib-hqp-volume" data-field="volume">
+                <div class="lib-hqp-volume-hd">
+                    <span class="lib-hqp-output-label">Volume</span>
+                    <span class="lib-hqp-vol-val">${shown}</span>
+                </div>
+                ${known && !fixed && ranged ? html`
+                    <input class="lib-hqp-slider" type="range"
+                           min=${min} max=${max} step="0.1"
+                           .value=${db.toFixed(1)}
+                           aria-label="HQPlayer volume"
+                           aria-valuetext=${shown}
+                           @input=${this._dragVolume}
+                           @pointerup=${this._endDrag}
+                           @pointercancel=${this._endDrag}
+                           @change=${this._setVolume}
+                    />
+                ` : nothing}
+                ${fixed ? html`
+                    <span class="lib-hqp-volume-note">Fixed in HQPlayer's settings</span>
+                ` : nothing}
+            </div>
+        `;
+    }
+
+    /** Render the DSP controls panel (filter, shaper, mode dropdowns). */
     _renderDsp() {
         const filterIdx = this._filters.find(f => f.name === this._status?.active_filter)?.value;
         const shaperIdx = this._shapers.find(s => s.name === this._status?.active_shaper)?.value;
@@ -664,18 +880,6 @@ class AgHqplayerOutput extends LitElement {
                             <option value=${m.value} ?selected=${m.value === modeIdx}>${m.name}</option>
                         `)}
                     </select>
-                </div>
-                <div class="lib-hqp-field" data-field="volume">
-                    <label class="lib-hqp-label">
-                        Volume
-                        <span class="lib-hqp-vol-val">${Number(this._status?.volume_db ?? 0).toFixed(1)} dB</span>
-                    </label>
-                    <input class="lib-hqp-slider" type="range"
-                           min="-60" max="0" step="0.1"
-                           .value=${Number(this._status?.volume_db ?? 0).toFixed(1)}
-                           aria-label="HQPlayer volume"
-                           @change=${this._setVolume}
-                    />
                 </div>
                 ${this._connection?.local ? nothing : html`
                     <!-- It drops the settings Audiogravity keeps, which belong to the

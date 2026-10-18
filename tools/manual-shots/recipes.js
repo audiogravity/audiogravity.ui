@@ -110,6 +110,23 @@ function fullWindow(page) {
 }
 
 /**
+ * Wait until the HQPlayer card shows HQPlayer's volume rather than its dash.
+ *
+ * The card reads the status once it shows, and HQPlayer Desktop across the LAN
+ * takes ~2.5 s to answer (2.57 s on 2026-10-18): taken 0.8 s after "Connected",
+ * the figure showed a dash for the volume, and no mode beside the name.
+ *
+ * @param {import('playwright').Page} page - The Library tab.
+ * @returns {Promise<void>}
+ */
+async function hqplayerVolumeShown(page) {
+    await page.waitForFunction(() => {
+        const value = document.querySelector('ag-hqplayer-output .lib-hqp-vol-val');
+        return value && value.textContent.trim() !== '—';
+    }, null, { timeout: 15000 });
+}
+
+/**
  * Open the config editor of the profile tile whose text contains `name`.
  *
  * @param {import('playwright').Page} page - The Config tab.
@@ -526,6 +543,7 @@ export const RECIPES = {
         async run(page) {
             await page.evaluate(`${LIB}._setView('library')`);
             await page.locator('ag-hqplayer-output ag-status-indicator[label="Connected"]').waitFor({ timeout: 30000 });
+            await hqplayerVolumeShown(page);
             // Staged: turning "Use as output" on for real would route every play of the
             // box to that HQPlayer.
             await page.evaluate(() => { document.querySelector('ag-hqplayer-output')._useAsOutput = true; });
@@ -539,6 +557,7 @@ export const RECIPES = {
         async run(page) {
             await page.evaluate(`${LIB}._setView('library')`);
             await page.waitForTimeout(5000);
+            await hqplayerVolumeShown(page);
             return { clip: await box(page, 'ag-hqplayer-output') };
         },
     },

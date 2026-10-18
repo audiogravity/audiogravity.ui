@@ -8,7 +8,7 @@
  * - …unless the setting is ON, which must stay switchable off at all times —
  *   since the automatic clear was removed, the toggle is the ONLY way out.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Minimal stubs for Lit and custom elements used by the component.
 vi.mock('lit', () => ({
@@ -26,6 +26,8 @@ vi.mock('../atoms/ag-status-indicator.js', () => ({}));
 // Import after mocks are in place.
 import { AgHqplayerOutput } from './ag-hqplayer-output.js';
 import { readStylesheet, cssRuleBody } from '../../test-utils.js';
+import { AgTimerManager } from '../../timer.js';
+import { apiGet } from '../../api.js';
 
 /** Build a minimal AgHqplayerOutput instance without mounting. */
 function makeEl(connectionOverrides = {}) {
@@ -359,38 +361,379 @@ describe('AgHqplayerOutput._toggleOutput — one write at a time', () => {
     });
 });
 
-describe('AgHqplayerOutput._renderDsp — volume label', () => {
-    /**
-     * Flatten a mocked-lit template tree into the list of its interpolated
-     * values, so an assertion can look at what the template would print.
-     */
-    function flatValues(tpl, out = []) {
-        if (tpl == null) return out;
-        if (Array.isArray(tpl)) { tpl.forEach(t => flatValues(t, out)); return out; }
-        if (typeof tpl === 'object' && tpl.values) { tpl.values.forEach(v => flatValues(v, out)); return out; }
-        out.push(tpl);
-        return out;
+/**
+ * Flatten a mocked-lit template tree into the list of its interpolated
+ * values, so an assertion can look at what the template would print.
+ */
+function flatValues(tpl, out = []) {
+    if (tpl == null) return out;
+    if (Array.isArray(tpl)) { tpl.forEach(t => flatValues(t, out)); return out; }
+    if (typeof tpl === 'object' && tpl.values) { tpl.values.forEach(v => flatValues(v, out)); return out; }
+    out.push(tpl);
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// HQPlayer's volume, on the card's face
+// ---------------------------------------------------------------------------
+// It sat in the DSP menu, closed by default, over a fixed −60..0: on the Mac's
+// HQPlayer (Volume max −3 dB) the top of the slider moved nothing (2026-10-18).
+
+describe('AgHqplayerOutput._renderVolume — what the face shows', () => {
+    /** A card whose last status read answered `status`. */
+    function el(status, drag = null) {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._status = status;
+        c._volumeDrag = drag;
+        return c;
     }
+    const MAC = { volume_db: -6, volume_min_db: -60, volume_max_db: -3, volume_fixed: false };
 
     it('prints the volume rounded to the slider step, not the float32 artifact', () => {
         // HQPlayer stores the volume in single precision; -13.8 widened to a
         // double through the XML path comes back as -13.800000190734863, and
-        // the label used to print it raw. The slider moves in 0.5 dB steps, so
+        // the label used to print it raw. The slider moves in 0.1 dB steps, so
         // one decimal is the honest display.
-        const el = Object.create(AgHqplayerOutput.prototype);
-        el._status = { volume_db: -13.800000190734863 };
-        el._filters = []; el._shapers = []; el._modes = [];
-
-        const values = flatValues(el._renderDsp()).map(String);
-        expect(values).toContain('-13.8');
+        const values = flatValues(el({ volume_db: -13.800000190734863 })._renderVolume()).map(String);
+        expect(values).toContain('-13.8 dB');
         expect(values.join('|')).not.toContain('0.190734863');
     });
 
-    it('shows 0.0 dB when the status has no volume yet', () => {
-        const el = Object.create(AgHqplayerOutput.prototype);
-        el._status = null;
-        el._filters = []; el._shapers = []; el._modes = [];
-        expect(flatValues(el._renderDsp()).map(String)).toContain('0.0');
+    it('spreads the slider over the range set in HQPlayer', () => {
+        const html = renderToString(el(MAC)._renderVolume());
+        expect(html).toContain('min=-60');
+        expect(html).toContain('max=-3');
+        expect(html).toContain('-6.0 dB');
+    });
+
+    it('uses the range the core gives, its own fallback included, and makes none up', () => {
+        // The core sends −60..0 itself while HQPlayer has not said a range: a
+        // status without one has no slider rather than a range of the card's.
+        const html = renderToString(el({ volume_db: -6 })._renderVolume());
+        expect(html).toContain('-6.0 dB');
+        expect(html).not.toContain('lib-hqp-slider');
+    });
+
+    it('shows a dash, not 0.0 dB, when the volume is not known — and no slider', () => {
+        // 0.0 dB is the loudest setting there is: it is not a way to say "unknown".
+        for (const status of [null, { volume_db: null }]) {
+            const html = renderToString(el(status)._renderVolume());
+            expect(html).toContain('—');
+            expect(html).not.toContain('0.0 dB');
+            expect(html).not.toContain('lib-hqp-slider');
+        }
+    });
+
+    it('offers no slider for a volume fixed in HQPlayer, and says why', () => {
+        // HQPlayer refuses every change then (measured on Embedded 6.2.6).
+        const html = renderToString(el({ volume_db: -3.01, volume_fixed: true })._renderVolume());
+        expect(html).toContain('-3.0 dB');
+        expect(html).toContain("Fixed in HQPlayer's settings");
+        expect(html).not.toContain('lib-hqp-slider');
+    });
+
+    it('shows the value under the finger while the slider moves', () => {
+        const html = renderToString(el(MAC, -20.5)._renderVolume());
+        expect(html).toContain('-20.5 dB');
+    });
+
+    it('is on the face of a card whose HQPlayer answers, and not in the DSP menu', () => {
+        const card = makeEl({ available: true, naa_available: true });
+        card._renderVolume = AgHqplayerOutput.prototype._renderVolume;
+        card._status = MAC;
+        expect(renderToString(card._renderCard())).toContain('HQPlayer volume');
+
+        const dsp = Object.create(AgHqplayerOutput.prototype);
+        dsp._status = MAC;
+        dsp._connection = { host: '10.0.4.200', available: true };
+        dsp._filters = []; dsp._shapers = []; dsp._modes = [];
+        expect(renderToString(dsp._renderDsp())).not.toContain('Volume');
+    });
+
+    it("is on this box's own HQPlayer card too", () => {
+        const card = makeEl({ ...LOCAL });
+        card._renderVolume = AgHqplayerOutput.prototype._renderVolume;
+        card._status = { volume_db: -3, volume_min_db: -60, volume_max_db: 0 };
+        expect(renderToString(card._renderCard())).toContain('HQPlayer volume');
+    });
+
+    it('is not shown while HQPlayer does not answer', () => {
+        const card = makeEl({ available: false });
+        card._renderVolume = AgHqplayerOutput.prototype._renderVolume;
+        card._status = MAC;
+        expect(renderToString(card._renderCard())).not.toContain('HQPlayer volume');
+    });
+});
+
+describe('AgHqplayerOutput._setVolume — sent when the slider is let go', () => {
+    beforeEach(() => { apiPut.mockReset(); apiPut.mockResolvedValue({ success: true, db: -3 }); });
+
+    function card() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._applying = false;
+        c._volumeDrag = null;
+        c._loadStatus = vi.fn(async () => {});
+        c._flashField = vi.fn();
+        return c;
+    }
+
+    it('shows the dragged value without sending anything', () => {
+        const c = card();
+        c._dragVolume({ target: { value: '-12.5' } });
+        expect(c._volumeDrag).toBe(-12.5);
+        expect(apiPut).not.toHaveBeenCalled();
+    });
+
+    it('sends the value let go on, then shows what HQPlayer took', async () => {
+        const c = card();
+        await c._setVolume({ target: { value: '0' } });
+        expect(apiPut).toHaveBeenCalledWith('/hqplayer/volume', { db: 0 });
+        expect(c._loadStatus).toHaveBeenCalledTimes(1);
+        expect(c._volumeDrag).toBeNull();      // the status read back is shown again
+    });
+
+    it('goes back to the volume HQPlayer has when the change is refused', async () => {
+        apiPut.mockRejectedValueOnce(new Error("HQPlayer's volume is fixed in its own settings"));
+        const c = card();
+        await c._setVolume({ target: { value: '-10' } });
+        expect(c._volumeDrag).toBeNull();
+    });
+});
+
+describe('AgHqplayerOutput._endDrag — a slider let go where it started', () => {
+    // Measured in Chromium (2026-10-18): a drag that ends on its starting value
+    // fires no `change`; and on letting go the order is pointerup, render, change.
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    function card() {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._applying = false;
+        c._volumeDrag = null;
+        return c;
+    }
+
+    it('releases the value under the finger when nothing was sent', () => {
+        const c = card();
+        c._dragVolume({ target: { value: '-6' } });
+        c._endDrag();
+        expect(c._volumeDrag).toBe(-6);        // not at once: `change` may still come
+        vi.advanceTimersByTime(AgHqplayerOutput.DRAG_RELEASE_MS);
+        expect(c._volumeDrag).toBeNull();      // the card follows HQPlayer again
+    });
+
+    it('keeps it while the value let go on is being sent', () => {
+        const c = card();
+        c._dragVolume({ target: { value: '-12' } });
+        c._endDrag();
+        c._applying = true;                    // `change` came: _setVolume applies it
+        vi.advanceTimersByTime(AgHqplayerOutput.DRAG_RELEASE_MS);
+        expect(c._volumeDrag).toBe(-12);
+    });
+
+    it('waits from the last time the finger let go', () => {
+        const c = card();
+        c._dragVolume({ target: { value: '-6' } });
+        c._endDrag();
+        vi.advanceTimersByTime(AgHqplayerOutput.DRAG_RELEASE_MS - 50);
+        c._dragVolume({ target: { value: '-8' } });
+        c._endDrag();
+        vi.advanceTimersByTime(AgHqplayerOutput.DRAG_RELEASE_MS - 50);
+        expect(c._volumeDrag).toBe(-8);
+        vi.advanceTimersByTime(50);
+        expect(c._volumeDrag).toBeNull();
+    });
+
+    it('listens on the slider for the finger letting go, or the gesture taken back', () => {
+        const c = card();
+        c._status = { volume_db: -6, volume_min_db: -60, volume_max_db: -3 };
+        const html = renderToString(c._renderVolume());
+        expect(html).toContain('@pointerup=');
+        expect(html).toContain('@pointercancel=');
+    });
+});
+
+describe('AgHqplayerOutput — the volume follows HQPlayer while the card is on screen', () => {
+    beforeEach(() => {
+        vi.spyOn(AgTimerManager, 'setInterval').mockImplementation(() => {});
+        vi.spyOn(AgTimerManager, 'clearInterval').mockImplementation(() => {});
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    function card(connection = { host: '10.0.4.200', port: 4321, available: true }) {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._connection = connection;
+        c._timerId = 'hqplayer-volume-test';
+        c._watching = false;
+        c._onScreen = false;
+        c._applying = false;
+        c._volumeDrag = null;
+        c._loadStatus = vi.fn(async () => {});
+        return c;
+    }
+
+    it('reads the status at once and every few seconds once the card is on screen', () => {
+        const c = card();
+        c._onScreen = true;
+        c._syncVolumeWatch();
+        expect(AgTimerManager.setInterval).toHaveBeenCalledWith(
+            'hqplayer-volume-test', expect.any(Function), AgHqplayerOutput.VOLUME_POLL_MS);
+        expect(c._loadStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks nothing while the card is out of sight', () => {
+        const c = card();
+        c._syncVolumeWatch();
+        expect(AgTimerManager.setInterval).not.toHaveBeenCalled();
+        expect(c._loadStatus).not.toHaveBeenCalled();
+    });
+
+    it('asks nothing of an HQPlayer that does not answer', () => {
+        const c = card({ host: '10.0.4.200', port: 4321, available: false });
+        c._onScreen = true;
+        c._syncVolumeWatch();
+        expect(AgTimerManager.setInterval).not.toHaveBeenCalled();
+    });
+
+    it('stops when the card leaves the screen, and starts once only', () => {
+        const c = card();
+        c._onScreen = true;
+        c._syncVolumeWatch();
+        c._syncVolumeWatch();
+        expect(AgTimerManager.setInterval).toHaveBeenCalledTimes(1);
+        c._onScreen = false;
+        c._syncVolumeWatch();
+        expect(AgTimerManager.clearInterval).toHaveBeenCalledWith('hqplayer-volume-test');
+    });
+
+    it('stops when the card goes away', () => {
+        const c = card();
+        c._onScreen = true;
+        c._syncVolumeWatch();
+        c.disconnectedCallback();
+        expect(AgTimerManager.clearInterval).toHaveBeenCalledWith('hqplayer-volume-test');
+    });
+
+    it('skips a read while a change is applied, the slider moves, or a read is out', async () => {
+        const c = card();
+        c._applying = true;
+        await c._followStatus();
+        c._applying = false;
+        c._volumeDrag = -20;
+        await c._followStatus();
+        c._volumeDrag = null;
+        let answer;
+        c._loadStatus = vi.fn(() => new Promise(r => { answer = r; }));
+        const first = c._followStatus();
+        await c._followStatus();               // a slow HQPlayer is not asked twice
+        expect(c._loadStatus).toHaveBeenCalledTimes(1);
+        answer();
+        await first;
+    });
+});
+
+describe('AgHqplayerOutput._loadStatus — only the latest read is kept', () => {
+    beforeEach(() => apiGet.mockReset());
+
+    it('drops an answer that lands after a later read', async () => {
+        // A read of the watch in flight when a volume is applied answers with
+        // HQPlayer as it was: landing last, it put the old volume back on screen.
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._statusSeq = 0;
+        let late;
+        apiGet.mockImplementationOnce(() => new Promise(r => { late = r; }));
+        apiGet.mockResolvedValueOnce({ volume_db: -20 });
+        const before = c._loadStatus();
+        await c._loadStatus();
+        late({ volume_db: -6 });
+        await before;
+        expect(c._status).toEqual({ volume_db: -20 });
+    });
+});
+
+describe('AgHqplayerOutput — another HQPlayer shown, nothing of the first kept', () => {
+    beforeEach(() => { loadConnection.mockReset(); apiGet.mockReset(); });
+    afterEach(() => loadConnection.mockReset());
+
+    /** A card that has read `connection`'s status and lists, then reloads to `next`. */
+    async function switched(connection, next) {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._connection = connection;
+        c._status = { volume_db: -6, volume_min_db: -60, volume_max_db: -3 };
+        c._filters = [{ value: 66, name: 'sinc-short' }];
+        c._shapers = [{ value: 4, name: 'ASDM5' }];
+        c._modes = [{ value: 1, name: 'SDM (DSD)' }];
+        c._statusSeq = 3;
+        c._dspExpanded = false;
+        c._watching = false;
+        c._syncVolumeWatch = vi.fn();
+        loadConnection.mockImplementationOnce(async (host) => { host._connection = next; });
+        await c._loadConnection();
+        return c;
+    }
+
+    it("drops the Mac's volume and lists when this box's own HQPlayer starts", async () => {
+        const c = await switched({ host: '10.0.4.200', port: 4321, local: false, available: true },
+                                 { ...LOCAL });
+        expect(c._status).toBeNull();
+        expect(c._filters).toEqual([]);
+        expect(c._statusSeq).toBe(4);          // a read in flight for the Mac is dropped
+    });
+
+    it('keeps them when the card still shows the same HQPlayer', async () => {
+        const mac = { host: '10.0.4.200', port: 4321, local: false, available: true };
+        const c = await switched(mac, { ...mac, naa_available: true });
+        expect(c._status).not.toBeNull();
+        expect(c._filters).toHaveLength(1);
+    });
+
+    it('reads the new lists at once when the DSP menu is open', async () => {
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._connection = { ...LOCAL };
+        c._dspExpanded = true;
+        c._watching = true;
+        c._statusSeq = 0;
+        c._loadDspOptions = vi.fn(async () => {});
+        c._loadStatus = vi.fn(async () => {});
+        c._forgetInstance();
+        expect(c._loadDspOptions).toHaveBeenCalledTimes(1);
+        expect(c._loadStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads the new one at once even while a read of the one left is out', () => {
+        // The watch skips a read while one is out — 2.4 s to the Mac's HQPlayer —
+        // and the card showed a dash for up to one interval.
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._connection = { ...LOCAL };
+        c._dspExpanded = false;
+        c._watching = true;
+        c._following = true;
+        c._statusSeq = 0;
+        c._loadStatus = vi.fn(async () => {});
+        c._forgetInstance();
+        expect(c._loadStatus).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('AgHqplayerOutput — whether the card is on screen', () => {
+    afterEach(() => { delete globalThis.IntersectionObserver; });
+
+    it('goes by the latest entry when several queued up', () => {
+        // Off screen and back before the callback ran: the oldest entry first.
+        let callback;
+        globalThis.IntersectionObserver = class {
+            constructor(cb) { callback = cb; }
+            observe() {}
+            disconnect() {}
+        };
+        const c = Object.create(AgHqplayerOutput.prototype);
+        c._loadConnection = vi.fn();
+        c._syncVolumeWatch = vi.fn();
+        c.connectedCallback();
+        callback([{ isIntersecting: false }, { isIntersecting: true }]);
+        expect(c._onScreen).toBe(true);
+        callback([{ isIntersecting: true }, { isIntersecting: false }]);
+        expect(c._onScreen).toBe(false);
     });
 });
 

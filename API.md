@@ -579,9 +579,9 @@ only what is running. Same entry shape, different contents.
 | PUT | `/hqplayer/shaper` | Select a shaper by index |
 | GET | `/hqplayer/modes` | Available output modes |
 | PUT | `/hqplayer/mode` | Select an output mode by index |
-| PUT | `/hqplayer/volume` | Set volume (dB) |
+| PUT | `/hqplayer/volume` | Set volume — body `{ db }`, in dB → `{ success, db }`, **`db`** being the volume sent: kept within `volume_min_db`…`volume_max_db` of `/hqplayer/status`. **503** when HQPlayer refuses it — its volume fixed in its settings, as `detail` then says — or does not answer |
 | DELETE | `/hqplayer/dsp` | Forget the persisted DSP selection of the HQPlayer chosen in the card; the others keep theirs. **503** while the box's own HQPlayer runs: the saved selection is the card's instance's, kept for when it stops |
-| GET | `/hqplayer/status` | Current DSP status — carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream) |
+| GET | `/hqplayer/status` | Current DSP status — carries **`length`**, the track duration in seconds as HQPlayer measures it (`null` when it knows none, e.g. a live stream). **`volume_db`** is HQPlayer's volume (`null` when it gives none to read); **`volume_min_db`** / **`volume_max_db`** the range it moves on, for a slider to use as given: the *Volume min* / *Volume max* set in HQPlayer, or −60 / 0 while HQPlayer has not said one; both `null` while **`volume_fixed`** is true — the volume fixed in HQPlayer's settings, which then refuses every change |
 
 **Seeking through HQPlayer.** The player state reports `can_seek: true` whenever a length
 is known, and `POST /player/control` with `action: "seek"` reaches HQPlayer's own seek

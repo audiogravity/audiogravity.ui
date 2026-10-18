@@ -515,6 +515,28 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     padding: 0 14px 14px;
 }
 
+/* HQPlayer's volume, on the card's face for whichever HQPlayer it shows. The
+   14 px gutter and the 10 px under the row are the card's, as on the rows around
+   it (.lib-hqp-output-toggle, .lib-hqp-note): on the scale, it would not line up. */
+.lib-hqp-volume {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: 0 14px 10px;
+}
+
+.lib-hqp-volume-hd {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+/* In place of the slider while HQPlayer's volume is fixed in its settings. */
+.lib-hqp-volume-note {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
 /* ── DSP panel (expanded) ── */
 
 .lib-hqp-dsp {
@@ -542,8 +564,11 @@ body.dark-mode .lib-src-mark-dark { display: block; }
     align-items: baseline;
 }
 
+/* Tabular figures: the value keeps its width while the slider moves. */
 .lib-hqp-vol-val {
+    font-size: var(--font-size-xs);
     font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--text-primary);
 }
 
