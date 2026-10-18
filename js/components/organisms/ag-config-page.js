@@ -223,6 +223,12 @@ export class AgConfigPage extends LitElement {
         return this._statusServices.find(s => s.service_id === serviceId)?.dop ?? null;
     }
 
+    /** Whether the DAC a service plays on goes to full volume during DSD, from the last
+     * status load (null when it cannot be read — no output chosen, or an older core). */
+    _serviceDsdFullVolumeFor(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.dsd_full_volume ?? null;
+    }
+
     /** A provision generated/changed configs — refresh the grid. */
     async _handleProvisioned() {
         // The GRID only. The audio status arrives on its own: the panel re-reads
@@ -415,6 +421,7 @@ export class AgConfigPage extends LitElement {
                     .librarySources=${this._librarySources}
                     .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
                     .serviceDop=${this._serviceDopFor(this.selectedServiceId)}
+                    .serviceDsdFullVolume=${this._serviceDsdFullVolumeFor(this.selectedServiceId)}
                     .regenerable=${this._serviceRegenerable(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}

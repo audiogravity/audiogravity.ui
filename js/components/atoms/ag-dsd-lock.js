@@ -1,9 +1,12 @@
 /**
  * @module AgDsdLock
- * @description Padlock indicator shown next to the volume control when the
- * active source plays a DSD track — volume is forced to 100% by the pipeline
- * and cannot be changed. Whether the DSD reaches the DAC as DSD, as DoP or
- * converted to PCM, the lock is the same (ag-dsd-delivery says which).
+ * @description Padlock shown in place of the volume control when the active
+ * source plays a DSD track: that player's volume does nothing to DSD — MPD
+ * leaves it alone, sent as DSD, as DoP or converted to PCM (measured 2026-10-18)
+ * — so the level is set on the amplifier. Whether the DSD reaches the DAC as
+ * DSD, as DoP or converted to PCM, the lock is the same (ag-dsd-delivery says
+ * which). HQPlayer and a network renderer keep their slider: their volume is
+ * real (isSelfManagedDriver).
  *
  * Used by both the mini player (`ag-now-playing`) and the fullscreen player
  * (`ag-now-playing-fullscreen`). Positioning (inline vs absolute) is left to
@@ -27,7 +30,8 @@ export class AgDsdLock extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this.setAttribute('role', 'img');
-        this.setAttribute('aria-label', 'Volume locked at 100% while DSD plays');
+        // True whatever the DAC does: held at full, left as set, or receiving PCM.
+        this.setAttribute('aria-label', 'The volume has no effect on DSD: set the level on your amplifier');
     }
 
     render() {

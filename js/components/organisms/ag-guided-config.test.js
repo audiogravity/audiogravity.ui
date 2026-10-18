@@ -13,8 +13,9 @@ vi.mock('lit', () => ({
 vi.mock('../../api.js', () => ({ apiPost: vi.fn() }));
 vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), handleError: vi.fn(), showConfirm: vi.fn(), showPasswordConfirm: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
-// Its own tests cover it; here it would load lit's directives for real.
+// Their own tests cover them; here they would load lit's directives for real.
 vi.mock('../molecules/ag-prov-dop-switch.js', () => ({}));
+vi.mock('../molecules/ag-prov-dsd-volume-switch.js', () => ({}));
 vi.mock('../../ag-icons.js', () => ({
     iconRefresh: '', iconConnectorUsbA: '', iconHardDrive: '', iconRadio: '',
     iconCircle: '', iconStar: '', iconWifi: '', iconFolder: '',
@@ -37,6 +38,8 @@ function makeEl(overrides = {}) {
     el.serviceOutput = { usb_id: 'dac-a', card_name: 'Abacus', device_id: 0 };
     el.serviceDop = false;
     el._dop = null;
+    el.serviceDsdFullVolume = true;
+    el._dsdVolume = null;
     el._selectedOutputId = 'hw:0,0';
     el._libraryChoice = null;
     el._manualPath = '';
@@ -53,8 +56,8 @@ beforeEach(() => {
 });
 
 describe('descriptor', () => {
-    it('mpd has output + DoP + library, airplay has output, upmpdcli none', () => {
-        expect(GUIDED_FIELDS.mpd).toEqual(['output', 'dop', 'library']);
+    it("mpd has output + DoP + the DAC's volume + library, airplay has output, upmpdcli none", () => {
+        expect(GUIDED_FIELDS.mpd).toEqual(['output', 'dop', 'dsd_volume', 'library']);
         expect(GUIDED_FIELDS.airplay).toEqual(['output']);
         expect(GUIDED_FIELDS.upmpdcli).toEqual([]);
     });
@@ -191,6 +194,72 @@ describe('the DoP switch (mpd)', () => {
     it('is drawn for mpd under its own heading', () => {
         expect(textOf(makeEl().render())).toContain('<h4>DSD</h4>');
         expect(textOf(makeEl({ serviceId: 'airplay' }).render())).not.toContain('<h4>DSD</h4>');
+    });
+});
+
+describe("the DAC's volume during DSD (mpd)", () => {
+    /** The switch's template, nested in the DSD field's: .checked, ?pending, ?disabled, @…. */
+    const volumeSwitch = (el) => el.render().values
+        .find(v => v?.strings?.join('').includes('ag-prov-dop-switch'))
+        .values.find(v => v?.strings?.join('').includes('ag-prov-dsd-volume-switch'));
+
+    it("shows the DAC's setting until it is flipped", () => {
+        expect(makeEl({ serviceDsdFullVolume: true })._dsdVolumeValue).toBe(true);
+        expect(makeEl({ serviceDsdFullVolume: null })._dsdVolumeValue).toBeNull();
+        expect(makeEl({ serviceDsdFullVolume: true, _dsdVolume: false })._dsdVolumeValue).toBe(false);
+    });
+
+    it("a flip back to the DAC's setting is no change", () => {
+        expect(makeEl({ _dsdVolume: true })._canApply).toBe(false);
+        expect(makeEl({ _dsdVolume: false })._canApply).toBe(true);
+    });
+
+    it('is applied on its own route, and forgotten once applied', async () => {
+        const el = makeEl({ _dsdVolume: false });
+        await el._apply();
+        expect(apiPost).toHaveBeenCalledTimes(1);
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/dsd-full-volume', { enabled: false });
+        expect(el._dsdVolume).toBeNull();
+        expect(el.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('after DoP and before the library, whose change restarts MPD', async () => {
+        const el = makeEl({ _dop: true, _dsdVolume: false, _libraryChoice: 'src:0' });
+        await el._apply();
+        expect(apiPost.mock.calls.map(c => c[0])).toEqual(
+            ['/audio-stack/dop', '/audio-stack/dsd-full-volume', '/audio-stack/library']);
+    });
+
+    it("waits while another output is chosen: what it holds is the other DAC's", async () => {
+        const el = makeEl({ _selectedOutputId: 'hw:1,0', _dsdVolume: false });
+        expect(el._dsdVolumeChanged).toBe(false);
+        await el._apply();
+        expect(apiPost.mock.calls.map(c => c[0])).toEqual(['/audio-stack/output']);
+    });
+
+    it("is not sent by a reset: it is the DAC's, not MPD's configuration", async () => {
+        const el = makeEl({ _dsdVolume: false });
+        await el._reset();
+        expect(apiPost.mock.calls[0][0]).toBe('/audio-stack/provision');
+        expect(apiPost.mock.calls[0][1]).not.toHaveProperty('enabled');
+        expect(apiPost.mock.calls[0][1]).not.toHaveProperty('dsd_full_volume');
+        expect(el._dsdVolume).toBeNull();
+    });
+
+    it('is not offered to a service other than mpd', () => {
+        expect(makeEl({ serviceId: 'airplay', _dsdVolume: false })._canApply).toBe(false);
+    });
+
+    it('is drawn under the DoP switch, waiting while another output is chosen', () => {
+        expect(volumeSwitch(makeEl({ _selectedOutputId: 'hw:1,0' })).values[1]).toBe(true);
+        const shown = volumeSwitch(makeEl({ serviceDsdFullVolume: false }));
+        expect(shown.values[0]).toBe(false);
+        expect(shown.values[1]).toBe(false);
+    });
+
+    it('is drawn for mpd only', () => {
+        expect(textOf(makeEl().render())).toContain('ag-prov-dsd-volume-switch');
+        expect(textOf(makeEl({ serviceId: 'airplay' }).render())).not.toContain('ag-prov-dsd-volume-switch');
     });
 });
 
