@@ -255,6 +255,32 @@
     font-size: var(--font-size-sm);
 }
 
+/* ── ag-prov-dop-switch (the DoP switch of MPD's guided view) ──────────── */
+.ag-prov-dop {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    max-width: 640px;
+}
+
+.ag-prov-dop-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.ag-prov-dop-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.ag-prov-dop-hint {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
 .ag-guided-actions {
     margin-top: var(--spacing-lg);
     display: flex;

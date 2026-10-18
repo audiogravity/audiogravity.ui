@@ -13,6 +13,8 @@ vi.mock('lit', () => ({
 vi.mock('../../api.js', () => ({ apiPost: vi.fn() }));
 vi.mock('../../ui-helpers.js', () => ({ showToast: vi.fn(), handleError: vi.fn(), showConfirm: vi.fn(), showPasswordConfirm: vi.fn() }));
 vi.mock('../utils-lit.js', () => ({ svgIcon: vi.fn() }));
+// Its own tests cover it; here it would load lit's directives for real.
+vi.mock('../molecules/ag-prov-dop-switch.js', () => ({}));
 vi.mock('../../ag-icons.js', () => ({
     iconRefresh: '', iconConnectorUsbA: '', iconHardDrive: '', iconRadio: '',
     iconCircle: '', iconStar: '', iconWifi: '', iconFolder: '',
@@ -33,6 +35,8 @@ function makeEl(overrides = {}) {
     el.outputs = OUTPUTS;
     el.librarySources = [{ kind: 'usb', uuid: 'u-1', fstype: 'ext4', path: '/mnt/lib', label: 'MUSIC' }];
     el.serviceOutput = { usb_id: 'dac-a', card_name: 'Abacus', device_id: 0 };
+    el.serviceDop = false;
+    el._dop = null;
     el._selectedOutputId = 'hw:0,0';
     el._libraryChoice = null;
     el._manualPath = '';
@@ -49,8 +53,8 @@ beforeEach(() => {
 });
 
 describe('descriptor', () => {
-    it('mpd has output + library, airplay has output, upmpdcli none', () => {
-        expect(GUIDED_FIELDS.mpd).toEqual(['output', 'library']);
+    it('mpd has output + DoP + library, airplay has output, upmpdcli none', () => {
+        expect(GUIDED_FIELDS.mpd).toEqual(['output', 'dop', 'library']);
         expect(GUIDED_FIELDS.airplay).toEqual(['output']);
         expect(GUIDED_FIELDS.upmpdcli).toEqual([]);
     });
@@ -107,6 +111,86 @@ describe('_initialOutputId', () => {
     });
     it('falls back to the recommended output when no pin', () => {
         expect(makeEl({ serviceOutput: null })._initialOutputId()).toBe('hw:0,0');
+    });
+    it('tells apart two outputs of one card by their device', () => {
+        // An onboard card: the jack on hw:0,0, HDMI on hw:0,3 — one usb_id and card_name.
+        const outputs = [
+            { hw: 'hw:0,0', card_name: 'PCH', usb_id: null, device_id: 0, recommended: true },
+            { hw: 'hw:0,3', card_name: 'PCH', usb_id: null, device_id: 3, recommended: false },
+        ];
+        const el = makeEl({ outputs, serviceOutput: { usb_id: null, card_name: 'PCH', device_id: 3 } });
+        expect(el._initialOutputId()).toBe('hw:0,3');
+    });
+});
+
+describe('the DoP switch (mpd)', () => {
+    it('shows what MPD applies until it is flipped', () => {
+        expect(makeEl({ serviceDop: true })._dopValue).toBe(true);
+        expect(makeEl({ serviceDop: null })._dopValue).toBeNull();
+        expect(makeEl({ serviceDop: true, _dop: false })._dopValue).toBe(false);
+    });
+
+    it('a flip back to what MPD applies is no change', () => {
+        expect(makeEl({ _dop: false })._canApply).toBe(false);
+        expect(makeEl({ _dop: true })._canApply).toBe(true);
+    });
+
+    it('is applied on its own route, and forgotten once applied', async () => {
+        const el = makeEl({ _dop: true });
+        await el._apply();
+        expect(apiPost).toHaveBeenCalledTimes(1);
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/dop', { dop: true });
+        expect(el._dop).toBeNull();
+        expect(el.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('before the library, whose change restarts MPD', async () => {
+        const el = makeEl({ _dop: true, _libraryChoice: 'src:0' });
+        await el._apply();
+        expect(apiPost.mock.calls.map(c => c[0])).toEqual(['/audio-stack/dop', '/audio-stack/library']);
+    });
+
+    it('waits while another output is chosen: what it holds is the other DAC\'s', async () => {
+        const el = makeEl({ serviceDop: true, _selectedOutputId: 'hw:1,0', _dop: false });
+        expect(el._dopChanged).toBe(false);
+        await el._apply();
+        expect(apiPost.mock.calls.map(c => c[0])).toEqual(['/audio-stack/output']);
+    });
+
+    it('a reset onto another output sends it off', async () => {
+        await makeEl({ serviceDop: true, _selectedOutputId: 'hw:1,0' })._reset();
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/provision', expect.objectContaining({
+            card_name: 'Topaz', dop: false }));
+    });
+
+    it('is drawn waiting while another output is chosen', () => {
+        // The DSD field's template: .checked, ?pending, ?disabled, @dop-change.
+        const dopField = (el) => el.render().values
+            .find(v => v?.strings?.join('').includes('ag-prov-dop-switch'));
+        expect(dopField(makeEl({ _selectedOutputId: 'hw:1,0' })).values[1]).toBe(true);
+        expect(dopField(makeEl()).values[1]).toBe(false);
+    });
+
+    it('is not offered to a service other than mpd', async () => {
+        const el = makeEl({ serviceId: 'airplay', _dop: true });
+        expect(el._canApply).toBe(false);
+        await el._reset();
+        expect(apiPost.mock.calls[0][1]).not.toHaveProperty('dop');
+    });
+
+    it('is kept through a reset, as the output is', async () => {
+        await makeEl({ serviceDop: true })._reset();
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/provision', expect.objectContaining({ dop: true }));
+    });
+
+    it('a reset with MPD silent leaves it off', async () => {
+        await makeEl({ serviceDop: null })._reset();
+        expect(apiPost).toHaveBeenCalledWith('/audio-stack/provision', expect.objectContaining({ dop: false }));
+    });
+
+    it('is drawn for mpd under its own heading', () => {
+        expect(textOf(makeEl().render())).toContain('<h4>DSD</h4>');
+        expect(textOf(makeEl({ serviceId: 'airplay' }).render())).not.toContain('<h4>DSD</h4>');
     });
 });
 

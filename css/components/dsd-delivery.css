@@ -1,0 +1,16 @@
+/**
+ * @module DsdDelivery
+ * @description Styles for the ag-dsd-delivery atom: how a DSD track reaches the DAC,
+ * a tag (components/badge.css) beside the track's format.
+ * Prefix: ag-dsd-delivery
+ */
+
+/* Beside the format line of the mini player, on the same line. */
+.np-format ag-dsd-delivery .badge {
+    margin-left: var(--spacing-xs);
+}
+
+/* Under the value of the full-screen FORMAT cell, as wide as its words. */
+.ag-fms-cell ag-dsd-delivery {
+    align-self: flex-start;
+}

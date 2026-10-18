@@ -4,15 +4,19 @@
  * Renders four cells: FORMAT, SAMPLE, BITRATE, CODEC from a FormatInfo object.
  * Hi-res cells (DSD, MQA, sample rate ≥ 88.2 kHz, never a lossy stream) are
  * highlighted with the accent colour. Renders nothing when all fields are absent.
+ * The cells describe the track; under FORMAT, a DSD track says how it reaches the
+ * DAC when that is not as DSD (ag-dsd-delivery: DoP, or converted to PCM).
  *
  * @element ag-format-strip
  *
- * @prop {Object|null} format - FormatInfo: { format, sample_rate, bitrate, codec }
+ * @prop {Object|null} format - FormatInfo: { format, sample_rate, bitrate, codec, dsd_delivery }
  *
  * @dependency css/components/format-strip.css
+ * @dependency js/components/atoms/ag-dsd-delivery.js
  */
 import { LitElement, html, nothing } from 'lit';
 import { hiResLabel } from '../../player-utils.js';
+import '../atoms/ag-dsd-delivery.js';
 
 export class AgFormatStrip extends LitElement {
     static properties = {
@@ -35,6 +39,7 @@ export class AgFormatStrip extends LitElement {
                 <div class="ag-fms-cell ${hi ? 'hi' : ''}">
                     <span class="ag-fms-label">Format</span>
                     <span class="ag-fms-value">${fmt.format ?? '—'}</span>
+                    <ag-dsd-delivery .delivery=${fmt.dsd_delivery ?? null}></ag-dsd-delivery>
                 </div>
                 <div class="ag-fms-cell ${hi ? 'hi' : ''}">
                     <span class="ag-fms-label">Sample</span>

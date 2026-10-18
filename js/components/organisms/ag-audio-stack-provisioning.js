@@ -87,8 +87,11 @@ export class AgAudioStackProvisioning extends LitElement {
             const pinned = status.selected_output;
             this._selectedOutputId =
                 (recommended && recommended.hw)
+                // The device too: a card with several outputs (HDMI's hw:0,3 beside the
+                // jack's hw:0,0) shares its usb_id and card_name.
                 || (pinned && this._outputs.find(o =>
-                    o.usb_id === pinned.usb_id && o.card_name === pinned.card_name)?.hw)
+                    o.usb_id === pinned.usb_id && o.card_name === pinned.card_name
+                    && (o.device_id ?? 0) === (pinned.device_id ?? 0))?.hw)
                 || (this._outputs[0]?.hw ?? null);
             // Bubble the full status so the page can configure the service tiles.
             this.dispatchEvent(new CustomEvent('status-loaded', {

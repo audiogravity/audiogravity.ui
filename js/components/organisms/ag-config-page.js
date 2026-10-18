@@ -218,6 +218,11 @@ export class AgConfigPage extends LitElement {
         return this._statusServices.find(s => s.service_id === serviceId)?.output || null;
     }
 
+    /** Whether MPD sends DSD as DoP, from the last status load (null when it cannot say). */
+    _serviceDopFor(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.dop ?? null;
+    }
+
     /** A provision generated/changed configs — refresh the grid. */
     async _handleProvisioned() {
         // The GRID only. The audio status arrives on its own: the panel re-reads
@@ -409,6 +414,7 @@ export class AgConfigPage extends LitElement {
                     .outputs=${this._outputs}
                     .librarySources=${this._librarySources}
                     .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
+                    .serviceDop=${this._serviceDopFor(this.selectedServiceId)}
                     .regenerable=${this._serviceRegenerable(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}
