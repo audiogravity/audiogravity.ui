@@ -13,6 +13,12 @@
  * background. While another period loads, the last one stays, faded, rather than leaving
  * an empty page.
  *
+ * It counts the listen in progress as of the moment it is read, so while the view is
+ * shown it is read again when what the box plays changes, once a track just started
+ * counts (30 seconds), and when the page comes back (PlayerChangeController): left open,
+ * the view said IN PROGRESS for a track long over (review, 2026-10-19). That follows the
+ * player stream the mini player already holds: the core reads nothing more for it.
+ *
  * While the recording is off, a line at the top says so, and leads to the switch: at the
  * bottom of the view, under the rankings, it went unseen, and Stats looked as if the box
  * had stopped counting (user report, 2026-10-16).
@@ -22,6 +28,7 @@
  * @attr {boolean} visible - Whether the view is the one shown; it reads the core only then.
  *
  * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
+ * @dependency js/core/PlayerChangeController.js - Says when what plays changes, while shown
  * @dependency js/listening-api.js - /listening/summary
  * @dependency ag-stats-headline, ag-stats-bars, ag-stats-hours, ag-stats-shares,
  *   ag-stats-quality, ag-stats-top, ag-stats-recent, ag-stats-recording, ag-pro-lock-card,
@@ -32,6 +39,7 @@ import { LitElement, html, nothing } from 'lit';
 import { LISTENING_PERIODS, listeningSummary } from '../../listening-api.js';
 import { proState } from '../../license-tiers.js';
 import { LicenseController } from '../../core/LicenseController.js';
+import { PlayerChangeController } from '../../core/PlayerChangeController.js';
 import { fmtIsoDate, svgIcon } from '../utils-lit.js';
 import { iconBarChart } from '../../ag-icons.js';
 import '../atoms/ag-filter-bar.js';
@@ -44,6 +52,9 @@ import '../molecules/ag-stats-recent.js';
 import '../molecules/ag-stats-recording.js';
 import '../molecules/ag-stats-shares.js';
 import '../molecules/ag-stats-top.js';
+
+/** Seconds a listen plays before it counts — the core's MIN_LISTEN_SECONDS. */
+const LISTEN_COUNTS_AFTER = 30;
 
 /** What the headline's figure covers, by period. */
 const CAPTIONS = {
@@ -99,17 +110,27 @@ export class AgLibraryStats extends LitElement {
         this._error = null;
         /** Keeps `_license`; a licence that opens Pro while the view is shown reads it. */
         this._licenseCtl = new LicenseController(this, () => this._loadIfShown());
+        /** Reads the summary again when what plays changes, while the figures are shown. */
+        this._player = new PlayerChangeController(this, () => this._load(),
+            { counts: LISTEN_COUNTS_AFTER });
         /** The read in flight, so that an older answer never replaces a newer one. */
         this._request = 0;
     }
 
     updated(changed) {
-        if (changed.has('visible') && this.visible) this._loadIfShown();
+        if (changed.has('visible')) this._loadIfShown();
     }
 
-    /** Read the summary when the view is shown and Pro is open. @returns {void} */
+    /**
+     * Read the summary when the view is shown and Pro is open, and follow the player as
+     * long as both hold.
+     *
+     * @returns {void}
+     */
     _loadIfShown() {
-        if (this.visible && proState(this._license) === 'open') this._load();
+        const shown = this.visible && proState(this._license) === 'open';
+        this._player.follow(shown);
+        if (shown) this._load();
     }
 
     /** Read the summary of the period chosen. @returns {Promise<void>} */
