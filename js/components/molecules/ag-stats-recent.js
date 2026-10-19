@@ -6,6 +6,11 @@
  * A station's listen is the station, with the time it was listened to — the songs it
  * announced are not kept.
  *
+ * A listen still going (`in_progress`) — playing, paused, or its source gone a moment —
+ * says IN PROGRESS where the others say when they started, above the time it has played
+ * so far: the core counts it as if it ended when the summary was read. A station left
+ * playing all evening is one listen that has not ended, and showed nowhere before.
+ *
  * @element ag-stats-recent
  *
  * @prop {Array<object>} listens - The summary's `recent`.
@@ -62,7 +67,9 @@ export class AgStatsRecent extends LitElement {
                                 ${where ? html`<span class="lib-stats-where">${where}</span>` : nothing}
                             </span>
                             <span class="lib-stats-list-figures">
-                                <span class="lib-stats-list-time">${fmtWhen(listen.started_at)}</span>
+                                ${listen.in_progress
+                                    ? html`<span class="badge success lib-stats-in-progress">IN PROGRESS</span>`
+                                    : html`<span class="lib-stats-list-time">${fmtWhen(listen.started_at)}</span>`}
                                 <span class="lib-stats-list-count">${fmtListened(listen.seconds)}</span>
                             </span>
                         </li>

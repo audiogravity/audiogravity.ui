@@ -27,7 +27,7 @@ export function listeningSummary(period) {
 }
 
 /**
- * Whether the history records, how many listens it counts, since when.
+ * Whether the history records, how many listens it counts — those in progress too — since when.
  *
  * @returns {Promise<{recording: boolean, listens: number, since: (string|null)}>}
  */

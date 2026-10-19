@@ -203,6 +203,26 @@ describe('ag-stats-recent', () => {
         const el = await mount('ag-stats-recent', { listens: [] });
         expect(el.textContent).toContain('Nothing played yet.');
     });
+
+    it('marks a listen still going where the others say when they started', async () => {
+        const el = await mount('ag-stats-recent', {
+            listens: [
+                { started_at: new Date().toISOString(), seconds: 2700, station: 'France Inter',
+                  live: true, source: 'Radio', output: 'Heed Abacus', in_progress: true },
+                { started_at: new Date().toISOString(), seconds: 540, title: 'So What', live: false,
+                  in_progress: false },
+            ],
+        });
+        const [going, over] = el.querySelectorAll('.lib-stats-list-row');
+        const mark = going.querySelector('.lib-stats-in-progress');
+        expect(mark.textContent).toBe('IN PROGRESS');
+        expect(mark.classList.contains('badge')).toBe(true);
+        expect(going.querySelector('.lib-stats-list-time')).toBeNull();
+        // Above the time it has played so far.
+        expect(going.querySelector('.lib-stats-list-count').textContent).toBe('45 min');
+        expect(over.querySelector('.lib-stats-in-progress')).toBeNull();
+        expect(over.querySelector('.lib-stats-list-time').textContent).not.toBe('');
+    });
 });
 
 /** A week of nothing but Saturday from 21:00 (30 min) and Monday at 07:00 (5 min). */

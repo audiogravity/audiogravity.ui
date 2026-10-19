@@ -14,11 +14,13 @@ const Template = ({ listens }) => html`
 
 const ago = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
 
-/** Tracks and a station. */
+/** Tracks and a station, the first still playing. */
 export const Latest = Template.bind({});
 Latest.args = {
     listens: [
-        { started_at: ago(10), seconds: 540, title: 'So What', artist: 'Miles Davis', album: 'Kind of Blue',
+        { started_at: ago(4), seconds: 230, title: 'Blue in Green', artist: 'Miles Davis', album: 'Kind of Blue',
+          live: false, source: 'Qobuz', output: 'Heed Abacus', in_progress: true },
+        { started_at: ago(14), seconds: 540, title: 'So What', artist: 'Miles Davis', album: 'Kind of Blue',
           live: false, source: 'Qobuz', output: 'Heed Abacus' },
         { started_at: ago(26), seconds: 360, title: 'Lazarus', artist: 'David Bowie', album: 'Blackstar',
           live: false, source: 'Local Library', output: 'Heed Abacus' },

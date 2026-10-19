@@ -18,6 +18,14 @@ const api = vi.hoisted(() => ({
 }));
 const ui = vi.hoisted(() => ({ showConfirm: vi.fn(), showToast: vi.fn() }));
 const calls = vi.hoisted(() => []);
+// The player stream (PlayerChangeController): the states sent to the view, by hand.
+const player = vi.hoisted(() => ({ callbacks: [], unsubscribe: null }));
+vi.mock('../../library-store.js', () => ({
+    subscribePlayerState: (cb) => {
+        player.callbacks.push(cb);
+        return player.unsubscribe;
+    },
+}));
 
 // The core's routes, as js/listening-api.js reaches them: its addresses are tested too.
 vi.mock('../../api.js', () => ({
@@ -42,6 +50,7 @@ vi.mock('../../api.js', () => ({
 vi.mock('../../ui-helpers.js', () => ui);
 
 import { setLicense } from '../../license-tiers.js';
+import { SETTLE_MS } from '../../core/PlayerChangeController.js';
 import './ag-library-stats.js';
 import { genreRows } from './ag-library-stats.js';
 
@@ -77,6 +86,8 @@ async function mount(visible = true) {
 
 beforeEach(() => {
     calls.length = 0;
+    player.callbacks.length = 0;
+    player.unsubscribe = vi.fn();
     Object.values(api).forEach(fn => fn.mockReset());
     Object.values(ui).forEach(fn => fn.mockReset());
     api.listeningSummary.mockImplementation(async (period) => summary(period));
@@ -127,6 +138,30 @@ describe('ag-library-stats — with Pro', () => {
         await mount(false);
         expect(api.listeningSummary).not.toHaveBeenCalled();
         expect(api.listeningSettings).not.toHaveBeenCalled();
+        expect(player.callbacks).toHaveLength(0);
+    });
+
+    it('while shown, reads again when what plays changes, and stops following once hidden', async () => {
+        const el = await mount();
+        expect(player.callbacks).toHaveLength(1);
+        const send = player.callbacks[0];
+        const playing = (title) => ({ sources: [{ source_id: 'src_mpd', playing: true,
+            playback_status: 'Playing', origin: 'library', title, elapsed: 200 }] });
+        vi.useFakeTimers();
+        try {
+            send(playing('So What'));                   // what the view has just read
+            vi.advanceTimersByTime(SETTLE_MS);
+            expect(api.listeningSummary).toHaveBeenCalledTimes(1);
+            send(playing('Freddie Freeloader'));
+            vi.advanceTimersByTime(SETTLE_MS);
+            expect(api.listeningSummary).toHaveBeenCalledTimes(2);
+            expect(api.listeningSummary).toHaveBeenLastCalledWith('30d');
+        } finally {
+            vi.useRealTimers();
+        }
+        el.visible = false;
+        await el.updateComplete;
+        expect(player.unsubscribe).toHaveBeenCalledTimes(1);
     });
 
     it('another period reads its own summary', async () => {
@@ -206,14 +241,17 @@ describe('ag-library-stats — on a Starter box', () => {
         expect(el.querySelector('ag-pro-lock-card')).not.toBeNull();
         expect(el.querySelector('ag-stats-recording')).not.toBeNull();
         expect(el.querySelector('ag-stats-bars')).toBeNull();
+        // No figures to keep up to date: the player is not followed either.
+        expect(player.callbacks).toHaveLength(0);
     });
 
-    it('reads the summary as soon as a licence opens Pro', async () => {
+    it('reads the summary as soon as a licence opens Pro, and follows the player from then', async () => {
         const el = await mount();
         setLicense(PRO);
         await new Promise(r => setTimeout(r, 0));
         await el.updateComplete;
         expect(api.listeningSummary).toHaveBeenCalledWith('30d');
+        expect(player.callbacks).toHaveLength(1);
     });
 });
 

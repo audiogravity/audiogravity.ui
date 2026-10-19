@@ -945,7 +945,7 @@ badged `origin: "radio"`.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/listening/summary?period=` | What the box played over a period (Pro) — `period`: `7d`, `30d` (default), `12m`, `all`; any other value answers 422 |
-| GET | `/listening/settings` | `{ recording, listens, since }` — whether the box records, the listens it counts, the local day it begins (`YYYY-MM-DD`, or null) |
+| GET | `/listening/settings` | `{ recording, listens, since }` — whether the box records, the listens it counts (those in progress included), the local day it begins (`YYYY-MM-DD`, or null) |
 | PUT | `/listening/settings` | Switch the recording — body `{ recording }`; answers the settings. Off, the listen in progress is dropped |
 | DELETE | `/listening/history` | Erase the history — 204 |
 
@@ -954,7 +954,8 @@ The writes answer 403 to a guest account.
 `GET /listening/summary` — the whole view in one answer. Days and months are the box's
 local ones; a listen counts on the day it started, and in the hours it actually played. A
 listen is at least 30 s actually played; a station is one listen however many songs it
-announced. Roon and HQPlayer are not counted.
+announced. Roon and HQPlayer are not counted. Every figure counts the listens in progress
+too, as they stand when the summary is read: read it again to see them move on.
 
 | Field | Meaning |
 |---|---|
@@ -971,7 +972,7 @@ announced. Roon and HQPlayer are not counted.
 | `top_artists[]` | `{ artist, seconds, plays }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked |
 | `top_albums[]` | `{ album, artist, seconds, plays }` — same |
 | `top_tracks[]` | `{ title, artist, album, seconds, plays }` — same |
-| `recent[]` | The ten latest listens whatever the period, newest first: `{ started_at, seconds, title, artist, album, station, live, source, output }` — `started_at` in UTC; a broadcast has `live: true`, its `station` and no `title` |
+| `recent[]` | The ten latest listens whatever the period: `{ started_at, seconds, title, artist, album, station, live, source, output, in_progress }` — `started_at` in UTC; a broadcast has `live: true`, its `station` and no `title`. `in_progress: true` for a listen playing now, `seconds` being its time so far; those come first, then the others newest first. A listen paused, or whose source is gone a moment, is counted all the same, with `in_progress: false` |
 
 ### Audio software packages — `/packages/*`
 | Method | Path | Description |
