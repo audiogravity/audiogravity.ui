@@ -2,7 +2,7 @@
  * Unit tests for player-utils.js — player helper functions.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { TRANSITION_GUARD_MS, inTransition, isDsd, isSelfManagedDriver } from './player-utils.js';
+import { TRANSITION_GUARD_MS, inTransition, isDsd, isSelfManagedDriver, volumeActsOnDsd, showsVolumeControl, showsDsdLock } from './player-utils.js';
 
 describe('TRANSITION_GUARD_MS', () => {
     it('is 8 seconds', () => {
@@ -494,5 +494,56 @@ describe('playPauseIntent', () => {
     it('pauses what the screen shows playing, plays everything else', () => {
         expect(playPauseIntent(true)).toBe('pause');
         expect(playPauseIntent(false)).toBe('play');
+    });
+});
+
+describe('volumeActsOnDsd', () => {
+    it('is what the core says', () => {
+        // The box's MPD turning DSD into PCM before its volume (a box with no DSD DAC).
+        expect(volumeActsOnDsd({ control_id: 'src_mpd', volume_on_dsd: true })).toBe(true);
+        // HQPlayer told no by a core: the core has the last word.
+        expect(volumeActsOnDsd({ control_id: 'src_hqplayer', volume_on_dsd: false })).toBe(false);
+    });
+
+    it('falls back to the self-managed drivers when the core does not say it', () => {
+        expect(volumeActsOnDsd({ control_id: 'src_hqplayer' })).toBe(true);
+        expect(volumeActsOnDsd({ control_id: 'upnp_renderer', volume_on_dsd: null })).toBe(true);
+        expect(volumeActsOnDsd({ control_id: 'src_mpd' })).toBe(false);
+        expect(volumeActsOnDsd(null)).toBe(false);
+    });
+});
+
+describe('showsVolumeControl and showsDsdLock — the slider or the padlock', () => {
+    const dsd = 'DSD | DSD128';
+    const pcm = 'FLAC | 24bit | 96kHz';
+
+    it('a PCM track shows the slider of a player that can set a volume, never the lock', () => {
+        const mpd = { control_id: 'src_mpd', can_set_volume: true };
+        expect(showsVolumeControl(mpd, pcm)).toBe(true);
+        expect(showsDsdLock(mpd, pcm)).toBe(false);
+    });
+
+    it('a DSD track MPD leaves alone shows the lock in place of the slider', () => {
+        const mpd = { control_id: 'src_mpd', can_set_volume: true, volume_on_dsd: false };
+        expect(showsVolumeControl(mpd, dsd)).toBe(false);
+        expect(showsDsdLock(mpd, dsd)).toBe(true);
+    });
+
+    it('a DSD track MPD turns into PCM before its volume keeps the slider', () => {
+        const mpd = { control_id: 'src_mpd', can_set_volume: true, volume_on_dsd: true };
+        expect(showsVolumeControl(mpd, dsd)).toBe(true);
+        expect(showsDsdLock(mpd, dsd)).toBe(false);
+    });
+
+    it('the full-screen player passes its format object', () => {
+        const state = { control_id: 'src_mpd', can_set_volume: true, volume_on_dsd: true };
+        expect(showsVolumeControl(state, { format: 'DSD128', codec: 'DSD' })).toBe(true);
+        expect(showsDsdLock({ ...state, volume_on_dsd: false }, { format: 'DSD128' })).toBe(true);
+    });
+
+    it('a player that cannot set a volume shows no slider, and still the lock on DSD', () => {
+        const roon = { control_id: 'src_roon', can_set_volume: false };
+        expect(showsVolumeControl(roon, pcm)).toBe(false);
+        expect(showsDsdLock(roon, dsd)).toBe(true);
     });
 });

@@ -1,12 +1,13 @@
 /**
  * @module AgDsdLock
  * @description Padlock shown in place of the volume control when the active
- * source plays a DSD track: that player's volume does nothing to DSD — MPD
- * leaves it alone, sent as DSD, as DoP or converted to PCM (measured 2026-10-18)
- * — so the level is set on the amplifier. Whether the DSD reaches the DAC as
- * DSD, as DoP or converted to PCM, the lock is the same (ag-dsd-delivery says
- * which). HQPlayer and a network renderer keep their slider: their volume is
- * real (isSelfManagedDriver).
+ * source plays a DSD track its volume does nothing to — MPD leaves DSD alone, sent
+ * as DSD, as DoP, or converted to PCM in its output (measured 2026-10-18) — so the
+ * level is set on the amplifier. Whether the DSD reaches the DAC as DSD, as DoP or
+ * converted to PCM, the lock is the same (ag-dsd-delivery says which). A player whose
+ * volume acts on DSD keeps its slider, as the core says it (`volume_on_dsd`,
+ * showsDsdLock): HQPlayer, a network renderer, and the box's MPD where it turns DSD
+ * into PCM before its volume — a box where no output takes DSD as it is.
  *
  * Used by both the mini player (`ag-now-playing`) and the fullscreen player
  * (`ag-now-playing-fullscreen`). Positioning (inline vs absolute) is left to

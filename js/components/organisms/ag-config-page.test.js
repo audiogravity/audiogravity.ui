@@ -36,6 +36,7 @@ vi.mock('./ag-modal.js', () => ({}));
 
 import { apiGet, showConfirm } from '../../common.js';
 import { AgConfigPage } from './ag-config-page.js';
+import { templateProps as propsOf } from '../../test-utils.js';
 
 const STATUS = {
     outputs: [{ hw: 'hw:0,0', card_name: 'Abacus' }],
@@ -168,20 +169,6 @@ describe('HQPlayer Embedded: its output alone is set up here', () => {
         ],
     };
 
-    /** The `.prop=${…}` bindings of a template, nested templates included. */
-    const propsOf = (node, found = {}) => {
-        if (!node || typeof node !== 'object') return found;
-        if (Array.isArray(node)) { node.forEach(n => propsOf(n, found)); return found; }
-        if (node.strings) {
-            node.strings.forEach((s, i) => {
-                const m = /\.([A-Za-z]+)=$/.exec(s.trimEnd());
-                if (m && i < node.values.length) found[m[1]] = node.values[i];
-                propsOf(node.values[i], found);
-            });
-        }
-        return found;
-    };
-
     it('opens in a guided view, offered no Reset to default', () => {
         const page = new AgConfigPage();
         page._storeAudioStatus(WITH_HQPLAYER);
@@ -306,5 +293,27 @@ describe('the backup name in the restore question', () => {
         const message = showConfirm.mock.calls.at(-1)[1];
         expect(message).toContain('from mpd.conf.<b>x</b>.bak.');
         expect(message).not.toContain('&lt;');
+    });
+});
+
+describe("whether MPD's volume acts on DSD reaches its guided view", () => {
+    // On a box where no output takes DSD as it is, the core has MPD turn DSD into PCM
+    // before its volume, and its status says so: the guided view says it under DSD.
+
+    const open = (status) => {
+        const page = new AgConfigPage();
+        page._storeAudioStatus(status);
+        page.services = [{ id: 'mpd' }];
+        page.selectedServiceId = 'mpd';
+        return propsOf(page.render());
+    };
+
+    it("is handed MPD's status value", () => {
+        const services = STATUS.services.map(s => (s.service_id === 'mpd' ? { ...s, volume_on_dsd: true } : s));
+        expect(open({ ...STATUS, services }).serviceVolumeOnDsd).toBe(true);
+    });
+
+    it('is null from a core that does not say it', () => {
+        expect(open(STATUS).serviceVolumeOnDsd).toBeNull();
     });
 });

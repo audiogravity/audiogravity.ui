@@ -32,7 +32,7 @@ import '../atoms/ag-library-playlist-btn.js';
 import { requestPlaylistAdd } from '../molecules/ag-playlist-picker.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
-import { extractDominantColor, isDsd, inTransition, isSelfManagedDriver, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
+import { extractDominantColor, inTransition, showsVolumeControl, showsDsdLock, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
@@ -1128,7 +1128,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                 ?live=${isLiveStream(s) && s?.playback_status !== 'Stopped'}
                                 @playback-control=${(e) => this._control(e.detail.action, e.detail.value)}
                             ></ag-playback-controls>
-                            ${s?.can_set_volume && (!isDsd(s?.format) || isSelfManagedDriver(s)) ? html`
+                            ${showsVolumeControl(s, s?.format) ? html`
                                 <div class="npfs-controls-vol">
                                     <ag-volume-popover
                                         .volume=${s.volume ?? 0}
@@ -1136,7 +1136,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                                     ></ag-volume-popover>
                                 </div>
                             ` : nothing}
-                            ${isDsd(s?.format) && !isSelfManagedDriver(s) ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
+                            ${showsDsdLock(s, s?.format) ? html`<ag-dsd-lock class="npfs-dsd-lock"></ag-dsd-lock>` : nothing}
                         </div>
                         ${this._renderProgress(s)}
                         ${this._renderUpNext()}

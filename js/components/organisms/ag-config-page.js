@@ -229,6 +229,13 @@ export class AgConfigPage extends LitElement {
         return this._statusServices.find(s => s.service_id === serviceId)?.dsd_full_volume ?? null;
     }
 
+    /** Whether a service's own volume acts on DSD — MPD turning DSD into PCM before its
+     * volume, on a box where no output takes DSD as it is — from the last status load
+     * (null when its configuration cannot be read, or from an older core). */
+    _serviceVolumeOnDsdFor(serviceId) {
+        return this._statusServices.find(s => s.service_id === serviceId)?.volume_on_dsd ?? null;
+    }
+
     /** A provision generated/changed configs — refresh the grid. */
     async _handleProvisioned() {
         // The GRID only. The audio status arrives on its own: the panel re-reads
@@ -422,6 +429,7 @@ export class AgConfigPage extends LitElement {
                     .serviceOutput=${this._serviceOutputFor(this.selectedServiceId)}
                     .serviceDop=${this._serviceDopFor(this.selectedServiceId)}
                     .serviceDsdFullVolume=${this._serviceDsdFullVolumeFor(this.selectedServiceId)}
+                    .serviceVolumeOnDsd=${this._serviceVolumeOnDsdFor(this.selectedServiceId)}
                     .regenerable=${this._serviceRegenerable(this.selectedServiceId)}
                     @back=${this._handleBack}
                     @save=${this._handleSave}

@@ -255,6 +255,13 @@
     font-size: var(--font-size-sm);
 }
 
+/* What MPD does with DSD, said under DSD's switches: set apart from them as they are
+   from each other, and as wide as their hints. */
+.ag-guided-dsd-note {
+    margin: var(--spacing-md) 0 0;
+    max-width: 640px;
+}
+
 /* ── ag-prov-guided-switch (the switches of MPD's guided view: DoP, the DAC's
       volume during DSD) ─────────────────────────────────────────────────── */
 .ag-prov-switch {

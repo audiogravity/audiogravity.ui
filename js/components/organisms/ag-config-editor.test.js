@@ -484,3 +484,19 @@ describe('AgConfigEditor — the backup name in the restore question', () => {
         expect(message).not.toContain('&lt;');
     });
 });
+
+describe("AgConfigEditor — whether MPD's volume acts on DSD", () => {
+    // On a box where no output takes DSD as it is, MPD turns DSD into PCM before its
+    // volume: the page holds it from the status, the guided view says it under DSD.
+    const MPD = { id: 'mpd', displayName: 'MPD', path: '/etc/mpd.conf' };
+
+    afterEach(() => document.body.replaceChildren());
+
+    it('is handed to the guided view', async () => {
+        const el = document.createElement('ag-config-editor');
+        Object.assign(el, { service: MPD, guided: true, schema: {}, serviceVolumeOnDsd: true });
+        document.body.appendChild(el);
+        await el.updateComplete;
+        expect(el.querySelector('ag-guided-config').serviceVolumeOnDsd).toBe(true);
+    });
+});

@@ -17,6 +17,8 @@
  *   (null when MPD cannot say)
  * @prop {Boolean|null} serviceDsdFullVolume - Whether the DAC MPD plays on goes to full
  *   volume during DSD, for its guided view (null when it cannot be read)
+ * @prop {Boolean|null} serviceVolumeOnDsd - Whether MPD's own volume acts on DSD — it turns
+ *   DSD into PCM before its volume — for its guided view (null when it cannot be read)
  *
  * A service whose schema declares no field (HQPlayer Embedded: its file is edited
  * in place, never rewritten from a form) has no structured view — it opens in the
@@ -53,6 +55,7 @@ export class AgConfigEditor extends LitElement {
         serviceOutput: { type: Object },
         serviceDop: { type: Object },
         serviceDsdFullVolume: { type: Object },
+        serviceVolumeOnDsd: { type: Object },
         regenerable: { type: Boolean },
 
         currentMode: { state: true },
@@ -79,6 +82,7 @@ export class AgConfigEditor extends LitElement {
         this.serviceOutput = null;
         this.serviceDop = null;
         this.serviceDsdFullVolume = null;
+        this.serviceVolumeOnDsd = null;
         this.regenerable = true;
 
         this.currentMode = 'form';
@@ -551,6 +555,7 @@ export class AgConfigEditor extends LitElement {
                             .librarySources=${this.librarySources} .serviceOutput=${this.serviceOutput}
                             .serviceDop=${this.serviceDop}
                             .serviceDsdFullVolume=${this.serviceDsdFullVolume}
+                            .serviceVolumeOnDsd=${this.serviceVolumeOnDsd}
                             .regenerable=${this.regenerable}></ag-guided-config>
                     </div>
                 ` : html`

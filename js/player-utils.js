@@ -46,6 +46,44 @@ export function isSelfManagedDriver(itemOrState) {
 }
 
 /**
+ * Whether a player's own volume acts on the DSD track it plays. The core says it
+ * (`volume_on_dsd`, told for a DSD track): HQPlayer and a network renderer handle DSD
+ * in their own chain, and the box's MPD does when it turns DSD into PCM before its
+ * volume — on a box where no output takes DSD as it is. A core that does not say it
+ * leaves the list of self-managed drivers to answer.
+ * @param {object|null} itemOrState - SourceInfo-like or PlayerState-like object.
+ * @returns {boolean}
+ */
+export function volumeActsOnDsd(itemOrState) {
+    return itemOrState?.volume_on_dsd ?? isSelfManagedDriver(itemOrState);
+}
+
+/**
+ * Whether a player shows its volume slider: it can set a volume, and the track is not
+ * a DSD one its volume leaves alone. Read by the mini and the full-screen players.
+ * @param {object|null} itemOrState - SourceInfo-like or PlayerState-like object.
+ * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat -
+ *   The track's format, as isDsd reads it.
+ * @returns {boolean}
+ */
+export function showsVolumeControl(itemOrState, fmtOrSourceFormat) {
+    return !!itemOrState?.can_set_volume
+        && (!isDsd(fmtOrSourceFormat) || volumeActsOnDsd(itemOrState));
+}
+
+/**
+ * Whether a player shows the DSD padlock: a DSD track its volume leaves alone, so the
+ * level is set on the amplifier. Read by the mini and the full-screen players.
+ * @param {object|null} itemOrState - SourceInfo-like or PlayerState-like object.
+ * @param {{format?:string, codec?:string}|string|null|undefined} fmtOrSourceFormat -
+ *   The track's format, as isDsd reads it.
+ * @returns {boolean}
+ */
+export function showsDsdLock(itemOrState, fmtOrSourceFormat) {
+    return isDsd(fmtOrSourceFormat) && !volumeActsOnDsd(itemOrState);
+}
+
+/**
  * The output entry currently carrying the audio.
  *
  * `active_output_id` names it; the `active` flag is the fallback for a state
