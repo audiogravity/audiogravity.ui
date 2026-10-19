@@ -119,6 +119,35 @@ export const CastToRenderer = {
     }),
 };
 
+/** A DSD128 track on a DAC that takes DSD as it is: the volume gives way to the padlock. */
+export const DsdPadlock = {
+    render: () => mount({
+        ...PLAYING_STATE,
+        title: 'La Catedral: Preludio',
+        artist: 'Agustín Barrios',
+        format: { format: 'DSD128', sample_rate: '5.6MHz', bitrate: '11.3Mbps', codec: 'DSD' },
+        volume_on_dsd: false,
+    }),
+};
+
+/**
+ * The same track on a HAT, which takes no DSD: MPD turns it into PCM before its volume,
+ * so the slider stays — and the format strip says the DAC receives PCM.
+ */
+export const DsdWithVolume = {
+    render: () => mount({
+        ...PLAYING_STATE,
+        title: 'La Catedral: Preludio',
+        artist: 'Agustín Barrios',
+        format: { format: 'DSD128', sample_rate: '5.6MHz', bitrate: '11.3Mbps', codec: 'DSD',
+            dsd_delivery: 'pcm' },
+        volume_on_dsd: true,
+        output_label: 'HiFiBerry DAC+ Pro',
+        output_connector: null,
+        signal_path: [{ label: 'MPD' }, { label: 'HiFiBerry DAC+ Pro' }],
+    }),
+};
+
 /**
  * The sound card is held by another player, so nothing comes out.
  *

@@ -1263,3 +1263,25 @@ describe('AgNowPlayingFullscreen — follows the box\'s licence', () => {
         }
     });
 });
+
+/**
+ * The volume slider or the DSD padlock: decided by the shared helpers of player-utils,
+ * which read whether the core says the volume acts on DSD (`volume_on_dsd`) — on a box
+ * where MPD turns DSD into PCM before its volume, the slider stays. The mini player
+ * asks them the same question; their own tests are in player-utils.test.js.
+ */
+describe('the slider or the DSD padlock comes from the shared helpers', () => {
+    const SOURCE = readFileSync(
+        path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing-fullscreen.js'),
+        'utf8',
+    );
+
+    it('shows them as showsVolumeControl and showsDsdLock say', () => {
+        expect(SOURCE).toMatch(/\$\{showsVolumeControl\(s, s\?\.format\) \? html`\s*<div class="npfs-controls-vol">/);
+        expect(SOURCE).toMatch(/\$\{showsDsdLock\(s, s\?\.format\) \? html`<ag-dsd-lock class="npfs-dsd-lock">/);
+    });
+
+    it('decides nothing of its own about DSD and the volume', () => {
+        expect(SOURCE).not.toMatch(/isSelfManagedDriver|isDsd\(/);
+    });
+});

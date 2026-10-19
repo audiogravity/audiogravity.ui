@@ -26,6 +26,10 @@
  * @prop {boolean|null} serviceDsdFullVolume - Whether the DAC MPD plays on has its own
  *   volume brought to full while it receives DSD (from /audio-stack/status); null when
  *   it cannot be read.
+ * @prop {boolean|null} serviceVolumeOnDsd - Whether MPD's own volume acts on DSD: MPD turns
+ *   DSD into PCM before its volume, as AG has it do on a box where no output takes DSD as
+ *   it is (from /audio-stack/status); null when its configuration cannot be read. Said
+ *   under DSD.
  * @fires guided-changed - Bubbles, after a successful apply or reset (parent refreshes).
  * @dependency js/api.js
  * @dependency js/ui-helpers.js
@@ -47,6 +51,11 @@ import '../molecules/ag-prov-dsd-volume-switch.js';
 import '../molecules/ag-prov-library-picker.js';
 import '../molecules/ag-library-scan-indicator.js';
 import { AgProvLibraryPicker } from '../molecules/ag-prov-library-picker.js';
+
+/** Said under DSD when MPD turns DSD into PCM before its volume (serviceVolumeOnDsd) —
+ * only what holds whoever set it: AG on a box where no output takes DSD as it is, or a
+ * format written by hand in MPD's configuration. */
+export const DSD_VOLUME_NOTE = 'The volume works on DSD too: MPD converts it to PCM before the volume.';
 
 /**
  * Guided fields per provisionable service. Data-driven so it can grow (a future
@@ -70,6 +79,7 @@ export class AgGuidedConfig extends LitElement {
         serviceOutput: { type: Object },
         serviceDop: { type: Object },
         serviceDsdFullVolume: { type: Object },
+        serviceVolumeOnDsd: { type: Object },
         regenerable: { type: Boolean },
         _selectedOutputId: { state: true },
         _dop: { state: true },
@@ -87,6 +97,7 @@ export class AgGuidedConfig extends LitElement {
         this.serviceOutput = null;
         this.serviceDop = null;
         this.serviceDsdFullVolume = null;
+        this.serviceVolumeOnDsd = null;
         // True unless the status says otherwise: a core that predates the field
         // generates every service it lists.
         this.regenerable = true;
@@ -351,6 +362,8 @@ export class AgGuidedConfig extends LitElement {
                                 ?pending=${this._outputChanged} ?disabled=${this._busy}
                                 @dsd-volume-change=${(e) => { this._dsdVolume = e.detail.checked; }}></ag-prov-dsd-volume-switch>`
                             : nothing}
+                        ${this.serviceVolumeOnDsd === true ? html`
+                            <p class="ag-guided-note ag-guided-dsd-note">${DSD_VOLUME_NOTE}</p>` : nothing}
                     </div>` : nothing}
 
                 ${fields.includes('library') ? html`

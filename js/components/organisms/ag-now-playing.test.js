@@ -717,3 +717,25 @@ describe('AgNowPlaying — follows the box\'s licence', () => {
         }
     });
 });
+
+/**
+ * The volume slider or the DSD padlock: decided by the shared helpers of player-utils,
+ * which read whether the core says the volume acts on DSD (`volume_on_dsd`) — on a box
+ * where MPD turns DSD into PCM before its volume, the slider stays. The full-screen
+ * player asks them the same question; their own tests are in player-utils.test.js.
+ */
+describe('the slider or the DSD padlock comes from the shared helpers', () => {
+    const SOURCE = readFileSync(
+        path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing.js'),
+        'utf8',
+    );
+
+    it('shows them as showsVolumeControl and showsDsdLock say', () => {
+        expect(SOURCE).toMatch(/\$\{showsVolumeControl\(item, item\.source_format\) \? html`\s*<ag-volume-popover/);
+        expect(SOURCE).toMatch(/\$\{showsDsdLock\(item, item\.source_format\) \? html`<ag-dsd-lock>/);
+    });
+
+    it('decides nothing of its own about DSD and the volume', () => {
+        expect(SOURCE).not.toMatch(/isSelfManagedDriver|isDsd\(/);
+    });
+});

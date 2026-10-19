@@ -241,3 +241,25 @@ export function openingTags(text) {
     }
     return tags;
 }
+
+/**
+ * The `.prop=${…}` bindings of a Lit template — nested templates included — as a
+ * component hands them to the ones it renders: the page to the editor, the editor to
+ * its guided view.
+ *
+ * @param {object|Array|null} node - A template result (`strings`, `values`), or a list of them.
+ * @param {object} [found] - Bindings already gathered; the result.
+ * @returns {object} Property name → the value bound to it (the last one, when bound twice).
+ */
+export function templateProps(node, found = {}) {
+    if (!node || typeof node !== 'object') return found;
+    if (Array.isArray(node)) { node.forEach(n => templateProps(n, found)); return found; }
+    if (node.strings) {
+        node.strings.forEach((s, i) => {
+            const m = /\.([A-Za-z]+)=$/.exec(s.trimEnd());
+            if (m && i < node.values.length) found[m[1]] = node.values[i];
+            templateProps(node.values[i], found);
+        });
+    }
+    return found;
+}

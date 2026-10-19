@@ -23,7 +23,7 @@ vi.mock('../../ag-icons.js', () => ({
 
 import { apiPost } from '../../api.js';
 import { showConfirm, showToast, handleError, showPasswordConfirm } from '../../ui-helpers.js';
-import { AgGuidedConfig, GUIDED_FIELDS } from './ag-guided-config.js';
+import { AgGuidedConfig, DSD_VOLUME_NOTE, GUIDED_FIELDS } from './ag-guided-config.js';
 
 const OUTPUTS = [
     { hw: 'hw:0,0', card_name: 'Abacus', usb_id: 'dac-a', device_id: 0, recommended: true },
@@ -260,6 +260,35 @@ describe("the DAC's volume during DSD (mpd)", () => {
     it('is drawn for mpd only', () => {
         expect(textOf(makeEl().render())).toContain('ag-prov-dsd-volume-switch');
         expect(textOf(makeEl({ serviceId: 'airplay' }).render())).not.toContain('ag-prov-dsd-volume-switch');
+    });
+});
+
+describe('what MPD does with DSD, said under DSD (mpd)', () => {
+    // On a box where no output takes DSD as it is, MPD turns DSD into PCM before its
+    // volume: the players keep their slider on DSD, and the guided view says why.
+
+    it('says the volume works on DSD when MPD converts it before the volume', () => {
+        const text = textOf(makeEl({ serviceVolumeOnDsd: true }).render());
+        expect(text).toContain(DSD_VOLUME_NOTE);
+        // Under the two switches, in the DSD field.
+        expect(text.indexOf(DSD_VOLUME_NOTE)).toBeGreaterThan(text.indexOf('ag-prov-dsd-volume-switch'));
+    });
+
+    it('says nothing when MPD does not, or when the status cannot say', () => {
+        expect(textOf(makeEl({ serviceVolumeOnDsd: false }).render())).not.toContain(DSD_VOLUME_NOTE);
+        expect(textOf(makeEl({ serviceVolumeOnDsd: null }).render())).not.toContain(DSD_VOLUME_NOTE);
+    });
+
+    it('is said for mpd only', () => {
+        expect(textOf(makeEl({ serviceId: 'airplay', serviceVolumeOnDsd: true }).render()))
+            .not.toContain(DSD_VOLUME_NOTE);
+    });
+
+    it('says only what holds whoever set the conversion', () => {
+        // The status says it for a format written by hand in MPD's configuration too:
+        // there no output need lack DSD, and DoP changes nothing — neither is said.
+        expect(DSD_VOLUME_NOTE).toMatch(/volume works on DSD/);
+        expect(DSD_VOLUME_NOTE).not.toMatch(/DoP|no output/);
     });
 });
 
