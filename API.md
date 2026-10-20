@@ -507,6 +507,10 @@ queue and change while a source plays or sits paused, so read them from every `P
   before it, or may under repeat or random. `false` on a station played alone, where `prev`
   would only reconnect it.
 - Both are `false` while MPD is stopped: it refuses `next` and `prev` then.
+- On HQPlayer, from the entry it plays in its list: `can_next` before the last entry,
+  `can_prev` after the first — both `false` on a station played alone, where HQPlayer
+  answers either with an error and stops the music. Both `true` until HQPlayer has named an
+  entry.
 - `can_seek` — a length is known (`duration`). `false` on a live stream.
 
 **`live`** — on the item and on each `sources[]` entry: what plays is a live broadcast — no
@@ -517,10 +521,10 @@ webradio started by another app, at an address the radio module does not know, c
 
 - `true` / `false` — on the box's MPD (a station the radio module knows, or a stream that
   names itself and has no length — it may turn `true` a moment after the stream starts, once
-  it names itself), and on a network renderer for what AG cast to it.
-- `null` — the box cannot tell: HQPlayer, AirPlay, Roon, a stream another app cast to a
-  renderer, or nothing playing. A client then decides by itself — `origin: "radio"` with no
-  `duration` is a station.
+  it names itself), and on a network renderer or HQPlayer for what AG sent it.
+- `null` — the box cannot tell: AirPlay, Roon, what HQPlayer plays from its own remote, a
+  stream another app cast to a renderer, or nothing playing. A client then decides by itself —
+  `origin: "radio"` with no `duration` is a station.
 
 **`dsd_delivery`** — on `format` and on each `sources[]` entry: how a DSD track reaches the DAC.
 The other `format` fields describe the track — a DSD128 file reads `DSD128` whatever reaches
@@ -1252,7 +1256,7 @@ service can have no file yet — writing one creates it.
 
 ### Routes absent from `/docs`
 
-Seven real routes are deliberately kept out of the OpenAPI schema — a different thing from
+Six real routes are deliberately kept out of the OpenAPI schema — a different thing from
 the schema being unmounted altogether, which is what `API_DOCS_ENABLED=false` does. They are not for the
 UI — they are called by a renderer or by the browser's `<img>`/`<audio>` tag — but they
 exist, so hunting for them in Swagger is a dead end.
@@ -1264,8 +1268,13 @@ exist, so hunting for them in Swagger is a dead end.
 | GET | `/library/signed/{sig}/{path}` | HQPlayer fetching a local file (HMAC-signed, the extension last) |
 | GET | `/library/flac/{sig}/{path}.flac` | HQPlayer fetching a local file AG converts to FLAC for it |
 | GET | `/library/remote-flac/{sig}/{res}.flac` | HQPlayer fetching a media server's track AG converts to FLAC for it |
-| GET | `/radio/relay/{sig}/{uuid}.flac` | HQPlayer fetching a station AG transcodes to FLAC for it |
 | POST | `/upnp-renderer/{udn}/notify` | The renderer's own GENA callback |
+
+The stations HQPlayer plays are not served by the API: the box's relay serves them on a port
+of its own — `HQPLAYER_RELAY_PORT` in the core's `.env`, 8010 by default — in HTTP/1.0, the
+end of the body being the end of the connection. Two signed paths, GET and HEAD:
+`/radio/relay/{sig}/{uuid}/stream.{mp3|flac}` (the station as it is sent) and
+`/radio/relay/{sig}/{uuid}.flac` (converted to FLAC).
 
 ---
 
