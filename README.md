@@ -1,7 +1,7 @@
 # Audiogravi<sup>ty</sup> UI
 
-![Version](https://img.shields.io/badge/version-0.9.75--beta-orange)
-![Tests](https://img.shields.io/badge/tests-3920%20passing-brightgreen)
+![Version](https://img.shields.io/badge/version-0.9.76--beta-orange)
+![Tests](https://img.shields.io/badge/tests-3936%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 [![Storybook](https://img.shields.io/badge/Storybook-component%20docs-FF4785?logo=storybook&logoColor=white)](https://audiogravity.github.io/audiogravity.ui/)
 
