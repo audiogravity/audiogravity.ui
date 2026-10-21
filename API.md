@@ -973,10 +973,12 @@ too, as they stand when the summary is read: read it again to see them move on.
 | `quality[]` | `{ key, seconds }` — `dsd`, `hires` (above 16 bit or 48 kHz), `cd`, `lossy`, always in this order; then `unknown` when there is some |
 | `genres[]` | `{ label, seconds, kind }`, largest first — `kind` `genre` (the first six), then `other` (the rest, added up) and `unknown`, whose `label` is null. `label` is a genre of the box's common list (`Soul & R&B`…) — or, for a file, its own word when no source uses it. A station, and anything played live, counts only under a genre of the list, else under `unknown` |
 | `week_hours` | Seven arrays, Monday first, of 24 numbers — the local hours 0 to 23: seconds listened in that hour on average per week over the period, i.e. its time divided by how many times that weekday comes in the period (counted from `since` when the history began later). Pauses count in no hour. All zeros while nothing was recorded |
-| `top_artists[]` | `{ artist, seconds, plays }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked |
-| `top_albums[]` | `{ album, artist, seconds, plays }` — same |
-| `top_tracks[]` | `{ title, artist, album, seconds, plays }` — same |
-| `recent[]` | The ten latest listens whatever the period: `{ started_at, seconds, title, artist, album, station, live, source, output, in_progress }` — `started_at` in UTC; a broadcast has `live: true`, its `station` and no `title`. `in_progress: true` for a listen playing now, `seconds` being its time so far; those come first, then the others newest first. A listen paused, or whose source is gone a moment, is counted all the same, with `in_progress: false` |
+| `top_artists[]` | `{ artist, seconds, plays, cover_token }` — the five most listened, by time; for `all`, over the whole history. Broadcasts are not ranked. `cover_token` is the cover of the artist's most listened album over the whole history, whatever the period |
+| `top_albums[]` | `{ album, artist, seconds, plays, cover_token }` — same. `cover_token` is the surest cover its listens gave — a picture where it is kept before a search by name — the latest among those |
+| `top_tracks[]` | `{ title, artist, album, seconds, plays, cover_token }` — same; `cover_token` as for an album, else its album's |
+| `recent[]` | The ten latest listens whatever the period: `{ started_at, seconds, title, artist, album, station, live, source, output, in_progress, cover_token }` — `started_at` in UTC; a broadcast has `live: true`, its `station` and no `title`. `in_progress: true` for a listen playing now, `seconds` being its time so far; those come first, then the others newest first. A listen paused, or whose source is gone a moment, is counted all the same, with `in_progress: false`. `cover_token` is its track's, as in `top_tracks[]`, else its album's; a broadcast's is the station's logo |
+
+Every `cover_token` above is for `GET /audio_pipeline/cover?token=…`, and is null when none is known — a listen recorded before 0.9.77 has none until the same track or album is heard again.
 
 ### Audio software packages — `/packages/*`
 | Method | Path | Description |

@@ -6,20 +6,24 @@
  * For "All" the core ranks the whole history; the shorter periods rank their own
  * listens. Broadcasts are not ranked: a station is no artist.
  *
+ * Each row shows its cover — an artist, its most listened album's — or the note when the
+ * core knows none (recorded before 0.9.77, or a source that gave none).
+ *
  * @element ag-stats-top
  *
- * @prop {Array<{artist: string, seconds: number, plays: number}>} artists
- * @prop {Array<{album: string, artist: ?string, seconds: number, plays: number}>} albums
- * @prop {Array<{title: string, artist: ?string, album: ?string, seconds: number, plays: number}>} tracks
+ * @prop {Array<{artist: string, seconds: number, plays: number, cover_token: ?string}>} artists
+ * @prop {Array<{album: string, artist: ?string, seconds: number, plays: number, cover_token: ?string}>} albums
+ * @prop {Array<{title: string, artist: ?string, album: ?string, seconds: number, plays: number, cover_token: ?string}>} tracks
  *
  * @dependency ag-filter-bar - The selector
- * @dependency css/components/library-stats.css - Classes .lib-stats-list*
+ * @dependency ag-library-cover - Each row's cover, the note behind it
+ * @dependency css/components/library-stats.css - Classes .lib-stats-list*, .lib-stats-thumb
  */
 import { LitElement, html } from 'lit';
 import { fmtListened } from '../stats-format.js';
-import { iconMusicNote } from '../../ag-icons.js';
-import { svgIcon } from '../utils-lit.js';
+import { coverUrl } from '../utils-lit.js';
 import '../atoms/ag-filter-bar.js';
+import '../atoms/ag-library-cover.js';
 
 const KINDS = [
     { label: 'Artists', value: 'artists' },
@@ -84,7 +88,8 @@ export class AgStatsTop extends LitElement {
                             return html`
                                 <li class="lib-stats-list-row">
                                     <span class="lib-stats-rank">${i + 1}</span>
-                                    <span class="lib-stats-thumb" aria-hidden="true">${svgIcon(iconMusicNote, { size: '18px' })}</span>
+                                    <ag-library-cover class="lib-stats-thumb" aria-hidden="true" size="44"
+                                        fallback="note" cover=${coverUrl(entry.cover_token)}></ag-library-cover>
                                     <span class="lib-stats-list-text">
                                         <span class="lib-stats-list-title">${title}</span>
                                         <span class="lib-stats-list-sub">${sub}</span>

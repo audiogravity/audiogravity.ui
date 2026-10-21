@@ -10,7 +10,7 @@
  *
  * @attr {string}  cover     - Resolved cover URL (empty/falsy → show fallback only)
  * @attr {string}  fallback  - Fallback glyph name. One of:
- *                              list | album | container | track | radio | next | queue | play
+ *                              list | album | container | track | radio | next | queue | play | note
  * @attr {number}  size      - Cell width in pixels (default 40); also the height unless `wide`
  * @attr {boolean} wide      - The artwork is a 2:1 banner, not a square cover: the cell is
  *                             `size` wide and half that high. HIGHRESAUDIO's editorial
@@ -31,7 +31,7 @@
 import { LitElement, html, nothing } from 'lit';
 import {
     iconQueue, iconAlbum, iconTrack, iconFolder,
-    iconRadio, iconUpNext, iconQueueEdit, iconPlay,
+    iconRadio, iconUpNext, iconQueueEdit, iconPlay, iconMusicNote,
 } from '../../ag-icons.js';
 
 // Keys are the atom's public `fallback` attribute API; intentionally remapped
@@ -45,6 +45,8 @@ const ICONS = {
     next:      iconUpNext,
     queue:     iconQueueEdit,
     play:      iconPlay,
+    // A row of the listening history with no cover (ag-stats-top, ag-stats-recent).
+    note:      iconMusicNote,
 };
 
 export class AgLibraryCover extends LitElement {

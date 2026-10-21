@@ -8,7 +8,7 @@ export default {
         cover: { control: 'text' },
         fallback: {
             control: 'select',
-            options: ['list', 'album', 'container', 'track', 'radio', 'next', 'queue', 'play'],
+            options: ['list', 'album', 'container', 'track', 'radio', 'next', 'queue', 'play', 'note'],
         },
         size: { control: 'number' },
         wide: { control: 'boolean' },
@@ -32,6 +32,10 @@ FallbackAlbum.args = { cover: '', fallback: 'album', size: 40 };
 
 export const FallbackRadio = Template.bind({});
 FallbackRadio.args = { cover: '', fallback: 'radio', size: 40 };
+
+/** A row of the listening history with no cover (ag-stats-top, ag-stats-recent). */
+export const FallbackNote = Template.bind({});
+FallbackNote.args = { cover: '', fallback: 'note', size: 44 };
 
 export const CardSize = Template.bind({});
 CardSize.args = { cover: '', fallback: 'album', size: 120 };

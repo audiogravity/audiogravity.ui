@@ -6,7 +6,13 @@
  * or in a bar's label; a bar is a button a finger and a keyboard reach; what names nothing
  * is said and greyed; the quality classes keep their order whatever their share.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+
+// A cover's address names its token: what a row asks for is readable without a core.
+vi.mock('../utils-lit.js', async (importOriginal) => ({
+    ...(await importOriginal()),
+    coverUrl: (token) => (token ? `/cover?token=${token}` : ''),
+}));
 
 import './ag-stats-bars.js';
 import './ag-stats-hours.js';
@@ -179,6 +185,21 @@ describe('ag-stats-top', () => {
         expect(topLines('albums', { album: 'X', artist: null })).toEqual({ title: 'X', sub: '' });
         expect(fmtPlays(2)).toBe('2 plays');
     });
+
+    it('shows each row\'s cover, the note when the core knows none', async () => {
+        const el = await mount('ag-stats-top', {
+            ...TOP,
+            artists: [{ artist: 'Miles Davis', seconds: 3600, plays: 9, cover_token: 'mb:Miles Davis:Kind of Blue' },
+                      { artist: 'Hollydays', seconds: 600, plays: 2, cover_token: null }],
+        });
+        const [covered, bare] = el.querySelectorAll('ag-library-cover.lib-stats-thumb');
+        await covered.updateComplete;
+        await bare.updateComplete;
+        expect(covered.querySelector('img').getAttribute('src')).toBe('/cover?token=mb:Miles Davis:Kind of Blue');
+        expect(bare.querySelector('img')).toBeNull();
+        expect(bare.getAttribute('fallback')).toBe('note');
+        expect(covered.getAttribute('aria-hidden')).toBe('true');
+    });
 });
 
 describe('ag-stats-recent', () => {
@@ -202,6 +223,23 @@ describe('ag-stats-recent', () => {
     it('says when nothing played', async () => {
         const el = await mount('ag-stats-recent', { listens: [] });
         expect(el.textContent).toContain('Nothing played yet.');
+    });
+
+    it('a track shows its cover, a station its logo, else the note or the radio', async () => {
+        const now = new Date().toISOString();
+        const el = await mount('ag-stats-recent', {
+            listens: [
+                { started_at: now, seconds: 540, title: 'So What', live: false, cover_token: 'url:kob.jpg' },
+                { started_at: now, seconds: 900, station: 'FIP', live: true, cover_token: 'url:fip.png' },
+                { started_at: now, seconds: 900, station: 'Radio Choco', live: true, cover_token: null },
+                { started_at: now, seconds: 300, title: 'Heroes', live: false },
+            ],
+        });
+        const covers = [...el.querySelectorAll('ag-library-cover.lib-stats-thumb')];
+        await Promise.all(covers.map(c => c.updateComplete));
+        expect(covers.map(c => [c.getAttribute('fallback'), c.querySelector('img')?.getAttribute('src') ?? null]))
+            .toEqual([['note', '/cover?token=url:kob.jpg'], ['radio', '/cover?token=url:fip.png'],
+                      ['radio', null], ['note', null]]);
     });
 
     it('marks a listen still going where the others say when they started', async () => {
