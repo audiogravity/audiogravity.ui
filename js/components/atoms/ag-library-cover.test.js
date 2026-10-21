@@ -51,6 +51,13 @@ describe('ag-library-cover — deferred image loading', () => {
             .toBe('/api/audio_pipeline/cover?token=abc');
     });
 
+    it('draws the note behind a row of the listening history', async () => {
+        const el = await mount({ cover: '', fallback: 'note' });
+        // Lucide music: a stem and two note heads.
+        expect(el.querySelectorAll('.ag-libcv-icon circle').length).toBe(2);
+        expect(el.querySelector('.ag-libcv-icon path').getAttribute('d')).toBe('M9 18V5l12-2v13');
+    });
+
     it('renders no image at all when there is no cover, so nothing is requested', async () => {
         const el = await mount({ cover: '' });
         expect(el.querySelector('img.ag-libcv-img')).toBeNull();

@@ -543,14 +543,10 @@
     font-variant-numeric: tabular-nums;
 }
 
-.lib-stats-thumb {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
+/* A row's cover: the library's cover atom (ag-library-cover, size 44), rounded and with the
+   tertiary glyph the rows had before they showed covers; the glyph keeps the atom's size. */
+ag-library-cover.lib-stats-thumb .ag-libcv {
     border-radius: var(--radius-sm);
-    background: var(--bg-tertiary);
     color: var(--text-tertiary);
 }
 

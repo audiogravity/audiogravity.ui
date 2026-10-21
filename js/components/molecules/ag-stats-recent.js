@@ -11,16 +11,20 @@
  * so far: the core counts it as if it ended when the summary was read. A station left
  * playing all evening is one listen that has not ended, and showed nowhere before.
  *
+ * Each listen shows its cover — a station, its logo —, or the note (the radio for a
+ * station) when the core knows none.
+ *
  * @element ag-stats-recent
  *
  * @prop {Array<object>} listens - The summary's `recent`.
  *
- * @dependency css/components/library-stats.css - Classes .lib-stats-list*
+ * @dependency ag-library-cover - Each listen's cover, the glyph behind it
+ * @dependency css/components/library-stats.css - Classes .lib-stats-list*, .lib-stats-thumb
  */
 import { LitElement, html, nothing } from 'lit';
 import { fmtListened, fmtWhen } from '../stats-format.js';
-import { iconMusicNote, iconRadio } from '../../ag-icons.js';
-import { svgIcon } from '../utils-lit.js';
+import { coverUrl } from '../utils-lit.js';
+import '../atoms/ag-library-cover.js';
 
 /**
  * A listen's two lines.
@@ -58,9 +62,9 @@ export class AgStatsRecent extends LitElement {
                     const where = [listen.source, listen.output].filter(Boolean).join(' · ');
                     return html`
                         <li class="lib-stats-list-row lib-stats-list-row--recent">
-                            <span class="lib-stats-thumb" aria-hidden="true">
-                                ${svgIcon(listen.live ? iconRadio : iconMusicNote, { size: '18px' })}
-                            </span>
+                            <ag-library-cover class="lib-stats-thumb" aria-hidden="true" size="44"
+                                fallback=${listen.live ? 'radio' : 'note'}
+                                cover=${coverUrl(listen.cover_token)}></ag-library-cover>
                             <span class="lib-stats-list-text">
                                 <span class="lib-stats-list-title">${title}</span>
                                 ${sub ? html`<span class="lib-stats-list-sub">${sub}</span>` : nothing}
