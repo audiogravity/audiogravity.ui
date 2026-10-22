@@ -20,6 +20,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
+import { describeAvailability } from '../../core/package-availability.js';
 import { iconRepeat, iconDownload, iconTrash, iconCheckCircle, iconCircle, iconClose, iconSpinner, iconDocs, iconCpu, iconKey } from '../../ag-icons.js';
 
 /**
@@ -303,13 +304,42 @@ export class AgPackageCard extends LitElement {
      * INSTALL button, and on something already installed there is none — "not
      * available here" under an INSTALLED header, next to working UPDATE and
      * UNINSTALL buttons, contradicts itself. The compact badge in the footer
-     * takes over there, which is why both read this.
+     * takes over there — except for a source that could not be asked, which is
+     * no verdict at all (`_saysNotSupported`) — which is why both read this.
      * @returns {boolean} True when the card explains an unavailable package.
      * @private
      */
     _showsAvailabilityBanner() {
         const state = this.pkg.availability;
         return Boolean(state) && state !== 'available' && this.pkg.status === 'not_installed';
+    }
+
+    /**
+     * Whether the footer says "Not Supported".
+     *
+     * Only where the banner is not already explaining it, and never when the
+     * source could not be asked: `unknown` is the absence of a verdict, and it put
+     * "Not Supported" on software installed and playing while its vendor's site
+     * was down. Nothing on an installed card depends on that check.
+     * @returns {boolean} True when the card should show the badge.
+     * @private
+     */
+    _saysNotSupported() {
+        return !this.pkg.is_supported
+            && !this._showsAvailabilityBanner()
+            && this.pkg.availability !== 'unknown';
+    }
+
+    /**
+     * The architectures the footer lists. An empty list is what a source that
+     * could not be asked leaves behind: nothing is known, which is not the same as
+     * nothing supported, so it reads like a missing list.
+     * @returns {string}
+     * @private
+     */
+    _archText() {
+        const archs = this.pkg.arch_support;
+        return archs?.length ? archs.join(', ') : 'Unknown';
     }
 
     /**
@@ -326,28 +356,10 @@ export class AgPackageCard extends LitElement {
         if (!this._showsAvailabilityBanner()) return '';
         const state = this.pkg.availability;
 
-        // Per state, so a value this component does not know yet degrades to a
-        // neutral sentence rather than to a vendor claim that may be false —
-        // "no build for this system" is wrong for a local conflict.
-        const { label, badgeClass, fallback } = {
-            unsupported: {
-                label: 'Not available here',
-                badgeClass: 'badge error',
-                fallback: 'no build for this system',
-            },
-            unknown: {
-                label: 'Cannot be checked',
-                badgeClass: 'badge warning',
-                fallback: 'the source could not be reached',
-            },
-            blocked: {
-                label: 'Unavailable',
-                badgeClass: 'badge error',
-                fallback: 'another installed package prevents it',
-            },
-        }[state] || { label: 'Unavailable', badgeClass: 'badge error', fallback: '' };
-
-        const reason = this.pkg.availability_reason || fallback;
+        // The words are shared with the support report (core/package-availability.js);
+        // only the tint is the card's own. A warning for the one worth retrying.
+        const { label, reason } = describeAvailability(state, this.pkg.availability_reason);
+        const badgeClass = state === 'unknown' ? 'badge warning' : 'badge error';
 
         return html`
             <div class="software-availability">
@@ -428,10 +440,10 @@ export class AgPackageCard extends LitElement {
                     <div class="software-meta">
                         <span class="meta-item">
                             <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconCpu}</svg>
-                            <span>${this.pkg.arch_support ? this.pkg.arch_support.join(', ') : 'Unknown'}</span>
+                            <span>${this._archText()}</span>
                         </span>
                         ${this.pkg.is_test_package ? html`<span class="badge warning">Test Package</span>` : ''}
-                        ${!this.pkg.is_supported && !this._showsAvailabilityBanner()
+                        ${this._saysNotSupported()
                             ? html`<span class="badge error">Not Supported</span>` : ''}
                         ${this._needsConfiguring() ? html`
                             <span class="badge warning">Not configured</span>` : ''}

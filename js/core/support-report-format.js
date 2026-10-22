@@ -11,6 +11,8 @@
  * handled here, once, rather than in the template.
  */
 
+import { describeAvailability } from './package-availability.js';
+
 /** Width of the label column in a key/value line. */
 const LABEL_WIDTH = 18;
 
@@ -30,6 +32,26 @@ const LOAD_STATE_TEXT = {
     error: 'unit file present but could not be read (error)',
     stub: 'referenced but no unit file was ever written (stub)',
 };
+
+/**
+ * Why the box cannot install a package, in the words the software card uses.
+ *
+ * Read from `availability` when the core sends it. `supported_here` alone says "not
+ * supported on this architecture" for a vendor site that is down and for a conflict
+ * with another package — both in one x86 box's config on 2026-10-22, both false there.
+ * It is only true when the availability is fine and `supported_here` is still false,
+ * which is also all that a core older than the field can tell.
+ * @param {Object} pkg - One entry of the report's `packages` section.
+ * @returns {string} ` (label: reason)`, or '' when nothing stands in the way.
+ */
+function availabilityNote(pkg) {
+    const verdict = describeAvailability(pkg.availability, pkg.availability_reason);
+    if (verdict) {
+        const label = verdict.label.toLowerCase();
+        return verdict.reason ? ` (${label}: ${verdict.reason})` : ` (${label})`;
+    }
+    return pkg.supported_here === false ? ' (not supported on this architecture)' : '';
+}
 
 /**
  * Format one label/value line.
@@ -468,8 +490,7 @@ export function formatSupportReport(report) {
     } else {
         for (const pkg of packages) {
             const version = pkg.installed_version ? ` ${pkg.installed_version}` : '';
-            const unsupported = pkg.supported_here === false ? ' (not supported on this architecture)' : '';
-            out.push(line(pkg.label || pkg.id, `${pkg.status}${version}${unsupported}`));
+            out.push(line(pkg.label || pkg.id, `${pkg.status}${version}${availabilityNote(pkg)}`));
         }
     }
 

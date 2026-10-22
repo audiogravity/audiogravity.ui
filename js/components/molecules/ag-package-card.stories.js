@@ -139,6 +139,28 @@ InstalledButNoLongerPublished.args = {
 };
 
 /**
+ * Installed, and its vendor's site could not be reached when the box last asked
+ * what it publishes. That is no verdict at all: the card says nothing about it,
+ * and an architecture list left empty reads "Unknown".
+ */
+export const InstalledSourceUnreachable = Template.bind({});
+InstalledSourceUnreachable.args = {
+    pkg: {
+        ...pkgMock,
+        status: 'installed',
+        installed_version: '2.0.12',
+        available_version: '2.0.12',
+        installer_type: 'apt_repo',
+        arch_support: [],
+        is_supported: false,
+        availability: 'unknown',
+        availability_reason: 'repository answered HTTP 503'
+    },
+    isChecking: false,
+    isGuest: false
+};
+
+/**
  * Installed, but running on the settings its own package ships — Audiogravity
  * has not written this service's configuration. Installing deliberately does not
  * configure; the card says so rather than doing it silently.
