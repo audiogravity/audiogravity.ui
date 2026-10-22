@@ -174,6 +174,43 @@ describe('ag-package-card — availability', () => {
             expect(el.querySelector('.software-availability')).toBeNull();
         }
     });
+
+    it('never calls a source that could not be asked "Not Supported"', async () => {
+        // Seen on 2026-10-22: UPnP Bridge installed and playing, its vendor's site
+        // down during an upgrade, and the card said "Not Supported" with no
+        // architecture at all. `unknown` is the absence of a verdict.
+        for (const pkg of [
+            { status: 'installed', installed_version: '1.9.17-1~ppa1~trixie' },
+            { status: 'error', installed_version: '1.9.17-1~ppa1~trixie' },
+            { status: 'updating', installed_version: '1.9.17-1~ppa1~trixie' },
+        ]) {
+            document.body.innerHTML = '';
+            el = await mount({
+                ...basePkg,
+                ...pkg,
+                installer_type: 'apt_repo',
+                arch_support: [],
+                is_supported: false,
+                availability: 'unknown',
+                availability_reason: 'repository answered HTTP 503',
+            });
+            const badges = [...el.querySelectorAll('.software-meta .badge')].map(b => b.textContent.trim());
+            expect(badges).not.toContain('Not Supported');
+            expect(el.querySelector('.software-availability')).toBeNull();
+        }
+    });
+
+    it('lists no architecture as Unknown rather than as nothing', async () => {
+        // An empty list is what an unanswered source leaves: nothing known, not
+        // nothing supported — and it drew the processor icon next to a blank.
+        el = await mount({ ...basePkg, status: 'installed', installed_version: '1.9.17', arch_support: [] });
+        expect(el.querySelector('.software-meta .meta-item > span').textContent.trim()).toBe('Unknown');
+    });
+
+    it('lists the architectures it knows', async () => {
+        el = await mount({ ...basePkg, arch_support: ['amd64', 'i386'] });
+        expect(el.querySelector('.software-meta .meta-item > span').textContent.trim()).toBe('amd64, i386');
+    });
 });
 
 describe('ag-package-card — actions', () => {

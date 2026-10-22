@@ -202,6 +202,59 @@ describe('formatSupportReport', () => {
     });
 });
 
+describe('formatSupportReport — why a package cannot be installed', () => {
+    /**
+     * Render a report holding one package.
+     * @param {Object} pkg - The package entry, as the core sends it.
+     * @returns {string} The report text.
+     */
+    const render = (pkg) => formatSupportReport(fullReport({ packages: [{ id: 'x', label: 'X', ...pkg }] }));
+
+    it('says a source that could not be asked could not be asked', () => {
+        // On 2026-10-22 an x86 box's config held this for UPnP Bridge while its vendor's
+        // site was down: "not supported on this architecture" was false there.
+        const text = render({
+            label: 'UPnP Bridge', status: 'installed', installed_version: '1.9.17-1~ppa1~trixie',
+            supported_here: false, availability: 'unknown', availability_reason: 'repository answered HTTP 503',
+        });
+        expect(text).toContain('installed 1.9.17-1~ppa1~trixie (cannot be checked: repository answered HTTP 503)');
+        expect(text).not.toContain('architecture');
+    });
+
+    it('names the package in the way rather than the architecture', () => {
+        const text = render({
+            label: 'Roon Server', status: 'not_installed', supported_here: false, availability: 'blocked',
+            availability_reason: 'Roon Bridge is installed — the two cannot run together',
+        });
+        expect(text).toContain('not_installed (unavailable: Roon Bridge is installed — the two cannot run together)');
+        expect(text).not.toContain('architecture');
+    });
+
+    it('gives the vendor\'s own no', () => {
+        const text = render({
+            status: 'not_installed', supported_here: false, availability: 'unsupported',
+            availability_reason: 'vendor publishes no build for aarch64',
+        });
+        expect(text).toContain('(not available here: vendor publishes no build for aarch64)');
+    });
+
+    it('falls back to the card\'s words when the core sends no reason', () => {
+        const text = render({ status: 'installed', supported_here: false, availability: 'unknown' });
+        expect(text).toContain('(cannot be checked: the source could not be reached)');
+    });
+
+    it('keeps the architecture sentence for the one case it describes', () => {
+        // Available from its source, but this box's architecture is not on its list.
+        const text = render({ status: 'not_installed', supported_here: false, availability: 'available' });
+        expect(text).toContain('(not supported on this architecture)');
+    });
+
+    it('says nothing about a package that can be installed', () => {
+        const text = render({ status: 'not_installed', supported_here: true, availability: 'available' });
+        expect(text).not.toMatch(/X +not_installed \(/);
+    });
+});
+
 describe('formatSupportReport — v2 sections', () => {
     const v2 = {
         report_version: 2,
