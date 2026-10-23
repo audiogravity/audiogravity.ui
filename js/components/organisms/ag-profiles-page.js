@@ -10,12 +10,14 @@
  * 
  * @dependency ag-card-grid
  * @dependency ag-profile-card
+ * @dependency push-manager.js - This device's push endpoint, sent with an activation
  */
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
 import { showToast, showConfirm, handleError, getUserFriendlyError } from '../../ui-helpers.js';
 import { AppState, EventEmitter, AgTimerManager } from '../../common.js';
 import { addToHistory } from '../../history.js';
+import { getPushEndpoint } from '../../push-manager.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
@@ -281,7 +283,10 @@ export class AgProfilesPage extends LitElement {
         this._settledEarly.delete(profileId);
 
         try {
-            const result = await apiPost(`/profiles/${profileId}/${action}`);
+            // An activation is pushed to the subscribed devices as "Profile Activated":
+            // this one made it, and is left out by naming its own push endpoint.
+            const body = action === 'activate' ? { push_endpoint: await getPushEndpoint() } : {};
+            const result = await apiPost(`/profiles/${profileId}/${action}`, body);
 
             if (result.pending) {
                 // Fire-and-forget: SSE event will deliver the final state and toast —
