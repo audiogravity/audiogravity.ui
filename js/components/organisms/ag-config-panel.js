@@ -21,6 +21,7 @@
  */
 
 import { LitElement, html } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, MemoryCache, EventEmitter, THEMES } from '../../common.js';
@@ -68,6 +69,9 @@ export class AgConfigPanel extends LitElement {
         // none, and re-asking on every opening for that would be a request per gesture.
         this._rootAnswered = false;
         this.pushSubscribed = false;
+        // A switch turned while one is on its way — the permission prompt, the box,
+        // the test notification — is not acted on twice.
+        this._pushBusy = false;
         this.passkeys = [];
         this.passkeysLoading = false;
 
@@ -535,10 +539,31 @@ export class AgConfigPanel extends LitElement {
         this.pushSubscribed = data.isSubscribed;
     }
 
+    /**
+     * Turn this device's notifications on or off, and say how it went.
+     *
+     * On, the box sends a test notification, which is the proof; a failure names
+     * its reason (push-manager.js). Either way the switch then shows the real state:
+     * it had moved under the finger, and a failure that changes nothing would leave
+     * it lying — the binding is `live()` for that.
+     */
     async _togglePush() {
-        const success = await toggleSubscription();
-        if (success) {
+        if (this._pushBusy) return;
+        this._pushBusy = true;
+        try {
+            const { subscribed, tested } = await toggleSubscription();
+            if (subscribed && tested === false) {
+                showToast('warning', 'Notifications on',
+                    "This box's core is older than this app and sends no test notification. Update the core to get one.", 8000);
+            } else if (subscribed) {
+                showToast('success', 'Notifications on', 'A test notification is on its way to this device.');
+            }
+        } catch (err) {
+            showToast('error', err?.title || 'Notifications', err?.message || 'Unknown error', 8000);
+        } finally {
+            this._pushBusy = false;
             this.pushSubscribed = getPushStatus();
+            this.requestUpdate();
         }
     }
 
@@ -671,9 +696,11 @@ export class AgConfigPanel extends LitElement {
                         </select>
                     </div>
 
+                    <!-- BACKLOG: one switch for every kind of notification — choosing them per
+                         device is an entry of audiogravity.ops/BACKLOG.md. -->
                     <div class="config-item config-item-row">
                         <label>Notifications</label>
-                        <ag-switch variant="notification" .checked=${this.pushSubscribed} @ag-change=${this._togglePush}></ag-switch>
+                        <ag-switch variant="notification" .checked=${live(this.pushSubscribed)} @ag-change=${this._togglePush}></ag-switch>
                     </div>
 
                     <div class="config-item config-item-row">

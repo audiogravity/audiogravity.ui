@@ -747,6 +747,8 @@ On the core's own unit (`ag-core-server`), both answer **409** while software is
 
 **Profile `critical`** — `true` when the profile starts a service flagged `critical` (the NAA and HQPlayer Embedded). The core derives it from the services; a `critical` written for a profile in `audio-config.json` is ignored.
 
+**`POST /profiles/{profile_id}/activate`** takes an optional body `{ "push_endpoint": "<this device's push endpoint>" }` (at most 2048 characters, like `endpoint` at `/push/subscribe`): the *Profile Activated* push notification then goes to the other subscribed devices only. Without it, or with `null`, every subscribed device gets it. A deactivation sends no notification.
+
 `GET /profiles/configuration` → `{ services, profiles, topology_link }`.
 
 ### Performance — `/performance/*`
@@ -778,6 +780,13 @@ these today**; see `/docs` for their request/response shape (on a core that serv
 | GET | `/push/vapid-public-key` | VAPID public key for subscription |
 | POST | `/push/subscribe` | Register push subscription |
 | DELETE | `/push/unsubscribe` | Remove subscription (query param: `endpoint`) |
+| POST | `/push/test` | Send the test notification to one subscribed device |
+
+`GET /push/vapid-public-key` → `{ public_key }`, or **503** when the box has no usable VAPID keys.
+
+`POST /push/subscribe` → body `{ endpoint, keys: { p256dh, auth } }`; `endpoint` is an `https://` URL of at most 2048 characters (**422** beyond). The three routes above answer without the API key.
+
+`POST /push/test` → body `{ endpoint }`, **with** the API key. Sends the test notification to that subscribed device only. **200** `{ success: true, message }` when the device's push service accepted it — whether it shows still depends on the device's own settings; **404** the endpoint is not subscribed; **502** the push service refused it or could not be reached; **503** the box has no usable VAPID keys. `detail` is a sentence to show the user as it is. A core without this route answers FastAPI's own **404** `{"detail": "Not Found"}`.
 
 ### System info — `/sysinfo/*`
 | Method | Path | Description |

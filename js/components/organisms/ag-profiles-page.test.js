@@ -24,6 +24,7 @@ vi.mock('../../common.js', () => ({
     AppState: {}, EventEmitter: { emit: vi.fn(), on: vi.fn(), off: vi.fn() }, AgTimerManager: {},
 }));
 vi.mock('../../history.js', () => ({ addToHistory: vi.fn() }));
+vi.mock('../../push-manager.js', () => ({ getPushEndpoint: vi.fn() }));
 vi.mock('../../core/FetchController.js', () => ({ FetchController: class {} }));
 vi.mock('@lit/context', () => ({ ContextConsumer: class {} }));
 vi.mock('../../core/app-context.js', () => ({ appContext: {} }));
@@ -34,6 +35,7 @@ vi.mock('../molecules/ag-profile-card.js', () => ({}));
 
 import { apiPost } from '../../api.js';
 import { showToast, showConfirm } from '../../ui-helpers.js';
+import { getPushEndpoint } from '../../push-manager.js';
 import { AgProfilesPage, PROFILE_PENDING_TIMEOUT_MS } from './ag-profiles-page.js';
 
 function makeEl() {
@@ -57,6 +59,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     showConfirm.mockResolvedValue(true);
     apiPost.mockResolvedValue({ pending: true });
+    getPushEndpoint.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -153,6 +156,35 @@ describe('ag-profiles-page — a switch that never reports back', () => {
         expect(vi.getTimerCount()).toBe(0);
         vi.advanceTimersByTime(PROFILE_PENDING_TIMEOUT_MS * 2);
         expect(el._loadProfiles).not.toHaveBeenCalled();
+    });
+});
+
+describe('ag-profiles-page — the device that switches is not notified of its own switch', () => {
+    // The core pushes "Profile Activated" to every subscribed device: the one that made
+    // the change names its own push endpoint, and is left out (2026-10-23).
+    it('names its push endpoint with an activation', async () => {
+        getPushEndpoint.mockResolvedValue('https://push/phone');
+        const el = makeEl();
+        await el._handleToggleProfile({ detail: { profileId: 'mpd' } });
+        expect(apiPost).toHaveBeenCalledWith('/profiles/mpd/activate', { push_endpoint: 'https://push/phone' });
+        el.disconnectedCallback();
+    });
+
+    it('says it has none when this device is not subscribed', async () => {
+        const el = makeEl();
+        await el._handleToggleProfile({ detail: { profileId: 'mpd' } });
+        expect(apiPost).toHaveBeenCalledWith('/profiles/mpd/activate', { push_endpoint: null });
+        el.disconnectedCallback();
+    });
+
+    it('sends nothing of the kind with a deactivation, which notifies nobody', async () => {
+        getPushEndpoint.mockResolvedValue('https://push/phone');
+        const el = makeEl();
+        el.activeProfiles = ['mpd'];
+        await el._handleToggleProfile({ detail: { profileId: 'mpd' } });
+        expect(apiPost).toHaveBeenCalledWith('/profiles/mpd/deactivate', {});
+        expect(getPushEndpoint).not.toHaveBeenCalled();
+        el.disconnectedCallback();
     });
 });
 
