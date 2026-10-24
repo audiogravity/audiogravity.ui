@@ -526,6 +526,15 @@ webradio started by another app, at an address the radio module does not know, c
   stream another app cast to a renderer, or nothing playing. A client then decides by itself —
   `origin: "radio"` with no `duration` is a station.
 
+**`codec`** — on `format` and on each `sources[]` entry: the track's codec — `"FLAC"`, `"ALAC"`,
+`"AAC"`, `"MP3"`, `"DSD"`…
+
+- `null` when nothing tells it: show a dash, never a guess.
+- An `.m4a` / `.mp4` file is named by its header, read a moment after the track starts: its
+  codec comes in a further `state` event.
+- Filled on a network renderer too, which reports none: with `format`, `sample_rate` and
+  `bitrate`, each when the box knows it, `null` otherwise.
+
 **`dsd_delivery`** — on `format` and on each `sources[]` entry: how a DSD track reaches the DAC.
 The other `format` fields describe the track — a DSD128 file reads `DSD128` whatever reaches
 the DAC.
