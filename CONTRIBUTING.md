@@ -48,13 +48,10 @@ CORE_PORT=9000 npm run dev
 
 ### Build flags
 
-`.env*` files are gitignored. Create a local `.env.production` to set
-build-time variables before `npm run build`:
-
-```bash
-# .env.production
-VITE_BETA=true   # shows a dismissible BETA badge in the built app
-```
+None. The build reads no variable from a `.env*` file (they are gitignored). The badge
+in the corner of a production build takes the release stage from the version itself
+(`js/core/stage-badge.js`): "BETA" for a 0.x release, "1.0 RC" for a release candidate,
+none for a final release or a development build.
 
 ## Available scripts
 

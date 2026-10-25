@@ -13,6 +13,7 @@ import { appearancePreference, isDarkFor, applyStoredAppearance } from './appear
 import { escapeHtml } from './core/escape-html.js';
 import { parseStoredValue } from './core/stored-value.js';
 import { applyUpdates } from './core/sw-update.js';
+import { mountStageBadge, stageOf } from './core/stage-badge.js';
 import { skipNextSplash } from './splash-screen.js';
 
 import {
@@ -743,34 +744,13 @@ if (import.meta.env.DEV) {
     });
 }
 
-// BETA BADGE — controlled by VITE_BETA=true in .env.production.
-// Vite statically substitutes import.meta.env.VITE_BETA at build time;
-// if absent or false the block is tree-shaken from the bundle.
-if (import.meta.env.VITE_BETA === 'true') {
-    window.addEventListener('DOMContentLoaded', () => {
-        const badge = document.createElement('div');
-        badge.textContent = 'BETA';
-        Object.assign(badge.style, {
-            position: 'fixed',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
-            right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
-            zIndex: '2147483647',
-            padding: '4px 10px',
-            background: '#8b5cf6',
-            color: '#fff',
-            fontFamily: 'var(--font-family)',
-            fontSize: '10px',
-            fontWeight: '700',
-            letterSpacing: '0.14em',
-            borderRadius: '3px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            pointerEvents: 'auto',
-            cursor: 'pointer',
-            userSelect: 'none',
-        });
-        badge.addEventListener('click', () => badge.remove());
-        document.body.appendChild(badge);
-    });
+// STAGE BADGE — the release stage in the corner of the app (core/stage-badge.js), read from the
+// version itself: "BETA" for a 0.x release, "1.0 RC" for a release candidate, nothing for a
+// final release or a development build. In a production build only, as before: the dev server
+// shows none.
+if (import.meta.env.PROD) {
+    const stage = stageOf(UI_VERSION);
+    if (stage) window.addEventListener('DOMContentLoaded', () => mountStageBadge(stage));
 }
 
 // =====================
