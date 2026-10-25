@@ -293,6 +293,21 @@ describe('ag-update-banner — mounted', () => {
             expect(el.querySelector('.ag-upd-failure')).toBeNull();
         });
 
+        it.each([['1.0.0', '1.0.0-rc.1'], ['1.0.0-rc.2', '1.0.0-rc.1']])(
+            'says nothing of a release candidate attempted when %j is on offer', async (latest, to) => {
+                offer = { available: true, latest };
+                status = { phase: 'rolled_back', to, error: REFUSED };
+                await mount();
+                expect(el.querySelector('.ag-upd-failure')).toBeNull();
+            });
+
+        it('reads back a failed attempt at the release candidate on offer', async () => {
+            offer = { available: true, latest: '1.0.0-rc.1' };
+            status = { phase: 'failed', to: '1.0.0-rc.1', error: 'Download failed.' };
+            await mount();
+            expect(el.querySelector('.ag-upd-failure').textContent).toBe('Update failed. Download failed.');
+        });
+
         it.each([{ phase: 'done', to: '0.9.65' }, { phase: 'idle' }, null])(
             'says nothing after %j', async (last) => {
                 status = last;
