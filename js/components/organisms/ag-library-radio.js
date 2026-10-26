@@ -4,7 +4,7 @@
  *   - My Live Radio — user-curated collection (custom stations + saved RBI hits).
  *                     Default sub-tab; hosts the "Add custom station" form.
  *   - Favorites     — starred subset, can include stations not in the library.
- *   - Search        — debounced query box + country / genre / hi-res filters.
+ *   - Search        — debounced query box + country / genre / lossless filters.
  *
  * Two orthogonal membership sets — ``_libraryUuids`` and ``_favoriteUuids`` —
  * are loaded on mount so every card across the three sub-tabs reflects its
@@ -58,7 +58,7 @@ export class AgLibraryRadio extends LitElement {
         _searchQuery:    { state: true },
         _searchCountry:  { state: true },
         _searchGenre:    { state: true },
-        _searchHiRes:    { state: true },
+        _searchLossless: { state: true },
         _customFormOpen: { state: true },
         _customForm:     { state: true },
         _customSaving:   { state: true },
@@ -78,7 +78,7 @@ export class AgLibraryRadio extends LitElement {
         this._searchQuery   = '';
         this._searchCountry = '';
         this._searchGenre   = '';
-        this._searchHiRes   = false;
+        this._searchLossless = false;
         this._searchDebounceTimer = null;
         // UUIDs with a star or plus mutation in flight — prevents spam-tap
         // reordering (rapid add+remove could otherwise resolve out of order
@@ -158,7 +158,7 @@ export class AgLibraryRadio extends LitElement {
                 q:            this._searchQuery || undefined,
                 country_code: this._searchCountry || undefined,
                 tag:          this._searchGenre || undefined,
-                hi_res_only:  this._searchHiRes || undefined,
+                lossless_only: this._searchLossless || undefined,
                 limit:        80,
             });
             // The view check mirrors `_loadLibrary` / `_loadFavorites`: no loader
@@ -200,7 +200,7 @@ export class AgLibraryRadio extends LitElement {
         } else if (view === 'favorites') {
             this._loadFavorites();
         } else if (view === 'search') {
-            if (this._searchQuery || this._searchCountry || this._searchGenre || this._searchHiRes) {
+            if (this._searchQuery || this._searchCountry || this._searchGenre || this._searchLossless) {
                 this._loadSearch();
             } else {
                 this._stations = [];
@@ -227,15 +227,15 @@ export class AgLibraryRadio extends LitElement {
         this._scheduleSearch(/* immediate */ true);
     };
 
-    _onHiResChange = (e) => {
-        this._searchHiRes = e.target.checked;
+    _onLosslessChange = (e) => {
+        this._searchLossless = e.target.checked;
         this._scheduleSearch(/* immediate */ true);
     };
 
     /**
      * Reschedule the search load. ``immediate`` (used by filter selects)
      * cancels any pending debounce so a stale text-input timer can't fire
-     * after the user picked a country/genre/hi-res — which would otherwise
+     * after the user picked a country/genre/lossless — which would otherwise
      * race two searches and render whichever returned last.
      */
     _scheduleSearch(immediate = false) {
@@ -523,11 +523,11 @@ export class AgLibraryRadio extends LitElement {
                             <option value=${g.tag} ?selected=${g.tag === this._searchGenre}>${g.label}</option>
                         `)}
                     </select>
-                    <label class="lib-radio-hires-toggle">
+                    <label class="lib-radio-lossless-toggle">
                         <input type="checkbox"
-                               .checked=${this._searchHiRes}
-                               @change=${this._onHiResChange} />
-                        Hi-Res only
+                               .checked=${this._searchLossless}
+                               @change=${this._onLosslessChange} />
+                        Lossless only
                     </label>
                 </div>
             </div>
@@ -536,7 +536,11 @@ export class AgLibraryRadio extends LitElement {
 
     _renderBody() {
         if (this._loading) {
-            return html`<div class="lib-radio-loading">Loading…</div>`;
+            // A lossless search reads the start of each station the catalogue lists as
+            // OGG, which cannot tell FLAC from Vorbis: seconds, the first time.
+            const waitingFor = this._view === 'search' && this._searchLossless
+                ? "Checking each station's stream…" : 'Loading…';
+            return html`<div class="lib-radio-loading">${waitingFor}</div>`;
         }
         if (this._error) {
             return html`<div class="lib-radio-empty">${this._error}</div>`;

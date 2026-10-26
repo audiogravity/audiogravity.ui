@@ -377,6 +377,20 @@ export function hiResLabel(fmt) {
 }
 
 /**
+ * A lossless stream's resolution, written as the signal path writes it: "24bit / 48kHz".
+ * The rate keeps its decimal where it has one — 44.1, 88.2, 352.8.
+ *
+ * @param {number|null|undefined} bits - Bits per sample.
+ * @param {number|null|undefined} rateHz - Sample rate, in Hz.
+ * @returns {string} The label, or '' when either is unknown.
+ */
+export function resolutionLabel(bits, rateHz) {
+    if (!(bits > 0) || !(rateHz > 0)) return '';
+    const khz = (rateHz / 1000).toFixed(rateHz % 1000 === 0 ? 0 : 1);
+    return `${bits}bit / ${khz}kHz`;
+}
+
+/**
  * Whether what plays is a live broadcast: a radio stream, with no end to count
  * down to and no position to seek to. A progress bar there showed its knob
  * stuck at the start, the time listened on one side and "−0:00" on the other.

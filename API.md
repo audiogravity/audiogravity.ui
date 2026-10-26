@@ -959,6 +959,22 @@ saving from the topology editor — errors block the save, warnings ask for conf
 | DELETE | `/radio/favorites/{station_uuid}` | Remove a favourite |
 | POST | `/radio/play` | Resolve a station URL and play it — body `{ station_uuid }` |
 
+`GET /radio/search` takes `q`, `country_code`, `codec`, `tag` — at least one, or the page is
+empty —, `limit` (1–200, default 50) and `offset`. `lossless_only=true` keeps the stations
+that stream lossless: those the catalogue lists as FLAC or WAV, and those it lists as OGG,
+UNKNOWN or with no codec whose own stream is read and turns out lossless. Such a search can
+take up to about twelve seconds the first time; a station not read by then is left out, and
+the same search asked again can return more. `total` is the number of stations in the page.
+`hi_res_only` is the former name of `lossless_only` — deprecated, same filter.
+
+A station — in `/radio/search`, and under `station` in `/radio/library` and `/radio/favorites`
+— carries `verified_codec`, `verified_bits` and `verified_rate_hz`: the format read in its own
+stream where the catalogue's `codec` cannot tell (it lists FLAC, Vorbis and Opus streams alike
+as OGG). `verified_codec` is `FLAC`, `OGG` (Vorbis) or `OPUS`; `verified_bits` is given for a
+lossless codec only. All three are `null` until the stream has been read — a list never starts
+a reading, a lossless search and playing the station do. Show `verified_codec` in place of
+`codec` when it is set; `codec` itself is never changed.
+
 `POST /radio/play` follows the output selection like every other play path: same
 destinations and same refusal statuses as `/library/queue` (see above). The stream is
 badged `origin: "radio"`.

@@ -1,6 +1,7 @@
 import { svg } from 'lit';
 import { cache } from 'lit/directives/cache.js';
 import { guard } from 'lit/directives/guard.js';
+import { resolutionLabel } from '../../player-utils.js';
 
 /**
  * @module AgPipelineLink
@@ -30,12 +31,8 @@ export const renderPipelineLink = (link, sourceNode) => {
     const sampleRate = sourceNode?.format?.sample_rate;
     const sampleBits = sourceNode?.format?.sample_bits;
 
-    // Format audio info for display (e.g., "24bit / 96kHz")
-    let formatInfo = null;
-    if (active && sampleRate && sampleBits) {
-        const rateKHz = (sampleRate / 1000).toFixed(sampleRate % 1000 === 0 ? 0 : 1);
-        formatInfo = `${sampleBits}bit / ${rateKHz}kHz`;
-    }
+    // Format audio info for display (e.g., "24bit / 96kHz"), as the radio card writes it.
+    const formatInfo = active ? (resolutionLabel(sampleBits, sampleRate) || null) : null;
     
     // Calculate control points for a smooth cubic bezier curve
     const deltaX = Math.abs(targetX - sourceX);

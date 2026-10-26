@@ -81,7 +81,7 @@
     font-size: var(--font-size-sm);
 }
 
-.lib-radio-hires-toggle {
+.lib-radio-lossless-toggle {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -94,7 +94,7 @@
     cursor: pointer;
 }
 
-.lib-radio-hires-toggle input { cursor: pointer; }
+.lib-radio-lossless-toggle input { cursor: pointer; }
 
 /* ─── Favorites header & custom-station form ─── */
 .lib-radio-fav-header {

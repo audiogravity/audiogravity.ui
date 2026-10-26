@@ -10,6 +10,7 @@ import { latestThrottle } from '../../core/latest-throttle.js';
 import { iconMusicNote, iconCrosshair, iconZoomIn, iconZoomOut } from '../../ag-icons.js';
 import { renderPipelineNode } from '../atoms/ag-pipeline-node.js';
 import { renderPipelineLink } from '../atoms/ag-pipeline-link.js';
+import { resolutionLabel } from '../../player-utils.js';
 
 /**
  * Whether a node of the pipeline is a player that is playing right now.
@@ -1248,6 +1249,8 @@ export class AgAudioPipeline extends LitElement {
                     ${services.map(svc => {
                         const np = snp[svc.id];
                         const dotFill = svc.status === 'active' ? (svc.flow_color || 'var(--color-success)') : 'var(--text-tertiary)';
+                        // BACKLOG: 44.1 kHz reads "44kHz" here — audiogravity.ops/BACKLOG.md,
+                        // "Le pipeline écrit une résolution de trois façons".
                         const fmtInfo = np ? (np.format || (np.sample_bits && np.sample_rate ? `${np.sample_bits}bit/${(np.sample_rate/1000).toFixed(0)}kHz` : null)) : null;
                         return html`
                             <div class="ndp-svc-item">
@@ -1389,9 +1392,7 @@ export class AgAudioPipeline extends LitElement {
 
         const sampleRate = sourceNode?.format?.sample_rate || sourceNode?.metadata?.sample_rate;
         const sampleBits = sourceNode?.format?.sample_bits || sourceNode?.metadata?.sample_bits;
-        const formatStr = (sampleRate && sampleBits)
-            ? `${sampleBits}bit / ${(sampleRate / 1000).toFixed(sampleRate % 1000 === 0 ? 0 : 1)}kHz`
-            : null;
+        const formatStr = resolutionLabel(sampleBits, sampleRate) || null;
 
         const typeLabel = { alsa: 'ALSA', physical: 'Physical', software: 'Software', internal: 'Internal', network: 'Network', control: 'Control' };
         const title = `${typeLabel[link.link_type] || link.link_type}${link.connector ? ' · ' + link.connector.toUpperCase() : ''}`;

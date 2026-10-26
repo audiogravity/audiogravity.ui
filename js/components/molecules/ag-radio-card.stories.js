@@ -79,3 +79,22 @@ HiResFlac.args = {
         country: 'United States',
     },
 };
+
+/**
+ * A station the catalogue lists as OGG, 128 kbps, whose stream the box read: FLAC, 24 bits,
+ * 48 kHz (Sveriges Radio P2, 2026-10-26). The badge and the resolution are the stream's.
+ */
+export const LosslessFoundInItsStream = Template.bind({});
+LosslessFoundInItsStream.args = {
+    favorite: false, inLibrary: false, editable: false, swipeable: false,
+    station: {
+        ...SAMPLE_STATION,
+        name:             'Sveriges Radio P2',
+        codec:            'OGG',
+        bitrate:          128,
+        country:          'Sweden',
+        verified_codec:   'FLAC',
+        verified_bits:    24,
+        verified_rate_hz: 48000,
+    },
+};

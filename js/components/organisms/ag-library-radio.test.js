@@ -596,3 +596,32 @@ describe('ag-library-radio — asking before a station leaves a list', () => {
         expect(radioAddFavorite).toHaveBeenCalledWith('mine');
     });
 });
+
+describe('the lossless filter', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it('asks the core for lossless stations when the box is ticked', async () => {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const { radioSearch } = await import('../../radio-api.js');
+        radioSearch.mockResolvedValue({ stations: [] });
+        const el = new AgLibraryRadio();
+        el._view = 'search';
+        el._searchQuery = 'jazz';
+        el._searchLossless = true;
+        await el._loadSearch();
+        expect(radioSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'jazz', lossless_only: true }));
+        expect(radioSearch.mock.calls[0][0]).not.toHaveProperty('hi_res_only');
+    });
+
+    it('says the box is checking the streams while a lossless search runs', async () => {
+        // The first one reads the start of every station listed as OGG: seconds.
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const el = new AgLibraryRadio();
+        el._view = 'search';
+        el._loading = true;
+        el._searchLossless = true;
+        expect(JSON.stringify(el._renderBody())).toContain("Checking each station's stream");
+        el._searchLossless = false;
+        expect(JSON.stringify(el._renderBody())).toContain('Loading');
+    });
+});

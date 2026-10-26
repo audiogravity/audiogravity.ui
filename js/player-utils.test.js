@@ -486,6 +486,23 @@ describe('hiResLabel', () => {
     });
 });
 
+import { resolutionLabel } from './player-utils.js';
+
+describe('resolutionLabel', () => {
+    it('writes bits and rate as the signal path does, a decimal kept where there is one', () => {
+        expect(resolutionLabel(24, 48000)).toBe('24bit / 48kHz');
+        expect(resolutionLabel(16, 44100)).toBe('16bit / 44.1kHz');
+        expect(resolutionLabel(24, 192000)).toBe('24bit / 192kHz');
+        expect(resolutionLabel(24, 352800)).toBe('24bit / 352.8kHz');
+    });
+
+    it('writes nothing when either is unknown', () => {
+        expect(resolutionLabel(null, 48000)).toBe('');
+        expect(resolutionLabel(24, undefined)).toBe('');
+        expect(resolutionLabel(0, 0)).toBe('');
+    });
+});
+
 // playPauseIntent — a tap sends what the listener asked for, not a toggle the core
 // would guess from a state that may have moved since the screen drew it.
 import { playPauseIntent } from './player-utils.js';
