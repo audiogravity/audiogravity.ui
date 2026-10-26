@@ -1,7 +1,7 @@
 #!/bin/bash
 # Audiogravity UI — Dev Environment Manager
 # Manages: Vite UI (port 3000)
-# Requires: audiogravity.core running on port 8000
+# Requires: audiogravity.core running on port 8001 (CORE_PORT)
 
 set -e
 
@@ -152,7 +152,7 @@ cmd_help() {
     echo ""
     echo "Notes:"
     echo "  • Requires audiogravity.core running on port ${CORE_PORT}"
-    echo "  • Override core port: CORE_PORT=8001 ./dev.sh start"
+    echo "  • Override core port: CORE_PORT=8002 ./dev.sh start"
     echo "  • UI updates instantly in the browser via HMR"
     echo ""
 }
