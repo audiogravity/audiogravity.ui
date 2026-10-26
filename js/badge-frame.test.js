@@ -150,6 +150,19 @@ describe('a tag of any family', () => {
         }
     });
 
+    it('draws the network test\'s verdict as a state tag: a tint, and the word in its colour', () => {
+        // It was a solid fill with the page's ground as its words: 1.94 to 3.76:1 in every
+        // light theme, and in Minimal a black block that read as a button (measured
+        // 2026-10-26, user's choice the same day).
+        const perf = readStylesheet('css', 'performance.css');
+        for (const [grade, role] of [['excellent', 'success'], ['good', 'info'], ['fair', 'warning'], ['critical', 'error']]) {
+            const body = cssRuleBody(perf, `.health-badge.${grade}`);
+            expect(body, grade).toMatch(new RegExp(`background:\\s*var\\(--color-${role}-bg\\)`));
+            expect(body, grade).toMatch(new RegExp(`(^|[\\s;])color:\\s*var\\(--color-${role}-text\\)`));
+        }
+        expect(readStylesheet('css', 'components', 'badge.css'), 'the fill, where it was drawn').not.toContain('.health-badge');
+    });
+
     it('keeps one only when it is pressed — read in the templates', () => {
         for (const name of PRESSABLE) {
             const tags = appSources().flatMap((file) => openingTags(readFileSync(file, 'utf8'))

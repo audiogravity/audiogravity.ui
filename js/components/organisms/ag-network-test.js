@@ -68,6 +68,7 @@ export class AgNetworkTest extends LitElement {
 
         this._bindSSE = this._handleSSEProgress.bind(this);
         this._bindServiceSSE = this._handleServiceSSE.bind(this);
+        this._bindTheme = this._redrawForTheme.bind(this);
         this.iperfServiceStatus = 'unknown';
         this._testHistory = getTestHistory().filter(e => e.type !== 'latency');
         this._historyOpen = false;
@@ -99,12 +100,17 @@ export class AgNetworkTest extends LitElement {
         this._loadHistory();
         EventEmitter.on('network_test_progress', this._bindSSE);
         EventEmitter.on('sse-event-received', this._bindServiceSSE);
+        // A theme (theme-applied) or the light/dark mode (theme-changed) changed.
+        EventEmitter.on('theme-applied', this._bindTheme);
+        EventEmitter.on('theme-changed', this._bindTheme);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         EventEmitter.off('network_test_progress', this._bindSSE);
         EventEmitter.off('sse-event-received', this._bindServiceSSE);
+        EventEmitter.off('theme-applied', this._bindTheme);
+        EventEmitter.off('theme-changed', this._bindTheme);
         if (this._jitterChart) {
             this._jitterChart.destroy();
             this._jitterChart = null;
@@ -200,7 +206,6 @@ export class AgNetworkTest extends LitElement {
                     streams: 1
                 }
             };
-            this._saveHistory(this.config.iperf3Server);
         }
 
         this.testState = 'running';
@@ -211,6 +216,9 @@ export class AgNetworkTest extends LitElement {
         try {
             const result = await apiPost('/performance/network/test/start', payload);
             this.currentTestId = result.test_id;
+            // Suggested again once the core has taken it: a server it refuses (422) does
+            // not belong in the list under the field.
+            if (this.testType !== 'ping') this._saveHistory(this.config.iperf3Server);
 
             const historyTarget = this.testType === 'ping' ? payload.target : payload.iperf3_config.server;
             const testTypeName = this.testType === 'ping' ? 'ping' : `iperf3 ${payload.iperf3_config.protocol.toUpperCase()}`;
@@ -369,6 +377,17 @@ export class AgNetworkTest extends LitElement {
         return (val !== undefined && val !== null) ? Number(val).toFixed(decimals) : '--';
     }
 
+    /**
+     * Draw the jitter chart again in the colours of the theme and mode now in force.
+     *
+     * Its bars take their colour from the theme when drawn, and a canvas does not follow
+     * CSS: in Minimal, bars drawn black in light mode stayed black on the dark ground
+     * after a switch, and vanished (code review, 2026-10-26).
+     */
+    _redrawForTheme() {
+        if (this._jitterChart) this._renderJitterChart();
+    }
+
     _renderJitterChart() {
         const ctx = this.querySelector('#jitterChart');
         if (!ctx || !this.resultData || !this.resultData.stats.iperf3_stats?.jitter_history) return;
@@ -380,24 +399,28 @@ export class AgNetworkTest extends LitElement {
         const history = this.resultData.stats.iperf3_stats.jitter_history;
         const labels = history.map((_, i) => `${i + 1}s`);
 
+        // One bar per second of the run, the jitter iperf3 measured over it — as the CPU
+        // cards beside it draw one bar per measurement — in the theme's network colour,
+        // the System tab's (user's choice, 2026-10-26). It was a smoothed line, which drew
+        // values between the seconds that were never measured, in a blue no theme sets: it
+        // read --color-accent, declared nowhere (js/themes.test.js now holds every token a
+        // script reads to the themes).
         const rootStyle = getComputedStyle(document.body);
-        const accentColor = rootStyle.getPropertyValue('--color-accent').trim() || '#3b82f6';
+        const barColor = rootStyle.getPropertyValue('--chart-network').trim();
         const textColor = rootStyle.getPropertyValue('--text-primary').trim() || '#ffffff';
         const gridColor = rootStyle.getPropertyValue('--border-color').trim() || 'rgba(255,255,255,0.1)';
 
         this._jitterChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
                     label: 'Jitter (ms)',
                     data: history,
-                    borderColor: accentColor,
-                    backgroundColor: accentColor + '33',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0
+                    backgroundColor: barColor,
+                    borderRadius: 2,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.9
                 }]
             },
             options: {

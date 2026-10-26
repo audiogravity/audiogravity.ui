@@ -386,4 +386,10 @@ describe('what sits beside a compact button', () => {
         expect(body).toMatch(/height:\s*var\(--button-height-compact\)/);
         expect(body).toMatch(/padding:\s*0 var\(--spacing-sm\)/);
     });
+
+    it('lends that box to the test\'s verdict: one rule, so the two tags cannot drift apart', () => {
+        const rule = cssRules(readStylesheet('css', 'performance.css'))
+            .find(({ selectors }) => selectors.includes('.service-status-badge'));
+        expect(rule.selectors).toContain('.health-badge');
+    });
 });

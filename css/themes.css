@@ -362,6 +362,12 @@ body {
    --critical-mark-bg: var(--color-warning-bg);
    --installed-mark: var(--color-success);           /* stripe of an installed package */
 
+   /* The latency test's histogram, under 200 µs: a figure at rest. Read by
+      ag-latency-test.js, which adds an alpha to the colour by appending two hex digits —
+      a value here must resolve to #rrggbb. */
+   --latency-bar-excellent: var(--histogram-excellent); /* its bars under 50 µs */
+   --latency-bar-good: var(--histogram-good);           /* and from 50 to 200 µs */
+
    /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
       locked Config tile: one tint, from the brand colour. Not from red: red, orange and
       green carry a meaning that holds only while they stay rare (UI guidelines rule 10),

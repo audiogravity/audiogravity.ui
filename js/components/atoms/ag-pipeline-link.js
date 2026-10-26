@@ -109,6 +109,8 @@ export const renderPipelineLink = (link, sourceNode) => {
     const hasBufferInfo = buffer_fill_percent !== undefined && buffer_fill_percent !== null;
 
     // Color-code latency based on quality (using CSS histogram variables)
+    // BACKLOG: these are bar colours, written here as text — audiogravity.ops/BACKLOG.md,
+    // "L'onglet Pipeline écrit la latence des liaisons dans les couleurs de l'histogramme".
     let latencyColor = 'var(--histogram-excellent)'; // < 50µs
     let latencyQuality = 'excellent';
     if (latency_us) {

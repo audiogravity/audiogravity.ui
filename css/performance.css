@@ -534,7 +534,11 @@ body.no-animations .animate-stagger {
    (components/button.css). It used to be shorter and set in a different family, which
    made the pair read as two mismatched controls. The family
    is the UI one, not mono: this is an uppercase label, and mono is both wider and
-   against the house rule for badges. */
+   against the house rule for badges.
+
+   The network test's verdict (.health-badge) is a state too, and takes the same box: one
+   look for the two tags of the test. */
+.health-badge,
 .service-status-badge {
     display: inline-flex;
     align-items: center;
@@ -588,6 +592,31 @@ body.no-animations .animate-stagger {
     background: var(--color-info-bg);
     color: var(--color-info-text);
     animation: badgeTintPulse 1.5s infinite;
+}
+
+/* The verdict, as every state tag is drawn (components/badge.css): a tint and the word in
+   its colour. It was a solid fill with the page's ground as its words — 1.94 to 3.76:1 in
+   every light theme, and in Minimal a black block that read as a button (measured
+   2026-10-26). The colour stays in every theme: a verdict is a state (UI guidelines
+   rule 10; user's choice, 2026-10-26). */
+.health-badge.excellent {
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
+}
+
+.health-badge.good {
+    background: var(--color-info-bg);
+    color: var(--color-info-text);
+}
+
+.health-badge.fair {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+}
+
+.health-badge.critical {
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
 }
 
 /* =====================
