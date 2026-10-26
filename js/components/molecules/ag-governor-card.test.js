@@ -18,6 +18,8 @@
  * 4. the time covered is written beside "Load", and nothing before it is known
  * 5. the CPU number and its socket and core share one line, the badge after the number
  *    (the line this frees goes to the chart: css/performance.css)
+ * 6. on a Raspberry Pi short of power the frequency reads "Slowed down": Linux's figure is
+ *    the speed it asked for, which the Pi does not run at; Intel's measured figure stays
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
@@ -58,6 +60,24 @@ describe('the THROTTLED badge', () => {
     it('stays away otherwise, whatever the count', async () => {
         expect((await card(false)).querySelector('.throttled-badge')).toBe(null);
         expect((await card(undefined)).querySelector('.throttled-badge')).toBe(null);
+    });
+});
+
+describe('the frequency', () => {
+    it('gives the speed the box reported', async () => {
+        const el = await card(false, { cpu: { ...cpu, current_frequency: 1800 } });
+        expect(el.querySelector('.cpu-freq').textContent).toBe('1800 MHz');
+    });
+
+    it('says "Slowed down" on a Raspberry Pi short of power, not the speed Linux asked for', async () => {
+        const el = await card(true, { cpu: { ...cpu, current_frequency: 1800, throttle_count: null } });
+        expect(el.querySelector('.cpu-freq').textContent).toBe('Slowed down');
+    });
+
+    it("keeps an Intel core's measured speed while it is throttled for heat", async () => {
+        const el = await card(true, { cpu: { ...cpu, current_frequency: 2182, throttle_count: 42 } });
+        expect(el.querySelector('.cpu-freq').textContent).toBe('2182 MHz');
+        expect(el.querySelector('.throttled-badge')).not.toBe(null);
     });
 });
 

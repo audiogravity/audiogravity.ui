@@ -503,6 +503,13 @@ describe('formatSupportReport — links, USB speed, audio tuning', () => {
         expect(formatSupportReport(report)).toContain('performance · 2415 MHz');
     });
 
+    it('says a Raspberry Pi short of power is slowed down, where Linux would give the speed it asked for', () => {
+        const slowed = { ...report, audio_live: { ...report.audio_live, cpu_governor: 'ondemand', cpu_mhz: null, cpu_slowed: true } };
+        const text = formatSupportReport(slowed);
+        expect(text).toContain('ondemand · slowed down (undervoltage)');
+        expect(text).not.toContain('MHz');
+    });
+
     it('renders live scheduling with accounting and drop-ins', () => {
         const text = formatSupportReport(report);
         expect(text).toContain('rr prio 45 · nice 0 · CPUs 3 · io none: prio 0 · acct io:yes ip:yes');

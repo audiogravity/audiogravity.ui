@@ -27,12 +27,19 @@ const cpuGeneralInfoMock = {
     max_freq: 1800
 };
 
-const cpuInfoMock = [
-    { cpu_id: 0, physical_id: 0, core_id: 0, governor: 'performance', available_governors: ['performance', 'powersave', 'schedutil'], threadLabel: '' },
-    { cpu_id: 1, physical_id: 0, core_id: 1, governor: 'performance', available_governors: ['performance', 'powersave', 'schedutil'], threadLabel: '' },
-    { cpu_id: 2, physical_id: 0, core_id: 2, governor: 'schedutil', available_governors: ['performance', 'powersave', 'schedutil'], threadLabel: '' },
-    { cpu_id: 3, physical_id: 0, core_id: 3, governor: 'schedutil', available_governors: ['performance', 'powersave', 'schedutil'], threadLabel: '' }
-];
+// The fields GET /performance/cpu/info gives, for a Raspberry Pi: no throttle counter.
+const cpuInfoMock = [0, 1, 2, 3].map((id) => ({
+    cpu_id: id,
+    physical_id: 0,
+    core_id: id,
+    current_governor: id < 2 ? 'performance' : 'schedutil',
+    available_governors: ['performance', 'powersave', 'schedutil'],
+    current_frequency: 1500,
+    min_frequency: 600,
+    max_frequency: 1800,
+    throttle_count: null,
+    threadLabel: '',
+}));
 
 const Template = (args) => {
     const el = document.createElement('ag-performance-page');
@@ -40,6 +47,8 @@ const Template = (args) => {
     el.cpuInfo = args.cpuInfo;
     el.dataFetch.loading = args.loading;
     el.dataFetch.error = args.error;
+    // What the monitoring tick says of each core: throttled since the previous tick.
+    el._cpuThrottled = args.cpuThrottled ?? null;
     
     // Mock methods
     el._loadData = () => {};
@@ -55,6 +64,19 @@ export const Default = Template.bind({});
 Default.args = {
     cpuGeneralInfo: cpuGeneralInfoMock,
     cpuInfo: cpuInfoMock,
+    loading: false,
+    error: null
+};
+
+/**
+ * A Raspberry Pi short of power: every core shows THROTTLED, and the speeds — on the cards and
+ * above them — read "Slowed down", where Linux would give the speed it asked for.
+ */
+export const PiShortOfPower = Template.bind({});
+PiShortOfPower.args = {
+    cpuGeneralInfo: cpuGeneralInfoMock,
+    cpuInfo: cpuInfoMock,
+    cpuThrottled: [true, true, true, true],
     loading: false,
     error: null
 };

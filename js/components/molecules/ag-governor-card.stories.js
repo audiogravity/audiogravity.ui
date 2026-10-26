@@ -6,13 +6,16 @@ export default {
     component: 'ag-governor-card',
 };
 
+// The fields the card reads, as GET /performance/cpu/info gives them.
 const cpuMock = {
-    id: 0,
+    cpu_id: 0,
+    physical_id: 0,
+    core_id: 0,
     current_governor: 'performance',
     available_governors: ['performance', 'powersave', 'ondemand', 'schedutil'],
-    current_freq: '1500MHz',
-    min_freq: '600MHz',
-    max_freq: '1500MHz'
+    current_frequency: 1500,
+    min_frequency: 600,
+    max_frequency: 1500
 };
 
 const Template = (args) => html`
@@ -46,9 +49,22 @@ WithLoad.args = {
     usageSpan: 59 * 20 * 1000,
 };
 
-/** The core saw the kernel throttle this core for heat since its previous monitoring tick. */
+/**
+ * A Raspberry Pi short of power slowed the processor down since the previous monitoring tick:
+ * the badge shows, and the speed reads "Slowed down" — Linux's figure is the speed it asked for.
+ */
 export const Throttled = Template.bind({});
 Throttled.args = {
-    cpu: cpuMock,
+    cpu: { ...cpuMock, throttle_count: null },
+    throttled: true
+};
+
+/**
+ * An Intel core throttled for heat: the badge shows, and the speed stays — it is measured, and
+ * the throttle lowered it.
+ */
+export const ThrottledForHeat = Template.bind({});
+ThrottledForHeat.args = {
+    cpu: { ...cpuMock, current_frequency: 2182, max_frequency: 2700, throttle_count: 3 },
     throttled: true
 };

@@ -29,6 +29,7 @@ import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { logger } from '../../utils.js';
 import { CPU_CORE_METRICS_WINDOW, appendSample, appendSampleTime, isPause, spanOfLast } from '../../core/metrics-window.js';
+import { formatCpuFrequency, slowedBySupply } from '../utils-lit.js';
 import '../../components/molecules/ag-rt-monitor.js';
 import '../atoms/ag-button.js';
 import './ag-card-grid.js';
@@ -185,6 +186,25 @@ export class AgPerformancePage extends LitElement {
         }
     }
 
+    /**
+     * Whether a Raspberry Pi short of power slowed the processor down since the previous
+     * monitoring tick (slowedBySupply). It slows every core at once; the speed written
+     * above the cards is then the one Linux asked for, not the one it runs at.
+     * @returns {boolean}
+     */
+    _slowedBySupply() {
+        return (this.cpuInfo || []).some((cpu) =>
+            slowedBySupply(this._cpuThrottled?.[cpu.cpu_id], cpu.throttle_count));
+    }
+
+    /**
+     * The processor's speed as written above the cards (formatCpuFrequency).
+     * @returns {string} "Slowed down", the speed ("1800 MHz"), or "N/A".
+     */
+    _currentFreqText() {
+        return formatCpuFrequency(this.cpuGeneralInfo?.current_freq, this._slowedBySupply());
+    }
+
     _loadData() {
         this._loaded = true;
         return this.dataFetch.fetch();
@@ -282,7 +302,7 @@ export class AgPerformancePage extends LitElement {
                             <ag-stat-box variant="tertiary" label="CPU Model" value-class="cpu-stat-value" .value=${this.cpuGeneralInfo.model}></ag-stat-box>
                             <ag-stat-box variant="tertiary" label="Architecture" value-class="cpu-stat-value" .value=${this.cpuGeneralInfo.architecture}></ag-stat-box>
                             <ag-stat-box variant="tertiary" label="Core Topology" value-class="cpu-stat-value" .value="${this.cpuGeneralInfo.physical_cores}P / ${this.cpuGeneralInfo.logical_cores}L Cores"></ag-stat-box>
-                            <ag-stat-box variant="tertiary" label="Current Freq" value-class="cpu-stat-value" .value=${this.cpuGeneralInfo.current_freq.toFixed(0)} unit="MHz"></ag-stat-box>
+                            <ag-stat-box variant="tertiary" label="Current Freq" value-class="cpu-stat-value" .value=${this._currentFreqText()}></ag-stat-box>
                             <ag-stat-box variant="tertiary" label="Freq Range" value-class="cpu-stat-value" .value="${this.cpuGeneralInfo.min_freq} - ${this.cpuGeneralInfo.max_freq}" unit="MHz"></ag-stat-box>
                         </div>
                     ` : ''}

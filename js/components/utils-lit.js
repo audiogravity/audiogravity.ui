@@ -351,6 +351,38 @@ export const formatWindowSpan = (ms) => {
 };
 
 /**
+ * Whether a throttled core's frequency is a figure to hide: the speed Linux asked for,
+ * not the one the processor runs at.
+ *
+ * The core marks a core throttled from one of two sources (core/cpu_throttle.py). A
+ * processor that counts its slowdowns — Intel's — reports a measured speed, which a
+ * throttle lowers: 2.18 to 2.40 GHz read under a 2.7 GHz request on an i5 (2026-10-26),
+ * a figure worth keeping. A processor with no counter (`throttle_count` null) is marked
+ * only by a Raspberry Pi's power-supply alarm, and its figure is then the speed asked
+ * for: 1800 MHz read while a Pi 4 short of power ran at 600 (2026-10-26).
+ *
+ * @param {boolean} throttled - The core was throttled since the previous monitoring tick.
+ * @param {number|null|undefined} throttleCount - The core's throttle count; null where the
+ *     processor exposes none.
+ * @returns {boolean}
+ */
+export const slowedBySupply = (throttled, throttleCount) =>
+    throttled === true && (throttleCount === null || throttleCount === undefined);
+
+/**
+ * A processor's speed, as the Performance tab writes it.
+ *
+ * @param {number|null|undefined} mhz - The frequency the box reported, in MHz.
+ * @param {boolean} [slowed=false] - The figure is not the processor's speed right now
+ *     (slowedBySupply): the tab says "Slowed down" instead of a figure that is wrong.
+ * @returns {string} "Slowed down", the speed ("1800 MHz"), or "N/A" when none is known.
+ */
+export const formatCpuFrequency = (mhz, slowed = false) => {
+    if (slowed) return 'Slowed down';
+    return typeof mhz === 'number' && Number.isFinite(mhz) ? `${mhz.toFixed(0)} MHz` : 'N/A';
+};
+
+/**
  * Format ISO timestamp to relative time or absolute time
  * @param {string} isoString - ISO 8601 timestamp
  * @returns {string} Formatted time (e.g., "Just now", "5m ago", "2h ago")
