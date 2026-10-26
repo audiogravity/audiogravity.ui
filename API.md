@@ -783,6 +783,11 @@ these today**; see `/docs` for their request/response shape (on a core that serv
 | GET | `/performance/network/test/{test_id}/result` | Result |
 | POST | `/performance/network/test/{test_id}/cancel` | Cancel |
 
+For an iperf3 test, `iperf3_config.server` is an address or a host name, followed by `:port`
+when the server does not listen on 5201 — `[address]:port` for an IPv6 address. One that names
+no server — an empty field, a port that is not a number or outside 1–65535 — is refused with
+422 before the test starts.
+
 ### Push notifications — `/push/*`
 | Method | Path | Description |
 |---|---|---|

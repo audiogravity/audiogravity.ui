@@ -92,7 +92,7 @@ export class AgLatencyTest extends LitElement {
         this._historyOpen = false;
 
         this._bindSSE = this._handleSSEProgress.bind(this);
-        this._bindTheme = this.updateChartTheme.bind(this);
+        this._bindTheme = this._redrawForTheme.bind(this);
     }
 
     createRenderRoot() {
@@ -102,7 +102,9 @@ export class AgLatencyTest extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         EventEmitter.on('latency-test-progress', this._bindSSE);
+        // A theme (theme-applied) or the light/dark mode (theme-changed) changed.
         EventEmitter.on('theme-applied', this._bindTheme);
+        EventEmitter.on('theme-changed', this._bindTheme);
     }
 
     disconnectedCallback() {
@@ -114,6 +116,7 @@ export class AgLatencyTest extends LitElement {
         }
         EventEmitter.off('latency-test-progress', this._bindSSE);
         EventEmitter.off('theme-applied', this._bindTheme);
+        EventEmitter.off('theme-changed', this._bindTheme);
     }
 
     _handleConfigChange(e) {
@@ -238,6 +241,18 @@ export class AgLatencyTest extends LitElement {
         }
     }
 
+    /**
+     * Draw the histogram again in the colours of the theme and mode now in force.
+     *
+     * Its bars take their colour from the theme when drawn, and a canvas does not follow
+     * CSS: only the text and the grid were repainted on a theme change, and nothing on a
+     * light/dark switch — in Minimal, bars drawn black in light mode stayed black on the
+     * dark ground, and vanished (code review, 2026-10-26).
+     */
+    _redrawForTheme() {
+        if (this._chartInstance) this._renderChart();
+    }
+
     _renderChart() {
         const ctx = this.querySelector('#latencyChart');
         if (!ctx || !this.resultData || !this.resultData.histogram) return;
@@ -265,10 +280,13 @@ export class AgLatencyTest extends LitElement {
             latencyValues = entries.map(e => e.x);
         }
 
+        // The bars under 200 µs read their roles (css/themes.css): a figure at rest, which
+        // Minimal draws in its greys, keeping colour for the delays that matter (user's
+        // choice, 2026-10-26). The Pipeline tab's latency labels keep --histogram-*.
         const rootStyle = getComputedStyle(document.body);
         const latencyColors = {
-            excellent: rootStyle.getPropertyValue('--histogram-excellent').trim() || '#22c55e',
-            good: rootStyle.getPropertyValue('--histogram-good').trim() || '#3b82f6',
+            excellent: rootStyle.getPropertyValue('--latency-bar-excellent').trim() || '#22c55e',
+            good: rootStyle.getPropertyValue('--latency-bar-good').trim() || '#3b82f6',
             average: rootStyle.getPropertyValue('--histogram-average').trim() || '#f59e0b',
             critical: rootStyle.getPropertyValue('--histogram-critical').trim() || '#ef4444',
         };

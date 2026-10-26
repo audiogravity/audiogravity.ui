@@ -16,11 +16,17 @@
  * orange — and the orange of what waits on the user: UPDATE ALL (user's choice), a
  * package's web password to set, its restart.
  *
+ * The latency test's histogram follows the same rule (user's choice, 2026-10-26): under
+ * 200 µs its bars are a figure at rest, which Minimal draws grey, then ink; above, they keep
+ * their colour. Its roles are read in JS, not by a stylesheet rule.
+ *
  * Covers:
  * 1. each rule reads its role, whose default is the semantic colour it had
  * 2. Minimal sets every role in the text colours, and no other theme sets one
  * 3. the components wear the classes these rules read: CRITICAL as .critical-tag on the
  *    three cards, the plain actions as .action-tag, and UPDATE ALL as an orange action
+ * 4. the latency histogram reads its roles, and Minimal's text colours they resolve to are
+ *    #rrggbb: the component appends an alpha to them
  */
 import { describe, it, expect } from 'vitest';
 import { readStylesheet, cssRules, cssRuleBody, appSources, openingTags } from './test-utils.js';
@@ -54,6 +60,7 @@ const MINIMAL = {
     '--health-running': '--text-primary', '--health-running-text': '--text-secondary',
     '--critical-mark': '--text-primary', '--critical-mark-text': '--text-primary', '--critical-mark-bg': '--color-neutral-bg',
     '--installed-mark': '--text-primary',
+    '--latency-bar-excellent': '--text-tertiary', '--latency-bar-good': '--text-primary',
 };
 
 /** The roles read with a fallback per variant: a badge's action comes in green and in orange. */
@@ -84,6 +91,37 @@ describe('colour kept for states', () => {
             expect(light, role).toMatch(new RegExp(`${role}:\\s*var\\(${value}\\);`));
             expect(theme.match(new RegExp(`${role}:`, 'g')), `${role} declared more than once`).toHaveLength(1);
         }
+    });
+
+    it('— the latency histogram under 200 µs — reads its roles, whose defaults are the colours it had', () => {
+        const chart = readStylesheet('js', 'components', 'organisms', 'ag-latency-test.js');
+        const defaults = cssRules(readStylesheet('css', 'themes.css')).find(({ selectors }) => selectors.join() === ':root,body').body;
+        for (const [role, before] of [['--latency-bar-excellent', '--histogram-excellent'], ['--latency-bar-good', '--histogram-good']]) {
+            expect(chart).toContain(`getPropertyValue('${role}')`);
+            expect(defaults, `${role} has no default`).toMatch(new RegExp(`${role}:\\s*var\\(${before}\\);`));
+        }
+    });
+
+    it('— the latency histogram — gets #rrggbb in every theme and mode: an alpha is appended', () => {
+        // ag-latency-test.js appends two hex digits to each colour it reads: an rgb() or a
+        // #rgb there hands the canvas an invalid colour, and the bars silently lose theirs.
+        // What it reads: --histogram-* in each theme, and in Minimal the text colours its
+        // roles point to (code review, 2026-10-26: Minimal's alone were checked).
+        let seen = 0;
+        for (const theme of ['minimal', 'slate', 'gravity']) {
+            const roles = theme === 'minimal' ? ['--text-primary', '--text-tertiary'] : [];
+            const blocks = cssRules(readStylesheet('css', 'themes', `${theme}.css`))
+                .filter(({ selectors }) => selectors.some((s) => s.startsWith(`[data-theme="${theme}"]`)));
+            for (const { selectors, body } of blocks) {
+                for (const [, token, value] of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+                    if (!token.startsWith('--histogram-') && !roles.includes(token)) continue;
+                    seen++;
+                    expect(value.trim(), `${theme}: ${token} in ${selectors.join()}`).toMatch(/^#[0-9a-fA-F]{6}$/);
+                }
+            }
+        }
+        // Each theme: four histogram colours in each mode; Minimal: two text colours in each.
+        expect(seen).toBe(3 * 2 * 4 + 2 * 2);
     });
 
     it('is left to its semantic colour by every other theme', () => {

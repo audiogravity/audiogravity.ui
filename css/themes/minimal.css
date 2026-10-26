@@ -112,6 +112,8 @@
     --critical-mark-text: var(--text-primary);    /* its CRITICAL tag */
     --critical-mark-bg: var(--color-neutral-bg);
     --installed-mark: var(--text-primary);        /* stripe of an installed package */
+    --latency-bar-excellent: var(--text-tertiary); /* the latency histogram under 50 µs: grey, */
+    --latency-bar-good: var(--text-primary);       /* then ink to 200 µs — colour only above (2026-10-26) */
 
     /* No --font-family here on purpose. Minimal is the default theme, so what it
        renders is what almost every installation renders: it takes Inter from

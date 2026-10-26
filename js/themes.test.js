@@ -17,6 +17,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appSources } from './test-utils.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSS_ROOT = path.join(ROOT, 'css');
@@ -130,6 +131,50 @@ describe('theme layer — no theme depends on another', () => {
 
             const hard = borrowed.filter(t => !optional.includes(t));
             expect(hard, `emprunts à un autre thème : ${hard.join(', ')}`).toEqual([]);
+        });
+    }
+});
+
+describe('theme layer — a token a script reads exists in every theme', () => {
+    // The network test's jitter chart read --color-accent, which no stylesheet declares:
+    // getPropertyValue() answered an empty string, and the chart took the blue written
+    // beside it, in every theme (found 2026-10-26). A script cannot tell a missing token
+    // from an unset one, so the themes must declare what scripts read — in the theme
+    // itself, or in the theme layer every theme shares, css/themes.css. Not in a
+    // component's stylesheet: there a token is declared for that component's elements,
+    // not for body, where scripts read it (code review, 2026-10-26).
+    //
+    // Read off literal calls, getPropertyValue('--x'): a token a script reads through a
+    // variable escapes this scan — name it literally.
+    /**
+     * Tokens a stylesheet declares outside its dark-mode rules: those the light mode has,
+     * and the dark mode inherits. Read by removing those rules, flat in every stylesheet,
+     * rather than by splitting the file into rules: :root nests blocks of its own.
+     */
+    const inLightMode = (css) => declared(css.replace(/[^{}]*\.dark-mode[^{}]*\{[^{}]*\}/g, ''));
+    const shared = inLightMode(read('css', 'themes.css'));
+    const reads = new Map();
+    for (const file of appSources().filter(f => f.endsWith('.js'))) {
+        const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+        for (const [, token] of text.matchAll(/getPropertyValue\(\s*['"](--[\w-]+)['"]\s*\)/g)) {
+            reads.set(token, [...(reads.get(token) ?? []), file]);
+        }
+    }
+
+    it('finds the tokens scripts read', () => {
+        expect(reads.size).toBeGreaterThan(0);
+    });
+
+    for (const theme of THEMES) {
+        it(`${theme} declares every one of them, light and dark`, () => {
+            // Outside the dark-mode rules, the theme's or a shared one: a token stated in a
+            // dark block alone is missing from the light mode (themes.css states some chart
+            // colours for the dark mode only).
+            const own = inLightMode(THEME_CSS[theme]);
+            const missing = [...reads]
+                .filter(([token]) => !own.has(token) && !shared.has(token))
+                .map(([token, files]) => `${token} (${[...new Set(files)].join(', ')})`);
+            expect(missing).toEqual([]);
         });
     }
 });
