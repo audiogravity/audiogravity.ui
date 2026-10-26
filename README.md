@@ -9,8 +9,8 @@ Web UI for [Audiogravi<sup>ty</sup>](https://audiogravity.app) — an audiophile
 audio management application. Built with **Lit 3 Web Components**, **Vite**
 and **Vitest**.
 
-Audiogravi<sup>ty</sup> orchestrates MPD, Roon, HQPlayer, AirPlay, UPnP, Tidal and
-Qobuz from a single PWA interface. This repo contains the UI only.
+Audiogravi<sup>ty</sup> orchestrates MPD, Roon, HQPlayer, AirPlay, UPnP, internet radio,
+Qobuz, Tidal and HIGHRESAUDIO from a single PWA interface. This repo contains the UI only.
 The core is required at runtime — see [API.md](API.md) for the contract.
 
 ---
@@ -27,9 +27,10 @@ The core is required at runtime — see [API.md](API.md) for the contract.
 | In-app manual | [marked](https://marked.js.org/) — Markdown rendered client-side, loaded on demand |
 | Charts | [Chart.js 4](https://www.chartjs.org/) (npm, with the Performance tab) |
 | Terminal | [xterm.js](https://xtermjs.org/) (npm, loaded on demand) |
-| Tests | [Vitest 4](https://vitest.dev/) |
+| Tests | [Vitest 4](https://vitest.dev/) — unit tests in jsdom, Storybook interaction tests in headless Chromium ([Playwright](https://playwright.dev/)) |
 | Component dev | [Storybook 10](https://storybook.js.org/) |
 | CSS linting | [Stylelint 17](https://stylelint.io/) |
+| JS linting | [ESLint 10](https://eslint.org/) — `no-undef` only, deliberately |
 | PWA | Service Worker, Web Push, WebAuthn |
 
 ---
@@ -47,6 +48,10 @@ A running Audiogravi<sup>ty</sup> core is required on port 8001 (default). On fi
 prompt asks for the API key (visible in the core `.env` file); it is
 stored in `localStorage` for subsequent sessions.
 
+`./dev.sh start --https` serves Vite over HTTPS with the certificate of an Audiogravi<sup>ty</sup>
+UI installed on the same machine (`/var/www/audiogravity-ui/ssl/`) — needed to test on iOS,
+which installs no service worker over plain HTTP.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 [API.md](API.md) for the core API contract.
 
@@ -55,11 +60,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 ## Dev environment
 
 ```bash
-./dev.sh start         # start Vite
+./dev.sh start         # start Vite (--https for TLS)
 ./dev.sh stop          # stop Vite
+./dev.sh restart       # restart Vite
 ./dev.sh status        # show running state
 ./dev.sh logs          # tail Vite log
-./dev.sh test          # run unit tests
+./dev.sh test          # run unit tests (no browser)
 ./dev.sh storybook     # component workspace at http://localhost:6006
 ./dev.sh help          # full command list
 ```
@@ -74,10 +80,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev setup and
 |---|---|
 | `npm run dev` | Dev server with HMR at http://localhost:3000 |
 | `npm run build` | Production build → `_site/` |
-| `npm test` | Run all Vitest unit tests |
+| `npm test` | Run every test: unit (jsdom) and Storybook interaction (headless Chromium) |
 | `npm run test:watch` | Tests in watch mode |
+| `npm run lint` | Lint CSS and JavaScript — run before every commit |
 | `npm run lint:css` | Lint CSS with Stylelint |
 | `npm run lint:css:fix` | Auto-fix CSS issues |
+| `npm run lint:js` | Lint JavaScript with ESLint |
 | `npm run storybook` | Component workspace at http://localhost:6006 |
 
 ---
@@ -91,27 +99,30 @@ js/components/
   atoms/       Basic UI elements (buttons, badges, indicators)
   molecules/   Composite elements (cards, tiles, modals)
   organisms/   Feature sections (pipeline, library, profiles)
-js/core/       Config, event bus, app context, fetch controller
+js/core/       Config, event bus, app context, Lit reactive controllers
 js/api.js      REST client — all core calls go through here
 js/sse.js      SSE client — real-time updates from the core
 css/           Modular stylesheets with CSS custom property tokens
 public/        Static assets, icons, PWA manifest
 ```
 
-All components use **Light DOM** — no Shadow DOM, no style isolation issues,
-fully compatible with global CSS and screen readers.
+Components render in the **Light DOM** — no Shadow DOM, so the global CSS and its
+theme tokens reach them — with one exception: `ag-audio-pipeline`, the signal-path
+diagram, renders in a shadow root with its own stylesheets.
 
 ---
 
 ## Testing
 
 ```bash
-npm test              # 188 unit tests, single run
-npm run test:watch    # watch mode
+npm test                         # every test, single run
+npx vitest run --project unit    # unit tests only, no browser (what the badge counts)
+npm run test:watch               # watch mode
 ```
 
 Tests cover utility functions, helpers, API routing logic and component
-behaviour. Browser-mode tests require Playwright (`npx playwright install`).
+behaviour. The Storybook interaction tests run in headless Chromium and need
+Playwright's browser (`npx playwright install chromium`).
 
 ---
 
