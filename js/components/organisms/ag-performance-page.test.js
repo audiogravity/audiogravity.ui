@@ -16,6 +16,8 @@
  * 4. each core keeps the newest samples of its window
  * 5. a pause in the stream opens a gap in every core; a normal silence does not
  * 6. the samples are timed, for the span a card writes
+ * 7. the speed above the cards reads "Slowed down" on a Raspberry Pi short of power only;
+ *    an Intel processor's measured speed stays, and no speed reads N/A
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CPU_CORE_METRICS_WINDOW, MAX_SAMPLE_GAP_MS, spanOfLast } from '../../core/metrics-window.js';
@@ -76,6 +78,48 @@ async function offered(el) {
 }
 
 beforeEach(() => { vi.clearAllMocks(); });
+
+describe('the speed above the cards', () => {
+    /** A page on a processor whose cores carry this throttle count, at 1800 MHz. */
+    function onProcessor(throttleCount) {
+        const el = page();
+        el.cpuInfo = el.cpuInfo.map((cpu) => ({ ...cpu, throttle_count: throttleCount }));
+        el.cpuGeneralInfo = { current_freq: 1800 };
+        return el;
+    }
+
+    it('reads "Slowed down" on a Raspberry Pi short of power', () => {
+        const el = onProcessor(null);
+        el._cpuThrottled = [true, true];
+        expect(el._currentFreqText()).toBe('Slowed down');
+    });
+
+    it('reads "Slowed down" as soon as one core reports the supply slowing it', () => {
+        const el = onProcessor(null);
+        el._cpuThrottled = [false, true];
+        expect(el._currentFreqText()).toBe('Slowed down');
+    });
+
+    it("keeps an Intel processor's measured speed while a core is throttled for heat", () => {
+        const el = onProcessor(42);
+        el._cpuThrottled = [false, true];
+        expect(el._currentFreqText()).toBe('1800 MHz');
+    });
+
+    it('gives the speed when no core was throttled, or nothing reported it', () => {
+        const el = onProcessor(null);
+        el._cpuThrottled = [false, false];
+        expect(el._currentFreqText()).toBe('1800 MHz');
+        el._cpuThrottled = null;
+        expect(el._currentFreqText()).toBe('1800 MHz');
+    });
+
+    it('writes N/A when the box gave no speed', () => {
+        const el = onProcessor(null);
+        el.cpuGeneralInfo = { current_freq: null };
+        expect(el._currentFreqText()).toBe('N/A');
+    });
+});
 
 describe('Apply All', () => {
     it('offers the governor just chosen on a card', async () => {

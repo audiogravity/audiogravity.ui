@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { isGuest } from '../../auth.js';
 import { CPU_CORE_METRICS_WINDOW } from '../../core/metrics-window.js';
-import { formatWindowSpan } from '../utils-lit.js';
+import { formatCpuFrequency, formatWindowSpan, slowedBySupply } from '../utils-lit.js';
 import '../atoms/ag-sparkline.js';
 
 /**
@@ -17,10 +17,14 @@ import '../atoms/ag-sparkline.js';
  *     Drawn as one bar per sample on a 0–100 % scale shared by every core, so that the
  *     cards compare at a glance.
  * @prop {number} usageSpan - Milliseconds the held samples cover, written beside "Load".
- * @prop {boolean} throttled - The core was throttled for heat since the previous monitoring
- *     tick. Decided by the core (core/cpu_throttle.py), which keeps the counts between two
- *     looks: this card is rebuilt on every reload of the tab, so it never had a previous
- *     count to compare with, and the badge it used to compute itself never appeared.
+ * @prop {boolean} throttled - The processor slowed this core down since the previous
+ *     monitoring tick: for heat, on processors that count it (Intel's), or, on a Raspberry
+ *     Pi, because its power supply could not keep up. Decided by the core
+ *     (core/cpu_throttle.py), which keeps the counts between two looks: this card is
+ *     rebuilt on every reload of the tab, so it never had a previous count to compare
+ *     with, and the badge it used to compute itself never appeared. On a Raspberry Pi,
+ *     while it is, the frequency reads "Slowed down" (slowedBySupply): Intel's figure is
+ *     a measured speed and stays.
  *
  * @fires governor-change - Emitted when a new governor is selected
  * @dependency css/performance.css - Uses .governor-tile layout and .throttled-badge
@@ -71,9 +75,8 @@ export class AgGovernorCard extends LitElement {
     render() {
         if (!this.cpu) return nothing;
 
-        const frequency = this.cpu.current_frequency !== undefined && this.cpu.current_frequency !== null
-            ? `${this.cpu.current_frequency.toFixed(0)} MHz`
-            : 'N/A';
+        const frequency = formatCpuFrequency(this.cpu.current_frequency,
+            slowedBySupply(this.throttled, this.cpu.throttle_count));
 
         let freqRange = nothing;
         if (this.cpu.min_frequency !== undefined && this.cpu.max_frequency !== undefined) {

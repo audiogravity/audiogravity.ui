@@ -593,8 +593,13 @@ export function formatSupportReport(report) {
                 out.push(line(stream.direction, `${stream.stream} · ${stream.format} · ${stream.rate} Hz · ${stream.channels} ch`));
             }
         }
+        // A Raspberry Pi short of power runs slower than Linux's figure says: the core
+        // sends no figure then, and cpu_slowed (support_report._cpu_speed).
+        const speed = live.cpu_slowed
+            ? ' · slowed down (undervoltage)'
+            : (live.cpu_mhz ? ` · ${live.cpu_mhz} MHz` : '');
         out.push(line('CPU governor', live.cpu_governor
-            ? `${live.cpu_governor}${live.cpu_mhz ? ` · ${live.cpu_mhz} MHz` : ''}`
+            ? `${live.cpu_governor}${speed}`
             : live.cpu_governor));
     }
 

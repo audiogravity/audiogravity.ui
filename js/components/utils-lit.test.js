@@ -3,7 +3,7 @@
  */
 import { describe, it, expect , vi, afterEach} from 'vitest';
 import {
-    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatRate,
+    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatCpuFrequency, slowedBySupply, formatRate,
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
@@ -77,6 +77,41 @@ describe('formatWindowSpan', () => {
     it('writes nothing when nothing is covered yet', () => {
         expect(formatWindowSpan(0)).toBe('');
         expect(formatWindowSpan(undefined)).toBe('');
+    });
+});
+
+describe('formatCpuFrequency', () => {
+    it('writes the speed in whole MHz', () => {
+        expect(formatCpuFrequency(1800)).toBe('1800 MHz');
+        expect(formatCpuFrequency(599.6)).toBe('600 MHz');
+    });
+
+    it('says the processor slowed down instead of a figure that is not its speed', () => {
+        expect(formatCpuFrequency(1800, true)).toBe('Slowed down');
+        expect(formatCpuFrequency(null, true)).toBe('Slowed down');
+    });
+
+    it('writes N/A when no speed is known', () => {
+        expect(formatCpuFrequency(null)).toBe('N/A');
+        expect(formatCpuFrequency(undefined)).toBe('N/A');
+        expect(formatCpuFrequency(Number.NaN)).toBe('N/A');
+    });
+});
+
+describe('slowedBySupply', () => {
+    it('holds for a throttled core of a processor with no throttle counter: a Raspberry Pi short of power', () => {
+        expect(slowedBySupply(true, null)).toBe(true);
+        expect(slowedBySupply(true, undefined)).toBe(true);
+    });
+
+    it('does not for a processor that counts its slowdowns, whose figure is a measured speed', () => {
+        expect(slowedBySupply(true, 0)).toBe(false);
+        expect(slowedBySupply(true, 42)).toBe(false);
+    });
+
+    it('does not for a core that was not throttled', () => {
+        expect(slowedBySupply(false, null)).toBe(false);
+        expect(slowedBySupply(undefined, null)).toBe(false);
     });
 });
 
