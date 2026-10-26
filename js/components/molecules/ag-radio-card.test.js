@@ -198,3 +198,32 @@ describe('the unfolded actions', () => {
         expect(el.querySelector('.lib-radio-more-actions')).not.toBeNull();
     });
 });
+
+describe('what a row says of the stream', () => {
+    const badge = (el) => el.querySelector('ag-connector-badge')?.connector;
+    const meta = (el) => el.querySelector('.lib-radio-meta')?.textContent;
+
+    it('gives the catalogue codec and bitrate when nothing was read in the stream', async () => {
+        const { el } = await card({ station: { ...STATION, codec: 'AAC', bitrate: 192, country: 'France' } });
+        expect(badge(el)).toBe('aac');
+        expect(meta(el)).toBe('France · 192 kbps');
+    });
+
+    it('gives what the stream says where the catalogue lists FLAC as OGG, and its resolution', async () => {
+        // Sveriges Radio P2: listed OGG, 128 kbps; its stream is FLAC, 24 bits, 48 kHz.
+        const { el } = await card({ station: {
+            ...STATION, codec: 'OGG', bitrate: 128, country: 'Sweden',
+            verified_codec: 'FLAC', verified_bits: 24, verified_rate_hz: 48000,
+        } });
+        expect(badge(el)).toBe('flac');
+        expect(meta(el)).toBe('Sweden · 24bit / 48kHz');
+    });
+
+    it('keeps the catalogue bitrate for a lossy stream found in an Ogg wrapper', async () => {
+        const { el } = await card({ station: {
+            ...STATION, codec: 'OGG', bitrate: 96, country: 'Bulgaria', verified_codec: 'OGG',
+        } });
+        expect(badge(el)).toBe('ogg');
+        expect(meta(el)).toBe('Bulgaria · 96 kbps');
+    });
+});

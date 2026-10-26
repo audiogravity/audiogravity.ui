@@ -15,7 +15,9 @@ import { apiGet, apiPost, apiPut, apiDelete } from './api.js';
  * @param {string} [params.country_code] - ISO 3166-1 alpha-2 country code (e.g. ``FR``).
  * @param {string} [params.codec]        - MP3 / AAC / FLAC / OGG / OPUS.
  * @param {string} [params.tag]          - Free-form genre tag.
- * @param {boolean}[params.hi_res_only]  - Filter ≥ 256 kbps or lossless codec.
+ * @param {boolean}[params.lossless_only] - Only stations that stream lossless: listed as FLAC,
+ *     or found so in their own stream (the box reads the start of each station listed as OGG,
+ *     which can take seconds the first time).
  * @param {number} [params.limit=50]     - 1..200, defaults to 50.
  * @param {number} [params.offset=0]
  * @returns {Promise<{ stations: Array, total: number }>}

@@ -19,7 +19,9 @@
  *
  * @element ag-radio-card
  *
- * @attr {object}  .station    - RadioStation object (uuid, name, url, codec, …).
+ * @attr {object}  .station    - RadioStation object (uuid, name, url, codec, …). Its
+ *                               verified_codec / verified_bits / verified_rate_hz, read in
+ *                               its stream, come before the catalogue's codec and bitrate.
  * @attr {boolean} favorite    - True when in Favorites; drives the star fill.
  * @attr {boolean} in-library  - True when in My Live Radio: no plus, and the
  *                               "more" actions offer to remove it.
@@ -37,6 +39,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { coverUrl } from '../utils-lit.js';
+import { resolutionLabel } from '../../player-utils.js';
 import { iconStar, iconStarFilled, iconPlus, iconEllipsis } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow, SINGLE } from '../../core/SwipeToDismissController.js';
 import '../atoms/ag-library-cover.js';
@@ -163,8 +166,14 @@ export class AgRadioCard extends LitElement {
         const s = this.station;
         if (!s) return nothing;
 
-        const bitrate = s.bitrate ? `${s.bitrate} kbps` : '';
-        const meta    = [s.country, bitrate].filter(Boolean).join(' · ');
+        // The format read in the station's own stream comes first: the catalogue lists
+        // FLAC, Vorbis and Opus alike as OGG (GET /radio/search, verified_*). A lossless
+        // stream shows its resolution, not the catalogue's bitrate — only what the station
+        // announces: Naim Jazz announces 128 kbps for a 16-bit FLAC stream.
+        const codec   = s.verified_codec || s.codec;
+        const quality = resolutionLabel(s.verified_bits, s.verified_rate_hz)
+            || (s.bitrate ? `${s.bitrate} kbps` : '');
+        const meta    = [s.country, quality].filter(Boolean).join(' · ');
         // Proxy the favicon through the backend cover endpoint — bypasses
         // the strict ``img-src`` CSP (radio favicons live on arbitrary hosts)
         // and re-uses the existing cover cache.
@@ -198,8 +207,8 @@ export class AgRadioCard extends LitElement {
                         ${meta ? html`<span class="lib-radio-meta">${meta}</span>` : nothing}
                     </div>
                     <div class="lib-radio-card-actions">
-                        ${s.codec
-                            ? html`<ag-connector-badge .connector=${s.codec.toLowerCase()}></ag-connector-badge>`
+                        ${codec
+                            ? html`<ag-connector-badge .connector=${codec.toLowerCase()}></ag-connector-badge>`
                             : nothing}
                         ${this.inLibrary ? nothing : html`
                             <button class="lib-radio-lib"
