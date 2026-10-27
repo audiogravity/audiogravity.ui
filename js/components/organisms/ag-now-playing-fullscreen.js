@@ -18,6 +18,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
+import { styleMap } from 'lit/directives/style-map.js';
 import { apiGet, apiPost } from '../../api.js';
 import '../molecules/ag-sleep-timer.js';
 import '../molecules/ag-playback-controls.js';
@@ -112,6 +113,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._boundTouchStart = this._onTouchStart.bind(this);
         this._boundTouchMove  = this._onTouchMove.bind(this);
         this._boundTouchEnd   = this._onTouchEnd.bind(this);
+        this._boundTouchCancel = this._onTouchCancel.bind(this);
     }
 
     connectedCallback() {
@@ -215,6 +217,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                 this._panelEl.addEventListener('touchstart', this._boundTouchStart, { passive: false });
                 this._panelEl.addEventListener('touchmove',  this._boundTouchMove,  { passive: false });
                 this._panelEl.addEventListener('touchend',   this._boundTouchEnd,   { passive: true });
+                this._panelEl.addEventListener('touchcancel', this._boundTouchCancel, { passive: true });
             }
         });
     }
@@ -234,6 +237,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             this._panelEl.removeEventListener('touchstart', this._boundTouchStart);
             this._panelEl.removeEventListener('touchmove',  this._boundTouchMove);
             this._panelEl.removeEventListener('touchend',   this._boundTouchEnd);
+            this._panelEl.removeEventListener('touchcancel', this._boundTouchCancel);
             this._panelEl = null;
         }
         setTimeout(() => {
@@ -406,6 +410,22 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._state             = state;
         this._setPrimaryCover(pickPrimaryCoverToken(state, { swapped: this._coverSwapped }));
     }
+
+    /**
+     * Drop the entry slide-in once it has played. Left on the panel, its fill (`both`)
+     * kept the keyframe's transform above any inline one: Close with a mouse did not
+     * slide the panel down (measured in Chromium, 2026-10-27), and whatever dropped the
+     * `animation: none` a touch writes played the slide-in again. The class is static in
+     * the template, so Lit never puts it back on this panel; a reopened player is a new
+     * panel, and slides in.
+     *
+     * @param {AnimationEvent} e - Bubbled from the panel's children too: theirs are ignored.
+     */
+    _onEnterEnd = (e) => {
+        if (e.target === e.currentTarget && e.animationName === 'npfsSlideIn') {
+            e.currentTarget.classList.remove('npfs-panel--enter');
+        }
+    };
 
     _toggleCoverSwap = () => {
         const s = this._state;
@@ -759,17 +779,31 @@ export class AgNowPlayingFullscreen extends LitElement {
             }
             this._switchSource(this._sources[newIdx].source_id);
         } else {
-            // Snap back from any incomplete or cancelled gesture.
-            const panel = this._panelEl ?? this.querySelector('.npfs-panel');
-            if (panel) {
-                panel.style.transition   = 'transform 0.2s ease, border-radius 0.2s ease, opacity 0.2s ease';
-                panel.style.transform    = 'translateX(0) translateY(0) scale(1)';
-                panel.style.borderRadius = '';
-                panel.style.opacity      = '';
-                panel.style.willChange   = '';
-            }
+            this._snapBack();
         }
         this._gestureType = null;
+    }
+
+    /**
+     * The system took the touch over — a call, Control Center, the app sent to the
+     * background: no touchend follows, and the panel stayed where the finger had
+     * dragged it. Put it back; a cancelled drag closes nothing, however far it went.
+     */
+    _onTouchCancel() {
+        this._snapBack();
+        this._gestureType = null;
+    }
+
+    /** Snap the panel back from any incomplete or cancelled gesture. */
+    _snapBack() {
+        const panel = this._panelEl ?? this.querySelector('.npfs-panel');
+        if (panel) {
+            panel.style.transition   = 'transform 0.2s ease, border-radius 0.2s ease, opacity 0.2s ease';
+            panel.style.transform    = 'translateX(0) translateY(0) scale(1)';
+            panel.style.borderRadius = '';
+            panel.style.opacity      = '';
+            panel.style.willChange   = '';
+        }
     }
 
     // ------------------------------------------------------------------
@@ -1078,12 +1112,15 @@ export class AgNowPlayingFullscreen extends LitElement {
 
         const s = this._state;
 
-        const bgStyle = this._bgColor
-            ? `--npfs-bg: ${this._bgColor}`
-            : '';
+        // The tint is set as its own property, never as the whole attribute: the
+        // swipe handlers write this panel's inline style too. A string here rewrote
+        // the attribute at each new tint and dropped the `animation: none` a touch
+        // had set, so the entry slide-in played again — tapping the inset cover
+        // threw the panel off-screen and back (Chromium, touch emulated, 2026-10-27).
+        const bgStyle = styleMap(this._bgColor ? { '--npfs-bg': this._bgColor } : {});
 
         return html`
-            <div class="npfs-panel npfs-panel--enter" style=${bgStyle}>
+            <div class="npfs-panel npfs-panel--enter" style=${bgStyle} @animationend=${this._onEnterEnd}>
                 <div class="npfs-header">
                     <button class="npfs-back" @click=${() => this._closePlayer()} aria-label="Close player">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"

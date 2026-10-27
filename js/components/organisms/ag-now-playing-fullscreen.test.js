@@ -1265,6 +1265,126 @@ describe('AgNowPlayingFullscreen — follows the box\'s licence', () => {
 });
 
 /**
+ * A touch on the panel writes its inline style (the swipe handlers: `animation: none`, a
+ * transition, a transform), and so does the tint the cover gives the background. Tapping
+ * a station's inset cover changes the tint: bound as the whole attribute, it wiped what
+ * the touch had written, and the entry slide-in played again — the panel left the screen
+ * and came back (measured in Chromium, touch emulated, 2026-10-27). The slide-in also
+ * stayed on the panel once played, its fill above any inline transform, and a drag the
+ * system cancelled left the panel where the finger had taken it (code review, same day).
+ * Built for real: the touches go through the listeners _openPlayer attaches. The inset
+ * cover is drawn only with a core to address (coverUrl): its click handler is run instead.
+ */
+describe('AgNowPlayingFullscreen — the panel stays in place once open', () => {
+    const TRACK = 'mbs:Wyatt:Youtube (2014)';
+    const STATION = 'url:http://station.example/logo.png';
+    const RADIO = {
+        source_id: 'src_mpd', control_id: 'src_mpd', origin: 'radio', live: true,
+        title: 'Youtube (2014)', artist: 'Wyatt', cover_token: TRACK, station_logo_token: STATION,
+        playing: true, playback_status: 'Playing', played_on: 'local',
+        sources: [{ source_id: 'src_mpd', playing: true }],
+    };
+    let el;
+
+    /** A touch event at height `y`, shaped as the panel's listeners read it. */
+    function touch(target, type, y) {
+        const list = type === 'touchend' || type === 'touchcancel' ? 'changedTouches' : 'touches';
+        target.dispatchEvent(Object.assign(new Event(type, { bubbles: true, cancelable: true }),
+            { [list]: [{ clientX: 40, clientY: y }] }));
+    }
+
+    /** A finger put down on `target` and lifted where it was, as a tap sends it. */
+    const tap = (target) => { touch(target, 'touchstart', 40); touch(target, 'touchend', 40); };
+
+    /** An animation's end, bubbling from `target`. */
+    const animationEnd = (target, animationName) => target.dispatchEvent(
+        Object.assign(new Event('animationend', { bubbles: true }), { animationName }));
+
+    /** The panel's inline properties the swipe handlers write. */
+    const touchStyle = (panel) => ['animation', 'transition', 'transform']
+        .map((name) => panel.style.getPropertyValue(name));
+
+    beforeEach(async () => {
+        el = document.createElement('ag-now-playing-fullscreen');
+        el._connectSse = () => {};      // no live state here: the states are applied by hand
+        // The tints the covers would give (jsdom draws no canvas).
+        el._tintByToken.set(TRACK, 'rgb(200 20 10)');
+        el._tintByToken.set(STATION, 'rgb(10 40 200)');
+        document.body.append(el);
+        el._openPlayer('src_mpd');
+        el._applyState({ ...RADIO });
+        await el.updateComplete;
+    });
+
+    afterEach(() => {
+        el.remove();
+        document.body.classList.remove('npfs-open');
+    });
+
+    it('does not play the entry slide-in again when the inset cover swaps the covers', async () => {
+        const panel = el.querySelector('.npfs-panel');
+        tap(el.querySelector('.npfs-cover'));
+        const written = touchStyle(panel);
+        expect(written[0]).toBe('none');
+        el._toggleCoverSwap();          // what the inset cover's click runs
+        await el.updateComplete;
+        expect(el._coverSwapped).toBe(true);
+        expect(el.querySelector('.npfs-panel')).toBe(panel);
+        expect(panel.style.getPropertyValue('--npfs-bg')).toBe('rgb(10 40 200)');
+        expect(touchStyle(panel)).toEqual(written);
+    });
+
+    it('does not either when a new track brings another cover after a touch', async () => {
+        const panel = el.querySelector('.npfs-panel');
+        tap(el.querySelector('.npfs-title'));
+        const written = touchStyle(panel);
+        el._tintByToken.set('mbs:Other:Song', 'rgb(10 200 40)');
+        el._applyState({ ...RADIO, title: 'Song', artist: 'Other', cover_token: 'mbs:Other:Song' });
+        await el.updateComplete;
+        expect(panel.style.getPropertyValue('--npfs-bg')).toBe('rgb(10 200 40)');
+        expect(touchStyle(panel)).toEqual(written);
+    });
+
+    it('still tints the panel from its cover, and drops the tint for another source', async () => {
+        const panel = el.querySelector('.npfs-panel');
+        expect(panel.style.getPropertyValue('--npfs-bg')).toBe('rgb(200 20 10)');
+        el._switchSource('src_airplay');
+        await el.updateComplete;
+        expect(panel.style.getPropertyValue('--npfs-bg')).toBe('');
+    });
+
+    it('drops the entry slide-in once played, and a new render does not bring it back', async () => {
+        const panel = el.querySelector('.npfs-panel');
+        expect(panel.classList.contains('npfs-panel--enter')).toBe(true);
+        animationEnd(panel, 'npfsSlideIn');
+        expect(panel.classList.contains('npfs-panel--enter')).toBe(false);
+        el._applyState({ ...RADIO, title: 'Song', artist: 'Other' });
+        await el.updateComplete;
+        expect(el.querySelector('.npfs-panel')).toBe(panel);
+        expect(panel.classList.contains('npfs-panel--enter')).toBe(false);
+    });
+
+    it("keeps it at another animation's end: one inside the panel, or another name", () => {
+        const panel = el.querySelector('.npfs-panel');
+        animationEnd(el.querySelector('.npfs-header'), 'npfsSlideIn');
+        animationEnd(panel, 'pulse');
+        expect(panel.classList.contains('npfs-panel--enter')).toBe(true);
+    });
+
+    it('puts the panel back when the system cancels a drag, and closes nothing', () => {
+        const panel = el.querySelector('.npfs-panel');
+        touch(panel, 'touchstart', 300);
+        touch(panel, 'touchmove', 520);   // 220 px down: released here, it would close
+        expect(panel.style.transform).toContain('translateY(220px)');
+        touch(panel, 'touchcancel', 520);
+        expect(panel.style.transform).toBe('translateX(0) translateY(0) scale(1)');
+        expect(panel.style.opacity).toBe('');
+        expect(panel.style.borderRadius).toBe('');
+        expect(el._open).toBe(true);
+    });
+});
+
+/**
  * The volume slider or the DSD padlock: decided by the shared helpers of player-utils,
  * which read whether the core says the volume acts on DSD (`volume_on_dsd`) — on a box
  * where MPD turns DSD into PCM before its volume, the slider stays. The mini player
