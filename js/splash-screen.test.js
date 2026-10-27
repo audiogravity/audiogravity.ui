@@ -74,8 +74,9 @@ describe('how the splash screen moves', () => {
     });
 
     it('keeps moving with the app\'s Animations setting off — the user\'s choice', () => {
-        // body.no-animations * shortens every animation with !important; the id outweighs it.
-        const body = cssRuleBody(CSS, 'body.no-animations #ag-splash-screen *');
+        // body.no-animations * shortens every animation with !important; the id outweighs it —
+        // for a ::before too, which Halloween draws its bat with.
+        const body = cssRuleBody(CSS, 'body.no-animations #ag-splash-screen *,\nbody.no-animations #ag-splash-screen *::before');
         expect(body).toMatch(/animation-duration:\s*var\(--splash-duration[^)]*\)\s*!important/);
         expect(body).toMatch(/animation-delay:\s*var\(--splash-delay[^)]*\)\s*!important/);
         expect(body).toMatch(/animation-iteration-count:\s*var\(--splash-count[^)]*\)\s*!important/);

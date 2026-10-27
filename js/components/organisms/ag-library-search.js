@@ -420,7 +420,7 @@ export class AgLibrarySearch extends LitElement {
             ` : nothing}
 
             ${!_loading && !_error && !hasResults && asked ? html`
-                <div class="lib-empty">
+                <div class="lib-empty ag-hw-haunt">
                     ${_query ? `No results for "${_query}"` : 'No results for those criteria'}
                 </div>
             ` : nothing}

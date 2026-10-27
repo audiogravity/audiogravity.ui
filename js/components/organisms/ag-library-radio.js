@@ -4,7 +4,9 @@
  *   - My Live Radio — user-curated collection (custom stations + saved RBI hits).
  *                     Default sub-tab; hosts the "Add custom station" form.
  *   - Favorites     — starred subset, can include stations not in the library.
- *   - Search        — debounced query box + country / genre / lossless filters.
+ *   - Search        — debounced query box + country / genre / lossless filters. On
+ *                     31 October, a Halloween button above them and the Halloween genre
+ *                     among them (HalloweenController).
  *
  * Two orthogonal membership sets — ``_libraryUuids`` and ``_favoriteUuids`` —
  * are loaded on mount so every card across the three sub-tabs reflects its
@@ -27,13 +29,15 @@
  * @dependency css/components/library-radio.css
  */
 import { LitElement, html, nothing } from 'lit';
+import { live } from 'lit/directives/live.js';
 import {
     radioSearch,
     radioLibrary, radioAddToLibrary, radioAddCustomStation, radioRemoveFromLibrary,
     radioFavorites, radioAddFavorite, radioRemoveFavorite,
     radioEditStation, radioPlay,
 } from '../../radio-api.js';
-import { RADIO_COUNTRIES, RADIO_GENRES } from '../library-constants.js';
+import { RADIO_COUNTRIES, RADIO_GENRES, RADIO_HALLOWEEN_GENRE } from '../library-constants.js';
+import { HalloweenController } from '../../core/HalloweenController.js';
 import { catalogueErrorMessage } from '../utils-lit.js';
 import { confirmRemoval } from '../../ui-helpers.js';
 import '../molecules/ag-radio-card.js';
@@ -90,6 +94,7 @@ export class AgLibraryRadio extends LitElement {
         this._customForm     = { title: '', url: '', image_url: '', genre: '' };
         this._customSaving   = false;
         this._customEditUuid = null;
+        this._halloween = new HalloweenController(this);
     }
 
     connectedCallback() {
@@ -224,6 +229,19 @@ export class AgLibraryRadio extends LitElement {
 
     _onGenreChange = (e) => {
         this._searchGenre = e.target.value;
+        this._scheduleSearch(/* immediate */ true);
+    };
+
+    /**
+     * The Halloween button: every station tagged halloween, and only that — the query, the
+     * country and "Lossless only" are cleared, since any of them would leave few or none (the
+     * 13 found on 2026-10-27 were all MP3 or AAC).
+     */
+    _onHalloweenStations = () => {
+        this._searchQuery    = '';
+        this._searchCountry  = '';
+        this._searchLossless = false;
+        this._searchGenre    = RADIO_HALLOWEEN_GENRE.tag;
         this._scheduleSearch(/* immediate */ true);
     };
 
@@ -503,8 +521,20 @@ export class AgLibraryRadio extends LitElement {
     }
 
     _renderSearchControls() {
+        // The Halloween genre on its day, and while it is still the one chosen after midnight.
+        // The two lists' value follows the search, live: an option once picked by hand ignores
+        // `selected` from then on, and the Halloween button resets both (code review, 2026-10-27:
+        // France, All countries, Germany, then the button — the list still read Germany while the
+        // search ran worldwide). `selected` stays for the first drawing, before the options exist.
+        const halloween = this._halloween.on;
+        const genres = halloween || this._searchGenre === RADIO_HALLOWEEN_GENRE.tag
+            ? [...RADIO_GENRES, RADIO_HALLOWEEN_GENRE] : RADIO_GENRES;
         return html`
             <div class="lib-radio-search-wrap">
+                ${halloween ? html`
+                    <button class="action-btn compact lib-radio-halloween" type="button"
+                            @click=${this._onHalloweenStations}>${RADIO_HALLOWEEN_GENRE.label}</button>
+                ` : nothing}
                 <input
                     class="form-control form-control--raised lib-radio-search-input"
                     type="search"
@@ -513,13 +543,13 @@ export class AgLibraryRadio extends LitElement {
                     @input=${this._onSearchInput}
                 />
                 <div class="lib-radio-filters">
-                    <select class="lib-radio-filter" @change=${this._onCountryChange}>
+                    <select class="lib-radio-filter" .value=${live(this._searchCountry)} @change=${this._onCountryChange}>
                         ${RADIO_COUNTRIES.map(c => html`
                             <option value=${c.code} ?selected=${c.code === this._searchCountry}>${c.label}</option>
                         `)}
                     </select>
-                    <select class="lib-radio-filter" @change=${this._onGenreChange}>
-                        ${RADIO_GENRES.map(g => html`
+                    <select class="lib-radio-filter" .value=${live(this._searchGenre)} @change=${this._onGenreChange}>
+                        ${genres.map(g => html`
                             <option value=${g.tag} ?selected=${g.tag === this._searchGenre}>${g.label}</option>
                         `)}
                     </select>
@@ -546,7 +576,8 @@ export class AgLibraryRadio extends LitElement {
             return html`<div class="lib-radio-empty">${this._error}</div>`;
         }
         if (this._stations.length === 0) {
-            return html`<div class="lib-radio-empty">${this._emptyMessage()}</div>`;
+            // An empty list haunted on Halloween; not Search's prompt to type or pick.
+            return html`<div class="lib-radio-empty ${this._view === 'search' ? '' : 'ag-hw-haunt'}">${this._emptyMessage()}</div>`;
         }
         // Edit is available on any saved station (RBI or custom) — the user
         // can rename / fix logo / paste a better stream URL. Hidden on Search

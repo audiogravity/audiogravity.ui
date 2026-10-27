@@ -14,7 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocked so the component module can be imported without a DOM mount: the tests
 // below drive one handler on a bare instance, as ag-library-page.test.js does.
 vi.mock('lit', () => ({
-    LitElement: class {},
+    // addController: the component holds a HalloweenController, whose own tests cover it.
+    LitElement: class { addController() {} },
     html: (strings, ...values) => ({ strings, values }),
     svg: (strings, ...values) => ({ strings, values }),
     nothing: null,
@@ -31,10 +32,15 @@ vi.mock('../molecules/ag-radio-card.js', () => ({}));
 // common.js), which redirects when imported outside a signed-in page. Neither is
 // touched by the handler under test.
 vi.mock('../utils-lit.js', () => ({ catalogueErrorMessage: () => 'error' }));
-vi.mock('../library-constants.js', () => ({ RADIO_COUNTRIES: [], RADIO_GENRES: [] }));
+vi.mock('../library-constants.js', () => ({
+    RADIO_COUNTRIES: [],
+    RADIO_GENRES: [{ tag: '', label: 'All genres' }, { tag: 'jazz', label: 'Jazz' }],
+    RADIO_HALLOWEEN_GENRE: { tag: 'halloween', label: '🎃 Halloween' },
+}));
 // The dialog itself is covered in ui-helpers.test.js; here only the answer matters.
 vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false) }));
 import { readFileSync } from 'node:fs';
+import { live } from 'lit/directives/live.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -623,5 +629,73 @@ describe('the lossless filter', () => {
         expect(JSON.stringify(el._renderBody())).toContain("Checking each station's stream");
         el._searchLossless = false;
         expect(JSON.stringify(el._renderBody())).toContain('Loading');
+    });
+});
+
+describe('the Halloween stations, on 31 October', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    /** A Search tab, on Halloween or not (what HalloweenController would say). */
+    async function searchTab(halloween) {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const el = new AgLibraryRadio();
+        el._view = 'search';
+        el._halloween.on = halloween;
+        return el;
+    }
+
+    it('offers neither the button nor the genre on another day', async () => {
+        const controls = JSON.stringify((await searchTab(false))._renderSearchControls());
+        expect(controls).not.toContain('lib-radio-halloween');
+        expect(controls).not.toContain('halloween');
+    });
+
+    it('offers a button above the search, and the genre among the others, on the day', async () => {
+        const template = (await searchTab(true))._renderSearchControls();
+        const controls = JSON.stringify(template);
+        expect(controls).toContain('action-btn compact lib-radio-halloween');
+        // The label twice: on the button, and on the genre's option.
+        expect(controls.split('🎃 Halloween')).toHaveLength(3);
+        // The template's first slot, the search field after it: the button comes first.
+        expect(JSON.stringify(template.values[0])).toContain('lib-radio-halloween');
+        expect(template.strings[1]).toContain('lib-radio-search-input');
+    });
+
+    it('lists every station tagged halloween, whatever was typed or chosen before', async () => {
+        const { radioSearch } = await import('../../radio-api.js');
+        radioSearch.mockResolvedValue({ stations: [{ uuid: 'a', name: 'HalloweenRadio.com Cauldron' }] });
+        const el = await searchTab(true);
+        el._searchQuery = 'jazz';
+        el._searchCountry = 'FR';
+        el._searchLossless = true;
+        el._onHalloweenStations();
+        await vi.waitFor(() => expect(el._loading).toBe(false));
+        expect(radioSearch).toHaveBeenCalledTimes(1);
+        const asked = radioSearch.mock.calls[0][0];
+        expect(asked.tag).toBe('halloween');
+        expect(asked.q).toBeUndefined();
+        expect(asked.country_code).toBeUndefined();
+        expect(asked.lossless_only).toBeUndefined();
+        expect(el._stations).toHaveLength(1);
+        // The fields say so too: the query emptied, the genre the one chosen.
+        expect(el._searchQuery).toBe('');
+        expect(el._searchGenre).toBe('halloween');
+        // And the two lists show it whatever was picked by hand before: their value is bound
+        // to the search, live — an option once picked ignores `selected` (code review, 2026-10-27).
+        const template = el._renderSearchControls();
+        const lists = template.strings
+            .map((part, i) => (part.trimEnd().endsWith('<select class="lib-radio-filter" .value=') ? template.values[i] : null))
+            .filter(Boolean);
+        expect(lists.map((binding) => binding.values[0])).toEqual(['', 'halloween']);
+        for (const binding of lists) expect(binding._$litDirective$).toBe(live('')._$litDirective$);
+    });
+
+    it('keeps the genre in the list while it is still chosen after midnight', async () => {
+        const el = await searchTab(false);
+        el._searchGenre = 'halloween';
+        const controls = JSON.stringify(el._renderSearchControls());
+        // The option's label, once: the button is gone with the day.
+        expect(controls.split('🎃 Halloween')).toHaveLength(2);
+        expect(controls).not.toContain('lib-radio-halloween');
     });
 });

@@ -224,7 +224,7 @@ export class AgLibraryStats extends LitElement {
         const s = this._summary;
         if (!s) return this._error ? html`<p class="lib-stats-hint">${this._error}</p>` : nothing;
         if (!s.listens && !s.recent?.length) {
-            return html`<p class="lib-stats-empty">Nothing recorded yet. A listen counts once it has played for 30 seconds.</p>`;
+            return html`<p class="lib-stats-empty ag-hw-haunt">Nothing recorded yet. A listen counts once it has played for 30 seconds.</p>`;
         }
         const caption = s.period === 'all'
             ? (s.since ? `since ${fmtIsoDate(s.since)}` : '')
