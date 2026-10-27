@@ -2,6 +2,7 @@ import { svg } from 'lit';
 import { cache } from 'lit/directives/cache.js';
 import { guard } from 'lit/directives/guard.js';
 import { resolutionLabel } from '../../player-utils.js';
+import { bufferBand, latencyBand } from '../../core/link-bands.js';
 
 /**
  * @module AgPipelineLink
@@ -108,37 +109,18 @@ export const renderPipelineLink = (link, sourceNode) => {
     const hasLatencyInfo = latency_us !== undefined && latency_us !== null;
     const hasBufferInfo = buffer_fill_percent !== undefined && buffer_fill_percent !== null;
 
-    // Color-code latency based on quality (using CSS histogram variables)
-    // BACKLOG: these are bar colours, written here as text — audiogravity.ops/BACKLOG.md,
-    // "L'onglet Pipeline écrit la latence des liaisons dans les couleurs de l'histogramme".
-    let latencyColor = 'var(--histogram-excellent)'; // < 50µs
-    let latencyQuality = 'excellent';
-    if (latency_us) {
-        if (latency_us >= 500) {
-            latencyColor = 'var(--histogram-critical)'; // >= 500µs
-            latencyQuality = 'critical';
-        } else if (latency_us >= 200) {
-            latencyColor = 'var(--histogram-average)'; // 200-500µs
-            latencyQuality = 'average';
-        } else if (latency_us >= 50) {
-            latencyColor = 'var(--histogram-good)'; // 50-200µs
-            latencyQuality = 'good';
-        }
-    }
+    // The latency is written as text: a text colour of its band (css/themes.css). It took
+    // the histogram's bar colours, 2.0 to 3.8:1 on its pill in every light theme (measured
+    // 2026-10-26); Minimal writes the bands under 200 µs in grey and ink, as its histogram
+    // draws them (user's choice the same day).
+    const latencyColor = `var(--latency-text-${latencyBand(latency_us)})`;
 
     // Format latency for display
     const latencyText = latency_us ? `${latency_us.toFixed(0)}µs` : '';
 
-    // Color-code buffer fill
-    // Drawn as the fill of a <text>: a reading variant, not the line colour.
-    let bufferColor = 'var(--color-success-text)'; // Healthy < 80%
-    if (buffer_fill_percent) {
-        if (buffer_fill_percent >= 90) {
-            bufferColor = 'var(--color-error-text)'; // Critical >= 90%
-        } else if (buffer_fill_percent >= 80) {
-            bufferColor = 'var(--color-warning-text)'; // Warning >= 80%
-        }
-    }
+    // The buffer fill, written as text too: a text colour of its band. At rest it is a figure
+    // at rest, which Minimal writes in ink beside the latency (UI guidelines rule 10).
+    const bufferColor = `var(--buffer-text-${bufferBand(buffer_fill_percent)})`;
 
     const bufferText = (buffer_fill_percent !== undefined && buffer_fill_percent !== null) ? `${buffer_fill_percent.toFixed(0)}%` : '';
 

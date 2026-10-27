@@ -18,7 +18,10 @@
  *
  * The latency test's histogram follows the same rule (user's choice, 2026-10-26): under
  * 200 µs its bars are a figure at rest, which Minimal draws grey, then ink; above, they keep
- * their colour. Its roles are read in JS, not by a stylesheet rule.
+ * their colour. Its roles are read in JS, not by a stylesheet rule. So do the figures the
+ * Pipeline writes on a link, in its bubble and its legend: the latency, in the text colour
+ * of its band — grey, then ink in Minimal, as the histogram — and the buffer fill, in ink
+ * at rest in Minimal. They wrote the bars' colours: 2.0 to 3.8:1 in every light theme.
  *
  * Covers:
  * 1. each rule reads its role, whose default is the semantic colour it had
@@ -27,6 +30,8 @@
  *    three cards, the plain actions as .action-tag, and UPDATE ALL as an orange action
  * 4. the latency histogram reads its roles, and Minimal's text colours they resolve to are
  *    #rrggbb: the component appends an alpha to them
+ * 5. the Pipeline writes a link's latency and buffer fill in their text roles, never in a
+ *    bar colour, and its legend gives the bands in their colours without naming one
  */
 import { describe, it, expect } from 'vitest';
 import { readStylesheet, cssRules, cssRuleBody, appSources, openingTags } from './test-utils.js';
@@ -61,6 +66,8 @@ const MINIMAL = {
     '--critical-mark': '--text-primary', '--critical-mark-text': '--text-primary', '--critical-mark-bg': '--color-neutral-bg',
     '--installed-mark': '--text-primary',
     '--latency-bar-excellent': '--text-tertiary', '--latency-bar-good': '--text-primary',
+    '--latency-text-excellent': '--text-secondary', '--latency-text-good': '--text-primary',
+    '--buffer-text-healthy': '--text-primary',
 };
 
 /** The roles read with a fallback per variant: a badge's action comes in green and in orange. */
@@ -122,6 +129,32 @@ describe('colour kept for states', () => {
         }
         // Each theme: four histogram colours in each mode; Minimal: two text colours in each.
         expect(seen).toBe(3 * 2 * 4 + 2 * 2);
+    });
+
+    it('— a latency and a buffer fill written as text, on the Pipeline — read their text roles, never a bar colour', () => {
+        // The Pipeline wrote it in --histogram-*: 2.0 to 3.8:1 on its pill in every light
+        // theme (measured 2026-10-26).
+        const defaults = cssRules(readStylesheet('css', 'themes.css')).find(({ selectors }) => selectors.join() === ':root,body').body;
+        for (const [band, colour] of [['excellent', 'success'], ['good', 'info'], ['average', 'warning'], ['critical', 'error']]) {
+            expect(defaults, band).toMatch(new RegExp(`--latency-text-${band}:\\s*var\\(--color-${colour}-text\\);`));
+        }
+        for (const [band, colour] of [['healthy', 'success'], ['warning', 'warning'], ['critical', 'error']]) {
+            expect(defaults, band).toMatch(new RegExp(`--buffer-text-${band}:\\s*var\\(--color-${colour}-text\\);`));
+        }
+        for (const file of [['js', 'components', 'atoms', 'ag-pipeline-link.js'], ['js', 'components', 'organisms', 'ag-audio-pipeline.js']]) {
+            const source = readStylesheet(...file);
+            expect(source, file.join('/')).toContain('var(--latency-text-');
+            expect(source, file.join('/')).toContain('var(--buffer-text-${bufferBand(');
+            expect(source, file.join('/')).not.toContain('--histogram-');
+        }
+        // The legend gives the bands, each in its colour, and names none: "Green <50µs ·
+        // Blue …" was false in Minimal.
+        const pipeline = readStylesheet('js', 'components', 'organisms', 'ag-audio-pipeline.js');
+        expect(pipeline).not.toMatch(/\b(Green|Blue|Yellow|Red)\b[^<\n]*µs/);
+        for (const band of ['excellent', 'good', 'average', 'critical']) {
+            expect(pipeline, band).toMatch(new RegExp(`<strong style="color: var\\(--latency-text-${band}\\);">`));
+        }
+        expect(pipeline).toContain('<strong style="color: var(--buffer-text-healthy);">XX%</strong>');
     });
 
     it('is left to its semantic colour by every other theme', () => {
