@@ -24,6 +24,7 @@ import { LitElement, html } from 'lit';
 import Chart from 'chart.js/auto';
 import { apiPost } from '../../api.js';
 import { saveNetworkResult, getTestHistory, clearTestHistory } from '../../test-history.js';
+import { fmtDateTime } from '../utils-lit.js';
 import { iconHistory } from '../../ag-icons.js';
 import '../atoms/ag-stat-box.js';
 
@@ -281,10 +282,6 @@ export class AgNetworkTest extends LitElement {
     _renderHistory() {
         if (!this._testHistory?.length) return html``;
         const fmt = (v, dec = 2) => (v !== undefined && v !== null) ? Number(v).toFixed(dec) : '--';
-        const fmtDate = ts => {
-            try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-            catch { return ts; }
-        };
         return html`
             <div class="test-history">
                 <div class="test-history-header" @click=${() => { this._historyOpen = !this._historyOpen; }}>
@@ -321,7 +318,7 @@ export class AgNetworkTest extends LitElement {
                             <tbody>
                                 ${this._testHistory.map(e => html`
                                     <tr>
-                                        <td>${fmtDate(e.timestamp)}</td>
+                                        <td>${fmtDateTime(e.timestamp)}</td>
                                         <td><span class="test-history-badge">${e.type}</span></td>
                                         <td>${e.target ?? e.server ?? '--'}</td>
                                         <td>${fmt(e.min)}</td>

@@ -26,6 +26,15 @@ export const API_BASE_URL = AG_CONFIG.apiUrl || (isDevelopment
 // Do not hand-edit; a guard test (js/version.test.js) fails if it drifts.
 export const UI_VERSION = '1.0.0-dev';
 
+// The day and month names the interface writes, in its own language: British English, the
+// day before the month (`Mon 12 Oct`, `27 Oct 2026`; user's choice, 2026-10-27). Asked of
+// the browser, they came in the phone's language — `lun.`, `28 sept.` beside English words
+// on a phone set to French (measured in Chromium, 2026-10-27). Read by utils-lit's
+// fmtDateNames alone. September is `Sept` there, four letters where every other month has
+// three: British usage, as CLDR writes it. A format of digits alone, a date written
+// 19/10/2026 or a time, keeps the browser's conventions.
+export const DATE_NAMES_LOCALE = 'en-GB';
+
 // Theme Registry
 export const THEMES = [
     { value: 'minimal', label: 'Minimal (Classic)', file: 'css/themes/minimal.css' },
