@@ -11,6 +11,7 @@ import { iconMusicNote, iconCrosshair, iconZoomIn, iconZoomOut } from '../../ag-
 import { renderPipelineNode } from '../atoms/ag-pipeline-node.js';
 import { renderPipelineLink } from '../atoms/ag-pipeline-link.js';
 import { resolutionLabel } from '../../player-utils.js';
+import { BUFFER_BANDS, LATENCY_BANDS, bufferBand, latencyBand } from '../../core/link-bands.js';
 
 /**
  * Whether a node of the pipeline is a player that is playing right now.
@@ -1397,16 +1398,12 @@ export class AgAudioPipeline extends LitElement {
         const typeLabel = { alsa: 'ALSA', physical: 'Physical', software: 'Software', internal: 'Internal', network: 'Network', control: 'Control' };
         const title = `${typeLabel[link.link_type] || link.link_type}${link.connector ? ' · ' + link.connector.toUpperCase() : ''}`;
 
-        let latencyColor = 'var(--histogram-excellent)';
-        if (link.latency_us >= 500) latencyColor = 'var(--histogram-critical)';
-        else if (link.latency_us >= 200) latencyColor = 'var(--histogram-average)';
-        else if (link.latency_us >= 50) latencyColor = 'var(--histogram-good)';
+        // Written as text: its band's text colour, as on the link (ag-pipeline-link.js).
+        const latencyColor = `var(--latency-text-${latencyBand(link.latency_us)})`;
 
         // Reading variants: this value is drawn as text, and the base tokens are
-        // 1.7:1 to 3.8:1 on a light theme.
-        let bufferColor = 'var(--color-success-text)';
-        if (link.buffer_fill_percent >= 90) bufferColor = 'var(--color-error-text)';
-        else if (link.buffer_fill_percent >= 80) bufferColor = 'var(--color-warning-text)';
+        // 1.7:1 to 3.8:1 on a light theme. Its band's text colour, as on the link.
+        const bufferColor = `var(--buffer-text-${bufferBand(link.buffer_fill_percent)})`;
 
         return html`
             <div class="link-bubble" style="left: ${popX}px; top: ${popY}px;"
@@ -1960,9 +1957,9 @@ export class AgAudioPipeline extends LitElement {
                             <div class="legend-section-title">Active Link Badges</div>
                             <div style="font-size: var(--font-size-xxs); color: var(--text-secondary); line-height: 1.6;">
                                 • <strong style="color: var(--color-success-text);">32bit / 96kHz</strong> — sample format on the link<br>
-                                • <strong style="color: var(--histogram-excellent);">XXXµs</strong> — ALSA latency<br>
-                                &nbsp;&nbsp;Green &lt;50µs · Blue 50–200µs · Yellow 200–500µs · Red ≥500µs<br>
-                                • <strong style="color: var(--color-success-text);">XX%</strong> — buffer fill (warning ≥80% · critical ≥90%)<br>
+                                • <strong style="color: var(--latency-text-excellent);">XXXµs</strong> — ALSA latency<br>
+                                &nbsp;&nbsp;<strong style="color: var(--latency-text-excellent);">&lt;${LATENCY_BANDS.good}µs</strong> · <strong style="color: var(--latency-text-good);">${LATENCY_BANDS.good}–${LATENCY_BANDS.average}µs</strong> · <strong style="color: var(--latency-text-average);">${LATENCY_BANDS.average}–${LATENCY_BANDS.critical}µs</strong> · <strong style="color: var(--latency-text-critical);">≥${LATENCY_BANDS.critical}µs</strong><br>
+                                • <strong style="color: var(--buffer-text-healthy);">XX%</strong> — buffer fill (warning ≥${BUFFER_BANDS.warning}% · critical ≥${BUFFER_BANDS.critical}%)<br>
                                 • Animated particles — real-time audio flow, speed ∝ sample rate
                             </div>
                         </div>

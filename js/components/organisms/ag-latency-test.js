@@ -23,6 +23,7 @@ import Chart from 'chart.js/auto';
 import { apiGet, apiPost, AgTimerManager, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
 import { saveLatencyResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { iconHistory } from '../../ag-icons.js';
+import { LATENCY_BANDS, latencyBand } from '../../core/link-bands.js';
 import '../atoms/ag-stat-box.js';
 import '../atoms/ag-switch.js';
 
@@ -282,7 +283,7 @@ export class AgLatencyTest extends LitElement {
 
         // The bars under 200 µs read their roles (css/themes.css): a figure at rest, which
         // Minimal draws in its greys, keeping colour for the delays that matter (user's
-        // choice, 2026-10-26). The Pipeline tab's latency labels keep --histogram-*.
+        // choice, 2026-10-26). The Pipeline writes a latency as text, in --latency-text-*.
         const rootStyle = getComputedStyle(document.body);
         const latencyColors = {
             excellent: rootStyle.getPropertyValue('--latency-bar-excellent').trim() || '#22c55e',
@@ -292,10 +293,8 @@ export class AgLatencyTest extends LitElement {
         };
 
         const getLatencyColor = (latencyUs) => {
-            if (latencyUs < 50) return { bg: latencyColors.excellent + 'b3', border: latencyColors.excellent };
-            if (latencyUs < 200) return { bg: latencyColors.good + 'b3', border: latencyColors.good };
-            if (latencyUs < 500) return { bg: latencyColors.average + 'b3', border: latencyColors.average };
-            return { bg: latencyColors.critical + 'b3', border: latencyColors.critical };
+            const colour = latencyColors[latencyBand(latencyUs)];
+            return { bg: colour + 'b3', border: colour };
         };
 
         const backgroundColors = latencyValues.map(val => getLatencyColor(val).bg);
@@ -324,10 +323,10 @@ export class AgLatencyTest extends LitElement {
                             generateLabels: () => {
                                 const textColor = getComputedStyle(document.body).getPropertyValue('--text-primary').trim();
                                 return [
-                                    { text: 'Excellent (< 50 µs)', fillStyle: latencyColors.excellent + 'b3', strokeStyle: latencyColors.excellent, lineWidth: 1, fontColor: textColor },
-                                    { text: 'Good (50-200 µs)', fillStyle: latencyColors.good + 'b3', strokeStyle: latencyColors.good, lineWidth: 1, fontColor: textColor },
-                                    { text: 'Average (200-500 µs)', fillStyle: latencyColors.average + 'b3', strokeStyle: latencyColors.average, lineWidth: 1, fontColor: textColor },
-                                    { text: 'Critical (≥ 500 µs)', fillStyle: latencyColors.critical + 'b3', strokeStyle: latencyColors.critical, lineWidth: 1, fontColor: textColor }
+                                    { text: `Excellent (< ${LATENCY_BANDS.good} µs)`, fillStyle: latencyColors.excellent + 'b3', strokeStyle: latencyColors.excellent, lineWidth: 1, fontColor: textColor },
+                                    { text: `Good (${LATENCY_BANDS.good}-${LATENCY_BANDS.average} µs)`, fillStyle: latencyColors.good + 'b3', strokeStyle: latencyColors.good, lineWidth: 1, fontColor: textColor },
+                                    { text: `Average (${LATENCY_BANDS.average}-${LATENCY_BANDS.critical} µs)`, fillStyle: latencyColors.average + 'b3', strokeStyle: latencyColors.average, lineWidth: 1, fontColor: textColor },
+                                    { text: `Critical (≥ ${LATENCY_BANDS.critical} µs)`, fillStyle: latencyColors.critical + 'b3', strokeStyle: latencyColors.critical, lineWidth: 1, fontColor: textColor }
                                 ];
                             }
                         }

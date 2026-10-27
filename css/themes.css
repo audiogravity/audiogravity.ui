@@ -368,6 +368,19 @@ body {
    --latency-bar-excellent: var(--histogram-excellent); /* its bars under 50 µs */
    --latency-bar-good: var(--histogram-good);           /* and from 50 to 200 µs */
 
+   /* A latency written as text — on a Pipeline link, in its bubble and legend: the reading
+      variant of each band's colour. The bar colours above, written as text, read 2.0 to
+      3.8:1 in every light theme (measured 2026-10-26). */
+   --latency-text-excellent: var(--color-success-text); /* under 50 µs */
+   --latency-text-good: var(--color-info-text);         /* 50 to 200 µs */
+   --latency-text-average: var(--color-warning-text);   /* 200 to 500 µs */
+   --latency-text-critical: var(--color-error-text);    /* 500 µs and over */
+
+   /* Beside it, the buffer fill (js/core/link-bands.js gives the bands). */
+   --buffer-text-healthy: var(--color-success-text);    /* under 80 %: a figure at rest */
+   --buffer-text-warning: var(--color-warning-text);    /* 80 to 90 % */
+   --buffer-text-critical: var(--color-error-text);     /* 90 % and over */
+
    /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
       locked Config tile: one tint, from the brand colour. Not from red: red, orange and
       green carry a meaning that holds only while they stay rare (UI guidelines rule 10),
