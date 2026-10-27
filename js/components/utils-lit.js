@@ -3,7 +3,7 @@
  * @description Shared utility functions for Lit components to avoid duplication.
  */
 import { html, nothing } from 'lit';
-import { API_BASE_URL, API_KEY } from '../core/config.js';
+import { API_BASE_URL, API_KEY, DATE_NAMES_LOCALE } from '../core/config.js';
 import { hasCoreCredentials } from '../core/credentials.js';
 
 /**
@@ -383,9 +383,87 @@ export const formatCpuFrequency = (mhz, slowed = false) => {
 };
 
 /**
+ * A date with its day or month named, in the interface's English (DATE_NAMES_LOCALE) whatever
+ * the browser's language: the one place the interface names a day or a month, every other
+ * date of it written in digits alone (js/date-names.test.js). Date fields only: a time beside
+ * them is fmtTime's, in the browser's conventions — British English would have put an
+ * American browser on a 24-hour clock, and its hourCycle wrote `pm` where the browser
+ * writes `PM` (code review, 2026-10-27; measured in Chromium).
+ *
+ * @param {Date} date - A valid date.
+ * @param {Intl.DateTimeFormatOptions} options - The date fields to write.
+ * @returns {string} e.g. `Mon 12 Oct`, `October 2026`.
+ */
+export function fmtDateNames(date, options) {
+    return date.toLocaleDateString(DATE_NAMES_LOCALE, options);
+}
+
+/**
+ * A time of day in the browser's own conventions: `17:45`, `05:45 PM`.
+ *
+ * @param {Date} date - A valid date.
+ * @returns {string}
+ */
+export function fmtTime(date) {
+    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * How many calendar days lie between a date and now: 0 the same day, 1 the day before — from
+ * midnight to midnight, not in spans of 24 hours, which made a configuration file saved at
+ * 23:50 read "today" at 00:10 (code review, 2026-10-27).
+ *
+ * @param {Date} date - A valid date.
+ * @param {Date} [now] - The present.
+ * @returns {number} Negative for a day to come.
+ */
+export function calendarDaysAgo(date, now = new Date()) {
+    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    return Math.round((startOf(now) - startOf(date)) / 86_400_000);
+}
+
+/**
+ * A moment as the interface writes it: `27 Oct, 17:45`, the year added when it is not this
+ * one's (`27 Oct 2025, 17:45`), the time in the browser's clock. The test histories wrote it
+ * in the browser's language, each with a copy of its own, and formatTimestamp in American
+ * English (`Oct 27, 05:45 PM`), neither with a year.
+ *
+ * @param {string|number|Date|null|undefined} value - An ISO 8601 string, a timestamp or a date.
+ * @param {Date} [now] - The present, for the year.
+ * @returns {string} The date and time; `--` for no date or one that is not a date.
+ */
+export const fmtDateTime = (value, now = new Date()) => {
+    const date = value instanceof Date ? value : new Date(value ?? NaN);
+    if (Number.isNaN(date.getTime())) return '--';   // null and undefined too: `?? NaN`
+    const day = fmtDateNames(date, {
+        day: 'numeric', month: 'short',
+        year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    });
+    return `${day}, ${fmtTime(date)}`;
+};
+
+/**
+ * When a file was last changed, as a configuration card writes it: `today at 17:45`,
+ * `yesterday`, `9d ago` within a month, else `23 Aug 2026` — in calendar days.
+ *
+ * @param {string|null|undefined} iso - The file's modification time, ISO 8601.
+ * @param {Date} [now] - The present.
+ * @returns {string} `--` for no date or one that is not a date.
+ */
+export function fmtModified(iso, now = new Date()) {
+    const date = new Date(iso ?? NaN);
+    if (Number.isNaN(date.getTime())) return '--';
+    const days = calendarDaysAgo(date, now);
+    if (days <= 0) return `today at ${fmtTime(date)}`;
+    if (days === 1) return 'yesterday';
+    if (days < 30) return `${days}d ago`;
+    return fmtDateNames(date, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
  * Format ISO timestamp to relative time or absolute time
  * @param {string} isoString - ISO 8601 timestamp
- * @returns {string} Formatted time (e.g., "Just now", "5m ago", "2h ago")
+ * @returns {string} Formatted time (e.g., "Just now", "5m ago", "2h ago", else `27 Oct, 17:45`)
  */
 export const formatTimestamp = (isoString) => {
     if (!isoString) return '--';
@@ -398,12 +476,7 @@ export const formatTimestamp = (isoString) => {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
 
-    return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    return fmtDateTime(date);
 };
 
 /**

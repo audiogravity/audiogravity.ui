@@ -22,6 +22,7 @@ import { LitElement, html } from 'lit';
 import Chart from 'chart.js/auto';
 import { apiGet, apiPost, AgTimerManager, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
 import { saveLatencyResult, getTestHistory, clearTestHistory } from '../../test-history.js';
+import { fmtDateTime } from '../utils-lit.js';
 import { iconHistory } from '../../ag-icons.js';
 import { LATENCY_BANDS, latencyBand } from '../../core/link-bands.js';
 import '../atoms/ag-stat-box.js';
@@ -368,10 +369,6 @@ export class AgLatencyTest extends LitElement {
     _renderHistory() {
         if (!this._testHistory?.length) return html``;
         const fmt = v => (v !== undefined && v !== null) ? Number(v).toFixed(2) : '--';
-        const fmtDate = ts => {
-            try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-            catch { return ts; }
-        };
         return html`
             <div class="test-history">
                 <div class="test-history-header" @click=${() => { this._historyOpen = !this._historyOpen; }}>
@@ -405,7 +402,7 @@ export class AgLatencyTest extends LitElement {
                             <tbody>
                                 ${this._testHistory.map(e => html`
                                     <tr>
-                                        <td>${fmtDate(e.timestamp)}</td>
+                                        <td>${fmtDateTime(e.timestamp)}</td>
                                         <td>${fmt(e.min)}</td>
                                         <td>${fmt(e.avg)}</td>
                                         <td>${fmt(e.max)}</td>

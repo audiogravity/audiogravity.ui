@@ -7,7 +7,7 @@
  * Dates are the box's local days as the core sends them (`YYYY-MM-DD`), read by localDay
  * (utils-lit.js) so that no day moves.
  */
-import { localDay } from './utils-lit.js';
+import { calendarDaysAgo, fmtDateNames, fmtTime, localDay } from './utils-lit.js';
 
 /**
  * A time listened, to the minute: `45 min`, `1 h 05`, `312 h`.
@@ -49,8 +49,8 @@ export function fmtBucket(iso, unit) {
     const day = localDay(iso);
     if (!day) return String(iso || '');
     return unit === 'month'
-        ? day.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-        : day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+        ? fmtDateNames(day, { month: 'long', year: 'numeric' })
+        : fmtDateNames(day, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 /**
@@ -70,14 +70,14 @@ export function bucketLabels(buckets, unit) {
         if (!day) return '';
         if (every) {
             return unit === 'month'
-                ? day.toLocaleDateString(undefined, { month: 'narrow' })
-                : day.toLocaleDateString(undefined, { weekday: 'short' });
+                ? fmtDateNames(day, { month: 'narrow' })
+                : fmtDateNames(day, { weekday: 'short' });
         }
         if (i !== 0 && i !== middle && i !== n - 1) return '';
         // The year in full: "Sep 25" read as a day, the 25th of September.
         return unit === 'month'
-            ? day.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-            : day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+            ? fmtDateNames(day, { month: 'short', year: 'numeric' })
+            : fmtDateNames(day, { day: 'numeric', month: 'short' });
     });
 }
 
@@ -119,7 +119,8 @@ export function heatLevel(seconds, busiest) {
 }
 
 /**
- * The days of the week, Monday first, in the browser's language: `Mon` … `Sun`.
+ * The days of the week, Monday first, in the interface's English (fmtDateNames): `Mon` …
+ * `Sun`, whatever the browser's language.
  *
  * @param {'short'|'long'} [style] - How long a name.
  * @returns {string[]} Seven names.
@@ -127,7 +128,7 @@ export function heatLevel(seconds, busiest) {
 export function weekdayNames(style = 'short') {
     // 5 January 2026 is a Monday.
     return Array.from({ length: 7 }, (_, w) =>
-        new Date(2026, 0, 5 + w).toLocaleDateString(undefined, { weekday: style }));
+        fmtDateNames(new Date(2026, 0, 5 + w), { weekday: style }));
 }
 
 /**
@@ -151,11 +152,10 @@ export function fmtHour(hour) {
 export function fmtWhen(iso, now = new Date()) {
     const at = new Date(iso);
     if (Number.isNaN(at.getTime())) return '';
-    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const days = Math.round((startOf(now) - startOf(at)) / 86_400_000);
-    if (days <= 0) return at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const days = calendarDaysAgo(at, now);
+    if (days <= 0) return fmtTime(at);
     if (days === 1) return 'Yesterday';
-    if (days < 7) return at.toLocaleDateString(undefined, { weekday: 'long' });
-    return at.toLocaleDateString(undefined, { day: 'numeric', month: 'short',
+    if (days < 7) return fmtDateNames(at, { weekday: 'long' });
+    return fmtDateNames(at, { day: 'numeric', month: 'short',
         year: at.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 }

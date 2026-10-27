@@ -45,11 +45,11 @@ describe('the days', () => {
         expect(fmtIsoDate(null)).toBe('');
     });
 
-    it('a bar is read as its day, or its month', () => {
-        expect(fmtBucket('2026-10-12', 'day')).toBe(
-            new Date(2026, 9, 12).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }));
-        expect(fmtBucket('2026-10-01', 'month')).toBe(
-            new Date(2026, 9, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+    it('a bar is read as its day, or its month, in British English whatever the browser', () => {
+        // The browser's language wrote "lun. 12 oct." on a phone set to French; the test
+        // runner's own (en-US) would write "Mon, Oct 12".
+        expect(fmtBucket('2026-10-12', 'day')).toBe('Mon 12 Oct');
+        expect(fmtBucket('2026-10-01', 'month')).toBe('October 2026');
     });
 
     it('labels every bar of a week or a year, three of a month', () => {
@@ -59,6 +59,9 @@ describe('the days', () => {
         const labels = bucketLabels(month, 'day');
         expect(labels.filter(Boolean)).toHaveLength(3);
         expect([labels[0], labels[14], labels[29]].every(Boolean)).toBe(true);
+        const october = Array.from({ length: 31 }, (_, i) => ({ start: `2026-10-${String(i + 1).padStart(2, '0')}` }));
+        expect(bucketLabels(october, 'day').filter(Boolean)).toEqual(['1 Oct', '16 Oct', '31 Oct']);
+        expect(bucketLabels(week, 'day')).toEqual(['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
     });
 
     it('a month of a long history carries its whole year: "Sep 25" read as a day', () => {
@@ -87,12 +90,10 @@ describe('fmtWhen', () => {
         expect(fmtWhen(new Date(2026, 9, 16, 20, 58).toISOString(), now))
             .toBe(new Date(2026, 9, 16, 20, 58).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
         expect(fmtWhen(new Date(2026, 9, 15, 23, 50).toISOString(), now)).toBe('Yesterday');
-        expect(fmtWhen(new Date(2026, 9, 12, 10, 0).toISOString(), now))
-            .toBe(new Date(2026, 9, 12).toLocaleDateString(undefined, { weekday: 'long' }));
-        expect(fmtWhen(new Date(2026, 8, 1, 10, 0).toISOString(), now))
-            .toBe(new Date(2026, 8, 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
-        expect(fmtWhen(new Date(2025, 8, 1, 10, 0).toISOString(), now))
-            .toBe(new Date(2025, 8, 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }));
+        // The day and the month named in British English; a time keeps the browser's digits.
+        expect(fmtWhen(new Date(2026, 9, 12, 10, 0).toISOString(), now)).toBe('Monday');
+        expect(fmtWhen(new Date(2026, 7, 1, 10, 0).toISOString(), now)).toBe('1 Aug');
+        expect(fmtWhen(new Date(2025, 7, 1, 10, 0).toISOString(), now)).toBe('1 Aug 2025');
         expect(fmtWhen('nonsense', now)).toBe('');
     });
 });
@@ -115,9 +116,8 @@ describe('the week', () => {
     it('names its seven days Monday first', () => {
         const short = weekdayNames('short');
         expect(short).toHaveLength(7);
-        expect(short[0]).toBe(new Date(2026, 9, 12).toLocaleDateString(undefined, { weekday: 'short' }));
-        expect(short[6]).toBe(new Date(2026, 9, 18).toLocaleDateString(undefined, { weekday: 'short' }));
-        expect(new Set(weekdayNames('long')).size).toBe(7);
+        expect(short).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+        expect(weekdayNames('long')).toEqual(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     });
 
     it.each([[0, '00:00'], [7, '07:00'], [21, '21:00']])('hour %s reads %s', (hour, expected) => {

@@ -40,19 +40,8 @@ import { isGuest } from '../../auth.js';
 import { downloadTextFile } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';
 import { openLicensePanel } from '../../license-tiers.js';
+import { fmtModified } from '../utils-lit.js';
 import '../atoms/ag-pro-lock.js';
-
-/** Format an ISO 8601 mtime string to a compact locale-aware relative label. */
-const _fmtMtime = (iso) => {
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) return `today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    if (diffDays === 1) return 'yesterday';
-    if (diffDays < 30) return `${diffDays}d ago`;
-    return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
-};
 
 export class AgConfigCard extends LitElement {
     static properties = {
@@ -173,7 +162,7 @@ export class AgConfigCard extends LitElement {
                     ` : nothing}
                     ${this.service.fileMtime ? html`
                         <div class="config-file-mtime">
-                            Modified ${_fmtMtime(this.service.fileMtime)}
+                            Modified ${fmtModified(this.service.fileMtime)}
                         </div>
                     ` : nothing}
                 </div>
