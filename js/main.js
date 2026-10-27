@@ -74,6 +74,7 @@ import './components/atoms/ag-connector-badge.js';
 import './components/atoms/ag-dsd-lock.js';
 import './components/atoms/ag-dsd-delivery.js';
 import './components/atoms/ag-pro-lock.js';
+import './components/atoms/ag-halloween-spiders.js';
 import './components/atoms/ag-track-meta.js';
 // Molecules
 

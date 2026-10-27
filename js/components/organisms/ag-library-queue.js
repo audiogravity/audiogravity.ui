@@ -291,11 +291,11 @@ export class AgLibraryQueue extends LitElement {
             ` : nothing}
 
             ${upNext.length === 0 && !current
-                ? html`<div class="lib-empty">Queue is empty</div>`
+                ? html`<div class="lib-empty ag-hw-haunt">Queue is empty</div>`
                 : nothing
             }
             ${upNext.length > 0 && shownNext.length === 0
-                ? html`<div class="lib-empty">No upcoming ${originLabel(activeFilter)} tracks</div>`
+                ? html`<div class="lib-empty ag-hw-haunt">No upcoming ${originLabel(activeFilter)} tracks</div>`
                 : nothing
             }
 

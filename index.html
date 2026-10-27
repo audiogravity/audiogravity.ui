@@ -54,6 +54,10 @@
          A separate file for the same reasons as the one above. -->
     <script src="/splash-boot.js"></script>
 
+    <!-- Whether it is Halloween: the class every piece of the day's dress needs, on <html>
+         before the splash screen paints. A separate file for the same reasons as the one above. -->
+    <script src="/halloween-boot.js"></script>
+
     <!-- With no session, leaves for login.html before this page draws anything: its
          splash screen would show, then be cut by the redirect js/common.js makes once
          loaded, and login.html's would start over. A separate file for the same
@@ -252,11 +256,16 @@
         <div class="splash-mark">
             <span class="splash-wave" aria-hidden="true"></span>
             <span class="splash-wave splash-wave--second" aria-hidden="true"></span>
+            <!-- Halloween only, like the second line below: drawn while <html> has the class
+                 public/halloween-boot.js sets (css/components/halloween.css), which also flies
+                 a bat behind the name. -->
+            <div class="ag-hw-spider splash-spider" aria-hidden="true"><div class="ag-hw-sway"><div class="ag-hw-body"></div></div></div>
             <img class="ag-app-icon splash-app-icon" src="pics/apple-touch-180.png" alt=""
                  aria-hidden="true" width="96" height="96">
         </div>
         <span class="ag-wordmark splash-wordmark">Audiogravi<sup>ty</sup></span>
         <span class="splash-tagline">Your audio chain, fully controlled</span>
+        <span class="splash-tagline splash-tagline--halloween">Your audio chain, frightfully controlled</span>
     </div>
 
     <!-- Skip to main content link (for keyboard users) -->
@@ -298,6 +307,10 @@
 
     <!-- MAIN CONTENT -->
     <main class="main-content" id="main-content" role="main" tabindex="-1">
+
+        <!-- HALLOWEEN: spiders on their threads every 31 October (?halloween to preview). In the
+             page's own layer, so that a window opened in a page covers them. -->
+        <ag-halloween-spiders></ag-halloween-spiders>
 
         <!-- PERFORMANCE OPTIMIZATION (Phase 0): Lazy-loaded page components -->
         <!-- Only Profiles tab is loaded initially, others created on-demand -->

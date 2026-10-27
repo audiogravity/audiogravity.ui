@@ -66,7 +66,7 @@ export class AgHistoryPanel extends LitElement {
 
                 <div class="history-list" id="${this.type}History">
                     ${this.items.length === 0 ? html`
-                        <div class="history-empty">No history yet</div>
+                        <div class="history-empty ag-hw-haunt">No history yet</div>
                     ` : html`
                         ${this.items.map(item => html`
                             <div class="history-item ${item.success ? 'success' : 'error'}">

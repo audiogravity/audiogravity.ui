@@ -2049,7 +2049,7 @@ export class AgLibraryBrowse extends LitElement {
                         ${recent.map(a => this._renderAlbumCard(a))}
                     </div>
                 ` : html`
-                    <div class="lib-empty">${awaitingEntry ? 'Loading…' : 'No albums found'}</div>
+                    <div class="lib-empty ${awaitingEntry ? '' : 'ag-hw-haunt'}">${awaitingEntry ? 'Loading…' : 'No albums found'}</div>
                 `}
 
                 ${more.length > 0 ? html`

@@ -54,6 +54,12 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* The Halloween button, on 31 October (ag-library-radio): layout only, the button draws as
+   .action-btn. Its own width, not the column's. */
+.lib-radio-halloween {
+    align-self: flex-start;
+}
+
 /* Layout only: the field draws as .form-control (css/components/forms.css). No native
    look: Safari draws a type="search" field rounded, with its own inner padding. */
 .lib-radio-search-input {

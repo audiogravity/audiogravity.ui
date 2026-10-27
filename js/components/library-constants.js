@@ -443,3 +443,9 @@ export const RADIO_GENRES = [
     { tag: 'country', label: 'Country' },
     { tag: 'house', label: 'House' },
 ];
+
+/**
+ * The radio's Halloween genre, offered on 31 October only (ag-library-radio): stations the
+ * catalogue tags ``halloween`` — 13 through the core's /radio/search on 2026-10-27, MP3 and AAC.
+ */
+export const RADIO_HALLOWEEN_GENRE = { tag: 'halloween', label: '🎃 Halloween' };

@@ -141,7 +141,7 @@ export class AgSystemPage extends LitElement {
                         ${this.events.map(event => html`
                             <ag-event-item .payload=${event}></ag-event-item>
                         `)}
-                        ${this.events.length === 0 ? html`<div class="history-empty">No events recorded</div>` : ''}
+                        ${this.events.length === 0 ? html`<div class="history-empty ag-hw-haunt">No events recorded</div>` : ''}
                     </div>
                 </div>
 

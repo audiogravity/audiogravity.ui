@@ -169,7 +169,7 @@ export class AgLibraryUpnpBrowser extends LitElement {
                 @breadcrumb-root=${() => this._browseRoot()}
             ></ag-library-breadcrumbs>
             ${_items.length === 0
-                ? html`<div class="lib-empty">No items</div>`
+                ? html`<div class="lib-empty ag-hw-haunt">No items</div>`
                 : _items.map(item => html`
                     <ag-upnp-item
                         .item=${item}

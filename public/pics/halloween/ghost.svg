@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 36 47">
+  <!-- The app's Halloween ghost (css/components/halloween.css), the landing's drawing
+       (audiogravity.site, assets/halloween.js): eyes and mouth are holes. Framed to the
+       drawing. A shape only: the page paints it in its own ink through a CSS mask. -->
+  <path fill-rule="evenodd" d="M4 44V20A16 16 0 0 1 36 20V44Q32 50 28 44Q24 50 20 44Q16 50 12 44Q8 50 4 44Z
+    M11 20a3 4.2 0 1 0 6 0a3 4.2 0 1 0-6 0Z M23 20a3 4.2 0 1 0 6 0a3 4.2 0 1 0-6 0Z
+    M17 31a3 4 0 1 0 6 0a3 4 0 1 0-6 0Z" />
+</svg>

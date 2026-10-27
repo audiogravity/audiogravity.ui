@@ -201,9 +201,11 @@ html:not(.splash-on) #ag-splash-screen {
     }
 }
 
+/* How strong a wave starts: the ring's line at half strength, which css/components/halloween.css
+   raises on 31 October, when the line is orange. */
 @keyframes splashWave {
     from {
-        opacity: 0.5;
+        opacity: var(--splash-wave-from, 0.5);
         transform: scale(1);
     }
 
@@ -215,9 +217,11 @@ html:not(.splash-on) #ag-splash-screen {
 
 /* Out of the app's Animations setting, by the user's choice: `body.no-animations *`
    (themes.css) shortens every animation to 0.01ms with !important. Restored here with
-   !important and an id, which outweighs it, from the properties each element names. */
+   !important and an id, which outweighs it, from the properties each element names — and
+   each ::before, which Halloween draws a bat with (css/components/halloween.css). */
 body.no-animations #ag-splash-screen,
-body.no-animations #ag-splash-screen * {
+body.no-animations #ag-splash-screen *,
+body.no-animations #ag-splash-screen *::before {
     animation-duration: var(--splash-duration, 0s) !important;
     animation-delay: var(--splash-delay, 0s) !important;
     animation-iteration-count: var(--splash-count, 1) !important;

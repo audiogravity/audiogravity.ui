@@ -1,4 +1,6 @@
 import { html } from 'lit';
+import { expect } from 'storybook/test';
+import { HALLOWEEN_CLASS } from '../../core/HalloweenController.js';
 import './ag-library-radio.js';
 
 /**
@@ -20,3 +22,25 @@ const Template = () => html`
 
 export const Default = Template.bind({});
 Default.args = {};
+
+/**
+ * On 31 October — the class public/halloween-boot.js sets on <html> that day: the Halloween
+ * button above the search, and the Halloween genre among the others.
+ */
+export const OnHalloween = {
+    render: Template,
+    beforeEach() {
+        document.documentElement.classList.add(HALLOWEEN_CLASS);
+        return () => document.documentElement.classList.remove(HALLOWEEN_CLASS);
+    },
+    play: async ({ canvasElement }) => {
+        const radio = canvasElement.querySelector('ag-library-radio');
+        [...radio.querySelectorAll('.lib-radio-tab')].find((tab) => tab.textContent.trim() === 'Search').click();
+        await radio.updateComplete;
+        const button = radio.querySelector('.lib-radio-halloween');
+        await expect(button).not.toBeNull();
+        await expect(button.textContent.trim()).toBe('🎃 Halloween');
+        const genres = [...radio.querySelectorAll('.lib-radio-filter')[1].options].map((option) => option.value);
+        await expect(genres).toContain('halloween');
+    },
+};

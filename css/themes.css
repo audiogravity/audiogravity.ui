@@ -397,6 +397,12 @@ body {
    --stats-step-fill: 100%;
    --stats-step-edge: 0px;
 
+   /* Halloween's pumpkin (css/components/halloween.css): the splash screen's wave and the
+      fullscreen player's lantern glow, every 31 October. Not a state, so not the warning's
+      orange, and the same in every theme: the landing's own (audiogravity.site,
+      assets/halloween.css), on its light page as on its dark one. Never text. */
+   --halloween-orange: #ea580c;
+
    /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
       locked Config tile: one tint, from the brand colour. Not from red: red, orange and
       green carry a meaning that holds only while they stay rare (UI guidelines rule 10),

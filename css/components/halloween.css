@@ -1,0 +1,478 @@
+/**
+ * @module Halloween
+ * @description The app's Halloween dress, every 31 October by the device's clock, or with
+ * `?halloween` in the address: drawn only while <html> has the class public/halloween-boot.js
+ * puts there. Prefix: ag-hw-
+ *
+ * The splash screen: a spider lets itself down above the icon, a bat flies behind the name, the
+ * wave is a pumpkin's orange and the line reads "frightfully". In the app: spiders in the side
+ * gutters (ag-halloween-spiders), bats now and then in the empty band of the title bar, and a
+ * ghost on the empty pages. On the sign-in page: the spiders, and a bat behind the name. Two
+ * pieces live with their component: the fullscreen player's lantern glow on its cover
+ * (now-playing-fullscreen.css — the player's styles stay in their own file, ui rule 5), and the
+ * radio's Halloween stations (ag-library-radio).
+ *
+ * The landing's figures (audiogravity.site, assets/halloween.css and halloween.js), each drawn
+ * once, in public/pics/halloween, and painted in the page's ink through a CSS mask: dark on a
+ * light page, pale on a dark one. No webs (user's choice, 2026-10-27). Nothing in the dress takes
+ * a pointer or covers a control, and everything that moves moves whole elements — translate,
+ * scale, rotate, opacity — which the browser composites without drawing them again.
+ *
+ * What it costs: the browser's processor, never the box's — the box only serves these files,
+ * and AG puts no browser on it. The figures run all day, so the page never rests: in a browser
+ * with no graphics chip, the worst case, a page left alone went from 11 % of one core to 24 %
+ * (Chromium on the .254, 30 s, 2026-10-27; 12 % with every figure frozen). Kept so for one day a
+ * year (user's choice, 2026-10-27, after the code review raised it).
+ */
+
+/* =====================
+   THE FIGURES
+   ===================== */
+
+/* A figure is its shape as a mask, and the page's ink as its background. No autoprefixer here:
+   iOS/WebKit needs -webkit-mask for the mask shorthand (css/components/library-sources.css draws
+   its logos the same way). The spider and the ghost have one place each, given below; the bat
+   flies in three, each drawn by the stylesheet alone, so that no page carries markup for it. */
+html.ag-halloween #ag-splash-screen .splash-wordmark::before,
+html.ag-halloween .app-title-bar::before,
+html.ag-halloween .app-title-bar::after,
+html.ag-halloween .login-logo::before {
+    aspect-ratio: 112 / 46;
+
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/halloween/bat.svg") center / contain no-repeat;
+    mask: url("/pics/halloween/bat.svg") center / contain no-repeat;
+}
+
+/* A bat's wings beat: the whole figure flattens and opens again, five times a second. */
+@keyframes agHwFlap {
+    from { scale: 1 1; }
+    to { scale: 1 0.45; }
+}
+
+/* =====================
+   SPIDERS IN THE GUTTERS
+   ===================== */
+
+/* The sky they hang from: the top of the page's content, under the bar, the app's name and the
+   tabs (--ag-hw-top, measured by the element), clipped there — so that the threads pay out
+   from under them and cross none of them. The element sits in .main-content, the page's own
+   layer: there it is above the page's content and under anything opened in it, a window or a
+   menu, whatever their own level (--z-base, the lowest step); and that whole layer is under
+   the tabs, the windows laid on the body, the fullscreen player and the messages. Beside the
+   page, at the tabs' level less one, it was drawn over a profile's window (Chromium,
+   2026-10-27). Nothing in it takes a pointer. Its height is the deepest drop and a spider. */
+.ag-hw-sky {
+    position: fixed;
+    top: var(--ag-hw-top, 0);
+    right: 0;
+    left: 0;
+    height: 220px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: var(--z-base);
+}
+
+/* A spider and its thread: the box starts the thread's length above the spider, the drawing
+   sits at the foot of its padding, and a 1px stripe of background runs down the padding — the
+   landing's way, which every browser draws (a ::before hanging out of the box was dropped by
+   Safari there). The thread is longer than the deepest drop, so that its top never shows.
+   --ag-hw-thread and --ag-hw-depth are the spider's own geometry, not tokens: how much thread,
+   and how far below the top of the content it hangs. */
+.ag-hw-spider {
+    --ag-hw-thread: 240px;
+
+    position: absolute;
+    top: 0;
+    width: 18px;
+    margin-top: calc(-1 * var(--ag-hw-thread));
+    margin-left: -9px;
+    padding-top: var(--ag-hw-thread);
+    background: linear-gradient(color-mix(in srgb, var(--text-primary) 45%, transparent),
+            color-mix(in srgb, var(--text-primary) 45%, transparent)) 50% 0 / 1px var(--ag-hw-thread) no-repeat;
+    animation: agHwDrop ease-in-out infinite;
+}
+
+.ag-hw-body {
+    aspect-ratio: 40 / 44;
+    background: var(--text-primary);
+
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/halloween/spider.svg") center / contain no-repeat;
+    mask: url("/pics/halloween/spider.svg") center / contain no-repeat;
+}
+
+/* In the screen's side gutters, clear of a landscape phone's notch — beside the page's titles
+   and buttons, never on them: the left one and the right one (the element says why there is no
+   third). On a phone the gutter is
+   about 20px: an 18px spider 11px from the edge keeps its legs on the screen (a 22px one at
+   10px lost them, code review, 2026-10-27) and off the first button beside it. On a computer
+   the right one keeps clear of the page's scrollbar. Each its own depth, length of drop and
+   moment, so that they never move together. */
+.ag-hw-s1 {
+    --ag-hw-depth: 60px;
+
+    left: calc(11px + env(safe-area-inset-left, 0px));
+    animation-duration: 17s;
+    animation-delay: -4s;
+}
+
+.ag-hw-s2 {
+    --ag-hw-depth: 120px;
+
+    left: calc(100% - 11px - env(safe-area-inset-right, 0px));
+    animation-duration: 21s;
+    animation-delay: -12s;
+}
+
+@media (width >= 900px) {
+    .ag-hw-spider {
+        width: 26px;
+        margin-left: -13px;
+    }
+
+    .ag-hw-s1 {
+        left: calc(max(17px, 1.2vw) + env(safe-area-inset-left, 0px));
+    }
+
+    .ag-hw-s2 {
+        left: calc(100% - 45px - env(safe-area-inset-right, 0px));
+    }
+}
+
+/* Down fast and slowing, a bounce on the silk, a long hang, up slowly, then a while out of
+   sight above the screen. */
+@keyframes agHwDrop {
+    0%,
+    8% {
+        transform: translateY(-40px);
+        animation-timing-function: cubic-bezier(0.25, 0.6, 0.3, 1);
+    }
+
+    22% {
+        transform: translateY(var(--ag-hw-depth));
+        animation-timing-function: ease-in-out;
+    }
+
+    26% {
+        transform: translateY(calc(var(--ag-hw-depth) - 12px));
+        animation-timing-function: ease-in-out;
+    }
+
+    30% { transform: translateY(var(--ag-hw-depth)); }
+
+    62% {
+        transform: translateY(var(--ag-hw-depth));
+        animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.4);
+    }
+
+    78%,
+    100% { transform: translateY(-40px); }
+}
+
+/* Hanging, a spider sways about the end of its thread. Its legs keep still: moving them
+   transformed an SVG group, which a browser redraws on the main thread at every frame, all
+   day — on a screen plugged into the box, the box's own processor (code review, 2026-10-27). */
+.ag-hw-sway {
+    transform-origin: 50% 0;
+    animation: agHwSway 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes agHwSway {
+    from { transform: rotate(-6deg); }
+    to { transform: rotate(6deg); }
+}
+
+/* =====================
+   SPLASH SCREEN
+   ===================== */
+
+/* The installed app's opening (css/components/splash-screen.css): its markup, on index.html and
+   login.html, carries the day's spider and line, which no other day shows. */
+html:not(.ag-halloween) .splash-spider,
+html:not(.ag-halloween) .splash-tagline--halloween,
+html.ag-halloween .splash-tagline:not(.splash-tagline--halloween) {
+    display: none;
+}
+
+/* The bat flies from one side of the screen to the other: kept on it. */
+html.ag-halloween #ag-splash-screen {
+    overflow: hidden;
+}
+
+/* The wave a pumpkin's orange, and stronger: at the everyday half strength, the orange read as
+   a dark brown on the black ground (Chromium, 2026-10-27). */
+html.ag-halloween #ag-splash-screen .splash-wave {
+    --splash-wave-from: 0.9;
+
+    border-color: var(--halloween-orange);
+}
+
+/* The spider comes down above the icon as the first wave goes out of it, and hangs there,
+   clear of the wave — which reaches 22px past the icon — on a thread that runs out of the top
+   of the screen; it climbs back as the screen fades. Its timing in the screen's three custom
+   properties, so that the screen's exemption from the app's Animations setting keeps it. */
+html.ag-halloween #ag-splash-screen .splash-spider {
+    --ag-hw-thread: 60vh;
+    --splash-duration: 1100ms;
+    --splash-delay: 500ms;
+
+    top: auto;
+    bottom: calc(100% + 26px);
+    left: 50%;
+    width: 20px;
+    margin-top: 0;
+    margin-left: -10px;
+    animation: agHwSplashDrop var(--splash-duration) linear var(--splash-delay) 1 both;
+}
+
+html.ag-halloween #ag-splash-screen.dismissing .splash-spider {
+    --splash-duration: 400ms;
+    --splash-delay: 0ms;
+
+    animation: agHwSplashClimb var(--splash-duration) ease-in var(--splash-delay) 1 forwards;
+}
+
+/* Its sway, under the same exemption. */
+html.ag-halloween #ag-splash-screen .splash-spider .ag-hw-sway {
+    --splash-duration: 2.6s;
+    --splash-delay: 0ms;
+    --splash-count: infinite;
+}
+
+@keyframes agHwSplashDrop {
+    0% {
+        transform: translateY(-60vh);
+        animation-timing-function: cubic-bezier(0.25, 0.6, 0.3, 1);
+    }
+
+    78% {
+        transform: none;
+        animation-timing-function: ease-in-out;
+    }
+
+    89% {
+        transform: translateY(-8px);
+        animation-timing-function: ease-in-out;
+    }
+
+    100% { transform: none; }
+}
+
+@keyframes agHwSplashClimb {
+    to { transform: translateY(-60vh); }
+}
+
+/* The bat crosses the screen once, behind the name: the name is a layer of its own, the bat at
+   its back — drawn before the name's text, not inside it: the brand is written the same way
+   everywhere (js/wordmark.test.js). Two animations, its flight and its wings, so two values in
+   each custom property, which the screen's exemption from the app's Animations setting reads. */
+html.ag-halloween #ag-splash-screen .splash-wordmark {
+    position: relative;
+    isolation: isolate;
+}
+
+html.ag-halloween #ag-splash-screen .splash-wordmark::before {
+    --splash-duration: 1500ms, 100ms;
+    --splash-delay: 700ms, 0ms;
+    --splash-count: 1, infinite;
+
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    margin: -7px 0 0 -17px;
+    z-index: -1;
+    background: var(--text-tertiary);
+    pointer-events: none;
+    animation-name: agHwSplashBat, agHwFlap;
+    animation-duration: var(--splash-duration);
+    animation-delay: var(--splash-delay);
+    animation-iteration-count: var(--splash-count);
+    animation-direction: normal, alternate;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: both;
+}
+
+@keyframes agHwSplashBat {
+    0% { translate: -60vw 10px; }
+    25% { translate: -30vw -6px; }
+    50% { translate: 0 4px; }
+    75% { translate: 30vw -8px; }
+    100% { translate: 60vw 6px; }
+}
+
+/* =====================
+   TITLE BAR
+   ===================== */
+
+/* Now and then a bat comes in at the right edge of the title bar, flits across the empty band
+   right of the app's name — never as far as the name, wherever the window's width puts it —
+   and flies up out of the bar, which clips it. A computer only: the bar is not drawn on a phone
+   (layout.css). Out of sight past the right edge the rest of the time. */
+html.ag-halloween .app-title-bar {
+    overflow: hidden;
+}
+
+html.ag-halloween .app-title-bar::before,
+html.ag-halloween .app-title-bar::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 30px;
+    margin-top: -6px;
+    background: var(--text-secondary);
+    pointer-events: none;
+    translate: 60px 0;
+    animation: agHwBarBat 23s ease-in-out infinite, agHwFlap 100ms ease-in-out infinite alternate;
+}
+
+html.ag-halloween .app-title-bar::after {
+    top: 30%;
+    width: 22px;
+    animation-duration: 37s, 90ms;
+    animation-delay: -15s, 0s;
+}
+
+@keyframes agHwBarBat {
+    0%,
+    82% { translate: 60px 0; }
+
+    86% { translate: -14vw 8px; }
+    90% { translate: -27vw -3px; }
+    94% { translate: -37vw 6px; }
+
+    98%,
+    100% { translate: -44vw -60px; }
+}
+
+/* =====================
+   EMPTY PAGES
+   ===================== */
+
+/* A page with nothing to show — no history, an empty queue, no result — marked .ag-hw-haunt
+   where its message is written: a ghost floats above the message, and a line under it says
+   who is there. The message keeps its own words and style, and reads at the centre that day. */
+html.ag-halloween .ag-hw-haunt {
+    text-align: center;
+}
+
+html.ag-halloween .ag-hw-haunt::before {
+    content: "";
+    display: block;
+    width: 30px;
+    aspect-ratio: 36 / 47;
+    margin: 0 auto var(--spacing-sm);
+    background: var(--text-tertiary);
+
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit needs -webkit-mask for the mask shorthand */
+    -webkit-mask: url("/pics/halloween/ghost.svg") center / contain no-repeat;
+    mask: url("/pics/halloween/ghost.svg") center / contain no-repeat;
+    animation: agHwFloat 2.8s ease-in-out infinite alternate;
+}
+
+/* The line is decoration, kept from screen readers: the empty text after the slash is what they
+   read instead (VoiceOver read the message and the line as one, code review, 2026-10-27). A
+   browser that does not know that form drops the declaration and keeps the one before it, so the
+   line still shows there — read aloud then. */
+html.ag-halloween .ag-hw-haunt::after {
+    content: "Nothing here but ghosts";
+    content: "Nothing here but ghosts" / "";
+    display: block;
+    margin-top: var(--spacing-xs);
+}
+
+@keyframes agHwFloat {
+    from { translate: 0 2px; }
+    to { translate: 0 -4px; }
+}
+
+/* =====================
+   SIGN-IN PAGE
+   ===================== */
+
+/* The spiders hang behind the card. On a short phone the card starts near the top of the screen
+   and reaches into the gutters, where they hung over its edge (375x667 and 320x568, Chromium,
+   2026-10-27). Fixed and at no level of their own, they are painted before the card, which comes
+   after them in the page (login.html). */
+body.login-page .ag-hw-sky {
+    z-index: auto;
+}
+
+/* Now and then a bat comes out from behind the name on the sign-in card and flies off above it,
+   fading: from the middle of the name to 70px right of it, never over the icon beside it nor
+   the card's light/dark switch (Chromium, computer and phone, 2026-10-27). Through the name the
+   whole way, it hid behind the bold letters; above them it shows. The name is a layer of its
+   own, the bat at its back. */
+html.ag-halloween .login-logo {
+    position: relative;
+    isolation: isolate;
+}
+
+html.ag-halloween .login-logo::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 26px;
+    margin: -5px 0 0 -13px;
+    z-index: -1;
+    background: var(--text-secondary);
+    opacity: 0;
+    pointer-events: none;
+    animation: agHwNameBat 11s ease-in-out infinite, agHwFlap 100ms ease-in-out infinite alternate;
+}
+
+@keyframes agHwNameBat {
+    0%,
+    70% {
+        translate: -40px 6px;
+        opacity: 0;
+    }
+
+    74% { opacity: 1; }
+    80% { translate: -6px -18px; }
+
+    86% {
+        translate: 40px -26px;
+        opacity: 1;
+    }
+
+    90%,
+    100% {
+        translate: 70px -32px;
+        opacity: 0;
+    }
+}
+
+/* =====================
+   LESS MOTION, PAPER
+   ===================== */
+
+/* Nothing that moves for a viewer who asks for less motion — the spiders' element draws none
+   then either, so this is a second guard — nor on paper. The app's own Animations setting
+   takes them away too, the splash screen's aside: it keeps its motion whatever that setting
+   says (css/components/splash-screen.css). The ghost, the orange and the line stay: still. */
+@media (prefers-reduced-motion: reduce), print {
+    .ag-hw-sky,
+    html.ag-halloween .splash-spider,
+    html.ag-halloween #ag-splash-screen .splash-wordmark::before,
+    html.ag-halloween .app-title-bar::before,
+    html.ag-halloween .app-title-bar::after,
+    html.ag-halloween .login-logo::before {
+        display: none;
+    }
+
+    html.ag-halloween .ag-hw-haunt::before {
+        animation: none;
+    }
+}
+
+body.no-animations .ag-hw-sky,
+body.no-animations .app-title-bar::before,
+body.no-animations .app-title-bar::after,
+body.no-animations .login-logo::before {
+    display: none;
+}

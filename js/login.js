@@ -12,6 +12,7 @@ splashScreen.init();
 import { API_BASE_URL, API_KEY, API_KEY_HEADER, UI_VERSION } from './core/config.js';
 import './components/atoms/ag-license-badge.js';
 import './components/atoms/ag-theme-toggle.js';
+import './components/atoms/ag-halloween-spiders.js';
 import { initAuth, login, saveAuth, redirectIfAuthenticated, takeRedirectAfterLogin } from './auth.js';
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
