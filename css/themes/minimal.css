@@ -115,6 +115,24 @@
     --latency-text-good: var(--text-primary);        /* then ink to 200 µs, as the histogram */
     --buffer-text-healthy: var(--text-primary);      /* a buffer fill at rest, under 80 % */
 
+    /* The Stats view's sound quality and week's hours in the latency histogram's four
+       classes, its look included: the colour at 70 % inside, itself as the edge (the
+       user's choice from a capture of the histogram, 2026-10-27). DSD reads Excellent,
+       Hi-Res Good, CD Average, MP3/AAC Critical; the hours run from Excellent, the
+       quietest, to Critical, the busiest. An exception to the rule above, chosen with its
+       cost said: orange and red here mean "compressed" and "most played", not a fault,
+       and the amber edge reads 2.2:1 on the light page (measured 2026-10-27). */
+    --stats-q-dsd: var(--latency-bar-excellent);
+    --stats-q-hires: var(--latency-bar-good);
+    --stats-q-cd: var(--histogram-average);
+    --stats-q-lossy: var(--histogram-critical);
+    --stats-heat-1: var(--latency-bar-excellent);
+    --stats-heat-2: var(--latency-bar-good);
+    --stats-heat-3: var(--histogram-average);
+    --stats-heat-4: var(--histogram-critical);
+    --stats-step-fill: 70%;
+    --stats-step-edge: 1px;
+
     /* No --font-family here on purpose. Minimal is the default theme, so what it
        renders is what almost every installation renders: it takes Inter from
        :root in themes.css, served by the box. It used to substitute a system

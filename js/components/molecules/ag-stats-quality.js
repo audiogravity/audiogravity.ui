@@ -3,8 +3,10 @@
  * @description The time listened by sound quality: one bar cut in its classes, best first
  * — DSD, Hi-Res, CD quality, lossy — and a legend that writes each class's time and share.
  *
- * The classes are ordered, so they are steps of one colour, the strongest for the best,
- * each segment parted from the next by a 2px gap. The legend names every class with its figures,
+ * The classes are ordered: by default steps of one colour, the strongest for the best; in
+ * Minimal, the latency histogram's four classes, from Excellent for DSD to Critical for
+ * lossy (library-stats.css). Each segment is parted from the next by a 2px gap. The legend
+ * names every class with its figures,
  * so the colour never has to be told apart on its own; the bar carries the whole as one
  * image for a screen reader.
  *

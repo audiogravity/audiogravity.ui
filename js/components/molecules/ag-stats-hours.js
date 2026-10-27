@@ -1,12 +1,13 @@
 /**
  * @module AgStatsHours
  * @description When the box plays in the week: seven rows, Monday first, of 24 local
- * hours, each square as dark as the time listened in it — on average per week over the
+ * hours, each square coloured by the time listened in it — on average per week over the
  * period, as the summary sends it (`week_hours`).
  *
- * One measure, so one ramp: four steps of the text's colour, the darkest the busiest
- * hour — the steps of the sound-quality chart, validated in the six palettes — and the
- * hours of no music in a pale tint of the same colour, which is no step of it. Each square
+ * One measure, so one ramp of four steps, the legend running from Less to More: by default
+ * steps of the text's colour, the darkest the busiest hour, validated in the six palettes;
+ * in Minimal, the latency histogram's four classes, the busiest hour red (library-stats.css).
+ * The hours of no music are a pale tint of the text's colour, which is no step. Each square
  * is a button: a tap, or the keyboard's focus, puts its day, hour and time in the readout
  * above the grid, and its label says them to a screen reader, so no value hangs on a
  * colour or a hover.

@@ -379,6 +379,24 @@ body {
    --buffer-text-warning: var(--color-warning-text);    /* 80 to 90 % */
    --buffer-text-critical: var(--color-error-text);     /* 90 % and over */
 
+   /* The Stats view's ordered steps (library-stats.css): the sound-quality classes, best
+      first, and the week's hours, quietest first. By default the text's colour in four
+      mixes with the page, solid — the best class and the busiest hour the strongest, the
+      two charts sharing the steps. Minimal draws them in the latency histogram's four
+      classes instead (user's choice, 2026-10-27). The fill takes --stats-step-fill of its
+      step's colour, and an inset edge of it is --stats-step-edge wide: by default a solid
+      step, no edge. */
+   --stats-q-dsd: var(--text-primary);
+   --stats-q-hires: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary));
+   --stats-q-cd: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary));
+   --stats-q-lossy: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary));
+   --stats-heat-1: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary));
+   --stats-heat-2: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary));
+   --stats-heat-3: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary));
+   --stats-heat-4: var(--text-primary);
+   --stats-step-fill: 100%;
+   --stats-step-edge: 0px;
+
    /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
       locked Config tile: one tint, from the brand colour. Not from red: red, orange and
       green carry a meaning that holds only while they stay rare (UI guidelines rule 10),
