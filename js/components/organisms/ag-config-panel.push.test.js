@@ -104,7 +104,7 @@ describe('Settings — Notifications', () => {
         await settle(panel, sw);
 
         expect(showToast).toHaveBeenCalledWith('warning', 'Notifications on',
-            expect.stringContaining('older than this app'), 8000);
+            expect.stringContaining('older than this app'));
         expect(showToast).not.toHaveBeenCalledWith('success', expect.anything(), expect.anything());
         expect(sw.checked).toBe(true);
     });
@@ -120,7 +120,7 @@ describe('Settings — Notifications', () => {
         await settle(panel, sw);
 
         expect(showToast).toHaveBeenCalledWith('error', 'Notifications blocked',
-            'Notifications are blocked for this site on this device.', 8000);
+            'Notifications are blocked for this site on this device.');
         expect(sw.checked).toBe(false);
         expect(sw.querySelector('input').checked).toBe(false);
     });
@@ -137,7 +137,7 @@ describe('Settings — Notifications', () => {
         await settle(panel, sw);
 
         expect(showToast).toHaveBeenCalledWith('error', 'Notifications still on',
-            'This device could not be unsubscribed (InvalidStateError).', 8000);
+            'This device could not be unsubscribed (InvalidStateError).');
         expect(sw.checked).toBe(true);
     });
 
@@ -166,7 +166,7 @@ describe('Settings — Notifications', () => {
         flip(sw, true);
         await settle(panel, sw);
 
-        expect(showToast).toHaveBeenCalledWith('error', 'Notifications', 'Unknown error', 8000);
+        expect(showToast).toHaveBeenCalledWith('error', 'Notifications not changed', 'Unknown error');
         expect(sw.checked).toBe(false);
     });
 });

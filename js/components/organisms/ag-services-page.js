@@ -426,7 +426,9 @@ export class AgServicesPage extends LitElement {
 
             if (result.success) {
                 if (addToHistory) addToHistory('service', `${actionLabel}d: ${service.name}`, true);
-                if (showToast) showToast('success', `${actionLabel} Service`, `Service "${service.name}" ${action}d successfully`);
+                if (showToast) showToast('success', `Service ${action}d`, action === 'enable'
+                    ? `${service.name} starts with the box from now on.`
+                    : `${service.name} no longer starts with the box.`);
 
                 setTimeout(async () => {
                     await this._loadServices();

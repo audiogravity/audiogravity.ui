@@ -39,7 +39,7 @@ import { canAddToPlaylist, originBadge, originBadgeName } from '../library-const
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, isLockedSource, openLicensePanel } from '../../license-tiers.js';
 import { LicenseController } from '../../core/LicenseController.js';
-import { showToast, TOAST_DURATION_LONG } from '../../ui-helpers.js';
+import { showToast } from '../../ui-helpers.js';
 
 const _ALLOWED_ACTIONS = new Set([
     'toggle', 'next', 'prev', 'seek',
@@ -616,7 +616,7 @@ export class AgNowPlayingFullscreen extends LitElement {
             // posts one command per movement, and would stack one toast each (review,
             // 2026-10-16). A device that declined (503) stays silent, below.
             if (action === 'toggle' && e?.status === 403 && e.detail) {
-                showToast('error', 'Playback blocked', e.detail, TOAST_DURATION_LONG);
+                showToast('error', 'Playback blocked', e.detail);
             }
             // A refused seek is truthful: 503 means the position did not move
             // (API.md). Restore the anchor and drop the guard, so the state

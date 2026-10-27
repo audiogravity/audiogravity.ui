@@ -17,7 +17,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Hoisted: vi.mock factories run before the module body, so anything they
 // reference has to exist by then.
-const { apiPost, showToast, addToHistory, showConfirm } = vi.hoisted(() => ({ apiPost: vi.fn(), showToast: vi.fn(), addToHistory: vi.fn(), showConfirm: vi.fn() }));
+const { apiPost, showToast, addToHistory, showConfirm } = vi.hoisted(() => {
+    // A toast's handle that tells the outcome as a toast of its own: the calls then read in
+    // order — an "in progress" notice, then what it came to.
+    const showToast = vi.fn(() => ({ update: (...outcome) => showToast(...outcome), close: () => {} }));
+    return { apiPost: vi.fn(), showToast, addToHistory: vi.fn(), showConfirm: vi.fn() };
+});
 
 // Partial, as in ag-audio-software-page.test.js: common.js calls initAuth as it
 // loads and throws unless requireAuth says the session is logged in.
@@ -157,7 +162,7 @@ describe('installing from the dialog', () => {
         apiPost.mockResolvedValue({ success: true, warning: false, message: 'ok' });
         await page()._runPackageAction(HQPLAYERD, 'install');
         expect(showToast).toHaveBeenCalledWith(
-            'success', 'Install Successful', 'HQPlayer Embedded installed successfully');
+            'success', 'Install complete', 'HQPlayer Embedded is installed.');
     });
 
     it('spells the past tense of each action', async () => {
@@ -166,8 +171,8 @@ describe('installing from the dialog', () => {
         await page()._runPackageAction(HQPLAYERD, 'update');
         await page()._runPackageAction(HQPLAYERD, 'uninstall');
         expect(showToast.mock.calls.map(call => call[2])).toEqual([
-            'HQPlayer Embedded updated successfully',
-            'HQPlayer Embedded uninstalled successfully',
+            'HQPlayer Embedded is updated.',
+            'HQPlayer Embedded is uninstalled.',
         ]);
     });
 });
@@ -224,7 +229,7 @@ describe('simulating', () => {
 
         expect(apiPost.mock.calls[0][0]).toContain('dry_run=true');
         expect(showToast).toHaveBeenLastCalledWith('info', 'Updates Simulated',
-            'Nothing was changed: the steps to update 1 packages went through.');
+            'Nothing was changed: the steps to update 1 package went through.');
     });
 
     it('says a simulated uninstall would delete the settings too, when that was ticked', async () => {

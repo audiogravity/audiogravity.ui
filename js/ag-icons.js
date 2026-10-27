@@ -486,6 +486,12 @@ export const iconCheckCircle = svg`
     <circle cx="12" cy="12" r="10"/>
     <path d="m9 12 2 2 4-4"/>`;
 
+/** Circle with an X — error state, kept apart from the bare X that closes. (Lucide: circle-x) */
+export const iconCircleX = svg`
+    <circle cx="12" cy="12" r="10"/>
+    <path d="m15 9-6 6"/>
+    <path d="m9 9 6 6"/>`;
+
 /** Empty circle — placeholder / not-installed state. (Lucide: circle) */
 export const iconCircle = svg`<circle cx="12" cy="12" r="10"/>`;
 

@@ -80,7 +80,7 @@ describe('the settings the core accepts', () => {
         el.config.threads = 32;
         await el._startTest();
         expect(common.apiPost).not.toHaveBeenCalled();
-        expect(common.showToast).toHaveBeenCalledWith('error', 'Latency Test', 'Threads must be between 1 and 16.');
+        expect(common.showToast).toHaveBeenCalledWith('error', 'Test not started', 'Threads must be between 1 and 16.');
     });
 });
 

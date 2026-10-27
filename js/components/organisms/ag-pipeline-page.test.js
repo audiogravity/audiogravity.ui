@@ -16,10 +16,12 @@ vi.mock('lit', () => ({
     svg: (strings, ...values) => ({ strings, values }),
     nothing: Symbol('nothing'),
 }));
+// A toast's handle: the save's outcome takes the place of its "Saving" notice.
+const savingToast = vi.hoisted(() => ({ update: vi.fn(), close: vi.fn() }));
 vi.mock('../../common.js', () => ({
     AppState: { currentTab: '' },
     EventEmitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
-    showToast: vi.fn(),
+    showToast: vi.fn(() => savingToast),
 }));
 vi.mock('../../api.js', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }));
 vi.mock('../../auth.js', () => ({ isGuest: vi.fn(() => false) }));
@@ -84,6 +86,9 @@ describe('ag-pipeline-page topology save', () => {
         expect(showValidationModal).not.toHaveBeenCalled();
         expect(modal.isOpen).toBe(false);
         expect(modal._isLoading).toBe(false);
+        // One toast for the save: its notice turned into the outcome, nothing stacked.
+        expect(showToast).toHaveBeenCalledTimes(1);
+        expect(savingToast.update).toHaveBeenCalledWith('success', 'Topology saved', 'The pipeline was reloaded with it.');
     });
 
     it('blocks the save and shows the modal on structural errors', async () => {
@@ -150,7 +155,8 @@ describe('ag-pipeline-page topology save', () => {
 
         await makeEl()._handleTopologyConfigSaveRequest(evt);
 
-        expect(showToast).toHaveBeenCalledWith('error', 'Save Failed', 'disk full');
+        expect(showToast).toHaveBeenCalledWith('info', 'Saving the topology', 'The pipeline reloads with it…', 0);
+        expect(savingToast.update).toHaveBeenCalledWith('error', 'Topology not saved', 'disk full');
         expect(modal.isOpen).toBe(true);
         expect(modal._isLoading).toBe(false);
     });

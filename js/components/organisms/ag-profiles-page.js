@@ -321,7 +321,7 @@ export class AgProfilesPage extends LitElement {
                     }
                     if (showToast) showToast('success', isActive ? 'Profile Deactivated' : 'Profile Activated', profile.name);
                     if (result.failed_services && result.failed_services.length > 0) {
-                        if (showToast) showToast('warning', 'Some Services Failed', result.failed_services.join(', '), 6000);
+                        if (showToast) showToast('warning', 'Some Services Failed', result.failed_services.join(', '));
                     }
                 } else {
                     this._updateProfileState(profileId, isActive ? 'active' : 'inactive');
@@ -350,7 +350,7 @@ export class AgProfilesPage extends LitElement {
         const { success, failed_services, message } = detail;
         const actionLabel = pending.action === 'activate' ? 'Activated' : 'Deactivated';
         if (success === false) {
-            if (showToast) showToast('warning', 'Some Services Failed', (failed_services || []).join(', ') || message, 6000);
+            if (showToast) showToast('warning', 'Some Services Failed', (failed_services || []).join(', ') || message);
         } else {
             if (showToast) showToast('success', `Profile ${actionLabel}`, pending.name);
         }
@@ -370,7 +370,7 @@ export class AgProfilesPage extends LitElement {
         if (!pending) return;
         this._pendingProfiles.delete(profileId);
         if (showToast) showToast('warning', 'No answer from the profile',
-            `${pending.name} did not report back; showing its current state.`, 6000);
+            `${pending.name} did not report back; showing its current state.`);
         if (addToHistory) addToHistory('profile', `No answer: ${pending.name}`, false);
         this._loadProfiles();
     }

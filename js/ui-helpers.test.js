@@ -2,11 +2,12 @@
  * Unit tests for getUserFriendlyError — pure error message mapping — and for the
  * password-confirm field's styling contract (site#6).
  */
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { html, render } from 'lit';
 import { readStylesheet } from './test-utils.js';
 import { getUserFriendlyError, showConfirm, showPasswordConfirm, confirmRemoval, downloadBlob, downloadTextFile, showToast, copyToClipboard } from './ui-helpers.js';
 import { asNetworkError } from './net-errors.js';
+import './components/molecules/ag-toast-notification.js';
 
 describe('getUserFriendlyError', () => {
     it('reads a tagged transport failure, whatever the engine called it', () => {
@@ -95,6 +96,175 @@ describe('showToast — the type comes first, and a wrong one is said aloud', ()
             spy.mockRestore();
             container.remove();
         }
+    });
+});
+
+describe('showToast — three at most, no twin, said once, a handle for the result', () => {
+    let container;
+    let status;
+    let alert;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        container = Object.assign(document.createElement('div'), { id: 'toastContainer' });
+        status = Object.assign(document.createElement('div'), { id: 'toastStatus' });
+        alert = Object.assign(document.createElement('div'), { id: 'toastAlert' });
+        document.body.append(container, status, alert);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        for (const node of [container, status, alert]) node.remove();
+    });
+
+    /** The toasts on screen, those on their way out left aside. */
+    const shown = () => [...container.querySelectorAll('ag-toast-notification')].filter((t) => !t.closing);
+
+    /** What a region has said, a line per toast. */
+    const said = (region) => [...region.children].map((line) => line.textContent);
+
+    it('keeps three on screen: a fourth sends the oldest away', () => {
+        for (const title of ['One', 'Two', 'Three', 'Four']) showToast('info', title, 'words');
+        expect(shown().map((t) => t.title)).toEqual(['Two', 'Three', 'Four']);
+    });
+
+    it('sends away the toast said longest ago, not the first on the page', () => {
+        // "One" said again is as new as a toast just shown: "Two" goes, not "One".
+        for (const title of ['One', 'Two', 'Three', 'One', 'Four']) showToast('info', title, 'words');
+        expect(shown().map((t) => t.title)).toEqual(['One', 'Three', 'Four']);
+    });
+
+    it('counts an update as said: an operation\'s result is not the first to go', () => {
+        const pending = showToast('info', 'Checking', 'words', 0);
+        showToast('info', 'Two', 'words');
+        showToast('info', 'Three', 'words');
+        pending.update('success', 'Checked', 'words');
+        showToast('info', 'Four', 'words');
+        expect(shown().map((t) => t.title)).toEqual(['Checked', 'Three', 'Four']);
+    });
+
+    it('does not add a toast identical to one on screen: that one starts its time over', async () => {
+        showToast('success', 'Saved', 'Done');
+        await vi.advanceTimersByTimeAsync(3000);
+        showToast('success', 'Saved', 'Done');
+        expect(shown()).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(3000);   // past the first one's own time
+        expect(shown()).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(1100);
+        expect(shown()).toHaveLength(0);
+    });
+
+    it('adds a toast that differs in its words or its type', () => {
+        showToast('success', 'Saved', 'Done');
+        showToast('success', 'Saved', 'Done again');
+        showToast('error', 'Saved', 'Done');
+        expect(shown()).toHaveLength(3);
+    });
+
+    it('says each toast once, an error in the region that interrupts', async () => {
+        showToast('success', 'Saved', 'Done');
+        await vi.advanceTimersByTimeAsync(30);
+        expect(said(status)).toEqual(['Success: Saved. Done']);
+        expect(said(alert)).toEqual([]);
+        showToast('error', 'Playback failed', 'No answer');
+        await vi.advanceTimersByTimeAsync(30);
+        expect(said(alert)).toEqual(['Error: Playback failed. No answer']);
+        expect(said(status)).toEqual(['Success: Saved. Done']);
+    });
+
+    it('says both of two toasts that come together — emptying the region dropped the first', async () => {
+        showToast('success', 'Profile activated', 'Studio');
+        showToast('warning', 'Some services failed', 'mpd');
+        await vi.advanceTimersByTimeAsync(30);
+        expect(said(status)).toEqual(['Success: Profile activated. Studio', 'Warning: Some services failed. mpd']);
+    });
+
+    it('keeps the last three lines a region said, no more', async () => {
+        for (const title of ['One', 'Two', 'Three', 'Four', 'Five']) {
+            showToast('info', title, 'words');
+            await vi.advanceTimersByTimeAsync(30);
+        }
+        expect(said(status)).toEqual(['Information: Three. words', 'Information: Four. words', 'Information: Five. words']);
+    });
+
+    it('has the page say only the line added: its two regions are not atomic', () => {
+        // An alert and a status are atomic by default: a reader would say every line kept,
+        // again, with each new one.
+        const page = readStylesheet('index.html');
+        for (const [id, role] of [['toastAlert', 'alert'], ['toastStatus', 'status']]) {
+            const tag = page.match(new RegExp(`<div[^>]*\\bid="${id}"[^>]*>`))?.[0] ?? '';
+            expect(tag, id).toContain(`role="${role}"`);
+            expect(tag, id).toContain('aria-atomic="false"');
+        }
+    });
+
+    it('says a notice updated before it shows once, in its new words', async () => {
+        const pending = showToast('info', 'Checking', 'words', 0);
+        pending.update('success', 'Checked', 'Up to date');
+        await vi.advanceTimersByTimeAsync(30);
+        expect(said(status)).toEqual(['Success: Checked. Up to date']);
+    });
+
+    it('keeps an error on screen whatever duration the call gave', async () => {
+        showToast('error', 'Not saved', 'Disk full', 1000);
+        await vi.advanceTimersByTimeAsync(60 * 1000);
+        expect(shown()).toHaveLength(1);
+    });
+
+    it('returns a handle that turns the notice into its result, in the same toast', async () => {
+        const pending = showToast('info', 'Checking for updates…', 'All packages', 0);
+        await vi.advanceTimersByTimeAsync(30);
+        const notice = shown()[0];
+        await vi.advanceTimersByTimeAsync(60 * 1000);   // an "in progress" notice waits
+        pending.update('success', 'Updates checked', '2 are available');
+        await vi.advanceTimersByTimeAsync(30);
+        expect(shown()).toEqual([notice]);
+        expect(notice.type).toBe('success');
+        expect(said(status).at(-1)).toBe('Success: Updates checked. 2 are available');
+        await vi.advanceTimersByTimeAsync(4000);
+        expect(shown()).toHaveLength(0);
+    });
+
+    it('shows the result as a new toast when the notice was closed meanwhile', async () => {
+        const pending = showToast('info', 'Checking for updates…', 'All packages', 0);
+        await vi.advanceTimersByTimeAsync(30);
+        pending.close();
+        pending.update('error', 'Check failed', 'No answer');
+        expect(shown().map((t) => t.title)).toEqual(['Check failed']);
+    });
+
+    it('gives each of two calls that share a notice its own outcome', async () => {
+        // Two plays of the same album: the second "Starting playback" is the first one's
+        // twin. The first play's failure then took that toast, and the second play's
+        // outcome replaced it there.
+        const first = showToast('info', 'Starting playback', 'Sending the tracks…', 2500);
+        const second = showToast('info', 'Starting playback', 'Sending the tracks…', 2500);
+        await vi.advanceTimersByTimeAsync(30);
+        const [notice] = shown();
+        first.close();                  // the second call said it last: no longer the first's
+        expect(notice.closing).toBe(false);
+        first.update('error', 'Playback failed', 'No answer');
+        second.update('warning', 'Some tracks were skipped', '2 tracks.');
+        expect(notice.title).toBe('Some tracks were skipped');
+        expect(shown().map((t) => t.title)).toEqual(['Some tracks were skipped', 'Playback failed']);
+    });
+
+    it('lets a handle follow the toast its update had to show anew', async () => {
+        const pending = showToast('info', 'Checking', 'words', 0);
+        await vi.advanceTimersByTimeAsync(30);
+        pending.close();
+        pending.update('info', 'Checking again', 'words', 0);
+        pending.update('success', 'Checked', 'words');
+        expect(shown().map((t) => t.title)).toEqual(['Checked']);
+        pending.close();
+        expect(shown()).toEqual([]);
+    });
+
+    it('returns a handle that shows nothing on a page without a toast container', () => {
+        container.remove();
+        const handle = showToast('info', 'Checking…', 'words', 0);
+        expect(() => { handle.update('success', 'Done', 'words'); handle.close(); }).not.toThrow();
+        expect(document.querySelector('ag-toast-notification')).toBeNull();
     });
 });
 

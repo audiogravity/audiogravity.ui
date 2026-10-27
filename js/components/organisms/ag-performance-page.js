@@ -217,7 +217,7 @@ export class AgPerformancePage extends LitElement {
                 governor: governor,
                 cpu_id: cpuId
             });
-            if (showToast) showToast('success', 'Governor Updated', `Set ${governor} on CPU ${cpuId}`);
+            if (showToast) showToast('success', 'Governor set', `CPU ${cpuId} now runs ${governor}.`);
             if (addToHistory) addToHistory('performance', `Set governor ${governor} on CPU ${cpuId}`, true);
 
             // Keep what the page knows in step, without a reload: Apply All used to offer
@@ -254,7 +254,7 @@ export class AgPerformancePage extends LitElement {
                 scope: 'all'
             });
 
-            if (showToast) showToast('success', 'Governor Applied', `Set "${governor}" on all CPUs`);
+            if (showToast) showToast('success', 'Governor set', `Every CPU now runs ${governor}.`);
             if (addToHistory) addToHistory('performance', `Applied governor ${governor} to all CPUs`, true);
             await this._loadData();
         } catch (error) {
@@ -265,7 +265,7 @@ export class AgPerformancePage extends LitElement {
     async _saveGovernorConfig() {
         try {
             await apiPost('/performance/cpu/governor/save');
-            if (showToast) showToast('success', 'Configuration Saved', 'Governor settings saved to disk');
+            if (showToast) showToast('success', 'Governors saved', 'The box keeps these settings.');
             if (addToHistory) addToHistory('performance', 'Saved CPU governor configuration to disk', true);
         } catch (error) {
             handleError(error, 'Failed to save configuration');
@@ -281,7 +281,7 @@ export class AgPerformancePage extends LitElement {
 
         try {
             await apiPost('/performance/cpu/governor/systemd/create');
-            if (showToast) showToast('success', 'Service Created', 'Systemd service created and enabled');
+            if (showToast) showToast('success', 'Service created', 'The governors are applied at every start of the box.');
             if (addToHistory) addToHistory('performance', 'Created and enabled governor systemd service', true);
         } catch (error) {
             handleError(error, 'Failed to create service');

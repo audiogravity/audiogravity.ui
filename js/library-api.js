@@ -272,7 +272,7 @@ export function roonAction(zoneId, itemKey) {
 export async function queueWithFeedback(queueFn, label = '') {
     try {
         await queueFn();
-        showToast('success', 'Added to queue', label || 'Item');
+        showToast('success', 'Added to queue', label);
     } catch (e) {
         console.error('[library] add to queue failed:', e);
         showToast('error', 'Add failed', e?.message || 'Could not add to queue');
@@ -296,16 +296,20 @@ export async function queueWithFeedback(queueFn, label = '') {
  *                             decide whether to open the now-playing view.
  */
 export async function playWithFeedback(playFn) {
-    const notice = setTimeout(
-        () => showToast('info', 'Starting playback',
-                        'Sending the tracks to the player…', PLAY_NOTICE_DURATION),
-        PLAY_NOTICE_AFTER);
+    let shownNotice = null;
+    const notice = setTimeout(() => {
+        shownNotice = showToast('info', 'Starting playback',
+                                'Sending the tracks to the player…', PLAY_NOTICE_DURATION);
+    }, PLAY_NOTICE_AFTER);
+    // What the play came to takes the notice's place when it is on screen: one toast for
+    // one play, not "Starting playback" with the failure stacked under it.
+    const tell = (...toast) => (shownNotice ? shownNotice.update(...toast) : showToast(...toast));
     try {
-        warnAboutRefusedTracks(await playFn());
+        warnAboutRefusedTracks(await playFn(), tell);
         return true;
     } catch (e) {
         console.error('[library] play failed:', e);
-        showToast('error', 'Playback failed', e?.message || 'Could not start playback');
+        tell('error', 'Playback failed', e?.message || 'Could not start playback');
         return false;
     } finally {
         clearTimeout(notice);
@@ -350,8 +354,9 @@ const MAX_NAMED_REFUSALS = 5;
  * loses anything, answer 503 and travel as errors (see API.md, /library/queue).
  *
  * @param {object} [result] - The queue response, when the caller returned one.
+ * @param {Function} [tell] - What shows the warning: showToast, or the play notice's update.
  */
-function warnAboutRefusedTracks(result) {
+function warnAboutRefusedTracks(result, tell = showToast) {
     const refused = result?.refused;
     if (!refused) return;
     const titles = result.refused_titles || [];
@@ -362,5 +367,5 @@ function warnAboutRefusedTracks(result) {
         ? `HQPlayer could not open ${named}`
         : `HQPlayer could not open ${refused} of ${refused + (kept || 0)} tracks`
           + (named ? `: ${named}` : '');
-    showToast('warning', 'Some tracks were skipped', `${what}.`);
+    tell('warning', 'Some tracks were skipped', `${what}.`);
 }

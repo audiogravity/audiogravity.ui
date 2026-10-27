@@ -144,7 +144,7 @@ export class AgLicenseActivation extends LitElement {
             queueMicrotask(() => {
                 this.dispatchEvent(new CustomEvent('license-activated', { detail: result, bubbles: true }));
                 window.dispatchEvent(new CustomEvent('ag:license-changed', { detail: { source: 'activation' } }));
-                showToast('success', 'License', 'License activated successfully.');
+                showToast('success', 'License activated', 'Its details are shown below.');
             });
         } catch (e) {
             const status = e?.status;

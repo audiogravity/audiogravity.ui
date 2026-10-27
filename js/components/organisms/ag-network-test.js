@@ -149,10 +149,13 @@ export class AgNetworkTest extends LitElement {
 
         try {
             await apiPost(`/services/iperf3.service/${action}`);
-            showToast('success', 'Service Updated', `iperf3.service ${action === 'start' ? 'started' : 'stopped'} successfully.`);
+            // The Internal Server Service of the iperf3 test: other devices measure against it.
+            showToast('success', action === 'start' ? 'Server started' : 'Server stopped', action === 'start'
+                ? 'Other devices can run an iperf3 test against this box.'
+                : 'This box no longer answers iperf3 tests.');
             // No more setTimeout polling, we wait for SSE
         } catch (error) {
-            handleError(error, `Failed to ${action} iperf3.service`);
+            handleError(error, action === 'start' ? 'Server not started' : 'Server not stopped');
             this.iperfServiceStatus = oldStatus;
         }
     }
@@ -182,7 +185,7 @@ export class AgNetworkTest extends LitElement {
 
         if (this.testType === 'ping') {
             if (!this.config.pingTarget || !this.config.pingCount) {
-                showToast('error', 'Missing Config', 'Please provide target and count.');
+                showToast('error', 'Test not started', 'Enter a target and a packet count.');
                 return;
             }
             payload = {
@@ -192,7 +195,7 @@ export class AgNetworkTest extends LitElement {
             };
         } else {
             if (!this.config.iperf3Server) {
-                showToast('error', 'Missing Server', 'Please specify iperf3 server (IP:port)');
+                showToast('error', 'Test not started', 'Enter the server: its address, with :port when it is not 5201.');
                 return;
             }
             payload = {

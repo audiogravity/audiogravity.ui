@@ -87,7 +87,8 @@ export class AgStatsRecording extends LitElement {
             this._settings = await setListeningRecording(on);
             this._announce(this._settings);
         } catch (err) {
-            showToast('error', 'Recording', err?.detail || err?.message || 'The change was refused.');
+            showToast('error', on ? 'History not turned on' : 'History not turned off',
+                err?.detail || err?.message || 'The change was refused.');
             this._settings = { ...this._settings };       // redraws; live() puts the switch back
         } finally {
             this._busy = false;
@@ -107,10 +108,10 @@ export class AgStatsRecording extends LitElement {
         try {
             await clearListeningHistory();
             await this._load();
-            showToast('success', 'Listening history', 'The history was cleared.');
+            showToast('success', 'History cleared', 'Every recorded listen is erased.');
             this._announce(this._settings);
         } catch (err) {
-            showToast('error', 'Listening history', err?.detail || err?.message || 'The history could not be cleared.');
+            showToast('error', 'History not cleared', err?.detail || err?.message || 'The core refused it.');
         } finally {
             this._busy = false;
         }

@@ -338,7 +338,9 @@ export class AgConfigPage extends LitElement {
             const payload = e.detail.mode === 'raw' ? { content: e.detail.rawContent } : { data: e.detail.data };
             await apiPost(`/audio_app_config/${this.selectedServiceId}/config?restart=${restart}`, payload);
 
-            showToast('success', 'Configuration Saved', 'Configuration updated successfully');
+            showToast('success', 'Configuration saved', restart
+                ? `${this.selectedServiceId} restarted with it.`
+                : `${this.selectedServiceId} reads it at its next start.`);
             addToHistory('config', `Saved ${this.selectedServiceId} configuration`, true);
 
             // Reload fresh data to ensure we have the latest
@@ -373,7 +375,7 @@ export class AgConfigPage extends LitElement {
 
         try {
             await apiPost(`/audio_app_config/${this.selectedServiceId}/backups/${filename}/restore`);
-            showToast('success', 'Backup Restored', 'Configuration restored successfully');
+            showToast('success', 'Backup restored', `The configuration of ${filename} is back in place.`);
             addToHistory('config', `Restored ${this.selectedServiceId} from ${filename}`, true);
 
             // Reload config

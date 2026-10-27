@@ -20,7 +20,12 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { apiPost, showToast } = vi.hoisted(() => ({ apiPost: vi.fn(), showToast: vi.fn() }));
+const { apiGet, apiPost, showToast } = vi.hoisted(() => {
+    // A toast's handle that tells the outcome as a toast of its own: the calls then read in
+    // order — an "in progress" notice, then what it came to.
+    const showToast = vi.fn(() => ({ update: (...outcome) => showToast(...outcome), close: () => {} }));
+    return { apiGet: vi.fn(), apiPost: vi.fn(), showToast };
+});
 
 vi.mock(import('../../auth.js'), async (importOriginal) => ({
     ...(await importOriginal()),
@@ -30,6 +35,7 @@ vi.mock(import('../../auth.js'), async (importOriginal) => ({
 }));
 vi.mock(import('../../common.js'), async (importOriginal) => ({
     ...(await importOriginal()),
+    apiGet,
     apiPost,
     showToast,
     addToHistory: vi.fn(),
@@ -68,6 +74,7 @@ function page(packages = [HQPLAYERD, MPD]) {
 const installed = pkg => ({ detail: { ...pkg, status: 'installed' } });
 
 beforeEach(() => {
+    apiGet.mockReset();
     apiPost.mockReset();
     showToast.mockReset();
 });
@@ -187,12 +194,12 @@ describe('update all', () => {
         expect(last[2]).toContain('its log is still written to its default place');
     });
 
-    it('keeps "All Updates Complete" for updates with nothing left', async () => {
+    it('says "Updates complete" for updates with nothing left', async () => {
         await updateAll([
             { success: true, package_id: 'hqplayerd', message: 'Successfully updated HQPlayer Embedded' },
             { success: true, package_id: 'mpd', message: 'Successfully updated MPD' },
         ]);
-        expect(showToast.mock.calls.at(-1).slice(0, 2)).toEqual(['success', 'All Updates Complete']);
+        expect(showToast.mock.calls.at(-1)).toEqual(['success', 'Updates complete', '2 packages updated.']);
     });
 
     it('shows the restart badge where the restart failed', async () => {
@@ -257,5 +264,55 @@ describe('setting the web interface password from the card', () => {
         await el._handleWebPasswordConfirmed({ detail: { packageId: 'hqplayerd', webPassword: 'MyOwnPass42' } });
         expect(el._restartNeeded.has('hqplayerd')).toBe(true);
         expect(showToast.mock.calls[0][0]).toBe('warning');
+    });
+});
+
+describe('one toast for an operation in progress, which becomes its outcome', () => {
+    /** A handle of its own, to tell an update of the notice from a toast added under it. */
+    function notice() {
+        const handle = { update: vi.fn(), close: vi.fn() };
+        showToast.mockReturnValueOnce(handle);
+        return handle;
+    }
+
+    it('turns "Checking for updates" into the number of updates found', async () => {
+        const checking = notice();
+        apiGet.mockResolvedValue([
+            { ...HQPLAYERD, installed_version: '6.0.2-3', available_version: '6.1.0-1' },
+            { ...MPD, installed_version: '0.24.5-1', available_version: '0.24.5-1' },
+        ]);
+        await page()._checkAllUpdates();
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('info', 'Checking for updates', 'Every package is being checked…', 0);
+        expect(checking.update).toHaveBeenCalledExactlyOnceWith('success', 'Updates checked', '1 update is available.');
+    });
+
+    it('says when every package is at its latest version', async () => {
+        apiGet.mockResolvedValue([{ ...MPD, installed_version: '0.24.5-1', available_version: '0.24.5-1' }]);
+        await page()._checkAllUpdates();
+        expect(showToast.mock.calls.at(-1)).toEqual(['success', 'Updates checked', 'Every package is at its latest version.']);
+    });
+
+    it('turns it into the reason when the check fails', async () => {
+        const checking = notice();
+        apiGet.mockRejectedValue(Object.assign(new Error('x'), { status: 502, detail: 'The vendor did not answer' }));
+        await page()._checkAllUpdates();
+        expect(checking.update).toHaveBeenCalledExactlyOnceWith('error', 'Updates not checked', 'The vendor did not answer');
+    });
+
+    it('turns "Updating packages" into what the run came to', async () => {
+        const updating = notice();
+        const el = page([{ ...MPD, status: 'installed', installed_version: '0.24.4-1', available_version: '0.24.5-1' }]);
+        window.showConfirm = vi.fn().mockResolvedValue(true);
+        apiPost.mockResolvedValue([{ success: true, package_id: 'mpd', message: 'Successfully updated MPD' }]);
+        await el._handleUpdateAll();
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('info', 'Updating packages', '1 package, one after the other…', 0);
+        expect(updating.update).toHaveBeenCalledExactlyOnceWith('success', 'Updates complete', '1 package updated.');
+    });
+
+    it('turns "Refreshing" into the core\'s answer', async () => {
+        const refreshing = notice();
+        apiPost.mockResolvedValue({ success: true, message: '7 packages from 3 sources' });
+        await page()._refreshConfig();
+        expect(refreshing.update).toHaveBeenCalledExactlyOnceWith('success', 'Refreshed', '7 packages from 3 sources');
     });
 });

@@ -54,11 +54,11 @@ export class AgSystemActions extends LitElement {
         try {
             this._restartingBackend = true;
             await apiPost('/sysinfo/actions/restart-backend', {});
-            showToast('info', 'Core Restarting', 'The core is restarting — reconnecting automatically…');
+            showToast('info', 'Core restarting', 'The interface reconnects on its own…');
             this._startReconnectPolling(false);
         } catch (err) {
             this._restartingBackend = false;
-            showToast('error', 'Restart Failed', getUserFriendlyError(err));
+            showToast('error', 'Core not restarted', getUserFriendlyError(err));
         }
     }
 

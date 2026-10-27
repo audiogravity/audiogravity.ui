@@ -179,6 +179,25 @@ export function appSources() {
 }
 
 /**
+ * A script or a page with its comments blanked out — block, HTML and line comments — so
+ * that prose, or a usage example, is not read as code. Blanked, not removed: every line
+ * stays where it was, for a guard that reports line numbers. One pass, left to right, so
+ * whichever comment opens first wins: a `/*` inside a line comment opens nothing. `://` is
+ * kept, an address in a string; any other `//` ends the line's code, which can cut a
+ * string holding one — enough for guards, which read code, not strings.
+ *
+ * BACKLOG: six guards still strip comments their own way — audiogravity.ops/BACKLOG.md,
+ * "withoutComments — le lecteur partagé existe".
+ *
+ * @param {string} text - A source's text.
+ * @returns {string} The same text, comments turned to spaces, line breaks kept.
+ */
+export function withoutComments(text) {
+    return text.replace(/\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(^|[^:])\/\/.*$/gm,
+        (comment, before = '') => before + comment.slice(before.length).replace(/[^\n]/g, ' '));
+}
+
+/**
  * The selectors of a selector list, split on its top-level commas only — inside `:not()`
  * or `:is()` a comma separates arguments, not selectors, at any depth
  * (`:where(:not(a, :has(b, c)))`) — trimmed, whitespace collapsed. A quoted attribute

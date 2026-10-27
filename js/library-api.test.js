@@ -272,6 +272,39 @@ describe('playWithFeedback', () => {
         }
     });
 
+    it('turns the notice into the failure when the notice is on screen', async () => {
+        vi.useFakeTimers();
+        try {
+            const notice = { update: vi.fn(), close: vi.fn() };
+            showToast.mockReturnValueOnce(notice);
+            let refuse;
+            const pending = playWithFeedback(() => new Promise((_, reject) => { refuse = reject; }));
+            await vi.advanceTimersByTimeAsync(1600);
+            refuse(new Error('HQPlayer did not answer'));
+            await expect(pending).resolves.toBe(false);
+            expect(showToast).toHaveBeenCalledTimes(1);           // the notice, and nothing stacked
+            expect(notice.update).toHaveBeenCalledWith('error', 'Playback failed', 'HQPlayer did not answer');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('turns the notice into the skipped tracks too', async () => {
+        vi.useFakeTimers();
+        try {
+            const notice = { update: vi.fn(), close: vi.fn() };
+            showToast.mockReturnValueOnce(notice);
+            let release;
+            const pending = playWithFeedback(() => new Promise((resolve) => { release = resolve; }));
+            await vi.advanceTimersByTimeAsync(1600);
+            release({ tracks: 10, refused: 1, refused_titles: ['Interlude'] });
+            await expect(pending).resolves.toBe(true);
+            expect(notice.update).toHaveBeenCalledWith('warning', 'Some tracks were skipped', 'HQPlayer could not open Interlude.');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('never rethrows — the caller must not need its own catch', async () => {
         await expect(playWithFeedback(vi.fn().mockRejectedValue(new Error('boom'))))
             .resolves.toBe(false);

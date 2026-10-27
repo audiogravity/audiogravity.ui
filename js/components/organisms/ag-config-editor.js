@@ -443,7 +443,7 @@ export class AgConfigEditor extends LitElement {
             ).then(confirmed => {
                 if (confirmed) {
                     this._revertChanges();
-                    window.showToast('info', 'Changes Discarded', 'Configuration reverted to original');
+                    window.showToast('info', 'Changes discarded', 'The configuration is back to its saved version.');
                 }
             });
         } else {

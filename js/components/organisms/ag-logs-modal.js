@@ -132,7 +132,7 @@ export class AgLogsModal extends LitElement {
             }).join('\n');
         }
         if (!logsText) {
-            showToast('warning', 'Empty', 'No logs to copy');
+            showToast('info', 'Nothing to copy', 'The log is empty.');
             return;
         }
         logger.log("--- SYSTEM LOGS EXPORT ---");
@@ -140,9 +140,9 @@ export class AgLogsModal extends LitElement {
         logger.log("--------------------------");
         try {
             await copyToClipboard(logsText);
-            showToast('success', 'Copied', 'Logs copied to clipboard!');
+            showToast('success', 'Copied', 'The logs are on your clipboard.');
         } catch {
-            showToast('error', 'Copy Failed', 'Browser blocked copying. See console for logs.');
+            showToast('error', 'Copy Failed', 'The browser blocked copying. Select the logs and copy them by hand.');
         }
     }
 
