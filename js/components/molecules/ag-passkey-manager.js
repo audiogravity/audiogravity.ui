@@ -74,10 +74,10 @@ export class AgPasskeyManager extends LitElement {
 
         try {
             await apiCall(`/auth/webauthn/credentials/${encodeURIComponent(credentialId)}`, { method: 'DELETE' });
-            showToast('success', 'Passkey Removed', `${deviceName} has been removed.`);
+            showToast('success', 'Passkey removed', `${deviceName} can no longer sign you in.`);
             await this._loadCredentials();
         } catch (err) {
-            showToast('error', 'Delete Failed', getUserFriendlyError(err));
+            showToast('error', 'Passkey not removed', getUserFriendlyError(err));
         }
     }
 
@@ -90,15 +90,16 @@ export class AgPasskeyManager extends LitElement {
         this._registering = true;
         try {
             await registerPasskey(user.username, name);
-            showToast('success', 'Passkey Added', `${name} is now registered.`);
+            showToast('success', 'Passkey added', `${name} can sign you in from now on.`);
             this._showAddForm = false;
             this._deviceName = '';
             await this._loadCredentials();
         } catch (err) {
             if (err.name === 'NotAllowedError') {
-                showToast('warning', 'Cancelled', 'Passkey registration was cancelled.');
+                // Cancelled on the device: nothing to keep on screen until it is closed.
+                showToast('info', 'Passkey not added', 'The registration was cancelled.');
             } else {
-                showToast('error', 'Registration Failed', getUserFriendlyError(err));
+                showToast('error', 'Passkey not added', getUserFriendlyError(err));
             }
         } finally {
             this._registering = false;

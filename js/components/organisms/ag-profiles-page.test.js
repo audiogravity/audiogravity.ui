@@ -78,7 +78,7 @@ describe('ag-profiles-page — a switch that never reports back', () => {
         expect(el._loadProfiles).toHaveBeenCalledTimes(1);
         expect(el._pendingProfiles.size).toBe(0);
         expect(showToast).toHaveBeenCalledWith(
-            'warning', 'No answer from the profile', expect.stringContaining('MPD'), 6000);
+            'warning', 'No answer from the profile', expect.stringContaining('MPD'));
         el.disconnectedCallback();
     });
 

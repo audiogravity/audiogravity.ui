@@ -10,6 +10,7 @@ import {
     AppState,
     addToHistory,
     handleError,
+    getUserFriendlyError,
 } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { ContextConsumer } from '@lit/context';
@@ -145,9 +146,10 @@ export class AgSystemdPage extends LitElement {
         const editor = document.getElementById('agSystemdOverrideEditor');
         if (editor) editor.isSaving = true;
 
+        // What the save comes to takes this notice's place: one toast for one save. A
+        // dialog that answers instead — values refused, warnings to accept — closes it.
+        const checking = showToast('info', 'Checking the settings', `Before they are applied to ${service.name}…`, 0);
         try {
-            // Validate properties
-            if (showToast) showToast('info', 'Validating...', 'Checking systemd configuration validity');
 
             let validation;
             try {
@@ -168,17 +170,20 @@ export class AgSystemdPage extends LitElement {
                     errorContent = html`<div class="validation-section validation-errors"><h4 class="validation-section-title">❌ Validation Failed</h4><p class="validation-error"><strong>${errorMsg}</strong></p></div>`;
                 }
 
+                checking.close();
                 if (showConfirm) showConfirm('❌ Validation Error', html`<div class="validation-results">${errorContent}</div>`, { isInfo: true });
                 return false;
             }
 
             if (!validation.valid) {
                 const content = html`<ag-validation-results .result=${validation}></ag-validation-results>`;
+                checking.close();
                 if (showConfirm) showConfirm('Invalid Configuration', content, { isInfo: true });
                 return false;
             }
 
             if (validation.warnings && validation.warnings.length > 0) {
+                checking.close();
                 const content = html`<ag-validation-results .result=${validation}></ag-validation-results><p><strong>Continue with these warnings?</strong></p>`;
                 const confirmed = await showConfirm('Validation Warnings', content, 'Apply anyway', 'Cancel');
                 if (!confirmed) return false;
@@ -191,14 +196,14 @@ export class AgSystemdPage extends LitElement {
                 skip_validation: true
             });
 
-            if (showToast) showToast('success', 'Properties Updated', result.message || 'Systemd properties updated successfully');
+            checking.update('success', 'Settings applied', result.message || `${service.name} runs with its new settings.`);
             if (addToHistory) addToHistory('systemd', `Updated: ${service.name}`, true);
 
             await this._loadServices();
             return true;
         } catch (error) {
             console.error('Failed to apply properties:', error);
-            handleError(error, 'Failed to update properties');
+            checking.update('error', 'Settings not applied', getUserFriendlyError(error));
             // A refused save may have been applied and undone meanwhile: the core puts
             // the previous settings back when the service does not start on the new
             // ones, so the listed settings are read again.
@@ -220,7 +225,7 @@ export class AgSystemdPage extends LitElement {
         try {
             // The core says whether the service was restarted on its own settings.
             const result = await apiCall(`/services/${service.systemd_unit}/properties/override`, { method: 'DELETE' });
-            if (showToast) showToast('success', 'Configuration Restored', result?.message || `Override removed for ${service.name}`);
+            if (showToast) showToast('success', 'Default settings restored', result?.message || `${service.name} is back on its default settings.`);
             if (addToHistory) addToHistory('systemd', `Removed override: ${service.name}`, true);
             await this._loadServices();
         } catch (error) {
@@ -242,7 +247,7 @@ export class AgSystemdPage extends LitElement {
         try {
             // The core says whether the service was restarted on the restored settings.
             const result = await apiCallWithRetry(`/services/${service.systemd_unit}/properties/restore`, { method: 'POST' });
-            if (showToast) showToast('success', 'Backup Restored', result?.message || `Previous config restored for ${service.name}`);
+            if (showToast) showToast('success', 'Previous settings restored', result?.message || `${service.name} is back on its previous settings.`);
             if (addToHistory) addToHistory('systemd', `Restored backup: ${service.name}`, true);
             await this._loadServices();
         } catch (error) {

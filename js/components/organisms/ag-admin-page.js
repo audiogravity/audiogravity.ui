@@ -186,7 +186,7 @@ export class AgAdminPage extends LitElement {
     async _toggleUserEnabled(e) {
         const { username, currentStatus } = e.detail;
         if (username === 'admin') {
-            showToast('error', 'Security', 'The main admin account cannot be disabled.');
+            showToast('error', 'Not allowed', 'The main admin account cannot be disabled.');
             return;
         }
 
@@ -198,12 +198,13 @@ export class AgAdminPage extends LitElement {
                 body: JSON.stringify({ enabled: newEnabled })
             });
 
-            showToast('success', 'User Status', `User ${username} is now ${newEnabled ? 'enabled' : 'disabled'}.`);
+            showToast('success', newEnabled ? 'User enabled' : 'User disabled',
+                newEnabled ? `${username} can sign in again.` : `${username} can no longer sign in.`);
             addToHistory('admin', `${newEnabled ? 'Enabled' : 'Disabled'} user: ${username}`, true);
 
             this._loadUsers();
         } catch (error) {
-            handleError(error, 'Toggling User status');
+            handleError(error, 'User not changed');
         }
     }
 
@@ -216,12 +217,15 @@ export class AgAdminPage extends LitElement {
                 body: JSON.stringify({ persistent_auth: isPersistent })
             });
 
-            showToast('success', 'User Config', `Session persistence ${isPersistent ? 'enabled' : 'disabled'} for ${username}.`);
+            // PERSIST on the card: where the browser keeps the session (auth.js, saveAuth).
+            showToast('success', isPersistent ? 'Stays signed in' : 'Signed out on close', isPersistent
+                ? `${username} stays signed in after closing the browser.`
+                : `${username} is signed out when the browser tab closes.`);
             addToHistory('admin', `${isPersistent ? 'Enabled' : 'Disabled'} persistence for: ${username}`, true);
 
             this._loadUsers();
         } catch (error) {
-            handleError(error, 'Toggling User persistence');
+            handleError(error, 'User not changed');
         }
     }
 
@@ -254,11 +258,11 @@ export class AgAdminPage extends LitElement {
                 await apiCall(`/auth/users/${encodeURIComponent(username)}`, {
                     method: 'DELETE'
                 });
-                showToast('success', 'User Deleted', `User ${username} has been deleted.`);
+                showToast('success', 'User deleted', `${username} can no longer sign in.`);
                 addToHistory('admin', `Deleted user: ${username}`, true);
                 this._loadUsers();
             } catch (error) {
-                handleError(error, 'Deleting User');
+                handleError(error, 'User not deleted');
                 addToHistory('admin', `Delete user failed: ${username}`, false);
             }
         }
@@ -285,18 +289,18 @@ export class AgAdminPage extends LitElement {
                 // A new password for your own account ends your own sessions with the
                 // others; the core hands back a token for this one.
                 if (updated?.access_token) replaceToken(updated.access_token);
-                showToast('success', 'User Updated', `User ${username} successfully updated.`);
+                showToast('success', 'User saved', username);
                 addToHistory('admin', `Updated user: ${username} (Enabled: ${payload.enabled})`, true);
             } else {
                 await apiPost('/auth/users', payload);
-                showToast('success', 'User Created', `User ${username} successfully created.`);
+                showToast('success', 'User created', `${username} can sign in now.`);
                 addToHistory('admin', `Created user: ${username} (Enabled: ${payload.enabled})`, true);
             }
 
             modal.isOpen = false;
             this._loadUsers();
         } catch (error) {
-            handleError(error, 'Saving User');
+            handleError(error, 'User not saved');
             addToHistory('admin', `${isEditing ? 'Update' : 'Create'} user failed: ${username}`, false);
         } finally {
             modal.isSaving = false;
@@ -304,7 +308,7 @@ export class AgAdminPage extends LitElement {
     }
 
     _handleModalError(e) {
-        showToast('error', 'Validation Error', e.detail);
+        showToast('error', 'User not saved', e.detail);
     }
 
     render() {

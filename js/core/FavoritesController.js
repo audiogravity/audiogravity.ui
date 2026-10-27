@@ -14,7 +14,7 @@
  */
 
 import { getFavoriteAlbumIds, setAlbumFavorited, subscribeFavorites } from '../library-store.js';
-import { showToast } from '../ui-helpers.js';
+import { getUserFriendlyError, showToast } from '../ui-helpers.js';
 
 export class FavoritesController {
     /** @param {import('lit').ReactiveControllerHost} host */
@@ -74,12 +74,12 @@ export class FavoritesController {
         this.host.requestUpdate();
         try {
             await setAlbumFavorited(sourceId, albumId, favorited);
-        } catch (_) {
+        } catch (err) {
             const revert = new Set(this.ids);
             if (favorited) revert.delete(albumId); else revert.add(albumId);
             this.ids = revert;
             this.host.requestUpdate();
-            showToast(`Could not ${favorited ? 'add' : 'remove'} favorite`, 'error');
+            showToast('error', favorited ? 'Favorite not added' : 'Favorite not removed', getUserFriendlyError(err));
         }
     }
 }

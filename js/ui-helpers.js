@@ -1,11 +1,24 @@
 import { html } from 'lit';
 import { isNetworkError, isGatewayError } from './net-errors.js';
 
-// Toast durations (ms). The long one is for a message of a sentence or two, to be read.
+// Toast timings (ms). The duration is a success's or an info's: an error or a warning stays
+// until it is closed (ag-toast-notification.js).
 const TOAST_DURATION_DEFAULT = 4000;
-export const TOAST_DURATION_LONG = 6000;
 const TOAST_ANIMATION_DELAY = 10;
 const TOAST_REMOVE_DELAY = 300;
+
+/** At most this many toasts on screen: past it, the oldest gives way (user decision, 2026-10-27). */
+const TOAST_MAX_VISIBLE = 3;
+
+/** The announcements a screen reader region keeps: room for a burst, and no more. */
+const TOAST_ANNOUNCEMENTS_KEPT = 3;
+
+/**
+ * Counts each time a toast is said — shown, said again as a twin, or updated. A toast keeps
+ * the turn it was last said at: the lowest is the oldest, which gives way first, and only
+ * the handle given that turn may still change or close it.
+ */
+let toastTurn = 0;
 
 // User-friendly error messages (ENGLISH)
 //
@@ -77,7 +90,7 @@ export function handleError(error, context = '') {
     const friendlyMessage = getUserFriendlyError(error);
     const title = context || 'Error';
 
-    showToast('error', title, friendlyMessage, TOAST_DURATION_LONG);
+    showToast('error', title, friendlyMessage);
 }
 
 // =====================
@@ -85,21 +98,109 @@ export function handleError(error, context = '') {
 // =====================
 
 /**
- * Show a toast notification using Lit Web Component
- * @param {string} type - Type of toast: 'success', 'error', 'warning', 'info'
- * @param {string} title - Toast title
- * @param {string} message - Toast message
- * @param {number} duration - Duration in ms before auto-hide
+ * A type the component styles, else 'info' and a report of the call.
+ * @param {string} type
+ * @returns {string}
  */
-export function showToast(type, title, message, duration = TOAST_DURATION_DEFAULT) {
-    // A wrong string is still a string: six calls once passed (message, type) and rendered an
-    // unstyled notice headed "success". Say so where it can be seen, and still show something.
-    if (!TOAST_TYPES.has(type)) {
-        console.error(`[toast] "${type}" is not a toast type — the call is showToast(type, title, message)`);
-        type = 'info';
-    }
+function toastType(type) {
+    // A wrong string is still a string: seven calls once passed (message, type) and rendered an
+    // unstyled notice headed "success" or "error". Say so where it can be seen, and still show
+    // something; js/toast-calls.test.js keeps the calls themselves in order.
+    if (TOAST_TYPES.has(type)) return type;
+    console.error(`[toast] "${type}" is not a toast type — the call is showToast(type, title, message)`);
+    return 'info';
+}
+
+/**
+ * Say a toast to screen readers, once: an error at once, anything else when the reader is
+ * free. The two regions are in index.html from the start — one created with its words
+ * already in is not announced reliably. Each toast goes in as a line of its own, after the
+ * others: a reader says what is added, so the same words twice are said twice, and two
+ * toasts that come together are both said — emptying the region for each one dropped the
+ * first. The regions are not atomic (index.html), or every line kept would be said again.
+ * @param {HTMLElement & {type: string, announcement: string}} toast
+ */
+function announceToast(toast) {
+    const region = document.getElementById(toast.type === 'error' ? 'toastAlert' : 'toastStatus');
+    if (!region) return;
+    const line = document.createElement('div');
+    line.textContent = toast.announcement;
+    region.append(line);
+    while (region.childElementCount > TOAST_ANNOUNCEMENTS_KEPT) region.firstElementChild.remove();
+}
+
+/**
+ * @typedef {object} ToastHandle
+ * @property {(type: string, title: string, message: string, duration?: number) => ToastHandle} update
+ *   Turn the toast into another message — an operation's result taking the place of its
+ *   "in progress" notice. When that toast is no longer this handle's — closed, pushed out
+ *   by newer ones, or said again by another call, which then owns it — the message is
+ *   shown as a new toast instead, which the handle follows from then on.
+ * @property {() => void} close - Close the toast now, if it is still this handle's.
+ */
+
+/**
+ * @typedef {object} ToastPlace
+ * @property {(HTMLElement & {turn: number, closing: boolean, show: boolean,
+ *   setMessage: Function, hide: Function})|null} toast - The toast said; null on a page
+ *   without a toast container.
+ * @property {number} turn - The turn it was said at, which only this placing holds.
+ */
+
+/**
+ * The handle of a toast just said.
+ * @param {ToastPlace} place
+ * @returns {ToastHandle}
+ */
+function toastHandle(place) {
+    let { toast, turn } = place;
+    // Its own toast still: not gone, not leaving, and said last by this handle — two plays
+    // that shared one "Starting playback" each told their outcome in it, and the second
+    // replaced the first's failure.
+    const owns = () => toast?.isConnected && !toast.closing && toast.turn === turn;
+    const handle = {
+        update(type, title, message, duration = TOAST_DURATION_DEFAULT) {
+            if (!owns()) {
+                ({ toast, turn } = placeToast(type, title, message, duration));
+                return handle;
+            }
+            toast.turn = turn = ++toastTurn;
+            toast.setMessage(toastType(type), title, message, duration);
+            // Not shown yet: it is said as it appears, in these words.
+            if (toast.show) announceToast(toast);
+            return handle;
+        },
+        close() {
+            if (owns()) toast.hide();
+        },
+    };
+    return handle;
+}
+
+/**
+ * Put a toast on screen, or say again the identical one already there.
+ * @param {string} type
+ * @param {string} title
+ * @param {string} message
+ * @param {number} duration
+ * @returns {ToastPlace}
+ */
+function placeToast(type, title, message, duration) {
+    type = toastType(type);
+    const turn = ++toastTurn;
     const container = document.getElementById('toastContainer');
-    if (!container) return;
+    if (!container) return { toast: null, turn };
+
+    const shown = [...container.querySelectorAll('ag-toast-notification')].filter((t) => !t.closing);
+    const twin = shown.find((t) => t.type === type && t.title === title && t.message === message);
+    if (twin) {
+        twin.turn = turn;
+        twin.setMessage(type, title, message, duration);
+        return { toast: twin, turn };
+    }
+    // Said longest ago first, not first on the page: a toast said again is as new as its twin.
+    shown.sort((a, b) => a.turn - b.turn);
+    for (const oldest of shown.slice(0, Math.max(0, shown.length - TOAST_MAX_VISIBLE + 1))) oldest.hide();
 
     // Create Lit Web Component
     const toast = document.createElement('ag-toast-notification');
@@ -107,13 +208,35 @@ export function showToast(type, title, message, duration = TOAST_DURATION_DEFAUL
     toast.title = title;
     toast.message = message;
     toast.duration = duration;
+    toast.turn = turn;
 
     container.appendChild(toast);
 
     // Trigger show animation
     setTimeout(() => {
         toast.show = true;
+        announceToast(toast);
     }, TOAST_ANIMATION_DELAY);
+    return { toast, turn };
+}
+
+/**
+ * Show a toast notification using Lit Web Component.
+ *
+ * A success or an info leaves after `duration`; an error or a warning stays until it is
+ * closed. A toast identical to one still on screen is not added again — that one starts
+ * its time over — and past TOAST_MAX_VISIBLE the one said longest ago gives way.
+ *
+ * @param {string} type - Type of toast: 'success', 'error', 'warning', 'info'
+ * @param {string} title - Toast title
+ * @param {string} message - Toast message
+ * @param {number} [duration] - Milliseconds before a success or an info leaves; 0 keeps it
+ *   until it is closed or updated — an operation's "in progress" notice.
+ * @returns {ToastHandle} What turns the toast into the operation's result, or closes it —
+ *   one that shows nothing on a page without a toast container.
+ */
+export function showToast(type, title, message, duration = TOAST_DURATION_DEFAULT) {
+    return toastHandle(placeToast(type, title, message, duration));
 }
 
 // =====================

@@ -19,7 +19,7 @@ import { apiGet, apiPost } from '../../api.js';
 import { iconDownload, iconRepeat } from '../../ag-icons.js';
 import { isAdmin } from '../../auth.js';
 import { bareVersion } from '../../core/versions.js';
-import { showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
+import { getUserFriendlyError, showConfirm, showPasswordConfirm, showToast } from '../../ui-helpers.js';
 
 /** Self-update phases that end the flow (no more polling). */
 const _TERMINAL_PHASES = new Set(['done', 'rolled_back', 'failed']);
@@ -197,7 +197,7 @@ export class AgUpdateBanner extends LitElement {
             showToast('info', 'Update started', 'Installing — the app will reconnect automatically…');
             this._startPolling();
         } catch (err) {
-            showToast('error', 'Update failed to start', err?.message || 'Unknown error');
+            showToast('error', 'Update failed to start', getUserFriendlyError(err));
         }
     }
 
@@ -223,8 +223,8 @@ export class AgUpdateBanner extends LitElement {
                         setTimeout(() => window.location.reload(), 1500);
                     } else {
                         this._updating = false;
-                        // The toast is gone in seconds and the reason can run to a few
-                        // lines: it stays under the banner, where it can be read.
+                        // The reason can run to a few lines: it stays under the banner,
+                        // where it can be read, and the toast only says that it failed.
                         this._failure = updateFailureText(this._phase, s?.error);
                         showToast('error', 'Update not applied', updatePhaseLabel(this._phase));
                     }

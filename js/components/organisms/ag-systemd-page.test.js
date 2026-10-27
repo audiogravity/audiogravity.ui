@@ -12,11 +12,18 @@ vi.mock('lit', () => ({
     LitElement: class { connectedCallback() {} },
     html: (strings, ...values) => ({ strings, values }),
 }));
-vi.mock('../../net-errors.js', () => ({ validationField: vi.fn() }));
-vi.mock('../../common.js', () => ({
+vi.mock('../../net-errors.js', async (importOriginal) => ({
+    ...(await importOriginal()),
+    validationField: vi.fn(),
+}));
+// A toast's handle: the save's outcome takes the place of its "Checking" notice.
+const checking = vi.hoisted(() => ({ update: vi.fn(), close: vi.fn() }));
+vi.mock('../../common.js', async () => ({
     apiGet: vi.fn(), apiPost: vi.fn(), apiCall: vi.fn(), apiCallWithRetry: vi.fn(),
-    showToast: vi.fn(), showConfirm: vi.fn(), AppState: {}, addToHistory: vi.fn(),
+    showToast: vi.fn(() => checking), showConfirm: vi.fn(), AppState: {}, addToHistory: vi.fn(),
     handleError: vi.fn(),
+    // The real wording of an error.
+    getUserFriendlyError: (await vi.importActual('../../ui-helpers.js')).getUserFriendlyError,
 }));
 vi.mock('../../core/FetchController.js', () => ({ FetchController: class {} }));
 vi.mock('@lit/context', () => ({ ContextConsumer: class {} }));
@@ -25,7 +32,7 @@ vi.mock('./ag-card-grid.js', () => ({}));
 vi.mock('../molecules/ag-systemd-card.js', () => ({}));
 vi.mock('../molecules/ag-validation-results.js', () => ({}));
 
-import { apiPost, handleError, showConfirm } from '../../common.js';
+import { apiPost, showConfirm, showToast } from '../../common.js';
 import { validationField } from '../../net-errors.js';
 import { AgSystemdPage } from './ag-systemd-page.js';
 
@@ -54,7 +61,7 @@ describe('ag-systemd-page — saving a service\'s properties', () => {
         const el = makeEl();
         const saved = await el._saveProperties(SERVICE, { nice: -5 }, true);
         expect(saved).toBe(false);
-        expect(handleError).toHaveBeenCalledWith(refused, 'Failed to update properties');
+        expect(checking.update).toHaveBeenCalledWith('error', 'Settings not applied', refused.detail);
         expect(el._loadServices).toHaveBeenCalledTimes(1);
     });
 
@@ -65,6 +72,16 @@ describe('ag-systemd-page — saving a service\'s properties', () => {
         const el = makeEl();
         expect(await el._saveProperties(SERVICE, { nice: -5 }, true)).toBe(true);
         expect(el._loadServices).toHaveBeenCalledTimes(1);
+        // One toast for the save: its notice turned into the outcome, nothing stacked.
+        expect(showToast).toHaveBeenCalledTimes(1);
+        expect(checking.update).toHaveBeenCalledWith('success', 'Settings applied', 'Properties updated successfully');
+    });
+
+    it('closes its notice when a dialog answers instead', async () => {
+        apiPost.mockResolvedValueOnce({ valid: false, errors: [{ field: 'nice', message: 'out of range' }], warnings: [] });
+        expect(await makeEl()._saveProperties(SERVICE, { nice: -50 }, true)).toBe(false);
+        expect(checking.close).toHaveBeenCalledTimes(1);
+        expect(checking.update).not.toHaveBeenCalled();
     });
 });
 

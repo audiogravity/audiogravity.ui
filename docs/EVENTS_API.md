@@ -332,7 +332,7 @@ userModal.addEventListener('save', (e) => {
 });
 
 userModal.addEventListener('error', (e) => {
-    showToast(e.detail, 'error');
+    showToast('error', 'User not saved', e.detail);
 });
 ```
 

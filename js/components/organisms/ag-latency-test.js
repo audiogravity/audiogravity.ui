@@ -135,7 +135,7 @@ export class AgLatencyTest extends LitElement {
     async _startTest() {
         const problem = latencyConfigProblem(this.config);
         if (problem) {
-            showToast('error', 'Latency Test', problem);
+            showToast('error', 'Test not started', problem);
             return;
         }
         const affinityStr = this.config.cpu_affinity || '';

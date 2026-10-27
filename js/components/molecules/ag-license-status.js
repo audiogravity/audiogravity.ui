@@ -237,9 +237,9 @@ export class AgLicenseStatus extends LitElement {
                 body: JSON.stringify({ password }),
             });
             window.dispatchEvent(new CustomEvent('ag:license-changed'));
-            showToast('success', 'License removed', 'The license has been deleted. Audiogravity is running in Starter Edition.');
+            showToast('success', 'License removed', 'Audiogravity now runs in Starter Edition.');
         } catch (err) {
-            showToast('error', 'Deletion failed', getUserFriendlyError(err));
+            showToast('error', 'License not removed', getUserFriendlyError(err));
         } finally {
             this._deleting = false;
         }

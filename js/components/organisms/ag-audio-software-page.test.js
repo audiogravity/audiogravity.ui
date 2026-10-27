@@ -58,9 +58,17 @@ describe('Bulk-update confirm dialog — vendor text is shown as text', () => {
         const box = await asked([{
             id: 'mpd', label: 'Music Player Daemon', installed_version: '0.23.12', available_version: '0.23.15',
         }]);
-        expect(box.textContent).toContain('The following 1 packages will be updated:');
+        expect(box.textContent).toContain('The following 1 package will be updated:');
         expect(box.querySelector('strong').textContent).toBe('Music Player Daemon');
         expect(box.querySelector('.package-version-info').textContent).toBe('0.23.12 → 0.23.15');
+    });
+
+    it('counts two packages in the plural — one used to read "1 packages"', async () => {
+        const box = await asked([
+            { id: 'mpd', label: 'Music Player Daemon', installed_version: '0.23.12', available_version: '0.23.15' },
+            { id: 'naa', label: 'NAA', installed_version: '5.1.0', available_version: '5.1.2' },
+        ]);
+        expect(box.textContent).toContain('The following 2 packages will be updated:');
     });
 });
 

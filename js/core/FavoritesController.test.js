@@ -15,7 +15,11 @@ vi.mock('../library-store.js', () => ({
     setAlbumFavorited:   (...a) => setAlbumFavorited(...a),
     subscribeFavorites:  (...a) => subscribeFavorites(...a),
 }));
-vi.mock('../ui-helpers.js', () => ({ showToast: (...a) => showToast(...a) }));
+// The real wording of an error, only the toast itself caught.
+vi.mock('../ui-helpers.js', async (importOriginal) => ({
+    ...(await importOriginal()),
+    showToast: (...a) => showToast(...a),
+}));
 
 import { FavoritesController } from './FavoritesController.js';
 
@@ -101,5 +105,24 @@ describe('FavoritesController', () => {
         await c.toggle('src_qobuz', 'x', true);   // add → fails
         expect(c.has('x')).toBe(false);            // reverted
         expect(showToast).toHaveBeenCalled();
+    });
+
+    // The call passed (message, 'error') from July to October 2026: the toast came out blue,
+    // headed "error", with no words. Only "it was called" was checked.
+    it('says the failure as an error, with the reason the service gave', async () => {
+        const refusal = Object.assign(new Error('Qobuz did not answer'), { status: 502, detail: 'Qobuz did not answer' });
+        setAlbumFavorited.mockRejectedValue(refusal);
+        await new FavoritesController(makeHost()).toggle('src_qobuz', 'x', true);
+        expect(showToast).toHaveBeenCalledWith('error', 'Favorite not added', 'Qobuz did not answer');
+    });
+
+    it('names a removal that failed as a removal', async () => {
+        getFavoriteAlbumIds.mockResolvedValue(new Set(['x']));
+        setAlbumFavorited.mockRejectedValue(new Error('Tidal refused the change'));
+        const c = new FavoritesController(makeHost());
+        await c.load('src_tidal');
+        await c.toggle('src_tidal', 'x', false);
+        expect(c.has('x')).toBe(true);              // put back
+        expect(showToast).toHaveBeenCalledWith('error', 'Favorite not removed', 'Tidal refused the change');
     });
 });

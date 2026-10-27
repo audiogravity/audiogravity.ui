@@ -93,7 +93,7 @@ export class AgPipelinePage extends LitElement {
             modal.isOpen = true;
         } catch (error) {
             console.error('[Topology Modal] Failed to load config:', error);
-            showToast('error', 'Load Failed', 'Failed to load audio-topology.json');
+            showToast('error', 'Topology not loaded', getUserFriendlyError(error));
         }
     }
 
@@ -133,21 +133,22 @@ export class AgPipelinePage extends LitElement {
     }
 
     async _persistTopology(newConfig, modal) {
+        // What the save comes to takes this notice's place: one toast for one save.
+        const saving = showToast('info', 'Saving the topology', 'The pipeline reloads with it…', 0);
         try {
             modal._isLoading = true;
-            showToast('info', 'Saving', 'Saving audio-topology.json...');
 
             const result = await apiPost('/audio_pipeline/topology/save', newConfig);
 
             if (result.success) {
-                showToast('success', 'Saved', 'Topology saved and reloaded');
+                saving.update('success', 'Topology saved', 'The pipeline was reloaded with it.');
                 modal.isOpen = false;
             } else {
-                showToast('error', 'Save Failed', result.message);
+                saving.update('error', 'Topology not saved', result.message);
             }
         } catch (error) {
             console.error('[Topology Modal] Save error:', error);
-            showToast('error', 'Save Failed', getUserFriendlyError(error));
+            saving.update('error', 'Topology not saved', getUserFriendlyError(error));
         } finally {
             modal._isLoading = false;
         }

@@ -393,6 +393,12 @@
 
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toastContainer"></div>
+    <!-- What a screen reader says of each toast, once: an error, and everything else
+         (ui-helpers.js, announceToast). Present from the start, or nothing is announced.
+         Not atomic, against their roles' default: a toast adds a line, and only that
+         line is to be said, not the ones kept before it. -->
+    <div class="sr-only" id="toastAlert" role="alert" aria-atomic="false"></div>
+    <div class="sr-only" id="toastStatus" role="status" aria-atomic="false"></div>
 
     <!-- HUD CONTAINER -->
     <div id="hud-container">

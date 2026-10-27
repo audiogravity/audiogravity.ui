@@ -554,12 +554,12 @@ export class AgConfigPanel extends LitElement {
             const { subscribed, tested } = await toggleSubscription();
             if (subscribed && tested === false) {
                 showToast('warning', 'Notifications on',
-                    "This box's core is older than this app and sends no test notification. Update the core to get one.", 8000);
+                    "This box's core is older than this app and sends no test notification. Update the core to get one.");
             } else if (subscribed) {
                 showToast('success', 'Notifications on', 'A test notification is on its way to this device.');
             }
         } catch (err) {
-            showToast('error', err?.title || 'Notifications', err?.message || 'Unknown error', 8000);
+            showToast('error', err?.title || 'Notifications not changed', err?.message || 'Unknown error');
         } finally {
             this._pushBusy = false;
             this.pushSubscribed = getPushStatus();
@@ -595,9 +595,9 @@ export class AgConfigPanel extends LitElement {
             const user = getCurrentUser();
             if (user) localStorage.removeItem(`passkey_offered_${user.username}`);
             localStorage.removeItem('passkey_auto');
-            showToast('success', 'Passkeys', 'Face ID / Touch ID disabled.');
+            showToast('success', 'Face ID / Touch ID off', 'Sign in with your password from now on.');
         } catch (err) {
-            showToast('error', 'Passkeys', getUserFriendlyError(err));
+            showToast('error', 'Face ID / Touch ID still on', getUserFriendlyError(err));
             await this._loadPasskeys();
         } finally {
             this.passkeysLoading = false;
@@ -617,27 +617,31 @@ export class AgConfigPanel extends LitElement {
             this.passkeysLoading = true;
             await registerPasskey(user.username, deviceName);
             localStorage.setItem('passkey_auto', 'true');
-            showToast('success', 'Passkeys', 'Passkey registered successfully.');
+            showToast('success', 'Face ID / Touch ID on', 'This device signs you in with it from now on.');
             await this._loadPasskeys();
         } catch (err) {
             if (err.name !== 'NotAllowedError') {
-                showToast('error', 'Passkey registration failed', getUserFriendlyError(err));
+                showToast('error', 'Face ID / Touch ID still off', getUserFriendlyError(err));
             }
         } finally {
             this.passkeysLoading = false;
         }
     }
 
+    /**
+     * Remove one device's passkey — the X of its chip.
+     * @param {string} credentialId
+     */
     async _deletePasskey(credentialId) {
+        const device = this.passkeys.find((p) => p.credential_id === credentialId)?.device_name || 'That device';
         try {
             await apiDelete(`/auth/webauthn/credentials/${credentialId}`, false);
-            showToast('success', 'Passkeys', 'Passkey removed.');
+            showToast('success', 'Passkey removed', `${device} can no longer sign you in.`);
             await this._loadPasskeys();
         } catch (err) {
-            showToast('error', 'Passkeys', getUserFriendlyError(err));
+            showToast('error', 'Passkey not removed', getUserFriendlyError(err));
         }
     }
-
 
     _openApiDocs() {
         openApiDocs(this._docsUrl);

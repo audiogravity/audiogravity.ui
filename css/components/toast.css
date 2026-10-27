@@ -3,9 +3,13 @@
  * @description Styles for temporary notification messages.
  */
 
+/* Below the whole frame: the top bar, the title bar, the tab bar. An error stays until it is
+   closed, and three of them at the top bar's foot hid the Library and Manual tabs. The
+   offline banner lies over the title bar; it is the taller of the two only where that bar
+   is gone — a phone held sideways — and its RETRY must stay in reach too. */
 .toast-container {
     position: fixed;
-    top: calc(var(--topbar-height) + 20px);
+    top: calc(var(--topbar-height) + max(var(--title-bar-height), var(--offline-banner-offset)) + var(--tabs-height) + var(--spacing-md));
     right: var(--spacing-lg);
     z-index: var(--z-toast);
     display: flex;
@@ -14,9 +18,17 @@
     pointer-events: none;
 }
 
+/* Tabs in a column run down the left side, out of the toasts' way: no bar to clear. */
+body:has(.tabs--vertical) .toast-container {
+    top: calc(var(--topbar-height) + max(var(--title-bar-height), var(--offline-banner-offset)) + var(--spacing-md));
+}
+
+/* A card on the page's own ground and hairline: the type of the message is its left edge
+   and its icon, the colour kept small (user choice "b", 2026-10-27). */
 .toast {
     background: var(--bg-primary);
-    border: 2px solid var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-left-width: 3px;
     border-radius: var(--radius-toast);
     padding: var(--spacing-md);
     min-width: 300px;
@@ -55,6 +67,41 @@
 
 .toast-content {
     flex: 1;
+    min-width: 0;
+}
+
+/* The X that closes a toast: a real button, drawn bare. */
+.toast-close {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: calc(-1 * var(--spacing-xs)) calc(-1 * var(--spacing-sm)) 0 0;
+    color: var(--text-secondary);
+
+    /* rule 12 exception — this sizes an icon, not text: the SVG inside is 1em. */
+    font-size: 18px;
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .toast-close:hover {
+        color: var(--text-primary);
+    }
+}
+
+/* To a finger, the X answers on 44px, the app's touch size (button.css), and still draws
+   28: an invisible margin takes the tap, as the padlock's does (pro-lock.css), without
+   moving anything. A touch screen, not a width: a tablet is touched too. */
+@media (pointer: coarse) {
+    .toast-close::before {
+        content: '';
+        position: absolute;
+        inset: -8px;
+    }
 }
 
 .toast-title {
@@ -72,10 +119,11 @@
     line-height: 1.4;
 }
 
-/* Toast Types - Use theme color variables for proper theme adaptation */
+/* Toast Types - the theme's state colours: the edge in the base one, the icon in the one
+   that reads on the ground. Minimal's information is black, as everywhere in that theme. */
 
 .toast.success {
-    border-color: var(--color-success);
+    border-left-color: var(--color-success);
 }
 
 .toast.success .toast-icon {
@@ -83,15 +131,15 @@
 }
 
 .toast.error {
-    border-color: var(--toast-error);
+    border-left-color: var(--color-error);
 }
 
 .toast.error .toast-icon {
-    color: var(--toast-error);
+    color: var(--color-error-text);
 }
 
 .toast.warning {
-    border-color: var(--color-warning);
+    border-left-color: var(--color-warning);
 }
 
 .toast.warning .toast-icon {
@@ -99,24 +147,35 @@
 }
 
 .toast.info {
-    border-color: var(--toast-info);
+    border-left-color: var(--color-info);
 }
 
 .toast.info .toast-icon {
-    color: var(--toast-info);
+    color: var(--color-info-text);
 }
 
 /* Responsive */
 @media (width <= 768px) {
+    /* Below the top bar, which grows here by the notch of an installed app (layout.css),
+       the offline banner under it and the tab bar under that, when the tabs are one (a
+       narrow window on a computer): without them, the toasts lay over the menu, Library
+       and settings buttons, the banner's RETRY and every tab. */
     .toast-container {
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--offline-banner-offset) + var(--tabs-height) + var(--spacing-sm));
         right: var(--spacing-sm);
         left: var(--spacing-sm);
     }
 
+    body:has(.tabs--vertical) .toast-container {
+        top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + var(--offline-banner-offset) + var(--spacing-sm));
+    }
+
+    /* The container's whole width, so the margins match: a cap narrower than it left
+       6px on the left and 18px on the right. */
     .toast {
         width: 100%;
-        min-width: 280px;
-        max-width: calc(100vw - 2 * var(--spacing-md));
+        min-width: 0;
+        max-width: none;
     }
 
     .toast-title {

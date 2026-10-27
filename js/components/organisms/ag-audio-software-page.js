@@ -447,10 +447,18 @@ export class AgAudioSoftwarePage extends LitElement {
         return this.packagesFetch.fetch();
     }
 
-    _updateGlobalUpdateBadge() {
-        const updateCount = this.packages.filter(pkg =>
+    /**
+     * The installed packages that have another version to install.
+     * @returns {Object[]}
+     */
+    _packagesWithUpdate() {
+        return this.packages.filter(pkg =>
             pkg.installed_version && pkg.available_version && pkg.installed_version !== pkg.available_version
-        ).length;
+        );
+    }
+
+    _updateGlobalUpdateBadge() {
+        const updateCount = this._packagesWithUpdate().length;
 
         if (window.EventEmitter) {
             window.EventEmitter.emit('audio-software-stats', { num: updateCount, den: this.packages.length });
@@ -638,7 +646,7 @@ export class AgAudioSoftwarePage extends LitElement {
                 // Spelled out: `${action}ed` said "updateed".
                 const done = { install: 'installed', update: 'updated', uninstall: 'uninstalled' }[action]
                     || `${action}ed`;
-                showToast('success', `${actionLabel} Successful`, `${currentPkg.label} ${done} successfully`);
+                showToast('success', `${actionLabel} complete`, `${currentPkg.label} is ${done}.`);
             } else {
                 addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
                 // The core's message says WHY — "needs libgmpris, which no
@@ -651,7 +659,7 @@ export class AgAudioSoftwarePage extends LitElement {
             console.error('[Audio Software] Error:', error);
             if (simulated) this._closeSimulationLog(packageId, false);
             addToHistory('software', `${actionLabel} ${currentPkg.label}`, false);
-            showToast('error', 'Error', error.message);
+            showToast('error', `${actionLabel} failed`, getUserFriendlyError(error));
         }
     }
 
@@ -704,7 +712,7 @@ export class AgAudioSoftwarePage extends LitElement {
             console.error('Failed to check available version:', error);
             this.packages[pkgIndex] = { ...pkg, isChecking: false };
             this.requestUpdate();
-            showToast('error', 'Version Check Failed', 'Failed to check available version');
+            showToast('error', 'Version not checked', getUserFriendlyError(error));
         }
     }
 
@@ -722,7 +730,7 @@ export class AgAudioSoftwarePage extends LitElement {
             this._restartNeeded.delete(packageId);
             MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
             this.requestUpdate();
-            showToast('success', 'Service Restarted', `${serviceId} restarted successfully`);
+            showToast('success', 'Service restarted', `${serviceId} is running again.`);
         } catch (error) {
             handleError(error, 'Service restart failed');
         }
@@ -775,14 +783,15 @@ export class AgAudioSoftwarePage extends LitElement {
             }
             await this._loadPackages();
         } catch (error) {
-            handleError(error, 'Setting the web password failed');
+            handleError(error, 'Web Password Not Set');
         }
     }
 
     async _checkAllUpdates() {
         if (this.isCheckingAll) return;
         this.isCheckingAll = true;
-        showToast('info', 'Checking Updates', 'Checking all packages for updates...');
+        // The outcome takes this notice's place: one toast for one check.
+        const checking = showToast('info', 'Checking for updates', 'Every package is being checked…', 0);
 
         try {
             // Call the bulk update check (takes a few seconds)
@@ -790,31 +799,37 @@ export class AgAudioSoftwarePage extends LitElement {
             if (updatedPackages && Array.isArray(updatedPackages)) {
                 this.packages = updatedPackages;
                 this._updateGlobalUpdateBadge();
-                showToast('success', 'Check Complete', 'Update check finished');
+                const available = this._packagesWithUpdate().length;
+                checking.update('success', 'Updates checked', available === 0
+                    ? 'Every package is at its latest version.'
+                    : `${available} ${available === 1 ? 'update is' : 'updates are'} available.`);
+            } else {
+                checking.close();
             }
         } catch (error) {
             console.error('Failed to check all updates:', error);
-            showToast('error', 'Check Failed', 'Failed to check all package updates');
+            checking.update('error', 'Updates not checked', getUserFriendlyError(error));
         } finally {
             this.isCheckingAll = false;
         }
     }
 
     async _handleUpdateAll() {
-        const updates = this.packages.filter(pkg =>
-            pkg.installed_version && pkg.available_version && pkg.installed_version !== pkg.available_version
-        );
+        const updates = this._packagesWithUpdate();
 
         if (updates.length === 0) {
-            showToast('info', 'Up-to-Date', 'All packages are already at the latest version');
+            showToast('info', 'Up to date', 'Every package is at its latest version.');
             return;
         }
+
+        /** "1 package", "2 packages". */
+        const packages = (n) => `${n} ${n === 1 ? 'package' : 'packages'}`;
 
         // A Lit template: the list is markup, and Lit renders each vendor label
         // and version as text.
         const pkgList = html`
             <div class="package-update-list">
-                <p class="package-update-intro">The following ${updates.length} packages will be updated:</p>
+                <p class="package-update-intro">The following ${packages(updates.length)} will be updated:</p>
                 <div class="package-list-container">
                     ${updates.map(pkg => html`
                         <div class="package-list-item">
@@ -838,11 +853,9 @@ export class AgAudioSoftwarePage extends LitElement {
         // Read once: the switch can be flipped while the updates run.
         const simulated = this.dryRun;
 
-        // Use the logs modal for the first package or a generic one?
-        // Let's use a generic toast for now, or we could open the logs modal for the first one.
-        // For simplicity, let's start them and reload once done.
-
-        showToast('info', 'Updating All', simulated ? 'Simulating the updates...' : 'Starting bulk update process...');
+        // One toast for the whole run: this notice turns into its outcome.
+        const updating = showToast('info', simulated ? 'Simulating the updates' : 'Updating packages',
+            `${packages(updates.length)}, one after the other…`, 0);
 
         try {
             const results = await apiPost(`/packages/update_all?dry_run=${simulated}`, pkgIds);
@@ -858,26 +871,26 @@ export class AgAudioSoftwarePage extends LitElement {
 
             if (simulated && failCount === 0) {
                 // Not "Successfully updated": nothing was (see _runPackageAction).
-                showToast('info', 'Updates Simulated',
-                    `Nothing was changed: the steps to update ${successCount} packages went through.`);
+                updating.update('info', 'Updates Simulated',
+                    `Nothing was changed: the steps to update ${packages(successCount)} went through.`);
             } else if (simulated) {
-                showToast('warning', 'Simulation Found Errors', `${successCount} would update, ${failCount} failed`);
+                updating.update('warning', 'Simulation Found Errors', `${successCount} would update, ${failCount} failed.`);
             } else if (failCount === 0 && incomplete.length === 0) {
-                showToast('success', 'All Updates Complete', `Successfully updated ${successCount} packages`);
+                updating.update('success', 'Updates complete', `${packages(successCount)} updated.`);
             } else if (failCount === 0) {
                 // Updated, but a step after it was left — the core's message says
                 // what. Only a single update used to show it; this said
                 // "All Updates Complete" and the message was lost.
-                showToast('warning', 'Updates Incomplete', incomplete.map(r => r.message).join(' — '));
+                updating.update('warning', 'Updates Incomplete', incomplete.map(r => r.message).join(' — '));
             } else {
-                showToast('warning', 'Updates Completed with Errors', `${successCount} updated, ${failCount} failed`);
+                updating.update('warning', 'Updates Completed with Errors', `${successCount} updated, ${failCount} failed.`);
             }
 
             // Reload all packages to get final state
             await this._loadPackages();
         } catch (error) {
             console.error('Bulk update failed:', error);
-            showToast('error', 'Batch Update Failed', error.message);
+            updating.update('error', 'Updates failed', getUserFriendlyError(error));
         }
     }
 
@@ -987,7 +1000,7 @@ export class AgAudioSoftwarePage extends LitElement {
         const modal = document.getElementById('agLogsModal');
         if (modal) modal.isOpen = false;
         this._logCursor = { packageId: null, lastSeq: 0 };
-        showToast('warning', 'Operation Cancelled', 'Modal closed, but the core may still be processing');
+        showToast('warning', 'Window closed', 'The operation may still be running on the box.');
     }
 
     async _refreshConfig() {
@@ -996,17 +1009,18 @@ export class AgAudioSoftwarePage extends LitElement {
             return;
         }
         this._isRefreshing = true;
+        // The outcome takes this notice's place: one toast for one refresh.
+        const refreshing = showToast('info', 'Refreshing', 'Each package source is being asked again…', 0);
         try {
-            showToast('info', 'Refreshing', 'Probing sources and regenerating package configuration...');
             const result = await apiPost('/packages/config/refresh');
             if (result.success) {
-                showToast('success', 'Refreshed', result.message);
+                refreshing.update('success', 'Refreshed', result.message);
                 await this._loadPackages();
             } else {
-                showToast('error', 'Refresh Failed', result.message || 'Unknown error');
+                refreshing.update('error', 'Refresh Failed', result.message || 'The core gave no reason.');
             }
         } catch (error) {
-            showToast('error', 'Refresh Failed', getUserFriendlyError(error));
+            refreshing.update('error', 'Refresh Failed', getUserFriendlyError(error));
         } finally {
             this._isRefreshing = false;
         }

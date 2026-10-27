@@ -311,7 +311,7 @@ describe('ag-stats-recording', () => {
         expect(api.setListeningRecording).toHaveBeenCalledWith(false);
         expect(el.querySelector('ag-switch').checked).toBe(true);
         expect(input.checked).toBe(true);
-        expect(ui.showToast).toHaveBeenCalledWith('error', 'Recording', 'Guests cannot change this.');
+        expect(ui.showToast).toHaveBeenCalledWith('error', 'History not turned off', 'Guests cannot change this.');
     });
 
     it('reads nothing while its view is hidden, and reads again each time it is shown', async () => {
