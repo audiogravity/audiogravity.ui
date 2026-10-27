@@ -8,9 +8,11 @@
  *    more on the page in every theme — and what names nothing (Unknown, Other) in a
  *    receding grey;
  *  - marks no thicker than 24px, a 4px rounded end on the value side, square at the base;
- *  - a 2px gap between touching marks, never a stroke around them;
+ *  - a 2px gap between touching marks, never a stroke around them — save in Minimal, whose
+ *    sound-quality classes and week's hours wear the latency histogram's edge (below);
  *  - hairline grid, text in the text colours only — never in the data's.
- * The sound-quality classes are ordered: steps of the text's colour, the best the strongest.
+ * The sound-quality classes are ordered: steps of the text's colour, the best the strongest —
+ * in Minimal, the latency histogram's four classes (below).
  */
 
 .lib-stats {
@@ -479,7 +481,8 @@
     font-size: var(--font-size-md);
 }
 
-/* The ordered steps: the text's colour, then mixes of it with the page — not the accent,
+/* The ordered steps, by default — Slate and Gravity: the text's colour, then mixes of it
+   with the page — not the accent,
    which cannot step down to a fourth class still at 2:1 on the page (Slate and Gravity's
    indigo) or step up at all (Minimal's black, Gravity's dark cyan). 100/75/56/40 % pass
    the ordinal checks of the data-visualisation validator in the six palettes: lightness in
@@ -490,18 +493,54 @@
    strongest — one declaration per step serves both charts. Dark mode flips the anchor by
    itself, the text being the light end there. An hour of no music: a tint of the same
    colour at 10 %, which is no step — 1.21 to 1.30:1 on the page, 1.9 to 3.0:1 against the
-   palest step (dataviz validator, the six palettes, 2026-10-17). */
-.lib-stats-q--dsd,
-.lib-stats-heat--4 { background: var(--text-primary); }
+   palest step (dataviz validator, the six palettes, 2026-10-17).
+   Those steps are the default of roles, one per class (themes.css: --stats-q-*,
+   --stats-heat-*), and the measures above are theirs. Minimal paints the roles in the latency
+   histogram's four classes, the histogram's way — its colour at --stats-step-fill inside,
+   an inset edge --stats-step-edge wide — in the histogram's order, not by lightness (user's
+   choice, 2026-10-27). Its edges read 5.3, 21, 2.2 and 3.8:1 on the light page (grey, ink,
+   amber, red; the fills 2.9, 8.5, 1.7, 2.6), 5.2:1 and more on the dark one (2026-10-27).
+   By default no edge at all: one of the fill's own colour still thickened the rounded
+   corners of Slate and Gravity, 2,124 to 6,203 pixels changed at density 2 (Chromium). */
+.lib-stats-q--dsd {
+    background: color-mix(in srgb, var(--stats-q-dsd) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-q-dsd);
+}
 
-.lib-stats-q--hires,
-.lib-stats-heat--3 { background: color-mix(in srgb, var(--text-primary) 75%, var(--bg-primary)); }
+.lib-stats-q--hires {
+    background: color-mix(in srgb, var(--stats-q-hires) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-q-hires);
+}
 
-.lib-stats-q--cd,
-.lib-stats-heat--2 { background: color-mix(in srgb, var(--text-primary) 56%, var(--bg-primary)); }
+.lib-stats-q--cd {
+    background: color-mix(in srgb, var(--stats-q-cd) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-q-cd);
+}
 
-.lib-stats-q--lossy,
-.lib-stats-heat--1 { background: color-mix(in srgb, var(--text-primary) 40%, var(--bg-primary)); }
+.lib-stats-q--lossy {
+    background: color-mix(in srgb, var(--stats-q-lossy) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-q-lossy);
+}
+
+.lib-stats-heat--1 {
+    background: color-mix(in srgb, var(--stats-heat-1) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-heat-1);
+}
+
+.lib-stats-heat--2 {
+    background: color-mix(in srgb, var(--stats-heat-2) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-heat-2);
+}
+
+.lib-stats-heat--3 {
+    background: color-mix(in srgb, var(--stats-heat-3) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-heat-3);
+}
+
+.lib-stats-heat--4 {
+    background: color-mix(in srgb, var(--stats-heat-4) var(--stats-step-fill), transparent);
+    box-shadow: inset 0 0 0 var(--stats-step-edge) var(--stats-heat-4);
+}
 
 .lib-stats-heat--0 { background: color-mix(in srgb, var(--text-primary) 10%, var(--bg-primary)); }
 .lib-stats-q--unknown { background: var(--border-color); }
