@@ -146,7 +146,7 @@
     margin-bottom: var(--spacing-sm);
     padding: var(--spacing-sm);
     background: var(--bg-secondary);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-sm);
     border-left: 3px solid var(--accent-primary);
 }
 
@@ -173,7 +173,7 @@
 .audio-card-detail {
     padding: var(--spacing-xs);
     background: var(--bg-primary);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--radius-sm);
     margin-top: var(--spacing-xs);
     font-size: var(--font-size-sm);
 }

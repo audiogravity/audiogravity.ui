@@ -482,7 +482,7 @@ body.no-animations .animate-stagger {
 }
 
 .test-type-selector input[type="radio"]:checked+span {
-    color: var(--primary);
+    color: var(--accent-primary-text);
     font-weight: 500;
 }
 

@@ -306,7 +306,7 @@ export class AgSystemdOverrideEditor extends LitElement {
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUndo}</svg> Reset to Defaults
                                 </button>
                             </div>
-                            <p style="margin: var(--spacing-xs) 0 0; font-size: var(--font-size-xs); color: var(--text-muted);">
+                            <p style="margin: var(--spacing-xs) 0 0; font-size: var(--font-size-xs); color: var(--text-tertiary);">
                                 Presets fill the form — review values before saving.
                             </p>
                         </div>
