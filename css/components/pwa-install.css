@@ -25,11 +25,13 @@
     to   { transform: translateY(0); }
 }
 
-/* Push the banner up when the now-playing mini-player is visible.
- * ag-now-playing sets --np-height on :root via JS (_reportHeight).
- * Fall back to 64px if the custom property is not yet set. */
+/* Above the mini-player — or its pull tab once folded — and the footer under it: the
+ * room the library keeps (--bottom-clearance, fed by ag-now-playing's
+ * --now-playing-height). It read --np-height, a name nothing sets, and sat 64px up
+ * whatever the bar: on a desktop, over the bar's title and transport (Chromium,
+ * 2026-10-30). */
 body:has(ag-now-playing) .pwa-install-banner {
-    bottom: var(--np-height, 64px);
+    bottom: calc(var(--footer-height) + var(--bottom-clearance));
 }
 
 .pwa-install-banner__body {

@@ -59,9 +59,11 @@
     transition: color var(--transition-fast);
 }
 
+/* The accent, as this rule asked from the start: it read --color-accent, which no theme
+   declares, and showed its grey fallback — a clickable name that dimmed on hover. */
 @media (hover: hover) {
     .profile-name-clickable:hover {
-        color: var(--color-accent, var(--text-secondary));
+        color: var(--accent-primary-text);
         text-decoration: underline;
     }
 }

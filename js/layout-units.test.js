@@ -31,6 +31,7 @@ const THEMES = read('css', 'themes.css');
 const LAYOUT = read('css', 'layout.css');
 const LIBRARY_PAGE = read('js', 'components', 'organisms', 'ag-library-page.js');
 const PULL_TAB = read('js', 'components', 'organisms', 'ag-pull-tab.js');
+const PWA_INSTALL = read('css', 'components', 'pwa-install.css');
 
 /**
  * Every stylesheet, and every script that carries CSS of its own (the library injects
@@ -130,5 +131,13 @@ describe('content running to the bottom of the screen keeps the mini-player\'s r
         expect(query[1]).toMatch(/max-width:\s*768px/);
         expect(query[1]).toMatch(/orientation:\s*landscape\)\s*and\s*\(height\s*<=\s*500px/);
         expect(LIBRARY_PAGE).toMatch(/padding-bottom:\s*calc\(var\(--footer-height,\s*0px\)\s*\+\s*var\(--bottom-clearance\)\)/);
+    });
+
+    it('raises the install banner above the bar, or its pull tab, and the footer', () => {
+        // It read --np-height, which nothing sets, and sat 64px up whatever the bar: on a
+        // desktop, over the mini-player's title and transport (Chromium, 2026-10-30).
+        const rules = rulesFor(PWA_INSTALL, 'body:has(ag-now-playing) .pwa-install-banner');
+        expect(rules).toHaveLength(1);
+        expect(rules[0]).toMatch(/bottom:\s*calc\(var\(--footer-height\)\s*\+\s*var\(--bottom-clearance\)\)/);
     });
 });

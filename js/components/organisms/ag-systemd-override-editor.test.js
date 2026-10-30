@@ -90,6 +90,12 @@ describe('ag-systemd-override-editor — the Audio Optimized preset', () => {
         expect(el._outranksSound).toBe(false);
     });
 
+    it('says what the presets do in the forms\' own help style, not a style of its own', () => {
+        const markup = text(makeEl(MPD).render());
+        expect(markup).toMatch(/<p class="form-help">\s*Presets fill the form/);
+        expect(markup).not.toMatch(/<p style=/);
+    });
+
     it('keeps FIFO 80 for a service that does not raise its own threads', () => {
         const form = makeForm();
         makeEl(AIRPLAY, form)._applyPreset('audio');
