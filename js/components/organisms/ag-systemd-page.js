@@ -63,7 +63,10 @@ export class AgSystemdPage extends LitElement {
                             override_path: props.override_path,
                             has_backup: props.has_backup,
                             backup_path: props.backup_path,
-                            is_installed: props.is_installed !== false
+                            is_installed: props.is_installed !== false,
+                            // The priority the program gives its own sound threads (40 for
+                            // MPD), null for the others: the editor keeps the service below it.
+                            own_sound_rt_priority: props.own_sound_rt_priority ?? null,
                         });
                     } catch (error) {
                         console.error(`Failed to load properties for ${serviceId}:`, error);

@@ -830,6 +830,20 @@ body.no-animations .animate-stagger {
     color: var(--text-tertiary);
 }
 
+/* Real time, but another thread of the program runs ahead of its sound. */
+.rt-badge.outranked {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+}
+
+/* Under a program's name: which of its threads the reading comes from. */
+.rt-monitor-basis {
+    display: block;
+    font-weight: 400;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
 .rt-monitor-hint {
     margin-top: var(--spacing-md);
     font-size: var(--font-size-xs);

@@ -9,7 +9,11 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('lit', () => ({ LitElement: class {}, html: () => ({}), nothing: null }));
+vi.mock('lit', () => ({
+    LitElement: class {},
+    html: (strings, ...values) => ({ strings, values }),
+    nothing: null,
+}));
 vi.mock('../../ag-icons.js', () => ({ iconSpinner: '' }));
 const apiGetMock = vi.fn();
 vi.mock('../../api.js', () => ({ apiGet: (...args) => apiGetMock(...args) }));
@@ -57,3 +61,50 @@ describe('ag-rt-monitor — _load array coercion', () => {
         expect(el._error).toBe('offline');
     });
 });
+
+/** Flatten a mocked template to its text, strings interleaved with values. */
+const text = (tpl) => {
+    if (!tpl || typeof tpl !== 'object') return String(tpl ?? '');
+    if (Array.isArray(tpl)) return tpl.map(text).join('');
+    return (tpl.strings ?? []).reduce((out, s, i) => out + s + text(tpl.values?.[i]), '');
+};
+
+describe('ag-rt-monitor — MPD read on its sound threads', () => {
+    const mpd = (over = {}) => ({
+        name: 'mpd', pid: 838, running: true, policy: 'SCHED_FIFO', priority: 40,
+        is_rt: true, audio_threads: true, outranked: false, ...over,
+    });
+
+    it('says which threads the reading comes from', () => {
+        const row = text(makeEl()._renderRow(mpd()));
+        expect(row).toContain('sound threads');
+        expect(row).toContain('rt-badge rt');
+        expect(row).toContain('SCHED_FIFO');
+    });
+
+    it('a program read on its main thread carries no such line', () => {
+        const row = text(makeEl()._renderRow(mpd({ name: 'shairport-sync', audio_threads: false })));
+        expect(row).not.toContain('sound threads');
+    });
+
+    it('a sound outranked by the rest of MPD shows OUTRANKED, not a green badge', () => {
+        const row = text(makeEl()._renderRow(mpd({ outranked: true })));
+        expect(row).toContain('rt-badge outranked');
+        expect(row).toContain('OUTRANKED');
+        expect(row).not.toContain('rt-badge rt"');
+    });
+
+    it('sound threads MPD could not raise still read NON-RT', () => {
+        const row = text(makeEl()._renderRow(mpd({ is_rt: false, policy: 'SCHED_OTHER', priority: 0 })));
+        expect(row).toContain('NON-RT');
+    });
+
+    it('explains OUTRANKED only when a program is', () => {
+        const el = makeEl();
+        Object.assign(el, { _loading: false, _error: null, _processes: [mpd({ outranked: true })] });
+        expect(text(el.render())).toContain('apply Audio Optimized to it and');
+        el._processes = [mpd()];
+        expect(text(el.render())).not.toContain('OUTRANKED: another part');
+    });
+});
+

@@ -25,14 +25,17 @@ vi.mock('../../common.js', async () => ({
     // The real wording of an error.
     getUserFriendlyError: (await vi.importActual('../../ui-helpers.js')).getUserFriendlyError,
 }));
-vi.mock('../../core/FetchController.js', () => ({ FetchController: class {} }));
+// Keeps its options, so a test can run the page's own fetch.
+vi.mock('../../core/FetchController.js', () => ({
+    FetchController: class { constructor(host, options) { this.options = options; } },
+}));
 vi.mock('@lit/context', () => ({ ContextConsumer: class {} }));
 vi.mock('../../core/app-context.js', () => ({ appContext: {} }));
 vi.mock('./ag-card-grid.js', () => ({}));
 vi.mock('../molecules/ag-systemd-card.js', () => ({}));
 vi.mock('../molecules/ag-validation-results.js', () => ({}));
 
-import { apiPost, showConfirm, showToast } from '../../common.js';
+import { apiGet, apiPost, showConfirm, showToast } from '../../common.js';
 import { validationField } from '../../net-errors.js';
 import { AgSystemdPage } from './ag-systemd-page.js';
 
@@ -46,6 +49,29 @@ function makeEl() {
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+describe('ag-systemd-page — what the editor is handed', () => {
+    it('carries the priority a program gives its own sound threads, null for the others', async () => {
+        // The editor keeps MPD below its own sound threads, and only knows of them
+        // through this field of the core's answer.
+        apiGet.mockImplementation(async (path) => {
+            if (path === '/profiles/configuration') {
+                return { services: {
+                    mpd: { label: 'Music Player Daemon', systemd_unit: 'mpd.service' },
+                    shairport: { label: 'AirPlay Receiver', systemd_unit: 'shairport-sync.service' },
+                } };
+            }
+            return path.startsWith('/services/mpd.service/')
+                ? { properties: {}, own_sound_rt_priority: 40 }
+                : { properties: {} };   // a core that does not send the field
+        });
+        const services = await new AgSystemdPage().servicesFetch.options.fetchFn();
+        expect(services.map(s => [s.systemd_unit, s.own_sound_rt_priority])).toEqual([
+            ['mpd.service', 40],
+            ['shairport-sync.service', null],
+        ]);
+    });
 });
 
 describe('ag-systemd-page — saving a service\'s properties', () => {
