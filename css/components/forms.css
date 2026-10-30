@@ -107,7 +107,7 @@
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     font-style: italic;
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
 }
 
 /* A value that will not do what its reader expects, said under its field. */
