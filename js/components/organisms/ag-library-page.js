@@ -168,6 +168,9 @@ ag-lib-tabbar {
     white-space: nowrap;
 }
 .lib-action svg { width: 22px; height: 22px; flex-shrink: 0; }
+/* A Refresh under way: the icon turns (.ag-spin) and another press does nothing. */
+.lib-action[aria-disabled="true"],
+.lib-action[aria-disabled="true"] svg { cursor: progress; }
 .lib-topbar-right svg {
     width: 22px; height: 22px;
     stroke: currentColor; fill: none;
@@ -424,6 +427,8 @@ export class AgLibraryPage extends LitElement {
         /** Artist drill-down: the artist whose albums the browse is filtered to. */
         _artistId:        { state: true },
         _artistName:      { state: true },
+        /** A Refresh of the browse is running: the top bar's control turns. */
+        _browseRefreshing: { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -448,6 +453,7 @@ export class AgLibraryPage extends LitElement {
         this._outputsSourceId = '';
         this._artistId        = '';
         this._artistName      = '';
+        this._browseRefreshing = false;
         this._unsubscribeState = null;
         this._boundLibGoto    = (e) => this._onLibGoto(e);
         this._boundSourcesChanged = () => this._onSourcesChanged();
@@ -856,8 +862,35 @@ export class AgLibraryPage extends LitElement {
      */
     _refreshBrowse({ refresh = false } = {}) {
         this.updateComplete.then(() => {
-            this.querySelector('ag-library-browse')?._load({ refresh });
+            const browse = this.querySelector('ag-library-browse');
+            // The Refresh control goes through the browse's refresh(), which for the
+            // local library has MPD read the music folder before the list is reloaded.
+            if (refresh) browse?.refresh();
+            else browse?._load({ refresh });
         });
+    }
+
+    /**
+     * Whether a source's albums come from a music folder MPD indexes, so its Refresh
+     * has a folder to read again. Read from the protocol the core publishes for each
+     * source — its own test for an MPD source (mpd_port) — rather than from a copy of
+     * which ids qualify: a list kept here would leave out any other MPD source (review).
+     *
+     * @param {string} id - A source id.
+     * @returns {boolean}
+     */
+    _readsFolder(id) {
+        return (this._rawSources ?? []).some(s => s.source_id === id && s.protocol === 'mpd');
+    }
+
+    /**
+     * Follow the browse's Refresh, so the top bar's control turns while it runs —
+     * whichever of the two Refresh controls started it.
+     *
+     * @param {CustomEvent<{refreshing: boolean}>} e - `lib-refreshing` from the browse.
+     */
+    _onBrowseRefreshing(e) {
+        this._browseRefreshing = e.detail.refreshing;
     }
 
     /**
@@ -1243,8 +1276,11 @@ export class AgLibraryPage extends LitElement {
                                 </button>
                             ` : html`
                                 <button class="lib-action" @click=${() => this._refreshBrowse({ refresh: true })}
-                                        aria-label="Refresh library">
-                                    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+                                        aria-label="Refresh library"
+                                        aria-disabled=${this._browseRefreshing ? 'true' : 'false'}
+                                        aria-busy=${this._browseRefreshing ? 'true' : 'false'}>
+                                    <svg class=${this._browseRefreshing ? 'ag-spin' : ''} viewBox="0 0 24 24"
+                                         stroke="currentColor" fill="none"
                                          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                                         ${iconRefresh}
                                     </svg>
@@ -1259,7 +1295,9 @@ export class AgLibraryPage extends LitElement {
                             <ag-library-browse
                                 source-id=${this._isUpnp(_sourceId) || this._isRadio(_sourceId) ? '' : _sourceId}
                                 zone-id=${_zoneId}
+                                ?reads-folder=${this._readsFolder(_sourceId)}
                                 @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
+                                @lib-refreshing=${this._onBrowseRefreshing}
                             ></ag-library-browse>
                         </div>
                     </div>
@@ -1278,6 +1316,7 @@ export class AgLibraryPage extends LitElement {
                                     zone-id=${_zoneId}
                                     artist-id=${this._artistId}
                                     artist-name=${this._artistName}
+                                    ?reads-folder=${this._readsFolder(_sourceId)}
                                     @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
                                     @lib-artist-back=${this._onArtistBack}
                                 ></ag-library-browse>

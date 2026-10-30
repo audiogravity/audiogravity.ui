@@ -16,7 +16,11 @@ vi.mock('lit', () => ({
     nothing: null,
 }));
 const apiGetMock = vi.fn();
-vi.mock('../../api.js', () => ({ apiGet: (...args) => apiGetMock(...args) }));
+const apiPostMock = vi.fn();
+vi.mock('../../api.js', () => ({
+    apiGet: (...args) => apiGetMock(...args),
+    apiPost: (...args) => apiPostMock(...args),
+}));
 vi.mock('../utils-lit.js', () => ({
     coverUrl: () => '',
     loadWithState: vi.fn(),
@@ -73,6 +77,7 @@ vi.mock('../molecules/ag-playlist-picker.js', () => ({
 }));
 
 import { AgLibraryBrowse } from './ag-library-browse.js';
+import { showToast } from '../../ui-helpers.js';
 
 /**
  * Flatten a lit template to the text it would render — STRINGS INTERLEAVED WITH VALUES.
@@ -1873,5 +1878,230 @@ describe('ag-library-browse — a playlist\'s page', () => {
         expect(hra({ _playlistKind: 'editorial' })._showsOwnPlaylists).toBe(false);
         expect(hra({ _filter: 'favorites' })._showsOwnPlaylists).toBe(false);
         expect(hra({ artistId: 'Miles Davis' })._showsOwnPlaylists).toBe(false);
+    });
+});
+
+describe('ag-library-browse — Refresh has MPD read the music folder first', () => {
+    const RESCAN = '/library/rescan?source_id=src_mpd';
+
+    beforeEach(() => {
+        apiGetMock.mockReset();
+        apiPostMock.mockReset();
+    });
+
+    /** A browse on the local library whose reload is recorded rather than run. */
+    const local = (overrides = {}) => {
+        const order = [];
+        const el = makeEl({
+            sourceId: 'src_mpd', readsFolder: true, isConnected: true, _refreshing: false,
+            _refreshToken: 0,
+            _load: vi.fn(async () => { order.push('reload'); }),
+            dispatchEvent: vi.fn(),
+            ...overrides,
+        });
+        apiPostMock.mockImplementation(async (...args) => { order.push(['POST', ...args]); return { scanning: false }; });
+        return { el, order };
+    };
+
+    it('asks MPD to read the folder, then reloads — the database stamp decides the walk', async () => {
+        const { el, order } = local();
+        await el.refresh();
+        // No transport retry: a replayed POST could start a second full scan.
+        expect(order).toEqual([['POST', RESCAN, {}, false], 'reload']);
+        // The scan ended, so its stamp has moved if anything changed (review).
+        expect(el._load).toHaveBeenCalledWith({ refresh: false });
+        expect(apiGetMock).not.toHaveBeenCalled();
+    });
+
+    it('a refusal to keep the library is shown to the reader, the list left as it is', async () => {
+        const { el } = local();
+        showToast.mockClear();
+        const refused = Object.assign(new Error('The music folder is empty or out of reach'), {
+            status: 409, detail: 'The music folder is empty or out of reach — is the NAS switched on?',
+        });
+        apiPostMock.mockRejectedValue(refused);
+        await el.refresh();
+        expect(showToast).toHaveBeenCalledWith('warning', 'Library not refreshed', refused.detail);
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+        expect(el._refreshing).toBe(false);
+    });
+
+    it('other failures stay with the list, which shows MPD\'s own words', async () => {
+        const { el } = local();
+        showToast.mockClear();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        apiPostMock.mockRejectedValue(Object.assign(new Error('MPD is not running.'),
+            { status: 503, detail: 'MPD is not running. Start it from the Services tab.' }));
+        await el.refresh();
+        warn.mockRestore();
+        expect(showToast).not.toHaveBeenCalled();
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+    });
+
+    it('a scan that could not end gives the full rebuild, as before', async () => {
+        const { el } = local();
+        apiPostMock.mockResolvedValue({ scanning: true });
+        apiGetMock.mockRejectedValue(new Error('503'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        await el.refresh();
+        warn.mockRestore();
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+    });
+
+    it('while the scan runs, waits with GET and never starts a second one', async () => {
+        const { el, order } = local();
+        // A second POST is refused rather than answered "still scanning": a loop that
+        // re-posted would otherwise never end, and the test would hang instead of fail.
+        apiPostMock.mockResolvedValueOnce({ scanning: true }).mockRejectedValue(new Error('second POST'));
+        apiGetMock.mockResolvedValueOnce({ scanning: true }).mockResolvedValueOnce({ scanning: false });
+        await el.refresh();
+        expect(apiPostMock).toHaveBeenCalledTimes(1);
+        expect(apiGetMock.mock.calls).toEqual([[RESCAN], [RESCAN]]);
+        expect(order).toEqual(['reload']);   // the reload came after both waits
+        expect(el._load).toHaveBeenCalledWith({ refresh: false });
+    });
+
+    it('a streaming source reloads without asking for a scan', async () => {
+        const { el } = local({ sourceId: 'src_qobuz', readsFolder: false });
+        await el.refresh();
+        expect(apiPostMock).not.toHaveBeenCalled();
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+    });
+
+    it('a second press while one runs is ignored', async () => {
+        const { el } = local();
+        let finish;
+        apiPostMock.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+        const first = el.refresh();
+        await el.refresh();
+        expect(apiPostMock).toHaveBeenCalledTimes(1);
+        finish({ scanning: false });
+        await first;
+        expect(el._load).toHaveBeenCalledTimes(1);
+    });
+
+    it('says when it starts and when it ends, even when the scan fails', async () => {
+        const { el } = local();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        apiPostMock.mockRejectedValue(new Error('MPD is not running.'));
+        await el.refresh();
+        expect(warn).toHaveBeenCalled();
+        // The reload still runs: it is what shows the reader why (MPD stopped).
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+        const told = el.dispatchEvent.mock.calls.map(([e]) => [e.type, e.detail.refreshing]);
+        expect(told).toEqual([['lib-refreshing', true], ['lib-refreshing', false]]);
+        expect(el._refreshing).toBe(false);
+        warn.mockRestore();
+    });
+
+    it('stops waiting, and reloads nothing, once the reader moves to another source', async () => {
+        const { el } = local();
+        apiPostMock.mockResolvedValue({ scanning: true });
+        // "Still scanning" three times only, so a loop that ignored the switch ends
+        // (and fails the count below) instead of hanging the run.
+        let asked = 0;
+        apiGetMock.mockImplementation(async () => {
+            el.sourceId = 'src_qobuz';
+            el._abandonRefresh();          // what the switch runs (see the next case)
+            return { scanning: ++asked < 3 };
+        });
+        await el.refresh();
+        expect(apiGetMock).toHaveBeenCalledTimes(1);
+        expect(el._load).not.toHaveBeenCalled();   // the switch loaded the new source itself
+    });
+
+    it('a source switch frees the new source at once, before the old request returns', async () => {
+        const { el } = local();
+        let answer;
+        apiPostMock.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+        const pending = el.refresh();
+        expect(el._refreshing).toBe(true);
+
+        // The real reset a switch runs, on the stubs it needs.
+        const edges = { overflows: false, attach() {}, measure() {} };
+        Object.assign(el, {
+            sourceId: 'src_qobuz', readsFolder: false,
+            _edges: edges, _genreEdges: edges, _playlistEdges: edges,
+            _shelfEdges: edges, _entryEdges: edges,
+            _syncObserver: vi.fn(), querySelector: () => null,
+        });
+        el.updated(new Map([['sourceId', 'src_mpd']]));
+        expect(el._refreshing).toBe(false);
+        const told = el.dispatchEvent.mock.calls.map(([e]) => e.detail.refreshing);
+        expect(told).toEqual([true, false]);
+        await Promise.resolve();   // the switch's own load, queued as a microtask
+
+        // The new source's own Refresh is not refused.
+        apiPostMock.mockClear();
+        el._load.mockClear();
+        await el.refresh();
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+
+        // The old request coming back changes nothing.
+        answer({ scanning: false });
+        await pending;
+        expect(el._load).toHaveBeenCalledTimes(1);
+        expect(el._refreshing).toBe(false);
+    });
+
+    it('gives up waiting after ten minutes, reloads, and stops turning', async () => {
+        const { el } = local();
+        apiPostMock.mockResolvedValue({ scanning: true });
+        // A scan that "never ends" — for five answers, so a loop that lost its bound
+        // fails the count below rather than hanging the run.
+        let asked = 0;
+        apiGetMock.mockImplementation(async () => ({ scanning: ++asked < 6 }));
+        let now = 0;
+        const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 4 * 60 * 1000));
+        try {
+            await el.refresh();
+        } finally {
+            clock.mockRestore();
+        }
+        expect(apiGetMock.mock.calls.length).toBeLessThanOrEqual(3);
+        expect(el._load).toHaveBeenCalledWith({ refresh: true });
+        expect(el._refreshing).toBe(false);
+    });
+
+    it('the section title\'s Refresh says when it is at work', () => {
+        const link = (refreshing) => {
+            const el = local({ _refreshing: refreshing }).el;
+            // The strips' overflow markers, which the whole render reads.
+            const edges = { overflows: false, attach() {}, measure() {} };
+            Object.assign(el, {
+                _albums: [], _loading: false, _error: null, _filter: 'all',
+                _edges: edges, _genreEdges: edges, _playlistEdges: edges,
+                _shelfEdges: edges, _entryEdges: edges,
+                _fav: { has: () => false }, _dialogs: { attach() {} },
+            });
+            return text(el.render());
+        };
+        expect(link(false)).toContain('>Refresh</span>');
+        expect(link(true)).toContain('>Refreshing…</span>');
+    });
+
+    it('the section title\'s Refresh goes through refresh(), not a bare reload', () => {
+        const el = local().el;
+        const edges = { overflows: false, attach() {}, measure() {} };
+        Object.assign(el, {
+            _albums: [], _loading: false, _error: null, _filter: 'all',
+            _edges: edges, _genreEdges: edges, _playlistEdges: edges,
+            _shelfEdges: edges, _entryEdges: edges,
+            _fav: { has: () => false }, _dialogs: { attach() {} },
+            refresh: vi.fn(),
+        });
+        /** The handler bound just before the link's own markup. */
+        const handler = (node) => {
+            if (Array.isArray(node)) return node.map(handler).find(Boolean);
+            if (!node || typeof node !== 'object' || !node.strings) return undefined;
+            const i = node.strings.findIndex(s => s.includes('class="lib-sh-more" @click='));
+            if (i !== -1) return node.values[i];
+            return (node.values ?? []).map(handler).find(Boolean);
+        };
+        const onClick = handler(el.render());
+        expect(onClick).toBeTypeOf('function');
+        onClick();
+        expect(el.refresh).toHaveBeenCalledTimes(1);
+        expect(el._load).not.toHaveBeenCalled();
     });
 });

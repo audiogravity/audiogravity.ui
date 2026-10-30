@@ -25,7 +25,8 @@
  * @fires lib-open-np     - Bubbles. No detail — navigate to Now Playing after play
  */
 import { LitElement, html, nothing } from 'lit';
-import { apiGet } from '../../api.js';
+import { apiGet, apiPost } from '../../api.js';
+import { showToast } from '../../ui-helpers.js';
 import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
 import {
     getHraCategories, getHraGenres, getHraLabels, getHraPlaylistGroups,
@@ -54,6 +55,13 @@ import {
 } from '../library-constants.js';
 
 const PAGE_SIZE = 50;
+
+// Longest a Refresh waits for MPD to finish reading the music folder before it reloads
+// the list as it stands and stops turning. A scan that never ends (a NAS share that
+// hangs) must not keep the control busy for as long as the page is open (review). The
+// same ~10 min cap as the library-change indicator (ag-library-scan-indicator MAX_POLLS);
+// the scan itself carries on in MPD.
+const RESCAN_MAX_WAIT_MS = 10 * 60 * 1000;
 
 // Local-library pills map to a server-side `sort`, not to client-side juggling.
 // Pagination is server-side — 50 albums a page — so anything the client sorts orders a
@@ -228,6 +236,10 @@ export class AgLibraryBrowse extends LitElement {
         // (via /library/albums?artist_id=…) with an "Albums by <name>" header.
         artistId:     { type: String, attribute: 'artist-id' },
         artistName:   { type: String, attribute: 'artist-name' },
+        // The source's albums come from a music folder MPD indexes (the local library):
+        // Refresh then has MPD read the folder before the list is reloaded.
+        readsFolder:  { type: Boolean, attribute: 'reads-folder' },
+        _refreshing:  { state: true },
         _albums:      { state: true },
         _hraCategories: { state: true },
         _qobuzShelves: { state: true },
@@ -266,6 +278,10 @@ export class AgLibraryBrowse extends LitElement {
         this.zoneId       = '';
         this.artistId     = '';
         this.artistName   = '';
+        this.readsFolder  = false;
+        this._refreshing  = false;
+        /** Which Refresh is current; a source switch abandons the one under way. */
+        this._refreshToken = 0;
         this._albums      = [];
         /** @type {Array<{title: string, label: string}>} HRA shop categories, one pill each. */
         this._hraCategories = [];
@@ -555,6 +571,7 @@ export class AgLibraryBrowse extends LitElement {
             this._creatingPlaylist = false;
             this._gridScroll = null;
             this._ownPlaylistsStale = false;
+            this._abandonRefresh();
             Promise.resolve().then(() => this._load());
         }
         this._syncObserver();
@@ -772,11 +789,108 @@ export class AgLibraryBrowse extends LitElement {
     // ------------------------------------------------------------------
 
     /**
+     * What both Refresh controls run — the library's top bar and the section title.
+     *
+     * Both used to reload the list from MPD's database alone, so music copied into the
+     * folder never appeared: MPD reads the folder only when it is told to. For a source
+     * that reads one ({@link readsFolder}), MPD is now asked to read it again first, and
+     * the list is reloaded once that scan is over. The wait comes before the reload, so
+     * the albums on screen stay there meanwhile — a full scan took 10 to 26 s on the x86
+     * box's 6,474 tracks (measured on 2026-10-28). A bubbling `lib-refreshing` event
+     * tells the page, whose own Refresh turns too.
+     *
+     * A second press while one runs is ignored: the scan is already under way. A Refresh
+     * belongs to the source it was pressed on — moving to another one abandons it at once
+     * ({@link _abandonRefresh}): the new source neither shows it nor waits for it, and
+     * gets no reload from it afterwards, the switch having loaded it already.
+     *
+     * @returns {Promise<void>}
+     */
+    async refresh() {
+        if (this._refreshing || !this.sourceId) return;
+        const token = ++this._refreshToken;
+        this._setRefreshing(true);
+        try {
+            const scanned = this.readsFolder && await this._rescanFolder(this.sourceId, token);
+            // After a finished scan the core's database stamp already says whether the
+            // list changed — measured, it has moved by the time the scan reports done (15
+            // scans out of 15, private MPD 0.24.5, 2026-10-30): forcing the walk would
+            // re-enumerate an unchanged library (review). Without one, rebuild as before.
+            if (token === this._refreshToken) await this._load({ refresh: !scanned });
+        } finally {
+            if (token === this._refreshToken) this._setRefreshing(false);
+        }
+    }
+
+    /**
+     * @private End the Refresh under way, if any, without waiting for its requests: they
+     * belong to the source being left. Run on a source switch — before it, the new source
+     * read "Refreshing…" and refused its own Refresh until the old scan's request came
+     * back, up to 40 s later (review).
+     */
+    _abandonRefresh() {
+        if (!this._refreshing) return;
+        this._refreshToken++;
+        this._setRefreshing(false);
+    }
+
+    /**
+     * @private Mark a Refresh as running or over, and tell the page.
+     * @param {boolean} refreshing
+     */
+    _setRefreshing(refreshing) {
+        this._refreshing = refreshing;
+        this.dispatchEvent(new CustomEvent('lib-refreshing', {
+            detail: { refreshing }, bubbles: true, composed: true,
+        }));
+    }
+
+    /**
+     * @private Have MPD read the music folder again, and wait for the scan to end.
+     *
+     * The POST starts the scan and waits for it, 40 s at most; while the answer says it
+     * still runs, the GET waits again and never starts one — a second POST there would
+     * begin another full scan if the first had just ended. Sent without the transport
+     * retry for the same reason. The loop stops as soon as the Refresh is abandoned or
+     * the page left, and after {@link RESCAN_MAX_WAIT_MS} at most. When the core refuses
+     * the scan to keep the library (409: the music folder reads as empty or does not
+     * answer — a NAS that is off), its words are shown to the reader. Any other failure
+     * is logged and the list reloaded anyway: what the list then says (MPD stopped, no
+     * music folder) is what the reader needs to see.
+     *
+     * @param {string} sourceId - The source whose folder is read.
+     * @param {number} token - The Refresh this wait belongs to.
+     * @returns {Promise<boolean>} True when MPD said its scans were over; false when the
+     *   wait failed, was abandoned or gave up.
+     */
+    async _rescanFolder(sourceId, token) {
+        const endpoint = `/library/rescan?source_id=${encodeURIComponent(sourceId)}`;
+        const giveUp = Date.now() + RESCAN_MAX_WAIT_MS;
+        try {
+            let { scanning } = await apiPost(endpoint, {}, false);
+            while (scanning && this.isConnected && token === this._refreshToken
+                   && Date.now() < giveUp) {
+                ({ scanning } = await apiGet(endpoint));
+            }
+            return scanning === false;
+        } catch (e) {
+            if (e?.status === 409 && e.detail) {
+                showToast('warning', 'Library not refreshed', e.detail);
+            } else {
+                console.warn('[browse] rescan of the music folder failed:', e);
+            }
+            return false;
+        }
+    }
+
+    /**
      * Reload the browse from its first page.
      *
      * @param {Object}  [opts]
-     * @param {boolean} [opts.refresh=false] - Ask the core to re-scan the source
-     *   instead of serving its cached album list. Only a Refresh control passes it:
+     * @param {boolean} [opts.refresh=false] - Ask the core to rebuild the album list
+     *   instead of serving its cached one — from MPD's database, which does not make MPD
+     *   read the music folder ({@link refresh} asks for that first, and passes this only
+     *   when that scan could not end). Only a Refresh control passes it:
      *   enumerating an MPD library costs one round trip per album, and a reload that
      *   merely changes the order has no use for fresh data. Everything else — landing
      *   on the browse, switching pill, repairing after an account change — reloads
@@ -2041,7 +2155,7 @@ export class AgLibraryBrowse extends LitElement {
               : html`
                 <div class="lib-section-hd">
                     <span class="lib-sh-t">${this._sectionLabel}</span>
-                    <span class="lib-sh-more" @click=${() => this._load({ refresh: true })}>Refresh</span>
+                    <span class="lib-sh-more" @click=${() => this.refresh()}>${this._refreshing ? 'Refreshing…' : 'Refresh'}</span>
                 </div>
                 ${recent.length > 0 || createTile ? html`
                     <div class="lib-album-row">

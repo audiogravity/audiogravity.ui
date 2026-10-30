@@ -31,6 +31,10 @@ const IO_CLASS_MAP = { none: 0, realtime: 1, 'best-effort': 2, idle: 3 };
 
 /**
  * Audio-optimized RT preset values for low-latency audio services.
+ *
+ * BACKLOG: applied to MPD, this ranks every other MPD thread above the audio output
+ * threads MPD sets to FIFO 40 itself — see audiogravity.ops/BACKLOG.md « Le préréglage
+ * « Audio Optimized » appliqué à MPD fait passer la lecture des pochettes devant le son ».
  */
 const PRESET_AUDIO = {
     cpu_scheduling_policy: 'fifo',
