@@ -110,6 +110,14 @@
     margin-top: 4px;
 }
 
+/* A value that will not do what its reader expects, said under its field. */
+.form-warning {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    color: var(--color-warning-text);
+}
+
 .checkbox-field {
     background: var(--bg-tertiary);
     padding: var(--spacing-md);

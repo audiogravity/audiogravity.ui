@@ -17,7 +17,8 @@
  * @fires cancel - Dispatched when modal requests to close
  */
 
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
+import { keyed } from 'lit/directives/keyed.js';
 import { showConfirm } from '../../ui-helpers.js';
 import '../molecules/ag-config-diff.js';
 import { iconMusicNote, iconUndo } from '../../ag-icons.js';
@@ -31,10 +32,6 @@ const IO_CLASS_MAP = { none: 0, realtime: 1, 'best-effort': 2, idle: 3 };
 
 /**
  * Audio-optimized RT preset values for low-latency audio services.
- *
- * BACKLOG: applied to MPD, this ranks every other MPD thread above the audio output
- * threads MPD sets to FIFO 40 itself — see audiogravity.ops/BACKLOG.md « Le préréglage
- * « Audio Optimized » appliqué à MPD fait passer la lecture des pochettes devant le son ».
  */
 const PRESET_AUDIO = {
     cpu_scheduling_policy: 'fifo',
@@ -48,11 +45,35 @@ const PRESET_AUDIO = {
     cpu_weight: 1000
 };
 
+/**
+ * Whether a scheduling setting would rank a service's other work ahead of its sound.
+ *
+ * Some programs make their own sound threads real time — MPD raises its output threads
+ * to SCHED_FIFO 40 —, and the core says so with each service's properties
+ * (`own_sound_rt_priority`, core/sound_threads.py: the one place that knows it). A
+ * real-time priority on the whole service at that level or above ranks every other
+ * thread of theirs ahead of the sound: with MPD's output buffer set short by hand, the
+ * sound dropped out while MPD read cover art (traced on the x86 box). Equal counts too: a
+ * running real-time thread is not preempted by another of the same priority.
+ *
+ * @param {?number} ownPriority - The priority the program gives its own sound threads,
+ *   null for a program that does not.
+ * @param {string} policy - The CPU scheduling policy field (`fifo`, `rr`, `other`, '').
+ * @param {string|number} priority - The CPU scheduling priority field.
+ * @returns {boolean}
+ */
+export function outranksSound(ownPriority, policy, priority) {
+    return ownPriority != null && (policy === 'fifo' || policy === 'rr')
+        && Number.parseInt(priority, 10) >= ownPriority;
+}
+
 export class AgSystemdOverrideEditor extends LitElement {
     static properties = {
         isOpen: { type: Boolean, attribute: 'is-open' },
         service: { type: Object },
-        isSaving: { type: Boolean }
+        isSaving: { type: Boolean },
+        /** The policy and priority fields would rank the service's other work ahead of its sound. */
+        _outranksSound: { state: true },
     };
 
     constructor() {
@@ -60,6 +81,17 @@ export class AgSystemdOverrideEditor extends LitElement {
         this.isOpen = false;
         this.service = null;
         this.isSaving = false;
+        this._outranksSound = false;
+        /**
+         * Which opening the form belongs to. Lit writes a bound field only when its value
+         * changes, so a field edited and then cancelled survived into the next opening —
+         * of the same service, or of another holding the same value — and could be saved
+         * there. A new opening draws a new form. The key is bound inside the body's own
+         * template: a directive acts where it is bound, and bound to the modal's
+         * `.bodyTemplate` property it re-created nothing (seen in Chromium: the same form
+         * element after a reopening).
+         */
+        this._opening = 0;
     }
 
     createRenderRoot() { return this; }
@@ -70,7 +102,35 @@ export class AgSystemdOverrideEditor extends LitElement {
      */
     open(service) {
         this.service = service;
+        this._opening += 1;
         this.isOpen = true;
+    }
+
+    /**
+     * Judge the service's settings whenever it changes, however it is handed over: a box
+     * set before the preset changed sees the warning on opening. The form is drawn anew
+     * on each opening (`_opening`), so what is judged is what it shows.
+     * @param {Map<string, unknown>} changed
+     */
+    willUpdate(changed) {
+        if (changed.has('service')) {
+            const props = this.service?.properties || {};
+            this._outranksSound = outranksSound(this.service?.own_sound_rt_priority,
+                props.cpu_scheduling_policy, props.cpu_scheduling_priority);
+        }
+    }
+
+    /**
+     * Read the two scheduling fields again, after the service changed, a preset or an edit.
+     * @private
+     */
+    _checkSchedulingFields() {
+        const form = this.querySelector('#propertiesForm');
+        if (!form) return;
+        this._outranksSound = outranksSound(
+            this.service?.own_sound_rt_priority,
+            form.elements.cpu_scheduling_policy?.value,
+            form.elements.cpu_scheduling_priority?.value);
     }
 
     close() {
@@ -101,8 +161,11 @@ export class AgSystemdOverrideEditor extends LitElement {
         };
 
         if (preset === 'audio') {
-            set('cpu_scheduling_policy', PRESET_AUDIO.cpu_scheduling_policy);
-            set('cpu_scheduling_priority', PRESET_AUDIO.cpu_scheduling_priority);
+            // A service that makes its own sound threads real time keeps its policy and
+            // priority at Default: see outranksSound.
+            const ownsSoundRt = this.service?.own_sound_rt_priority != null;
+            set('cpu_scheduling_policy', ownsSoundRt ? '' : PRESET_AUDIO.cpu_scheduling_policy);
+            set('cpu_scheduling_priority', ownsSoundRt ? '' : PRESET_AUDIO.cpu_scheduling_priority);
             set('nice', PRESET_AUDIO.nice);
             set('io_scheduling_class', PRESET_AUDIO.io_scheduling_class);
             set('io_scheduling_priority', PRESET_AUDIO.io_scheduling_priority);
@@ -118,6 +181,7 @@ export class AgSystemdOverrideEditor extends LitElement {
             check('io_accounting', false);
             check('ip_accounting', false);
         }
+        this._checkSchedulingFields();
     }
 
     /**
@@ -225,7 +289,7 @@ export class AgSystemdOverrideEditor extends LitElement {
                 @modal-close=${this._handleClose}
                 size="premium"
                 heading="${title}"
-                .bodyTemplate=${html`
+                .bodyTemplate=${html`${keyed(this._opening, html`
                     <form id="propertiesForm">
 
                         <div class="form-section">
@@ -242,7 +306,7 @@ export class AgSystemdOverrideEditor extends LitElement {
                                     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconUndo}</svg> Reset to Defaults
                                 </button>
                             </div>
-                            <p style="margin: var(--spacing-xs) 0 0; font-size: var(--font-size-xs); color: var(--text-muted);">
+                            <p style="margin: var(--spacing-xs) 0 0; font-size: var(--font-size-xs); color: var(--text-tertiary);">
                                 Presets fill the form — review values before saving.
                             </p>
                         </div>
@@ -258,7 +322,10 @@ export class AgSystemdOverrideEditor extends LitElement {
 
                             <div class="form-field">
                                 <label>CPU Scheduling Policy</label>
-                                <select class="form-control form-control--raised" name="cpu_scheduling_policy" .value=${props.cpu_scheduling_policy || ''}>
+                                <!-- Arrow functions: this form is rendered by ag-modal, which would
+                                     otherwise run a bare method reference as itself. -->
+                                <select class="form-control form-control--raised" name="cpu_scheduling_policy" .value=${props.cpu_scheduling_policy || ''}
+                                        @change=${() => this._checkSchedulingFields()}>
                                     <option value="">Default</option>
                                     <option value="other">Other</option>
                                     <option value="batch">Batch</option>
@@ -272,7 +339,15 @@ export class AgSystemdOverrideEditor extends LitElement {
                                 <label>CPU Scheduling Priority <span class="help-text">(0-99 for RT)</span></label>
                                 <input class="form-control form-control--raised" type="number" name="cpu_scheduling_priority"
                                        .value=${props.cpu_scheduling_priority != null ? props.cpu_scheduling_priority : ''}
-                                       min="0" max="99" placeholder="0-99">
+                                       min="0" max="99" placeholder="0-99"
+                                       @input=${() => this._checkSchedulingFields()}>
+                                <!-- Always present, so a screen reader announces the words when they come. -->
+                                <p class="form-warning" role="status">${this._outranksSound ? html`
+                                    ${this.service.name} makes its own sound threads real time, at priority
+                                    ${this.service.own_sound_rt_priority}. A real-time priority this high on the
+                                    whole service puts everything else it does — reading cover art, the
+                                    library — ahead of the sound, which can then drop out. Leave the policy and
+                                    the priority empty: Audio Optimized does.` : nothing}</p>
                             </div>
 
                             <div class="form-field">
@@ -391,7 +466,7 @@ export class AgSystemdOverrideEditor extends LitElement {
                             </label>
                         </div>
                     </form>
-                `}
+                `)}`}
                 .footerTemplate=${html`
                     <button class="action-btn secondary" @click=${() => this._handleClose()} ?disabled=${this.isSaving}>Cancel</button>
                     <button class="action-btn primary" @click=${() => this._handleSave()} ?disabled=${this.isSaving}>

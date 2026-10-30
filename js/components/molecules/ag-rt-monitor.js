@@ -76,12 +76,17 @@ export class AgRtMonitor extends LitElement {
             `;
         }
 
-        const badgeClass = proc.is_rt ? 'rt' : 'non-rt';
-        const badgeLabel = proc.is_rt ? proc.policy : 'NON-RT';
+        // MPD is read on the threads that carry its sound (the core's `audio_threads`):
+        // its main thread is not real time, and need not be. `outranked` — another of
+        // its threads runs at or above them — is what a real-time policy on the whole
+        // service does, and it made the sound drop out while MPD read cover art.
+        const badgeClass = proc.outranked ? 'outranked' : proc.is_rt ? 'rt' : 'non-rt';
+        const badgeLabel = proc.outranked ? 'OUTRANKED' : proc.is_rt ? proc.policy : 'NON-RT';
 
         return html`
             <tr class="rt-monitor-row">
-                <td class="rt-monitor-name">${proc.name}</td>
+                <td class="rt-monitor-name">${proc.name}${proc.audio_threads
+                    ? html`<span class="rt-monitor-basis">sound threads</span>` : nothing}</td>
                 <td><span class="rt-badge ${badgeClass}">${badgeLabel}</span></td>
                 <td class="rt-monitor-meta">${proc.priority ?? '—'}</td>
                 <td class="rt-monitor-meta">${proc.pid ?? '—'}</td>
@@ -124,9 +129,16 @@ export class AgRtMonitor extends LitElement {
                             ${this._processes.map(p => this._renderRow(p))}
                         </tbody>
                     </table>
+                    ${this._processes.some(p => p.outranked) ? html`
+                        <p class="rt-monitor-hint">
+                            OUTRANKED: another part of the program runs ahead of its sound, which
+                            can then drop out. In Systemd tuning, apply Audio Optimized to it and
+                            save: on MPD it leaves the policy and the priority empty.
+                        </p>
+                    ` : nothing}
                     <p class="rt-monitor-hint">
-                        SCHED_FIFO/RR = real-time — reduces audio glitches under CPU load.
-                        Configure via <code>chrt</code> or service unit <code>CPUSchedulingPolicy=fifo</code>.
+                        SCHED_FIFO/RR = real time: the program is not held up while the box is
+                        busy. MPD makes its own sound threads real time, and is read on them.
                     </p>
                 `}
             </div>

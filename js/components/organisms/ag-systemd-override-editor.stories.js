@@ -7,13 +7,16 @@ export default {
     component: 'ag-systemd-override-editor',
 };
 
+// As the Systemd page hands a service over: its label as `name`, its unit beside it.
 const serviceMock = {
-    name: 'mpd.service',
-    display_name: 'Music Player Daemon',
+    name: 'Music Player Daemon',
+    systemd_unit: 'mpd.service',
+    // What the core says with MPD's properties: it gives its own sound threads 40.
+    own_sound_rt_priority: 40,
     properties: {
         cpu_affinity: '0,1',
         cpu_scheduling_policy: 'fifo',
-        cpu_scheduling_priority: 50,
+        cpu_scheduling_priority: 30,
         nice: -10,
         io_scheduling_class: 'realtime',
         io_scheduling_priority: 4,
@@ -53,3 +56,15 @@ Saving.args = {
     service: serviceMock,
     isSaving: true
 };
+
+/**
+ * MPD set above its own sound threads — the old Audio Optimized preset's FIFO 80. The
+ * warning under the priority says why the sound can drop out.
+ */
+export const MpdAboveItsSound = Template.bind({});
+MpdAboveItsSound.args = {
+    isOpen: true,
+    service: { ...serviceMock, properties: { ...serviceMock.properties, cpu_scheduling_priority: 80 } },
+    isSaving: false
+};
+

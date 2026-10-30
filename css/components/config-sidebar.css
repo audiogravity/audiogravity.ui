@@ -260,7 +260,7 @@
     align-items: center;
     gap: 4px;
     font-size: var(--font-size-xs);
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     overflow: hidden;
 }
 
@@ -275,7 +275,7 @@
     border: none;
     cursor: pointer;
     padding: 0 2px;
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     font-size: var(--font-size-xxs);
     line-height: 1;
 }
@@ -308,7 +308,7 @@
 }
 
 .passkey-icon {
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     flex-shrink: 0;
 }
 
@@ -321,6 +321,6 @@
 
 .passkey-empty {
     font-size: var(--font-size-sm);
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     margin: 0 0 var(--spacing-sm);
 }

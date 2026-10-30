@@ -721,11 +721,11 @@ ends. Never present it as what will be heard.
 | POST | `/services/{name}/stop` | Stop |
 | POST | `/services/{name}/restart` | Restart |
 | POST | `/services/{name}/reload` | Reload the unit's config |
-| POST | `/services/{name}/properties/validate` | Check an override without applying it → `{ valid, errors, warnings, properties_preview }`; `errors` names the values a service cannot start with (see **Saving settings**) |
+| POST | `/services/{name}/properties/validate` | Check an override without applying it → `{ valid, errors, warnings, properties_preview }`; `errors` names the values a service cannot start with (see **Saving settings**); `warnings` include one when a real-time policy at or above `own_sound_rt_priority` would rank the program's other work ahead of its sound |
 | POST | `/services/{name}/properties/restore` | Put back the override that the last change which stayed replaced (`has_backup` in `GET /services/{name}/properties`) — applied as a save is, see **Putting settings back** |
 | DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults — applied as a save is, see **Putting settings back** |
 | POST | `/services/{name}/action` | start / stop / restart / enable / disable — **only Audiogravi<sup>ty</sup>-managed units** (audio engines + core AG services); a non-managed unit is rejected |
-| GET | `/services/{name}/properties` | systemd unit properties. `nice` and `cpu_scheduling_policy` are `null` when the unit keeps systemd's default (nice 0, policy `other`) — render as "default"; an unlimited limit reads `infinity`. The `properties` block of `/services/{name}` follows the same rules |
+| GET | `/services/{name}/properties` | systemd unit properties. `nice` and `cpu_scheduling_policy` are `null` when the unit keeps systemd's default (nice 0, policy `other`) — render as "default"; an unlimited limit reads `infinity`. `own_sound_rt_priority`: the real-time priority the program gives its own sound threads — `40` for MPD — or `null`; a real-time policy at that priority or above on the whole service ranks its other work ahead of its sound. The `properties` block of `/services/{name}` follows the same rules |
 | POST | `/services/{name}/properties` | Apply RT/CPU/IO override properties — managed units only; each value is strictly validated (no directive injection) and the override is **always** re-validated server-side (`skip_validation` is ignored) |
 
 On the core's own unit (`ag-core-server`), `stop`, `restart` and `reload` — as routes, through `/action`, or through `POST /services/{name}/properties` with `apply_immediately` — answer **409** while the core is installing software, and nothing is stopped. `detail` names what is being installed and is meant to be shown as is.
@@ -769,7 +769,7 @@ On the core's own unit (`ag-core-server`), both answer **409** while software is
 | POST | `/performance/cpu/governor/set` | Apply a governor now |
 | POST | `/performance/cpu/governor/save` | Persist the current governor |
 | POST | `/performance/cpu/governor/systemd/create` | Reapply it at every boot |
-| GET | `/performance/rt-processes` | Real-time scheduling per audio process |
+| GET | `/performance/rt-processes` | Real-time scheduling per audio process → `[{ name, pid, running, policy, priority, is_rt, audio_threads, outranked }]`. With `audio_threads: true` (MPD), `policy` / `priority` / `is_rt` are those of the weakest of the threads that carry the sound — MPD makes them real time itself — not of the main thread. `outranked: true`: they are real time, and another thread of the program is real time at or above them and runs ahead of the sound |
 
 **Benchmarks** — start a test, then poll it by `{test_id}`. **No UI screen calls
 these today**; see `/docs` for their request/response shape (on a core that serves it).

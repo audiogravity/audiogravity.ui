@@ -486,7 +486,7 @@ ag-tabs:not(:defined) {
     display: block;
     margin-left: auto;
     font-size: var(--font-size-xs);
-    color: var(--text-muted, var(--text-secondary));
+    color: var(--text-secondary);
     opacity: 0.7;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
