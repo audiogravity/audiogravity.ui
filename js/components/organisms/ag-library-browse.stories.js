@@ -130,6 +130,18 @@ const standsOn = (assert) => async ({ canvasElement }) => {
 /** Local library grid. */
 export const LocalLibrary = { render: () => mount('src_mpd') };
 
+/**
+ * Local library during a Refresh: MPD is reading the music folder again, the albums
+ * already listed stay on screen, and the section title's Refresh says it is at work.
+ */
+export const LocalLibraryRefreshing = {
+    render: () => mount('src_mpd', { readsFolder: true, _refreshing: true }),
+    play: standsOn((el) => {
+        expect(el.querySelector('.lib-sh-more').textContent).toBe('Refreshing…');
+        expect(el.querySelectorAll('ag-library-cover').length).toBeGreaterThan(0);
+    }),
+};
+
 /** Streaming source (Qobuz): the five shelves, and favorite stars on the grid. */
 export const Streaming = { render: () => mount('src_qobuz') };
 

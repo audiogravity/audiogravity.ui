@@ -1323,3 +1323,101 @@ describe('AgLibraryPage — what a Starter box browses', () => {
         expect(pro._outputsSourceId).toBe('src_mono-sgen');
     });
 });
+
+describe('ag-library-page — Refresh has MPD read the music folder first', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    /**
+     * The value bound to `attr` on the first `<tag` element, wherever that attribute
+     * sits in the tag — attrValue() above only reaches the first one.
+     */
+    const boundOn = (node, tag, attr) => {
+        if (Array.isArray(node)) {
+            for (const n of node) {
+                const v = boundOn(n, tag, attr);
+                if (v !== undefined) return v;
+            }
+            return undefined;
+        }
+        if (!node || typeof node !== 'object' || !node.strings) return undefined;
+        const start = node.strings.findIndex(s => typeof s === 'string' && s.includes(`<${tag}`));
+        if (start !== -1) {
+            for (let i = start; i < node.strings.length; i++) {
+                if (i > start && node.strings[i].includes('>')) break;   // past the tag
+                if (node.strings[i].trimEnd().endsWith(`${attr}=`)) return node.values[i];
+            }
+        }
+        for (const v of node.values ?? []) {
+            const found = boundOn(v, tag, attr);
+            if (found !== undefined) return found;
+        }
+        return undefined;
+    };
+
+    /** The template node holding `label` in one of its static strings. */
+    const owning = (node, label) => {
+        if (Array.isArray(node)) {
+            for (const n of node) { const f = owning(n, label); if (f) return f; }
+            return null;
+        }
+        if (!node || typeof node !== 'object' || !node.strings) return null;
+        if (node.strings.some(s => typeof s === 'string' && s.includes(label))) return node;
+        for (const v of node.values ?? []) { const f = owning(v, label); if (f) return f; }
+        return null;
+    };
+
+    it('↻ goes through the browse\'s refresh(), not a bare reload', async () => {
+        const browse = { refresh: vi.fn(), _load: vi.fn() };
+        const el = makeEl({
+            _refreshBrowse: AgLibraryPage.prototype._refreshBrowse,
+            updateComplete: Promise.resolve(),
+            querySelector: () => browse,
+        });
+        el._refreshBrowse({ refresh: true });
+        await el.updateComplete;
+        expect(browse.refresh).toHaveBeenCalledTimes(1);
+        expect(browse._load).not.toHaveBeenCalled();
+    });
+
+    /** The sources as the dev core publishes them (snapshot, 2026-10-30), protocol included. */
+    const PUBLISHED = [
+        { source_id: 'src_mpd',       protocol: 'mpd',   kind: 'library',   selectable: true },
+        { source_id: 'src_upmpdcli',  protocol: 'mpris', kind: 'input',     selectable: true },
+        { source_id: 'src_qobuz',     protocol: 'qobuz', kind: 'streaming', selectable: true },
+        { source_id: 'src_radio',     protocol: 'radio', kind: 'radio',     selectable: true },
+    ];
+
+    it('only a source the core publishes as MPD has a folder to read again', () => {
+        const el = makeEl({ _rawSources: PUBLISHED });
+        expect(el._readsFolder('src_mpd')).toBe(true);
+        // A renderer that plays through MPD is not one: the core says mpris.
+        expect(el._readsFolder('src_upmpdcli')).toBe(false);
+        expect(el._readsFolder('src_qobuz')).toBe(false);
+        expect(el._readsFolder('src_radio')).toBe(false);
+        expect(el._readsFolder('')).toBe(false);
+    });
+
+    it('tells the browse whether its source reads a folder', () => {
+        expect(boundOn(makeEl({ _sourceId: 'src_mpd', _rawSources: PUBLISHED }).render(),
+            'ag-library-browse', '?reads-folder')).toBe(true);
+        expect(boundOn(makeEl({ _sourceId: 'src_qobuz', _rawSources: PUBLISHED }).render(),
+            'ag-library-browse', '?reads-folder')).toBe(false);
+        // Before the core has published its sources, nothing claims a folder.
+        expect(makeEl({ _rawSources: undefined })._readsFolder('src_mpd')).toBe(false);
+    });
+
+    it('the top bar\'s ↻ turns, and says it is busy, while the browse refreshes', () => {
+        const el = makeEl();
+        const button = () => owning(el.render(), 'aria-label="Refresh library"');
+        const bound = (node, attr) => node.values[node.strings.findIndex(s => s.trimEnd().endsWith(`${attr}=`))];
+
+        el._onBrowseRefreshing({ detail: { refreshing: true } });
+        expect(button().values).toContain('ag-spin');
+        expect(bound(button(), 'aria-disabled')).toBe('true');
+        expect(bound(button(), 'aria-busy')).toBe('true');
+
+        el._onBrowseRefreshing({ detail: { refreshing: false } });
+        expect(button().values).not.toContain('ag-spin');
+        expect(bound(button(), 'aria-disabled')).toBe('false');
+    });
+});
