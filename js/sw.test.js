@@ -15,7 +15,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { IDBFactory } from 'fake-indexeddb';
 import { VERSION_CHECK_PARAM } from './core/stale-chunk-reload.js';
+import { CLEAR_BADGE } from './core/app-badge.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SW_SRC = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
@@ -49,9 +51,11 @@ class FakeCache {
 
 /**
  * Load sw.js into a controlled scope and hand back its listeners plus the fakes.
- * @param {{manifest?: Array<{url: string}>}} [opts]
+ * @param {{manifest?: Array<{url: string}>, nav?: object, indexedDB?: IDBFactory}} [opts]
+ *   `nav` is the worker's navigator — without `setAppBadge` unless a test gives it one,
+ *   as in most browsers; `indexedDB` is where the worker keeps what outlives it.
  */
-function loadSw({ manifest = [] } = {}) {
+function loadSw({ manifest = [], nav = {}, indexedDB } = {}) {
     const listeners = {};
     const caches_ = { _caches: new Map() };
     const net = vi.fn(async () => new FakeResponse('net'));
@@ -78,6 +82,8 @@ function loadSw({ manifest = [] } = {}) {
         skipWaiting: vi.fn(),
         clients: { claim: vi.fn(async () => {}) },
         registration: { showNotification: vi.fn(async () => {}) },
+        navigator: nav,
+        indexedDB,
     };
 
     const clients_ = { matchAll: vi.fn(async () => []), openWindow: vi.fn(async () => {}) };
@@ -353,6 +359,196 @@ describe('a notification raises the window that is already open', () => {
         const sw = loadSw();
         await click(sw, { action: 'close', data: { url: '/index.html' } });
         expect(sw.clients.openWindow).not.toHaveBeenCalled();
+    });
+});
+
+describe('the app icon counts the notifications that arrived out of sight', () => {
+    /** A navigator that can put a number on the icon, as an installed app's can on iOS. */
+    const badging = () => ({ setAppBadge: vi.fn(async () => {}), clearAppBadge: vi.fn(async () => {}) });
+
+    /** A worker on a device whose icon carries numbers; the store may outlive it. */
+    const loadBadging = (idb = new IDBFactory()) => loadSw({ nav: badging(), indexedDB: idb });
+
+    /** Deliver one push and wait for all it started. */
+    async function push(sw, data = { title: 'Disk Almost Full', message: '91% full' }) {
+        const waits = [];
+        await sw.listeners.push[0]({
+            data: { json: () => data, text: () => JSON.stringify(data) },
+            waitUntil: (p) => waits.push(p),
+        });
+        await Promise.all(waits);
+    }
+
+    /** Post a message from the page and wait for all it started. */
+    async function tell(sw, message) {
+        const waits = [];
+        sw.listeners.message[0]({ data: message, waitUntil: (p) => waits.push(p) });
+        await Promise.all(waits);
+    }
+
+    /** The numbers the icon was given, in order. */
+    const shown = (sw) => sw.self.navigator.setAppBadge.mock.calls.map(([n]) => n);
+
+    /** A window of the app, on screen or not. */
+    const windowShowing = (visibilityState) => ({ url: `${ORIGIN}/index.html`, visibilityState });
+
+    it('adds one per notification while the app is out of sight', async () => {
+        const sw = loadBadging();
+        await push(sw);
+        await push(sw);
+        expect(shown(sw)).toEqual([1, 2]);
+        expect(sw.self.registration.showNotification).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the count when the worker is stopped between two pushes', async () => {
+        // What the store is for: the worker is stopped once a push is handled, and a
+        // count held in a variable would start again from one at every notification.
+        const idb = new IDBFactory();
+        await push(loadBadging(idb));
+        const restarted = loadBadging(idb);
+        await push(restarted);
+        expect(shown(restarted)).toEqual([2]);
+    });
+
+    it('counts two pushes landing together as two', async () => {
+        // Read in one transaction and written in another, both would read 0 and write 1.
+        const sw = loadBadging();
+        await Promise.all([push(sw), push(sw)]);
+        expect(shown(sw).sort((a, b) => a - b)).toEqual([1, 2]);
+    });
+
+    it('changes the count one push at a time, however many land together', async () => {
+        // On an iPhone, two changes at once lost one: the icon said 1 for 2 (sw.js,
+        // unseenQueue). Counted here: the connections to the store open at the same time.
+        const idb = new IDBFactory();
+        const realOpen = idb.open.bind(idb);
+        let open = 0;
+        let most = 0;
+        idb.open = (...args) => {
+            const request = realOpen(...args);
+            request.addEventListener('success', () => {
+                open += 1;
+                most = Math.max(most, open);
+                const db = request.result;
+                const realClose = db.close.bind(db);
+                db.close = () => { open -= 1; realClose(); };
+            });
+            return request;
+        };
+        const sw = loadBadging(idb);
+
+        await Promise.all([push(sw), push(sw), push(sw)]);
+
+        expect(most, 'two changes of the count ran at once').toBe(1);
+        expect(shown(sw)).toEqual([1, 2, 3]);
+    });
+
+    it('counts right with two workers at once, which no queue of one can order', async () => {
+        // An update can leave the old worker finishing a push while the new one handles the
+        // next: their changes are kept apart by the transaction alone.
+        const idb = new IDBFactory();
+        const oldWorker = loadBadging(idb);
+        const newWorker = loadBadging(idb);
+
+        await Promise.all([push(oldWorker), push(newWorker)]);
+
+        expect([...shown(oldWorker), ...shown(newWorker)].sort((a, b) => a - b)).toEqual([1, 2]);
+    });
+
+    /** A store whose first `n` opens fail as an iPhone's did, on a worker a push had woken. */
+    function storeFailingFirst(n) {
+        const idb = new IDBFactory();
+        const realOpen = idb.open.bind(idb);
+        let opens = 0;
+        idb.open = (...args) => {
+            opens += 1;
+            if (opens > n) return realOpen(...args);
+            const request = { error: new DOMException('Unable to open database file on disk', 'UnknownError') };
+            setTimeout(() => request.onerror?.());
+            return request;
+        };
+        return idb;
+    }
+
+    it('opens the store again when the first open fails, as on an iPhone just woken', async () => {
+        const sw = loadBadging(storeFailingFirst(1));
+        await Promise.all([push(sw), push(sw), push(sw)]);
+        expect(shown(sw), 'the change whose open failed was lost').toEqual([1, 2, 3]);
+    });
+
+    it('gives up a change that fails twice, and still gives the next one its two tries', async () => {
+        const sw = loadBadging(storeFailingFirst(3));
+        await push(sw);
+        await push(sw);
+        expect(shown(sw), 'a change that failed held up the one after it').toEqual([1]);
+    });
+
+    it('does not count a notification that arrives with the app on screen', async () => {
+        const sw = loadBadging();
+        sw.clients.matchAll.mockResolvedValue([windowShowing('visible')]);
+        await push(sw);
+        expect(sw.self.navigator.setAppBadge, 'a notification seen as it came was counted')
+            .not.toHaveBeenCalled();
+
+        sw.clients.matchAll.mockResolvedValue([windowShowing('hidden')]);
+        await push(sw);
+        expect(shown(sw)).toEqual([1]);
+    });
+
+    it('starts again from zero once the page says the app is looked at', async () => {
+        const sw = loadBadging();
+        await push(sw);
+        await push(sw);
+        await tell(sw, CLEAR_BADGE);
+        expect(sw.self.navigator.clearAppBadge).toHaveBeenCalled();
+
+        await push(sw);
+        expect(shown(sw)).toEqual([1, 2, 1]);
+    });
+
+    it('keeps the worker awake until the count is back to zero', async () => {
+        // Outside the message event's waitUntil, the worker may be stopped as soon as the
+        // message is handled, before the store is written.
+        const idb = new IDBFactory();
+        const sw = loadBadging(idb);
+        await push(sw);
+        const waits = [];
+        sw.listeners.message[0]({ data: CLEAR_BADGE, waitUntil: (p) => waits.push(p) });
+        expect(waits, 'the clear is not part of the message event').toHaveLength(1);
+        await Promise.all(waits);
+
+        const restarted = loadBadging(idb);
+        await push(restarted);
+        expect(shown(restarted)).toEqual([1]);
+    });
+
+    it('takes the number off the icon even when the count cannot be kept', async () => {
+        // The count was reset first and the number taken off after: a store failing both
+        // tries left the number on an app someone was looking at (code review, 2026-10-30).
+        const broken = { open: () => { throw new Error('storage denied'); } };
+        const sw = loadSw({ nav: badging(), indexedDB: broken });
+        await tell(sw, CLEAR_BADGE);
+        expect(sw.self.navigator.clearAppBadge, 'the number stayed on an app in front of someone')
+            .toHaveBeenCalled();
+    });
+
+    it('counts nothing and writes nothing where an icon carries no number', async () => {
+        const idb = new IDBFactory();
+        const open = vi.spyOn(idb, 'open');
+        const sw = loadSw({ indexedDB: idb });
+        await push(sw);
+        await tell(sw, CLEAR_BADGE);
+        expect(open, 'the store was opened on a device that shows no badge').not.toHaveBeenCalled();
+        expect(sw.self.registration.showNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('still shows the notification when the count cannot be kept', async () => {
+        // Every push must show one; a badge that fails must not cost it.
+        const broken = { open: () => { throw new Error('storage denied'); } };
+        const sw = loadSw({ nav: badging(), indexedDB: broken });
+        await expect(push(sw)).resolves.toBeUndefined();
+        expect(sw.self.registration.showNotification).toHaveBeenCalledTimes(1);
+        expect(sw.self.navigator.setAppBadge).not.toHaveBeenCalled();
     });
 });
 

@@ -17,6 +17,7 @@ import { initAuth, login, saveAuth, redirectIfAuthenticated, takeRedirectAfterLo
 import { isWebAuthnAvailable, loginWithPasskey, registerPasskey } from './webauthn.js';
 import { applyOrientationLock } from './orientation-lock.js';
 import { applyStoredAppearance } from './appearance.js';
+import { watchAppBadge } from './core/app-badge.js';
 import { signInFailureMessage } from './net-errors.js';
 
 // Honour the persisted portrait lock on the login screen too — the app's
@@ -463,6 +464,10 @@ function init() {
     // The Appearance setting, Automatic by default: the device's palette, followed
     // live while the form is open (appearance.js).
     applyStoredAppearance();
+
+    // The number on the installed app's icon goes here too: without a session, the app
+    // opens on this page rather than on the interface (js/core/app-badge.js).
+    watchAppBadge();
 
     // SECURITY: Bloc si API Key manquante
     if (!API_KEY) {

@@ -212,6 +212,7 @@ import './components/organisms/ag-library-page.js';
 
 // PWA Manager (Offline & Cache Warming)
 import { PWAManager } from './pwa-manager.js';
+import { watchAppBadge } from './core/app-badge.js';
 
 console.log('✅ All modules loaded via ES6 imports (Phase 2)');
 console.log('📦 Module bundling active - Tree-shaking enabled');
@@ -219,6 +220,9 @@ console.log('⚡ Lit Web Components loaded (Phase 3)');
 
 // Initialize PWA features
 PWAManager.init();
+
+// The number on the installed app's icon goes once the app is looked at
+watchAppBadge();
 
 // Initialize Push Notifications
 initPushManager().then(() => {
