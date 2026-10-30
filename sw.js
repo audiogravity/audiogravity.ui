@@ -307,11 +307,123 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+    // The app is in front of someone (js/core/app-badge.js): nothing on it is unseen.
+    if (event.data && event.data.type === 'CLEAR_BADGE') {
+        event.waitUntil(clearUnseen());
+    }
 });
 
 // =====================
 // PUSH NOTIFICATIONS
 // =====================
+
+// The number on the installed app's icon: the notifications that arrived while the app
+// was out of sight, on this device. The page has it set back to zero at each start and
+// each return to the foreground (js/core/app-badge.js, CLEAR_BADGE).
+//
+// Kept in IndexedDB rather than in a variable, since the worker is stopped between two
+// pushes; and kept at all because the Badging API sets a badge but cannot read one back.
+//
+// Each change is tried twice. On an iPhone, three pushes landing together on a worker they
+// had just woken: the first change failed to open the store — "UnknownError: Unable to open
+// database file on disk" — the two after it opened it, and the icon said 2 for 3 (measured
+// 2026-10-30). A change that fails writes nothing, so trying it again cannot count twice.
+// The changes also wait for one another, so that a second try comes before the next
+// change reads the store; and the read and the write share one transaction, which keeps
+// apart the changes of two workers at once — an update can briefly run the old and the new.
+const BADGE_DB = 'audiogravity-badge';
+const BADGE_STORE = 'badge';
+const UNSEEN_KEY = 'unseen';
+
+/** The last change of the count queued in this worker; the next one waits for it. */
+let unseenQueue = Promise.resolve();
+
+/**
+ * Change the count of notifications not yet seen once the changes before it are done —
+ * trying a second time if the first fails — and resolve to the count it leaves. A change
+ * that fails both times does not hold up the ones after it.
+ *
+ * @param {(count: number) => number} next - The new count, given the stored one.
+ * @returns {Promise<number>}
+ */
+function updateUnseen(next) {
+    const change = unseenQueue.then(() => storeUnseen(next).catch(() => storeUnseen(next)));
+    unseenQueue = change.catch(() => {});
+    return change;
+}
+
+/**
+ * Read the count, change it and write it back, in one transaction. The store is written
+ * only when the count changes.
+ *
+ * @param {(count: number) => number} next - The new count, given the stored one.
+ * @returns {Promise<number>}
+ */
+function storeUnseen(next) {
+    return new Promise((resolve, reject) => {
+        const opening = self.indexedDB.open(BADGE_DB, 1);
+        opening.onupgradeneeded = () => opening.result.createObjectStore(BADGE_STORE);
+        opening.onerror = () => reject(opening.error);
+        opening.onsuccess = () => {
+            const db = opening.result;
+            const tx = db.transaction(BADGE_STORE, 'readwrite');
+            const store = tx.objectStore(BADGE_STORE);
+            let count = 0;
+            const reading = store.get(UNSEEN_KEY);
+            reading.onsuccess = () => {
+                const stored = reading.result || 0;
+                count = next(stored);
+                if (count !== stored) store.put(count, UNSEEN_KEY);
+            };
+            tx.oncomplete = () => { db.close(); resolve(count); };
+            tx.onabort = () => { db.close(); reject(tx.error); };
+        };
+    });
+}
+
+/**
+ * Whether a window of the app is on screen: a notification arriving then is seen.
+ * @returns {Promise<boolean>}
+ */
+async function appOnScreen() {
+    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    return windows.some((client) => client.visibilityState === 'visible');
+}
+
+/**
+ * Count one more notification on the app's icon, unless the app is on screen.
+ *
+ * Never rejects. The notification is what each push owes the system — on iOS a badge on
+ * its own does not count as one (WebKit, "Badging for Home Screen Web Apps") — and
+ * nothing here may stand in its way.
+ * @returns {Promise<void>}
+ */
+async function countUnseen() {
+    // Only where the browser offers the Badging API: on iOS, an app added to the Home
+    // Screen (16.4 and later); on a computer, Chrome and Edge — a plain tab included, where
+    // the count is kept and no number shows (measured in Chromium 145). Elsewhere nothing
+    // is counted, and nothing written.
+    if (!('setAppBadge' in self.navigator)) return;
+    try {
+        if (await appOnScreen()) return;
+        await self.navigator.setAppBadge(await updateUnseen((count) => count + 1));
+    } catch (err) {
+        console.warn('[SW] App badge not updated:', err);
+    }
+}
+
+/**
+ * Take the number off the icon and set the count back to zero. The number goes whatever
+ * becomes of the count: the app is in front of someone. Never rejects.
+ * @returns {Promise<void>}
+ */
+async function clearUnseen() {
+    if (!('setAppBadge' in self.navigator)) return;
+    const outcomes = await Promise.allSettled([self.navigator.clearAppBadge(), updateUnseen(() => 0)]);
+    for (const { status, reason } of outcomes) {
+        if (status === 'rejected') console.warn('[SW] App badge not cleared:', reason);
+    }
+}
 
 /**
  * PUSH EVENT
@@ -351,7 +463,11 @@ self.addEventListener('push', (event) => {
         ]
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    // The number on the icon goes with the notification, never in its place (countUnseen).
+    event.waitUntil(Promise.all([
+        self.registration.showNotification(title, options),
+        countUnseen(),
+    ]));
 });
 
 /**
