@@ -24,7 +24,7 @@ export const API_BASE_URL = AG_CONFIG.apiUrl || (isDevelopment
 // scripts/sync-version.mjs (run via `release.sh prepare`). A literal on purpose —
 // no build-time global — so it resolves identically in Vite, Vitest and Storybook.
 // Do not hand-edit; a guard test (js/version.test.js) fails if it drifts.
-export const UI_VERSION = '1.0.0-dev';
+export const UI_VERSION = '1.0.0-rc.3';
 
 // The day and month names the interface writes, in its own language: British English, the
 // day before the month (`Mon 12 Oct`, `27 Oct 2026`; user's choice, 2026-10-27). Asked of
