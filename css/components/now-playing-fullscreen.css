@@ -148,6 +148,45 @@ body:not(.npfs-open) .topbar {
     margin: 0 auto;
 }
 
+/* The level meter in the cover's place: the cover's square, its two dials stacked and
+   fitted in it (ag-vu-meter's fit) — so the column is as tall with the meter as with the
+   cover, which the layout of a phone on its side counts on. */
+.npfs-meter {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+/* The copy of "Next" under the cover (_renderUpNext): shown only where a phone on its
+   side has no room for it beside the output (below). Both classes: `.npfs-up-next`, which
+   shows the line, comes later in this sheet with the same weight — with one class, both
+   copies showed on every screen (measured in Chromium, 2026-11-02). */
+.npfs-up-next.npfs-up-next--side {
+    display: none;
+}
+
+/* Below the cover: the switch between the cover and the level meter, and the button
+   that opens the showcase. Only where the meter can follow what plays. */
+.npfs-view-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+/* On a box without Pro, the meter's place in that row: its padlock and its name, faded
+   (.pro-locked) — a tap leads to the licence panel. */
+.npfs-view-locked {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-height: 44px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
 .npfs-cover {
     width: 100%;
     aspect-ratio: 1;
@@ -711,11 +750,13 @@ html.ag-halloween .npfs-cover {
 
    The column beside it is one block (.npfs-info), centred on the cover whatever it
    holds — "Next" comes and goes. It was six grid rows between two empty ones, and a
-   seventh part would have fallen below the bottom one (review, 2026-10-04). A large
-   phone turned on its side is wider than 900px (932 for an iPhone Pro Max) and takes
-   this layout too: a smaller cover, the column beside it — better than one column it
-   must scroll through. */
-@media (width >= 900px) and (orientation: landscape) {
+   seventh part would have fallen below the bottom one (review, 2026-10-04). Every phone
+   turned on its side takes this layout too, made compact below: in one column it had
+   to scroll through 380 to 430 px it could not show (measured in Chromium, 2026-11-02).
+   Not under 560 px wide — a phone split with another app, a narrow window: two columns
+   ran off both sides there (56 px at 450 × 390, the left edge out of reach), and one
+   column, which scrolls, shows everything. */
+@media (width >= 900px) and (orientation: landscape), (height <= 500px) and (width >= 560px) and (orientation: landscape) {
     .npfs-scroll {
         display: grid;
         grid-template-columns: min(500px, 42vw, calc(100dvh - 180px)) minmax(300px, 520px);
@@ -755,5 +796,190 @@ html.ag-halloween .npfs-cover {
     .npfs-source-row .npfs-signal-path {
         margin-left: 0;
         justify-content: flex-start;
+    }
+}
+
+/* ── A phone on its side: the two columns, compact, nothing out of sight ──
+   The user's rule (2026-11-02): on a phone held sideways everything shows at once, as on a
+   tablet. Measured in Chromium on phones on their side from 560 × 320 to 932 × 430, the
+   iPhone's notch and home bar taken off its size: nothing overflows — the cover or the
+   meter, Pro or not, "Next" or not, a two-line title.
+
+   The cover — or the meter — is as large as the height leaves under it: the scroll area is
+   a container, so its height already excludes the header and the bottom padding, and only
+   the rows under the cover are counted out (the custom properties below — heights, not
+   tokens: rule 6 is about wrapping tokens). Its width is also bounded by what the column
+   beside it needs (300 px and the gap). The dots sit just under the header's title, the
+   gaps tighten, the album joins the artist's line, a long title keeps to two lines.
+
+   "Next": where the scroll area is 732 px wide or more, the column beside the cover is at
+   least 400 px (it gets 58 % of the width, less the gap) and "Next" shares a line with the
+   output. Narrower, there is room for neither: "Next" moves under the cover, on one line,
+   and the cover gives it its height.
+
+   viewport-fit=cover runs the page under the notch, which sits on a side: the header and
+   the columns keep clear of it. */
+@media (height <= 500px) and (width >= 560px) and (orientation: landscape) {
+    .npfs-header {
+        padding: max(var(--spacing-xs), env(safe-area-inset-top, 0px)) max(var(--spacing-lg), env(safe-area-inset-right, 0px))
+                 0 max(var(--spacing-lg), env(safe-area-inset-left, 0px));
+    }
+
+    .npfs-dots {
+        /* rule 6 exception — an offset, not a space: the dots ride up into the header's
+           own height, under its title, instead of taking a row of their own. */
+        margin-top: -10px;
+        padding-bottom: 0;
+    }
+
+    /* A little room above the cover, which takes the height to the pixel. */
+    .npfs-scroll {
+        container: npfs-scroll / size;
+        grid-template-columns: auto minmax(300px, 520px);
+        column-gap: var(--spacing-xl);
+        padding: var(--spacing-xs) max(var(--spacing-xl), env(safe-area-inset-right, 0px))
+                 calc(var(--spacing-xs) + env(safe-area-inset-bottom, 0px)) max(var(--spacing-xl), env(safe-area-inset-left, 0px));
+    }
+
+    .npfs-scroll > .npfs-cover-wrap {
+        width: min(42cqw, calc(100cqw - 300px - var(--spacing-xl)),
+                   calc(100cqh - var(--npfs-cover-row, 0px) - var(--npfs-cover-next, 0px)));
+    }
+
+    /* The rows under the cover: the switch (its margin and the bar), or the padlock's
+       44 px touch target on a box without Pro. */
+    .npfs-cover-wrap:has(> .npfs-view-row) {
+        --npfs-cover-row: 36px;
+    }
+
+    .npfs-cover-wrap:has(.npfs-view-locked) {
+        --npfs-cover-row: 50px;
+    }
+
+    .npfs-view-row {
+        margin-top: var(--spacing-sm);
+    }
+
+    /* A grid of two columns, every part across both but "Next" and the output, which
+       share a line where the area is wide enough (the container queries below). */
+    .npfs-info {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .npfs-scroll > .npfs-info > * {
+        grid-column: 1 / -1;
+    }
+
+    .npfs-info > ag-progress-bar {
+        margin-top: 0;
+    }
+
+    .npfs-up-next,
+    .npfs-output-bar {
+        padding-block: var(--spacing-xs);
+    }
+
+    .npfs-out-label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* The title over the whole width, at most two lines; the artist and the album on one
+       line under it, the artist taking at most 60 % of it, each cut short with an
+       ellipsis when it must be. Alone, either takes the whole line. */
+    .npfs-title-col {
+        display: grid;
+        grid-template-columns: fit-content(60%) minmax(0, 1fr);
+        gap: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .npfs-title-col .ag-tm-title {
+        grid-column: 1 / -1;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+    }
+
+    .npfs-title-col .ag-tm-artist,
+    .npfs-title-col .ag-tm-album {
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .npfs-title-col .ag-tm-artist:last-child,
+    .npfs-title-col .ag-tm-title + .ag-tm-album {
+        grid-column: 1 / -1;
+    }
+
+    .npfs-title-col .ag-tm-artist + .ag-tm-album::before {
+        content: "· ";
+    }
+}
+
+/* Wide enough for both: "Next" and the output on one line, the output the wider. */
+@container npfs-scroll (width >= 732px) {
+    .npfs-scroll > .npfs-info > .npfs-up-next {
+        grid-column: 1;
+    }
+
+    .npfs-scroll > .npfs-info > .npfs-up-next + .npfs-output-bar {
+        grid-column: 2;
+    }
+}
+
+/* Narrower: "Next" under the cover, on one line of a fixed height, which the cover gives
+   up (its 6 px margin and 34 px). */
+@container npfs-scroll (width < 732px) {
+    .npfs-scroll > .npfs-info > .npfs-up-next {
+        display: none;
+    }
+
+    .npfs-cover-wrap:has(> .npfs-up-next--side) {
+        --npfs-cover-next: 40px;
+    }
+
+    .npfs-up-next.npfs-up-next--side {
+        display: flex;
+        box-sizing: border-box;
+        height: 34px;
+        margin-top: var(--spacing-sm);
+        padding-block: 0;
+        padding-inline: var(--spacing-sm);
+        gap: var(--spacing-sm);
+    }
+
+    .npfs-up-next--side .npfs-up-next-cv {
+        width: 24px;
+        height: 24px;
+    }
+
+    .npfs-up-next--side .npfs-up-next-info {
+        flex-direction: row;
+        align-items: baseline;
+        gap: var(--spacing-xs);
+        min-width: 0;
+    }
+
+    /* The artist keeps its length up to 45 % of the line, the title takes the rest: shrunk
+       in proportion to their lengths, a long title left a short artist at "· …". */
+    .npfs-up-next--side .npfs-up-next-title {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .npfs-up-next--side .npfs-up-next-artist {
+        flex: 0 0 auto;
+        max-width: 45%;
+    }
+
+    .npfs-up-next--side .npfs-up-next-artist::before {
+        content: "· ";
     }
 }

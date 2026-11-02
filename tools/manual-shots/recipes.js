@@ -38,6 +38,8 @@
  * @property {string} [path='/'] - The page to load.
  * @property {'dev'|'lan'|'prod'} [instance='dev'] - Which instance serves it (harness.instanceUrls()).
  * @property {boolean} [session=true] - Whether the admin session is seeded.
+ * @property {number} [width=375] - Window width in CSS pixels; the phone on its side is
+ *   812 × 375 (SIDEWAYS).
  * @property {number} [height=812] - Window height in CSS pixels: a clip must fit inside it.
  * @property {number} [settle=7000] - Milliseconds to let the page settle after loading.
  * @property {string[]} [needs] - What the lab must provide.
@@ -46,10 +48,13 @@
  */
 
 import process from 'node:process';
-import { endBefore, union } from './harness.js';
+import { PHONE, endBefore, union } from './harness.js';
 
 /** Tells capture.js to leave a recipe out unless --playback is given. */
 export const PLAYBACK = 'playback';
+
+/** The phone on its side: a recipe's window, spread into it (`...SIDEWAYS`). */
+const SIDEWAYS = Object.freeze({ width: PHONE.height, height: PHONE.width });
 
 /** The library page, for the views opened through its state. */
 const LIB = "document.querySelector('ag-library-page')";
@@ -163,6 +168,20 @@ async function fullscreenPlayer(page, source) {
     await page.evaluate((s) => document.querySelector('ag-now-playing-fullscreen')._openPlayer(s), source);
     await page.waitForTimeout(5000);
     return { clip: fullWindow(page) };
+}
+
+/**
+ * Wait until a level meter follows the music: the core says its levels are live, then
+ * the needles get the time to rise to them (99 % of the way in 300 ms, ag-vu-meter.js).
+ *
+ * @param {import('playwright').Page} page - A page of the app.
+ * @param {string} selector - The meter, an ag-vu-meter.
+ * @returns {Promise<void>}
+ */
+async function meterLive(page, selector) {
+    await page.waitForFunction((sel) => document.querySelector(sel)?._status?.state === 'live',
+        selector, { timeout: 15000 });
+    await page.waitForTimeout(1500);
 }
 
 /**
@@ -825,10 +844,45 @@ export const RECIPES = {
         tab: 'library', needs: [PLAYBACK, 'a track playing on the box'],
         run: (page) => fullscreenPlayer(page, 'src_mpd'),
     },
+    'vu-meter': {
+        tab: 'library', needs: [PLAYBACK, 'a track playing on the box'],
+        async run(page) {
+            const shot = await fullscreenPlayer(page, 'src_mpd');
+            await page.evaluate(() => document.querySelector('ag-now-playing-fullscreen')._setCoverView('meters'));
+            await meterLive(page, 'ag-now-playing-fullscreen ag-vu-meter');
+            return shot;
+        },
+    },
+    'vu-showcase': {
+        // The phone on its side: the dials side by side, as on a tablet.
+        tab: 'library', ...SIDEWAYS,
+        needs: [PLAYBACK, 'a track playing on the box'],
+        async run(page) {
+            const shot = await fullscreenPlayer(page, 'src_mpd');
+            await page.evaluate(() => document.querySelector('ag-now-playing-fullscreen')._openShowcase());
+            await meterLive(page, 'ag-vu-showcase ag-vu-meter');
+            return shot;
+        },
+    },
     'output-busy': {
         tab: 'library',
         needs: [PLAYBACK, 'the DAC held by another player, then Play pressed'],
-        run: (page) => fullscreenPlayer(page, 'src_mpd'),
+        async run(page) {
+            const shot = await fullscreenPlayer(page, 'src_mpd');
+            // The app says it twice: a "Playback blocked" toast, which stays until it is
+            // closed (an error's, ui-helpers.js), and the reason under the output. The
+            // figure is the reason: the toast closed, as its reader would.
+            await page.evaluate(() => document.querySelectorAll('#toastContainer ag-toast-notification')
+                .forEach((toast) => toast.hide()));
+            // Under the output, below a phone's fold since the cover gained its Cover | VU
+            // meter switch: the player scrolled down to it.
+            await page.evaluate(() => {
+                const scroller = document.querySelector('ag-now-playing-fullscreen .npfs-scroll');
+                scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'instant' });
+            });
+            await page.waitForTimeout(500);
+            return shot;
+        },
     },
     'cast-renderer': {
         tab: 'library', needs: [PLAYBACK, 'an album cast to a network renderer'],

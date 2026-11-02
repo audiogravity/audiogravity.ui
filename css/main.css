@@ -55,6 +55,8 @@
 @import 'components/library-list-row.css';
 @import 'components/library-browser.css';
 @import 'components/now-playing-fullscreen.css';
+@import 'components/vu-meter.css';
+@import 'components/vu-showcase.css';
 @import 'components/progress-bar.css';
 @import 'components/playback-controls.css';
 @import 'components/sleep-timer.css';

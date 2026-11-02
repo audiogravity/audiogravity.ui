@@ -17,7 +17,10 @@ import {
 } from '../tools/manual-shots/harness.js';
 import { PLAYBACK, RECIPES, needsPlayback, selectRecipes } from '../tools/manual-shots/recipes.js';
 import { UNCHANGED_BELOW, escapeAttribute, reviewPage, verdict } from '../tools/manual-shots/review.js';
-import { DEFAULT_SOURCE } from '../scripts/sync-manual.js';
+import { manualSource } from '../scripts/sync-manual.js';
+
+/** The manual the recipes answer to: the one capture.js reads (AG_MANUAL_SRC, or the site's). */
+const MANUAL = manualSource();
 
 const CAPTURE = path.join(process.cwd(), 'tools', 'manual-shots', 'capture.js');
 
@@ -323,8 +326,9 @@ describe('the manual\'s figures', () => {
 });
 
 describe('recipes', () => {
-    it.skipIf(!existsSync(DEFAULT_SOURCE))('cover every figure the manual shows, and nothing else', () => {
-        const shown = [...manualFigures(DEFAULT_SOURCE).keys()].sort();
+    // A branch of the site that adds a figure is checked with AG_MANUAL_SRC pointed at it.
+    it.skipIf(!existsSync(MANUAL))('cover every figure the manual shows, and nothing else', () => {
+        const shown = [...manualFigures(MANUAL).keys()].sort();
         expect(Object.keys(RECIPES).sort()).toEqual(shown);
     });
 
@@ -333,8 +337,13 @@ describe('recipes', () => {
             expect(typeof recipe.run, name).toBe('function');
             expect(recipe.tab === null || typeof recipe.tab === 'string', name).toBe(true);
             expect(['dev', 'lan', 'prod'], name).toContain(recipe.instance ?? 'dev');
+            if (recipe.width !== undefined) expect(recipe.width, name).toBeGreaterThan(0);
             if (recipe.height !== undefined) expect(recipe.height, name).toBeGreaterThan(0);
         }
+    });
+
+    it('take the showcase on the phone held on its side', () => {
+        expect([RECIPES['vu-showcase'].width, RECIPES['vu-showcase'].height]).toEqual([PHONE.height, PHONE.width]);
     });
 
     it('take the figures that follow what plays now last', () => {

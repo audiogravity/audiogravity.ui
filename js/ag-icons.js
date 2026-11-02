@@ -670,6 +670,11 @@ export const iconMaximize = svg`
     <path d="m3 21 7-7"/>
     <path d="M9 21H3v-6"/>`;
 
+/** Dial with a needle — the level meter's showcase. (Lucide: gauge) */
+export const iconGauge = svg`
+    <path d="m12 14 4-4"/>
+    <path d="M3.34 19a10 10 0 1 1 17.32 0"/>`;
+
 // ─── User / auth ──────────────────────────────────────────────────────────────
 
 /** Person silhouette — standard user. (Lucide: user) */

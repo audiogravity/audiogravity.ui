@@ -831,6 +831,106 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
 });
 
 // ---------------------------------------------------------------------------
+// A phone on its side: the two columns, compact, nothing out of sight
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — a phone on its side', () => {
+    // The user's rule (2026-11-02): held sideways, a phone shows everything at once, as a
+    // tablet does. In one column it had 380 to 430 px to scroll through; with these rules
+    // nothing overflowed on phones from 560 × 320 to 932 × 430 (Chromium, measured).
+    // jsdom lays nothing out: the contract is read from the stylesheet.
+    const sheet = () => readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+    const PHONE = /@media\s*\(height\s*<=\s*500px\)\s*and\s*\(width\s*>=\s*560px\)\s*and\s*\(orientation:\s*landscape\)\s*\{/;
+    const phoneBlock = () => mediaBlock(sheet(), PHONE);
+    const wideArea = () => mediaBlock(sheet(), /@container\s+npfs-scroll\s*\(width\s*>=\s*732px\)/);
+    const narrowArea = () => mediaBlock(sheet(), /@container\s+npfs-scroll\s*\(width\s*<\s*732px\)/);
+
+    it('takes the wide screen\'s two columns from 560 px wide, and keeps one column under', () => {
+        // Under 560 px two columns ran off both sides: 56 px at 450 × 390, the left edge
+        // out of reach (review, 2026-11-02, measured in Chromium).
+        expect(sheet()).toMatch(
+            /@media\s*\(width\s*>=\s*900px\)\s*and\s*\(orientation:\s*landscape\),\s*\(height\s*<=\s*500px\)\s*and\s*\(width\s*>=\s*560px\)\s*and\s*\(orientation:\s*landscape\)\s*\{/);
+        expect(phoneBlock()).not.toBe('');
+    });
+
+    it('sizes the cover, or the meter, by the height left under it, and leaves the other column its width', () => {
+        const block = phoneBlock();
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/container:\s*npfs-scroll\s*\/\s*size/);
+        const width = cssRuleBody(block, '.npfs-scroll > .npfs-cover-wrap');
+        expect(width).toMatch(/100cqh - var\(--npfs-cover-row, 0px\) - var\(--npfs-cover-next, 0px\)/);
+        expect(width).toMatch(/100cqw - 300px - var\(--spacing-xl\)/);
+        // The rows under it: the switch, or the padlock's 44 px touch target.
+        expect(cssRuleBody(block, '.npfs-cover-wrap:has(> .npfs-view-row)')).toMatch(/--npfs-cover-row:\s*36px/);
+        expect(cssRuleBody(block, '.npfs-cover-wrap:has(.npfs-view-locked)')).toMatch(/--npfs-cover-row:\s*50px/);
+    });
+
+    it('keeps the meter in the cover\'s square, its dials fitted in it', () => {
+        expect(cssRuleBody(sheet(), '.npfs-meter')).toMatch(/aspect-ratio:\s*1/);
+    });
+
+    it('keeps the header and the columns clear of the notch, on the spacing scale', () => {
+        const block = phoneBlock();
+        const header = cssRuleBody(block, '.npfs-header');
+        expect(header).toMatch(/max\(var\(--spacing-lg\), env\(safe-area-inset-left/);
+        expect(header).toMatch(/max\(var\(--spacing-lg\), env\(safe-area-inset-right/);
+        const scroll = cssRuleBody(block, '.npfs-scroll');
+        expect(scroll).toMatch(/max\(var\(--spacing-xl\), env\(safe-area-inset-left/);
+        expect(scroll).toMatch(/max\(var\(--spacing-xl\), env\(safe-area-inset-right/);
+    });
+
+    it('keeps a long title to two lines; the album keeps a share of the artist\'s line', () => {
+        // A max-content artist track took the whole line: the album fell to 0 px with an
+        // artist longer than the column (review, 2026-11-02, measured in Chromium).
+        const block = phoneBlock();
+        expect(cssRuleBody(block, '.npfs-title-col .ag-tm-title')).toMatch(/line-clamp:\s*2/);
+        expect(cssRuleBody(block, '.npfs-title-col')).toMatch(/grid-template-columns:\s*fit-content\(60%\)\s+minmax\(0, 1fr\)/);
+        expect(block).toMatch(/\.npfs-title-col \.ag-tm-artist:last-child,\s*\.npfs-title-col \.ag-tm-title \+ \.ag-tm-album\s*\{[^}]*grid-column:\s*1 \/ -1/);
+        expect(cssRuleBody(block, '.npfs-title-col .ag-tm-artist + .ag-tm-album::before')).toMatch(/content:\s*"· "/);
+    });
+
+    it('ends the output\'s label with an ellipsis when its card is narrow', () => {
+        const label = cssRuleBody(phoneBlock(), '.npfs-out-label');
+        expect(label).toMatch(/text-overflow:\s*ellipsis/);
+        expect(label).toMatch(/overflow:\s*hidden/);
+    });
+
+    it('lets "Next" and the output share a line where the area is wide enough', () => {
+        expect(cssRuleBody(wideArea(), '.npfs-scroll > .npfs-info > .npfs-up-next')).toMatch(/grid-column:\s*1/);
+        expect(cssRuleBody(wideArea(), '.npfs-scroll > .npfs-info > .npfs-up-next + .npfs-output-bar')).toMatch(/grid-column:\s*2/);
+        // Every other part across both columns.
+        expect(cssRuleBody(phoneBlock(), '.npfs-scroll > .npfs-info > *')).toMatch(/grid-column:\s*1 \/ -1/);
+    });
+
+    it('narrower, moves "Next" under the cover, on one line whose height the cover gives up', () => {
+        // On a phone the width of an iPhone SE, in Safari, "Next" on a line of its own ran
+        // 39 px off the screen (measured in Chromium at 667 × 320, 2026-11-02).
+        const narrow = narrowArea();
+        expect(cssRuleBody(narrow, '.npfs-scroll > .npfs-info > .npfs-up-next')).toMatch(/display:\s*none/);
+        const side = cssRuleBody(narrow, '.npfs-up-next--side');
+        expect(side).toMatch(/display:\s*flex/);
+        expect(side).toMatch(/height:\s*34px/);
+        expect(side).toMatch(/margin-top:\s*var\(--spacing-sm\)/);    // 6 px: 40 with the line
+        expect(cssRuleBody(narrow, '.npfs-cover-wrap:has(> .npfs-up-next--side)')).toMatch(/--npfs-cover-next:\s*40px/);
+        // A short artist keeps its name beside a long title.
+        expect(cssRuleBody(narrow, '.npfs-up-next--side .npfs-up-next-artist')).toMatch(/flex:\s*0 0 auto/);
+        expect(cssRuleBody(narrow, '.npfs-up-next--side .npfs-up-next-artist')).toMatch(/max-width:\s*45%/);
+    });
+
+    it('hides the copy under the cover everywhere else', () => {
+        // With both classes: `.npfs-up-next` comes later with the same weight, and with one
+        // class both copies showed on every screen (measured in Chromium, 2026-11-02).
+        expect(sheet()).toMatch(/\n\.npfs-up-next\.npfs-up-next--side\s*\{\s*display:\s*none;/);
+        expect(narrowArea()).toMatch(/\.npfs-up-next\.npfs-up-next--side\s*\{\s*display:\s*flex;/);
+    });
+
+    it('leaves a phone held upright as it was', () => {
+        // Its rules all sit in the blocks of a screen on its side.
+        expect(cssRuleBody(sheet(), '.npfs-header')).toMatch(/padding:\s*6px 16px 4px/);
+        expect(cssRuleBody(sheet(), '.npfs-info')).toMatch(/display:\s*contents/);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // A wide, landscape screen: the cover on the left, everything else beside it
 // ---------------------------------------------------------------------------
 
@@ -901,6 +1001,14 @@ describe('AgNowPlayingFullscreen — two columns on a wide screen', () => {
         for (const part of ['.npfs-meta', 'ag-format-strip', '.npfs-controls-row', 'ag-progress-bar']) {
             expect(info.querySelector(`:scope > ${part}`), part).not.toBeNull();
         }
+        // "Next" in that block, and its copy for a narrow phone on its side under the
+        // cover: the same track, the copy marked so the stylesheet can choose.
+        const next = info.querySelector(':scope > .npfs-up-next');
+        const side = scroll.querySelector(':scope > .npfs-cover-wrap > .npfs-up-next.npfs-up-next--side');
+        expect(next.classList.contains('npfs-up-next--side')).toBe(false);
+        expect(side).not.toBeNull();
+        expect(side.querySelector('.npfs-up-next-title').textContent).toBe('Freddie Freeloader');
+        expect(next.querySelector('.npfs-up-next-title').textContent).toBe('Freddie Freeloader');
     });
 });
 
@@ -1403,5 +1511,166 @@ describe('the slider or the DSD padlock comes from the shared helpers', () => {
 
     it('decides nothing of its own about DSD and the volume', () => {
         expect(SOURCE).not.toMatch(/isSelfManagedDriver|isDsd\(/);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// The level meter in the cover's place — where the box's own MPD plays
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — the level meter in the cover\'s place', () => {
+    const PLAYING = { source_id: 'src_mpd', title: 'Elle', artist: '-M-', album: 'Îl', playing: true,
+        cover_token: 'url:x', level_meter: true };
+
+    /** Render the cover block of a state, the device's choice given, on a box with Pro. */
+    function coverBlock(state, view = 'cover', extra = {}) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({ _coverView: view, _coverSwapped: false,
+            _coverErrorToken: null, _license: { pro: true }, _showcaseOpen: false, ...extra })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        el._targetSourceId = 'src_mpd';
+        const host = document.createElement('div');
+        litRender(el._renderCover(state), host);
+        return { el, host };
+    }
+
+    afterEach(() => { delete window.MemoryCache; });
+
+    it('offers the switch and the showcase where the meter can follow what plays', () => {
+        const { host } = coverBlock(PLAYING);
+        expect(host.querySelector('.npfs-cover-wrap ag-filter-bar')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-showcase').getAttribute('aria-label')).toBe('Showcase mode');
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+    });
+
+    it('shows the meter in the cover\'s place when this device chose it', () => {
+        const { host } = coverBlock(PLAYING, 'meters');
+        const wrap = host.querySelector('.npfs-cover-wrap');
+        expect(wrap.querySelector('ag-vu-meter.npfs-meter')).not.toBeNull();
+        expect(wrap.querySelector('.npfs-cover')).toBeNull();
+    });
+
+    it('keeps the cover, and offers nothing, for a player the meter cannot follow', () => {
+        // AirPlay, Roon, HQPlayer, a network renderer: the device's choice waits.
+        const { host } = coverBlock({ ...PLAYING, level_meter: false }, 'meters');
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-view-showcase')).toBeNull();
+    });
+
+    it('remembers the choice on this device', () => {
+        window.MemoryCache = { get: vi.fn(), set: vi.fn() };
+        const { el } = coverBlock(PLAYING);
+        el._setCoverView('meters');
+        expect(el._coverView).toBe('meters');
+        expect(window.MemoryCache.set).toHaveBeenCalledWith('npfsCoverView', 'meters');
+    });
+
+    it('opens the showcase on the source it follows', () => {
+        const { host } = coverBlock(PLAYING);
+        const opened = vi.fn();
+        window.addEventListener('vu-showcase-open', opened);
+        host.querySelector('.npfs-view-showcase').click();
+        window.removeEventListener('vu-showcase-open', opened);
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(opened.mock.calls[0][0].detail).toEqual({ source_id: 'src_mpd' });
+    });
+
+    it('pauses its meter while the showcase is open over it', () => {
+        // Review of 2026-11-02: under the showcase, out of sight, it animated on.
+        const { host } = coverBlock(PLAYING, 'meters', { _showcaseOpen: true });
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        // The device's choice stays: the meter comes back when the showcase closes.
+        expect(host.querySelector('ag-filter-bar').value).toBe('meters');
+    });
+
+    it('hears the showcase open and close', () => {
+        const el = document.createElement('ag-now-playing-fullscreen');
+        el._connectSse = () => {};
+        document.body.append(el);
+        try {
+            window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: true } }));
+            expect(el._showcaseOpen).toBe(true);
+            window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: false } }));
+            expect(el._showcaseOpen).toBe(false);
+        } finally {
+            el.remove();
+        }
+        window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: true } }));
+        expect(el._showcaseOpen).toBe(false);      // gone from the page: no longer listening
+    });
+
+    it('keeps the player in its two blocks with the meter shown', () => {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: PLAYING, _rendererActive: false, _nextTrack: null, _sources: [],
+            _coverView: 'meters', _coverSwapped: false, _coverErrorToken: null,
+            _license: { pro: true }, _showcaseOpen: false,
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        const scroll = host.querySelector('.npfs-scroll');
+        expect([...scroll.children].map((c) => c.className.split(' ')[0])).toEqual(
+            ['npfs-cover-wrap', 'npfs-info']);
+    });
+});
+
+describe('AgNowPlayingFullscreen — the level meter is Pro', () => {
+    const PLAYING = { source_id: 'src_mpd', title: 'Elle', playing: true, cover_token: 'url:x', level_meter: true };
+
+    function coverBlock(license, view = 'meters') {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _coverView: view, _coverSwapped: false, _coverErrorToken: null, _license: license,
+            _showcaseOpen: false,
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        el._targetSourceId = 'src_mpd';
+        const host = document.createElement('div');
+        litRender(el._renderCover(PLAYING), host);
+        return host;
+    }
+
+    it('shows a box without Pro its padlock, and the cover whatever the device chose', () => {
+        const host = coverBlock({ pro: false });
+        expect(host.querySelector('.npfs-view-locked ag-pro-lock')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-locked').classList.contains('pro-locked')).toBe(true);
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-view-showcase')).toBeNull();
+    });
+
+    it('leads a box without Pro to the licence panel', () => {
+        const host = coverBlock({ pro: false });
+        const tabs = { selectTab: vi.fn() };
+        const query = vi.spyOn(document, 'querySelector').mockImplementation((sel) =>
+            (sel === 'ag-tabs' ? tabs : null));
+        host.querySelector('.npfs-view-locked').click();
+        query.mockRestore();
+        expect(tabs.selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+    });
+
+    it('opens it for a box with Pro', () => {
+        const host = coverBlock({ pro: true });
+        expect(host.querySelector('ag-vu-meter')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-locked')).toBeNull();
+    });
+
+    it('shows neither the meter nor its padlock while the licence is not read', () => {
+        // Review of 2026-11-02: the meter's stream was refused on a box without Pro, and
+        // asked for again every 30 s, the dials dead without a word.
+        const host = coverBlock(null);
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('.npfs-view-locked')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
     });
 });

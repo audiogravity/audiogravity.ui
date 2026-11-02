@@ -384,13 +384,14 @@ export function toImageBox(box, clip, scale = PHONE.scale, margin = 2) {
  *
  * @param {import('playwright').Browser} browser - A launched Chromium.
  * @param {object} [options]
+ * @param {number} [options.width=PHONE.width] - Window width: PHONE.height for the phone on its side.
  * @param {number} [options.height=PHONE.height] - Window height: grow it for tall crops.
  * @param {?Record<string, string>} [options.storage] - localStorage to seed (sessionStorageItems()), none when null.
  * @returns {Promise<import('playwright').BrowserContext>}
  */
-export async function openPhone(browser, { height = PHONE.height, storage = null } = {}) {
+export async function openPhone(browser, { width = PHONE.width, height = PHONE.height, storage = null } = {}) {
     const context = await browser.newContext({
-        viewport: { width: PHONE.width, height },
+        viewport: { width, height },
         deviceScaleFactor: PHONE.scale,
         isMobile: true,
         hasTouch: true,

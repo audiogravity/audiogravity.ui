@@ -145,6 +145,7 @@ import './components/molecules/ag-upnp-renderer-card.js';
 import './components/molecules/ag-qobuz-connection.js';
 import './components/molecules/ag-tidal-connection.js';
 import './components/molecules/ag-highresaudio-connection.js';
+import './components/molecules/ag-vu-meter.js';
 // Organisms
 import './components/organisms/ag-modal.js';
 import './components/organisms/ag-confirm-dialog.js';
@@ -171,6 +172,7 @@ import { AgConfigPanel } from './components/organisms/ag-config-panel.js';
 import { AgFooter } from './components/organisms/ag-footer.js';
 import './components/organisms/ag-now-playing.js';
 import './components/organisms/ag-now-playing-fullscreen.js';
+import './components/organisms/ag-vu-showcase.js';
 import './components/organisms/ag-pull-tab.js';
 
 // =====================

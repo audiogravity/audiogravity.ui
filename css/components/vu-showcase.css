@@ -1,0 +1,156 @@
+/* ── Level meter showcase (ag-vu-showcase) ──
+   Over the whole screen, the full-screen player's included: two large dials, what plays
+   below. Side by side in landscape, one above the other in portrait (ag-vu-meter's
+   layout="auto"). */
+
+.ag-vus-panel {
+    position: fixed;
+    inset: 0;
+
+    /* Above the full-screen player it is opened from (2000, now-playing-fullscreen.css),
+       below the modals and the toasts (--z-modal, --z-toast). */
+    z-index: 2100;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+    padding: max(var(--spacing-lg), env(safe-area-inset-top)) max(var(--spacing-xl), env(safe-area-inset-right))
+             max(var(--spacing-xl), env(safe-area-inset-bottom)) max(var(--spacing-xl), env(safe-area-inset-left));
+    background: var(--bg-primary);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.ag-vus-top {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ag-vus-exit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* All the height the rest leaves: the dials fit in it (ag-vu-meter's fit), so the panel
+   never has to scroll for them. */
+.ag-vus-meters {
+    flex: 1 1 0;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* In the dials' place, when what plays does not go through the box's player: the
+   dials are not drawn, nor the core's copy of the stream turned on for them. */
+.ag-vus-note {
+    margin: auto 0;
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* The cover, what plays beside it, and the format below: under the title in landscape,
+   across the whole width in portrait, where a phone left the strip's cells too narrow
+   for their values (measured in Chromium, 390 px wide, 2026-11-01). */
+.ag-vus-track {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--spacing-sm) var(--spacing-xl);
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.ag-vus-cover {
+    grid-row: span 2;
+    width: 112px;
+    height: 112px;
+    border-radius: var(--radius-lg);
+    background: var(--bg-tertiary) center / cover no-repeat;
+}
+
+.ag-vus-format {
+    grid-column: 2;
+}
+
+.ag-vus-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.ag-vus-title {
+    font-size: var(--font-size-xxl);
+    font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ag-vus-byline {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A phone on its side: Exit moves to the end of the track's line, and the cover, the
+   title and the gaps shrink — the dials keep the height. Measured in Chromium on phones
+   on their side from 640 × 360 to 932 × 430: nothing overflows (2026-11-02). */
+@media (height <= 500px) and (orientation: landscape) {
+    .ag-vus-panel {
+        display: grid;
+        grid-template:
+            "meters meters" minmax(0, 1fr)
+            "track exit" auto / minmax(0, 1fr) auto;
+        gap: var(--spacing-md) var(--spacing-lg);
+        padding: max(var(--spacing-md), env(safe-area-inset-top)) max(var(--spacing-lg), env(safe-area-inset-right))
+                 max(var(--spacing-md), env(safe-area-inset-bottom)) max(var(--spacing-lg), env(safe-area-inset-left));
+    }
+
+    .ag-vus-top {
+        grid-area: exit;
+        align-self: end;
+    }
+
+    .ag-vus-meters,
+    .ag-vus-note {
+        grid-area: meters;
+    }
+
+    .ag-vus-meters {
+        height: 100%;
+    }
+
+    .ag-vus-track {
+        grid-area: track;
+        gap: var(--spacing-xs) var(--spacing-md);
+    }
+
+    .ag-vus-cover {
+        width: 64px;
+        height: 64px;
+    }
+
+    .ag-vus-title { font-size: var(--font-size-lg); }
+
+    .ag-vus-byline { font-size: var(--font-size-sm); }
+}
+
+@media (orientation: portrait) {
+    .ag-vus-title { font-size: var(--font-size-xl); }
+
+    .ag-vus-cover {
+        grid-row: auto;
+        width: 72px;
+        height: 72px;
+    }
+
+    .ag-vus-format {
+        grid-column: 1 / -1;
+    }
+}

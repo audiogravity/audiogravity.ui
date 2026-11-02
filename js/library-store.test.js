@@ -969,3 +969,61 @@ describe('the player stream, for a subscriber that joins it late', () => {
         stopLate(); stopAgain();
     });
 });
+
+import { subscribeLevels } from './library-store.js';
+
+describe('the level meter stream', () => {
+    // GET /player/levels: the first screen opens it — the core turns MPD's copy of its
+    // stream on — the last one leaving closes it, and the copy goes off.
+    beforeEach(() => {
+        FakeEventSource.made = [];
+        vi.stubGlobal('EventSource', FakeEventSource);
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    const send = (es, name, data) => es.dispatchEvent(new MessageEvent(name, { data: JSON.stringify(data) }));
+
+    it('opens one stream on /player/levels for its screens, and closes it with the last', () => {
+        const a = vi.fn();
+        const b = vi.fn();
+        const stopA = subscribeLevels(a);
+        const stopB = subscribeLevels(b);
+        try {
+            expect(FakeEventSource.made).toHaveLength(1);
+            const es = FakeEventSource.made[0];
+            expect(es.url).toContain('/player/levels');
+            send(es, 'levels', [-9.0, -23.0]);
+            expect(a).toHaveBeenCalledWith('levels', [-9.0, -23.0]);
+            expect(b).toHaveBeenCalledWith('levels', [-9.0, -23.0]);
+            stopA();
+            expect(es.readyState).not.toBe(FakeEventSource.CLOSED);
+            stopB();
+            expect(es.readyState).toBe(FakeEventSource.CLOSED);
+        } finally {
+            stopA(); stopB();
+        }
+    });
+
+    it('tells a screen that joins late the meter\'s state, not an old level', async () => {
+        const stopFirst = subscribeLevels(() => {});
+        const es = FakeEventSource.made.at(-1);
+        send(es, 'meter', { state: 'live', format: '44100:2', synced: true });
+        send(es, 'levels', [-12.0, -14.0]);
+        const late = vi.fn();
+        const stopLate = subscribeLevels(late);
+        await Promise.resolve();
+        expect(late.mock.calls).toEqual([['meter', { state: 'live', format: '44100:2', synced: true }]]);
+        stopLate(); stopFirst();
+    });
+
+    it('drops a level that is not JSON', () => {
+        const cb = vi.fn();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const stop = subscribeLevels(cb);
+        FakeEventSource.made.at(-1).dispatchEvent(new MessageEvent('levels', { data: 'not json' }));
+        expect(cb).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalled();
+        stop();
+        warn.mockRestore();
+    });
+});
