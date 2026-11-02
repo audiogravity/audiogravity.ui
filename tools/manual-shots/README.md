@@ -2,7 +2,8 @@
 
 The figures of the user manual (`audiogravity.site/docs/manual/images/ios-*.webp`) are
 browser captures of the real interface, taken from the dev instance, in the format of an
-iPhone 13 mini: 375 × 812 CSS pixels at density 3. Most are cropped to one component.
+iPhone 13 mini: 375 × 812 CSS pixels at density 3 — 812 × 375 for the one held on its side
+(`vu-showcase`). Most are cropped to one component.
 
 This tool retakes them and sets each one beside the published figure. It never writes into
 the manual: a person looks at the comparison, then copies in the figures worth replacing.
@@ -97,15 +98,16 @@ Order ID is the licence key. Their pixels are replaced by the blur, never blende
 
 ## Figures taken from what plays now
 
-`nowplaying-bar`, `origin-badge`, `fullscreen`, `queue-mixed`, `signal-chain`,
-`output-busy` and `cast-renderer` show whatever the box is playing. They only run with
-`--playback`, which says the lab has been staged for them:
+`nowplaying-bar`, `origin-badge`, `fullscreen`, `vu-meter`, `vu-showcase`, `queue-mixed`,
+`signal-chain`, `output-busy` and `cast-renderer` show whatever the box is playing. They only
+run with `--playback`, which says the lab has been staged for them:
 
 | Figure | Staging (as published) |
 |---|---|
 | `nowplaying-bar` | A Qobuz track playing (*So What*, Miles Davis) |
 | `origin-badge` | A radio playing (Radio Choco HD) |
 | `fullscreen`, `signal-chain` | A track playing through MPD (*So What*, 24 bit / 192 kHz) |
+| `vu-meter`, `vu-showcase` | *Lazarus* (David Bowie, 24 bit / 96 kHz) through MPD from 2:00, last in the queue — *So What*, recorded in 1959, keeps the needles in the dial's left quarter (median −20 dBFS on its louder channel) |
 | `queue-mixed` | A queue mixing sources: a Qobuz track, a local file, another Qobuz track, a radio |
 | `output-busy` | The DAC held by another player, then Play pressed |
 | `cast-renderer` | An album cast to a network renderer, so the player has a Next |
@@ -133,6 +135,8 @@ figure.
 
 - A figure is cut from the window's image: a box that runs past the bottom makes the capture
   fail, and the tool says so. Raise `height`.
+- The phone on its side is `...SIDEWAYS` in the recipe (812 × 375): a figure of a layout made
+  for it, never a portrait figure widened.
 - `networkidle` never comes — the app keeps an event stream open. Recipes wait a fixed time.
 - Open panels through the component's state (`_setView('outputs')`, `_showInitModal = true`)
   rather than by clicking: some panels have no button on a box that is already set up. Never

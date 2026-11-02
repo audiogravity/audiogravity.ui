@@ -192,7 +192,7 @@ export function reviewPage(entries, { source, outDir, when = new Date() }) {
 <main class="wrap">
   <header>
     <h1>Manual figure review</h1>
-    <p class="lede">Each figure retaken from <span class="mono">${text(source)}</span> in the manual's phone format, 375 × 812 at density 3, beside the one the manual publishes. Taken ${text(when.toISOString().slice(0, 16).replace('T', ' '))} UTC; the new files are in <span class="mono">${text(outDir)}</span>, and the manual is untouched.</p>
+    <p class="lede">Each figure retaken from <span class="mono">${text(source)}</span> in the manual's phone format, 375 × 812 at density 3 (or held on its side), beside the one the manual publishes. Taken ${text(when.toISOString().slice(0, 16).replace('T', ' '))} UTC; the new files are in <span class="mono">${text(outDir)}</span>, and the manual is untouched.</p>
   </header>
   <div class="summary">${summary}</div>
 ${failures}

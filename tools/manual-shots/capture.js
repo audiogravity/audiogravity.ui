@@ -83,10 +83,11 @@ function printList(figures) {
  */
 async function take({ browser, workbench, urls, storage, outDir }, name) {
     const recipe = RECIPES[name];
+    const width = recipe.width ?? PHONE.width;
     const height = recipe.height ?? PHONE.height;
     // A context of its own per figure: a drawer or a dialog a recipe opened would
     // otherwise still be on screen for the next one.
-    const context = await openPhone(browser, { height, storage: recipe.session === false ? null : storage });
+    const context = await openPhone(browser, { width, height, storage: recipe.session === false ? null : storage });
     const page = await context.newPage();
     page.on('pageerror', (err) => console.warn(`  ${name}: page error — ${err.message}`));
     try {

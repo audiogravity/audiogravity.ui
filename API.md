@@ -565,9 +565,9 @@ the player's own volume acts on the DSD track it plays — its slider, or a padl
   nothing known: offer no meter, and do not open `/player/levels` for it.
 
 **`GET /player/levels`** — server-sent events, for as long as the meter is on screen. While a
-client follows, MPD's copy of its stream, which costs MPD processor time, is on whenever the DAC
-plays and off otherwise; the last client leaving turns it off. Close the stream when the meter is
-hidden.
+client follows, MPD's copy of its stream, which costs MPD processor time, is on whenever MPD plays
+on the DAC and off otherwise — another player holding the DAC included: the meter then stays
+`idle`; the last client leaving turns it off. Close the stream when the meter is hidden.
 
 - `meter` — first, then on each change: `{ state, reason?, format?, synced? }`.
   - `state`: `"off"`, `"starting"`, `"idle"` (nothing plays), `"live"` (levels follow) or
