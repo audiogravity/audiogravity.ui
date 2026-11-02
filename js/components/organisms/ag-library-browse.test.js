@@ -1366,7 +1366,7 @@ describe('ag-library-browse — Tidal', () => {
         );
     });
 
-    it('has no Purchases pill — Tidal sells nothing', () => {
+    it('has no Purchases pill — AG reads no Tidal purchases', () => {
         expect(tEl()._pills.map(([f]) => f)).not.toContain('purchases');
     });
 
