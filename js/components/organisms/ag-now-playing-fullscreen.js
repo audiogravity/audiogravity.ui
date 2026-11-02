@@ -40,7 +40,8 @@ import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api
 import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote, iconGauge } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
-import { isLicensed, isLockedSource, openLicensePanel } from '../../license-tiers.js';
+import { isLicensed, isLockedSource, openLicensePanel, proState } from '../../license-tiers.js';
+import { SHOWCASE_OPEN_EVENT, SHOWCASE_STATE_EVENT } from './ag-vu-showcase.js';
 import { LicenseController } from '../../core/LicenseController.js';
 import { showToast } from '../../ui-helpers.js';
 
@@ -81,6 +82,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         _coverErrorToken:  { state: true },
         /** 'cover' or 'meters': what the cover's place shows, kept per device. */
         _coverView:        { state: true },
+        _showcaseOpen:     { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -96,6 +98,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         // The level meter in the cover's place, as this device last chose
         // (MemoryCache, published by common.js in the app; absent, the cover).
         this._coverView = window.MemoryCache?.get?.(COVER_VIEW_KEY, 'cover') === 'meters' ? 'meters' : 'cover';
+        /** The showcase is open over this player: its own dials pause, out of sight. */
+        this._showcaseOpen = false;
+        this._onShowcaseState = (e) => { this._showcaseOpen = !!e.detail?.open; };
         // Reset on track / source / station change so a fresh listen always
         // starts in the canonical "station identity first" layout.
         this._coverSwapped = false;
@@ -132,6 +137,7 @@ export class AgNowPlayingFullscreen extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('np-expand', this._boundOpen);
+        window.addEventListener(SHOWCASE_STATE_EVENT, this._onShowcaseState);
         // Renderer routing, queue and "Up next" now come from PlayerState
         // (outputs[] / queue_next) — single source of truth, no separate
         // renderer_status subscription (spec decision #2).
@@ -143,6 +149,7 @@ export class AgNowPlayingFullscreen extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('np-expand', this._boundOpen);
+        window.removeEventListener(SHOWCASE_STATE_EVENT, this._onShowcaseState);
         this._closeSse();
         // Only clear the local UI timeout — the backend timer must keep running.
         this._clearLocalSleepTimeout();
@@ -906,9 +913,14 @@ export class AgNowPlayingFullscreen extends LitElement {
         // The level meter follows the box's own MPD only (PlayerState.level_meter): for
         // any other player the cover stays, whatever this device chose. It is Pro (the
         // user's decision, 2026-11-01): a box without Pro sees its padlock.
+        // While the licence is not read, neither shows: the meter's stream would be refused
+        // on a box without Pro, and a padlock would flash on one with it (review, 2026-11-02).
+        // The showcase over this player has its own dials: these, out of sight, pause.
         const meterAvailable = !!s?.level_meter;
-        const meterOpen = isLicensed(this._license);
-        const showMeters = meterAvailable && meterOpen && this._coverView === 'meters';
+        const pro = proState(this._license);
+        const meterOpen = pro === 'open';
+        const choseMeters = meterAvailable && meterOpen && this._coverView === 'meters';
+        const showMeters = choseMeters && !this._showcaseOpen;
 
         return html`
             <div class="npfs-cover-wrap">
@@ -942,7 +954,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                     ` : nothing}
                 </div>
                 `}
-                ${meterAvailable ? this._renderViewSwitch(showMeters, !meterOpen) : nothing}
+                ${meterAvailable && pro !== 'unknown' ? this._renderViewSwitch(choseMeters, !meterOpen) : nothing}
                 ${this._renderUpNext({ side: true })}
             </div>
         `;
@@ -992,7 +1004,7 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     /** Open the showcase (ag-vu-showcase) on the source this player follows. */
     _openShowcase() {
-        window.dispatchEvent(new CustomEvent('vu-showcase-open', {
+        window.dispatchEvent(new CustomEvent(SHOWCASE_OPEN_EVENT, {
             detail: { source_id: this._targetSourceId ?? null },
         }));
     }

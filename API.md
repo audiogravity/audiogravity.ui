@@ -564,9 +564,10 @@ the player's own volume acts on the DSD track it plays — its slider, or a padl
 - `false` — anything else (AirPlay, Roon, HQPlayer, a network speaker, the UPnP bridge), or
   nothing known: offer no meter, and do not open `/player/levels` for it.
 
-**`GET /player/levels`** — server-sent events, for as long as the meter is on screen: the first
-client turns on MPD's copy of its stream, which costs MPD processor time, and the last one leaving
-turns it off. Close the stream when the meter is hidden.
+**`GET /player/levels`** — server-sent events, for as long as the meter is on screen. While a
+client follows, MPD's copy of its stream, which costs MPD processor time, is on whenever the DAC
+plays and off otherwise; the last client leaving turns it off. Close the stream when the meter is
+hidden.
 
 - `meter` — first, then on each change: `{ state, reason?, format?, synced? }`.
   - `state`: `"off"`, `"starting"`, `"idle"` (nothing plays), `"live"` (levels follow) or

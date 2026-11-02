@@ -17,7 +17,8 @@ vi.mock('../../library-store.js', () => ({
 const applyOrientationLock = vi.fn();
 vi.mock('../../orientation-lock.js', () => ({ applyOrientationLock: (...a) => applyOrientationLock(...a) }));
 
-import { SHOWCASE_OPEN_EVENT } from './ag-vu-showcase.js';
+import { SHOWCASE_OPEN_EVENT, SHOWCASE_STATE_EVENT } from './ag-vu-showcase.js';
+import { setLicense } from '../../license-tiers.js';
 
 describe('ag-vu-showcase', () => {
     let lock;
@@ -32,12 +33,14 @@ describe('ag-vu-showcase', () => {
         request = vi.fn(async () => lock);
         Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true });
         window.AppState = { lockPortrait: true };
+        setLicense({ pro: true });
     });
 
     afterEach(() => {
         document.body.innerHTML = '';
         delete navigator.wakeLock;
         delete window.AppState;
+        setLicense(null);
     });
 
     async function showcase() {
@@ -142,6 +145,34 @@ describe('ag-vu-showcase', () => {
         expect(subscribeLevels).toHaveBeenCalledTimes(1);
     });
 
+    it('says when it opens and closes, for the player under it to pause its own meter', async () => {
+        const said = vi.fn();
+        window.addEventListener(SHOWCASE_STATE_EVENT, said);
+        const el = await showcase();
+        await open(el);
+        el.close();
+        window.removeEventListener(SHOWCASE_STATE_EVENT, said);
+        expect(said.mock.calls.map((c) => c[0].detail)).toEqual([{ open: true }, { open: false }]);
+    });
+
+    it('closes when the licence stops being Pro: its dials would be refused', async () => {
+        const el = await showcase();
+        await open(el);
+        expect(el.querySelector('.ag-vus-panel')).not.toBeNull();
+        setLicense({ pro: false });
+        await el.updateComplete;
+        expect(el.querySelector('.ag-vus-panel')).toBeNull();
+        expect(stopState).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens nothing while the licence is not read', async () => {
+        setLicense(null);
+        const el = await showcase();
+        await open(el);
+        expect(el.querySelector('.ag-vus-panel')).toBeNull();
+        expect(subscribePlayerState).not.toHaveBeenCalled();
+    });
+
     it('still opens where the browser cannot keep the screen on', async () => {
         delete navigator.wakeLock;
         const el = await showcase();
@@ -174,8 +205,6 @@ describe('ag-vu-showcase — a phone on its side', () => {
         expect(panel).toMatch(/safe-area-inset-right/);
     });
 });
-
-import { setLicense } from '../../license-tiers.js';
 
 describe('ag-vu-showcase — Pro', () => {
     afterEach(() => {

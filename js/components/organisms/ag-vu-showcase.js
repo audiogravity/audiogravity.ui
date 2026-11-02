@@ -5,8 +5,11 @@
  * 2026-11-01).
  *
  * Opened by the full-screen player's button (window event `vu-showcase-open`, detail
- * `{source_id}`), closed by its Exit button. Pro: a box without it gets the licence
- * panel instead. While it is open:
+ * `{source_id}`), closed by its Exit button; it says so on `vu-showcase-state` (detail
+ * `{open}`), for the full-screen player to pause its own meter, out of sight under it. Pro:
+ * a box without it gets the licence panel instead, a licence not read yet nothing, and a
+ * licence that stops being Pro while it is open closes it — its dials would be refused.
+ * While it is open:
  * - the screen stays on (the Screen Wake Lock API, where the browser has it), the lock
  *   asked again each time the page comes back to the front: the browser drops it when
  *   the page is hidden;
@@ -24,12 +27,16 @@ import '../molecules/ag-vu-meter.js';
 import '../molecules/ag-format-strip.js';
 import { subscribePlayerState } from '../../library-store.js';
 import { applyOrientationLock } from '../../orientation-lock.js';
-import { isLicensed, openLicensePanel } from '../../license-tiers.js';
+import { openLicensePanel, proState } from '../../license-tiers.js';
+import { LicenseController } from '../../core/LicenseController.js';
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { iconMinimize } from '../../ag-icons.js';
 
 /** The window event that opens the showcase. */
 export const SHOWCASE_OPEN_EVENT = 'vu-showcase-open';
+
+/** The window event the showcase sends when it opens or closes, detail `{open}`. */
+export const SHOWCASE_STATE_EVENT = 'vu-showcase-state';
 
 export class AgVuShowcase extends LitElement {
     static properties = {
@@ -45,6 +52,10 @@ export class AgVuShowcase extends LitElement {
         this._state = null;
         this._unsubscribe = null;
         this._wakeLock = null;
+        /** Keeps `_license`: a licence that stops being Pro closes the showcase. */
+        this._licenseCtl = new LicenseController(this, (license) => {
+            if (this._open && proState(license) === 'locked') this.close();
+        });
         this._onOpen = (e) => this.open(e.detail?.source_id ?? null);
         this._onVisibility = () => {
             if (this._open && document.visibilityState === 'visible') this._keepAwake();
@@ -69,9 +80,11 @@ export class AgVuShowcase extends LitElement {
      */
     open(sourceId = null) {
         if (this._open) return;
-        if (!isLicensed()) {
-            // Pro (the user's decision, 2026-11-01): the licence panel instead.
-            openLicensePanel();
+        const pro = proState(this._license);
+        if (pro !== 'open') {
+            // Pro (the user's decision, 2026-11-01): the licence panel instead. Nothing while
+            // the licence is not read: its stream would be refused on a box without Pro.
+            if (pro === 'locked') openLicensePanel(this._license);
             return;
         }
         this._open = true;
@@ -79,6 +92,7 @@ export class AgVuShowcase extends LitElement {
         applyOrientationLock(false);
         document.addEventListener('visibilitychange', this._onVisibility);
         this._keepAwake();
+        window.dispatchEvent(new CustomEvent(SHOWCASE_STATE_EVENT, { detail: { open: true } }));
     }
 
     /** Close the showcase: the stream, the screen lock and the portrait lock go back. */
@@ -90,6 +104,7 @@ export class AgVuShowcase extends LitElement {
         document.removeEventListener('visibilitychange', this._onVisibility);
         this._releaseWakeLock();
         applyOrientationLock(window.AppState?.lockPortrait ?? true);
+        window.dispatchEvent(new CustomEvent(SHOWCASE_STATE_EVENT, { detail: { open: false } }));
     }
 
     async _keepAwake() {

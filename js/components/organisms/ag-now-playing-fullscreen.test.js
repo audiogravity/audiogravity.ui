@@ -1522,12 +1522,13 @@ describe('AgNowPlayingFullscreen — the level meter in the cover\'s place', () 
     const PLAYING = { source_id: 'src_mpd', title: 'Elle', artist: '-M-', album: 'Îl', playing: true,
         cover_token: 'url:x', level_meter: true };
 
-    /** Render the cover block of a state, the device's choice given. */
-    function coverBlock(state, view = 'cover') {
+    /** Render the cover block of a state, the device's choice given, on a box with Pro. */
+    function coverBlock(state, view = 'cover', extra = {}) {
         const el = Object.create(AgNowPlayingFullscreen.prototype);
-        Object.defineProperty(el, '_coverView', { value: view, writable: true, configurable: true });
-        Object.defineProperty(el, '_coverSwapped', { value: false, writable: true, configurable: true });
-        Object.defineProperty(el, '_coverErrorToken', { value: null, writable: true, configurable: true });
+        for (const [name, value] of Object.entries({ _coverView: view, _coverSwapped: false,
+            _coverErrorToken: null, _license: { pro: true }, _showcaseOpen: false, ...extra })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
         el._targetSourceId = 'src_mpd';
         const host = document.createElement('div');
         litRender(el._renderCover(state), host);
@@ -1578,11 +1579,37 @@ describe('AgNowPlayingFullscreen — the level meter in the cover\'s place', () 
         expect(opened.mock.calls[0][0].detail).toEqual({ source_id: 'src_mpd' });
     });
 
+    it('pauses its meter while the showcase is open over it', () => {
+        // Review of 2026-11-02: under the showcase, out of sight, it animated on.
+        const { host } = coverBlock(PLAYING, 'meters', { _showcaseOpen: true });
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        // The device's choice stays: the meter comes back when the showcase closes.
+        expect(host.querySelector('ag-filter-bar').value).toBe('meters');
+    });
+
+    it('hears the showcase open and close', () => {
+        const el = document.createElement('ag-now-playing-fullscreen');
+        el._connectSse = () => {};
+        document.body.append(el);
+        try {
+            window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: true } }));
+            expect(el._showcaseOpen).toBe(true);
+            window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: false } }));
+            expect(el._showcaseOpen).toBe(false);
+        } finally {
+            el.remove();
+        }
+        window.dispatchEvent(new CustomEvent('vu-showcase-state', { detail: { open: true } }));
+        expect(el._showcaseOpen).toBe(false);      // gone from the page: no longer listening
+    });
+
     it('keeps the player in its two blocks with the meter shown', () => {
         const el = Object.create(AgNowPlayingFullscreen.prototype);
         for (const [name, value] of Object.entries({
             _open: true, _state: PLAYING, _rendererActive: false, _nextTrack: null, _sources: [],
             _coverView: 'meters', _coverSwapped: false, _coverErrorToken: null,
+            _license: { pro: true }, _showcaseOpen: false,
         })) {
             Object.defineProperty(el, name, { value, writable: true, configurable: true });
         }
@@ -1601,6 +1628,7 @@ describe('AgNowPlayingFullscreen — the level meter is Pro', () => {
         const el = Object.create(AgNowPlayingFullscreen.prototype);
         for (const [name, value] of Object.entries({
             _coverView: view, _coverSwapped: false, _coverErrorToken: null, _license: license,
+            _showcaseOpen: false,
         })) {
             Object.defineProperty(el, name, { value, writable: true, configurable: true });
         }
@@ -1634,5 +1662,15 @@ describe('AgNowPlayingFullscreen — the level meter is Pro', () => {
         const host = coverBlock({ pro: true });
         expect(host.querySelector('ag-vu-meter')).not.toBeNull();
         expect(host.querySelector('.npfs-view-locked')).toBeNull();
+    });
+
+    it('shows neither the meter nor its padlock while the licence is not read', () => {
+        // Review of 2026-11-02: the meter's stream was refused on a box without Pro, and
+        // asked for again every 30 s, the dials dead without a word.
+        const host = coverBlock(null);
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('.npfs-view-locked')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
     });
 });

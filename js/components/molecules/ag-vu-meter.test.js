@@ -152,6 +152,37 @@ describe('ag-vu-meter', () => {
         expect(render).not.toHaveBeenCalled();
     });
 
+    it('turns its needles without looking for them in the page at each frame', async () => {
+        // Review of 2026-11-02: two lookups in the page at every frame.
+        const el = await meter({ live: false });
+        const lookups = vi.spyOn(el, 'querySelectorAll');
+        let t = 1000;
+        const clock = vi.spyOn(performance, 'now').mockImplementation(() => t);
+        for (let i = 1; i <= 10; i++) {
+            t += 16;
+            el.setLevels([VU_REFERENCE_DBFS, VU_REFERENCE_DBFS]);
+            runFrames(t);
+        }
+        clock.mockRestore();
+        expect(lookups).not.toHaveBeenCalled();
+        const angle = (needle) => Number(needle.getAttribute('transform').match(/rotate\(([-\d.]+)/)[1]);
+        expect(angle(el.querySelector('.ag-vu-needle'))).toBeGreaterThan(-45);
+    });
+
+    it('draws nothing through digital silence once its needles rest', async () => {
+        // The stream goes on in silence, [null, null] 25 times a second: the frames ran on.
+        const el = await meter({ live: false });
+        let t = 1000;
+        const clock = vi.spyOn(performance, 'now').mockImplementation(() => t);
+        for (let i = 1; i <= 5; i++) {
+            t += 40;
+            el.setLevels([null, null]);
+            expect(frames).toHaveLength(0);     // no frame asked for
+            runFrames(t);
+        }
+        clock.mockRestore();
+    });
+
     it('lets its needles fall when the levels stop, then asks for no more frames', async () => {
         const el = await meter({ live: false });
         el.setLevels([VU_REFERENCE_DBFS, VU_REFERENCE_DBFS]);

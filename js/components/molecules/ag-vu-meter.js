@@ -205,6 +205,10 @@ export class AgVuMeter extends LitElement {
     }
 
     updated(changed) {
+        // The needles and the lamps, found once a render: the frames turn them, they do not
+        // look for them (review, 2026-11-02: two lookups in the page at every frame).
+        this._needleEls = [...this.querySelectorAll('.ag-vu-needle')];
+        this._peakEls = [...this.querySelectorAll('.ag-vu-peak')];
         if (changed.has('live') && changed.get('live') !== undefined) {
             this._unfollow();
             this._follow();
@@ -261,7 +265,15 @@ export class AgVuMeter extends LitElement {
         if (name !== 'levels' || !Array.isArray(payload)) return;
         this._levels = [payload[0] ?? null, payload[1] ?? null];
         this._levelsAt = performance.now();
-        this._startFrames();
+        // Digital silence with the needles at rest: nothing to draw (review, 2026-11-02 —
+        // the frames ran on, 60 a second, for nothing).
+        if (this._levels.some((db) => db !== null) || !this._needlesAtRest()) this._startFrames();
+    }
+
+    /** Whether both needles are at rest, and still. */
+    _needlesAtRest() {
+        return this._needles.every(([position, velocity]) =>
+            Math.abs(position) <= 1e-3 && Math.abs(velocity) <= 1e-3);
     }
 
     _startFrames() {
@@ -281,9 +293,9 @@ export class AgVuMeter extends LitElement {
         const dt = this._lastFrameAt === null ? 0 : (now - this._lastFrameAt) / 1000;
         this._lastFrameAt = now;
         const silent = now - this._levelsAt > SILENT_AFTER_MS;
-        let moving = !silent;
-        const needles = this.querySelectorAll('.ag-vu-needle');
-        const peaks = this.querySelectorAll('.ag-vu-peak');
+        let moving = !silent && this._levels.some((db) => db !== null);
+        const needles = this._needleEls ?? [];
+        const peaks = this._peakEls ?? [];
         for (let ch = 0; ch < 2; ch++) {
             const db = silent ? null : this._levels[ch];
             const [position, velocity] = stepNeedle(...this._needles[ch], vuAmplitude(db), dt);
