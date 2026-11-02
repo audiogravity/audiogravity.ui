@@ -776,11 +776,12 @@ export class AgNowPlaying extends LitElement {
             ${item.duration && !isLiveStream(item) ? html`
                 <ag-progress-bar
                     compact
-                    .serverElapsed=${item.elapsed ?? 0}
+                    .serverElapsed=${item.elapsed ?? null}
                     .duration=${item.duration}
                     ?can-seek=${item.can_seek}
                     ?playing=${isPlaying}
                     .title=${item.title ?? ''}
+                    .source=${item.source_id ?? ''}
                     @seek=${(e) => this._sendControl(item.source_id, 'seek', e.detail.secs, item)}
                 ></ag-progress-bar>
             ` : nothing}

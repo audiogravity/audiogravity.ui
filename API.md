@@ -514,7 +514,8 @@ queue and change while a source plays or sits paused, so read them from every `P
   `can_prev` after the first — both `false` on a station played alone, where HQPlayer
   answers either with an error and stops the music. Both `true` until HQPlayer has named an
   entry.
-- `can_seek` — a length is known (`duration`). `false` on a live stream.
+- `can_seek` — a length is known (`duration`). `false` on a live stream, and on AirPlay, whose
+  receiver cannot move within a track.
 
 **`live`** — on the item and on each `sources[]` entry: what plays is a live broadcast — no
 end to count down to, no position to seek to, and `play` after a pause reopens the stream

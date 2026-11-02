@@ -225,8 +225,13 @@ export class AgNowPlayingFullscreen extends LitElement {
             // Different source — seed from the mini-player item or clear.
             if (item) this._seedStateFromItem(item);
             else this._state = null;
+        } else if (this._state) {
+            // Same source reopened — keep what it shows, but not its position: read when
+            // the player closed, it is as old as the player stayed closed. Given to the
+            // bar, it read as the source going back. The bar picks the track up where
+            // the last bar left it, and the next state brings the source's own.
+            this._state = { ...this._state, elapsed: null };
         }
-        // Same source reopened — keep existing _state (preserves elapsed).
         this._open = true;
         document.body.classList.add('npfs-open');
         this._connectSse();
@@ -409,12 +414,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         if (!this._userSourceOverride && state.source_id && state.playing && state.source_id !== this._targetSourceId) {
             this._followSource(state.source_id);
         }
-        // Preserve locally interpolated elapsed when the server reports 0
-        // (AirPlay/shairport-sync never provides a real position).
-        if (state.elapsed === 0 && this._state?.elapsed > 0
-            && state.source_id === this._state.source_id) {
-            state = { ...state, elapsed: this._state.elapsed };
-        }
+        // The position goes to the bar as reported, 0 included: the bar knows a 0
+        // from a source that gives none (AirPlay on shairport-sync 4.3.7) and keeps
+        // counting. Holding the last position here instead carried it onto the next
+        // track, which starts at 0 — the bar stayed ahead of the music until the
+        // player reopened.
         // Hold the seek target until the backend's position catches up. Events
         // already in flight when the seek was issued still carry the pre-seek
         // position; letting them through rewinds the bar for a tick. Dropped as
@@ -1102,12 +1106,13 @@ export class AgNowPlayingFullscreen extends LitElement {
         return html`
             <ag-progress-bar
                 style="flex:none"
-                .serverElapsed=${s?.elapsed ?? 0}
+                .serverElapsed=${s?.elapsed ?? null}
                 .duration=${s?.duration ?? 0}
                 ?can-seek=${s?.can_seek ?? false}
                 ?playing=${s?.playing ?? false}
                 ?live=${isLiveStream(s)}
                 .title=${s?.title ?? ''}
+                .source=${s?.source_id ?? ''}
                 @seek=${(e) => this._control('seek', e.detail.secs)}
             ></ag-progress-bar>
         `;
