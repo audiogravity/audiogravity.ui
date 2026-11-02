@@ -476,6 +476,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 |---|---|---|
 | GET | `/player/state` | SSE stream — live `PlayerState` events (fields below) |
 | GET | `/player/state/snapshot` | Current `PlayerState` (one-shot) |
+| GET | `/player/levels` | SSE stream of the level meter — the signal level of what the box's MPD plays, as the DAC plays it (below). Pro: **403** without it |
 | POST | `/player/control` | Transport command — body `{ action, value?, control_id?, source_id? }`. A refused command answers **503** rather than silently succeeding — refusals are truthful: no change was confirmed, and the SSE state published right after is the reference; see `/audio_pipeline/control` above. On a box without Pro: **403** when the command reaches Roon or HQPlayer — judged on the device it reaches, once resolved — and **403** with what to do when a `play` cannot sound: the box's own HQPlayer holds the DAC, or only streaming tracks are left in the queue it would play, the box's own or the network speaker's ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 | POST | `/player/source` | Select the active source |
 | GET | `/player/sleep-timer` | Current sleep-timer state |
@@ -555,6 +556,31 @@ the player's own volume acts on the DSD track it plays — its slider, or a padl
   `/audio-stack/status`).
 - `false` — any other player: its volume does nothing to DSD.
 - `null` — a PCM track, or nothing playing.
+
+**`level_meter`** — on `PlayerState`: whether the level meter can follow what plays.
+
+- `true` — the active item plays on the box's own MPD: the music on the box, the radio, a
+  streaming service's track.
+- `false` — anything else (AirPlay, Roon, HQPlayer, a network speaker, the UPnP bridge), or
+  nothing known: offer no meter, and do not open `/player/levels` for it.
+
+**`GET /player/levels`** — server-sent events, for as long as the meter is on screen: the first
+client turns on MPD's copy of its stream, which costs MPD processor time, and the last one leaving
+turns it off. Close the stream when the meter is hidden.
+
+- `meter` — first, then on each change: `{ state, reason?, format?, synced? }`.
+  - `state`: `"off"`, `"starting"`, `"idle"` (nothing plays), `"live"` (levels follow) or
+    `"unavailable"`.
+  - `reason`, when unavailable: `"mpd_unreachable"`, `"not_configured"` (MPD's configuration has
+    no meter output: the guided setup writes it), `"pipe_missing"`, `"pipe_unreadable"`,
+    `"mpd_refused"`.
+  - `format`, when live: MPD's name of what plays, its sample width aside — `"96000:2"`,
+    `"dsd64:2"`, `"384000:dsd:2"`.
+  - `synced`, when live: `true` when each level comes as the DAC plays it; `false` when the DAC's
+    position cannot be read and the levels come as they are measured, a little ahead of the sound.
+- `levels` — 25 a second while it plays: `[left, right]`, the RMS level of the last 40 ms in dB
+  below full scale, to a tenth; `null` for silence.
+- `: ping` comment lines every 15 s while nothing else is sent.
 
 **`PlayerState` — routing and output fields**
 
@@ -1186,7 +1212,7 @@ On a box without Pro the core answers **403** — `detail`: `Full license requir
 `This license ended on … Renew it to use this feature.` — to:
 
 - every route of `/hqplayer/*` and `/performance/*`; `/audio_pipeline/*` but `now-playing`,
-  `cover` and `library-cover`; `/services/{name}/properties*`; `/listening/summary`;
+  `cover` and `library-cover`; `/services/{name}/properties*`; `/listening/summary`; `/player/levels`;
   `/library/{roon,qobuz,tidal,highresaudio,upnp}-*`, and `POST /{qobuz,tidal,highresaudio}/connection`
   (with `/tidal/connection/submit` and `/qobuz/oauth/callback`);
 - the `/library/*` routes given a Pro `source_id` (albums, search, queue, favourites,

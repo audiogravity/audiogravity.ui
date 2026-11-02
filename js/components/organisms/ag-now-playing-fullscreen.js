@@ -25,6 +25,8 @@ import '../molecules/ag-playback-controls.js';
 import '../molecules/ag-progress-bar.js';
 import '../molecules/ag-format-strip.js';
 import '../molecules/ag-volume-popover.js';
+import '../molecules/ag-vu-meter.js';
+import '../atoms/ag-filter-bar.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';
 import '../atoms/ag-pro-lock.js';
@@ -35,7 +37,7 @@ import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, inTransition, showsVolumeControl, showsDsdLock, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
-import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote } from '../../ag-icons.js';
+import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote, iconGauge } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, isLockedSource, openLicensePanel } from '../../license-tiers.js';
@@ -59,6 +61,12 @@ const SWIPE_SWITCH_COMMIT_PX  = 80;   // horizontal distance to commit a source 
 const SWIPE_SWITCH_RUBBER_MAX = 40;   // max translateX (px) during the rubberbanded drag
 const SWIPE_DEAD_ZONE_PX      = GESTURE_SLOP_PX;  // axis-lock dead-zone, shared app-wide
 
+/** Where this device keeps what the cover's place shows: the cover or the level meter. */
+const COVER_VIEW_KEY = 'npfsCoverView';
+
+/** The two things the cover's place can show (ag-filter-bar's options). */
+const COVER_VIEWS = [{ label: 'Cover', value: 'cover' }, { label: 'VU meter', value: 'meters' }];
+
 export class AgNowPlayingFullscreen extends LitElement {
     static properties = {
         _state:        { state: true },
@@ -71,6 +79,8 @@ export class AgNowPlayingFullscreen extends LitElement {
         _sources:          { state: true },
         /** Cover token that failed to load — triggers placeholder fallback. */
         _coverErrorToken:  { state: true },
+        /** 'cover' or 'meters': what the cover's place shows, kept per device. */
+        _coverView:        { state: true },
     };
 
     createRenderRoot() { return this; }
@@ -83,6 +93,9 @@ export class AgNowPlayingFullscreen extends LitElement {
         this._nextTrack    = null;
         this._sleepEnd     = null;
         this._coverErrorToken = null;
+        // The level meter in the cover's place, as this device last chose
+        // (MemoryCache, published by common.js in the app; absent, the cover).
+        this._coverView = window.MemoryCache?.get?.(COVER_VIEW_KEY, 'cover') === 'meters' ? 'meters' : 'cover';
         // Reset on track / source / station change so a fresh listen always
         // starts in the canonical "station identity first" layout.
         this._coverSwapped = false;
@@ -890,8 +903,18 @@ export class AgNowPlayingFullscreen extends LitElement {
         const coverFailed = primary && this._coverErrorToken === primaryToken;
         const showCover   = primary && !coverFailed;
 
+        // The level meter follows the box's own MPD only (PlayerState.level_meter): for
+        // any other player the cover stays, whatever this device chose. It is Pro (the
+        // user's decision, 2026-11-01): a box without Pro sees its padlock.
+        const meterAvailable = !!s?.level_meter;
+        const meterOpen = isLicensed(this._license);
+        const showMeters = meterAvailable && meterOpen && this._coverView === 'meters';
+
         return html`
             <div class="npfs-cover-wrap">
+                ${showMeters ? html`
+                    <ag-vu-meter class="npfs-meter" variant="theme" layout="stack"></ag-vu-meter>
+                ` : html`
                 <div class="npfs-cover" style=${showCover ? `background-image:url('${primary}')` : ''}>
                     ${showCover ? html`
                         <img src="${primary}" style="display:none" alt=""
@@ -918,8 +941,59 @@ export class AgNowPlayingFullscreen extends LitElement {
                         </div>
                     ` : nothing}
                 </div>
+                `}
+                ${meterAvailable ? this._renderViewSwitch(showMeters, !meterOpen) : nothing}
             </div>
         `;
+    }
+
+    /**
+     * The switch between the cover and the level meter, and the showcase's button — or,
+     * on a box without Pro, the meter's padlock, which leads to the licence panel.
+     *
+     * @param {boolean} showMeters - Whether the meter is in the cover's place.
+     * @param {boolean} locked - Whether the box has no Pro.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderViewSwitch(showMeters, locked) {
+        if (locked) {
+            return html`
+                <div class="npfs-view-row">
+                    <button class="plain-btn pro-locked npfs-view-locked"
+                            @click=${() => openLicensePanel(this._license)}>
+                        <ag-pro-lock></ag-pro-lock>VU meter
+                    </button>
+                </div>
+            `;
+        }
+        return html`
+            <div class="npfs-view-row">
+                <ag-filter-bar .options=${COVER_VIEWS} .value=${showMeters ? 'meters' : 'cover'}
+                               @filter-change=${(e) => this._setCoverView(e.detail.value)}></ag-filter-bar>
+                <button class="npfs-header-btn npfs-view-showcase" aria-label="Showcase mode"
+                        @click=${() => this._openShowcase()}>
+                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconGauge}</svg>
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Show the cover or the level meter in the cover's place, and keep the choice.
+     *
+     * @param {'cover'|'meters'} view - What to show.
+     */
+    _setCoverView(view) {
+        this._coverView = view;
+        window.MemoryCache?.set?.(COVER_VIEW_KEY, view);
+    }
+
+    /** Open the showcase (ag-vu-showcase) on the source this player follows. */
+    _openShowcase() {
+        window.dispatchEvent(new CustomEvent('vu-showcase-open', {
+            detail: { source_id: this._targetSourceId ?? null },
+        }));
     }
 
     _renderMeta(s) {

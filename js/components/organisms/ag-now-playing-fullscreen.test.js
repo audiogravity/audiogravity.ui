@@ -1405,3 +1405,126 @@ describe('the slider or the DSD padlock comes from the shared helpers', () => {
         expect(SOURCE).not.toMatch(/isSelfManagedDriver|isDsd\(/);
     });
 });
+
+// ---------------------------------------------------------------------------
+// The level meter in the cover's place — where the box's own MPD plays
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — the level meter in the cover\'s place', () => {
+    const PLAYING = { source_id: 'src_mpd', title: 'Elle', artist: '-M-', album: 'Îl', playing: true,
+        cover_token: 'url:x', level_meter: true };
+
+    /** Render the cover block of a state, the device's choice given. */
+    function coverBlock(state, view = 'cover') {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        Object.defineProperty(el, '_coverView', { value: view, writable: true, configurable: true });
+        Object.defineProperty(el, '_coverSwapped', { value: false, writable: true, configurable: true });
+        Object.defineProperty(el, '_coverErrorToken', { value: null, writable: true, configurable: true });
+        el._targetSourceId = 'src_mpd';
+        const host = document.createElement('div');
+        litRender(el._renderCover(state), host);
+        return { el, host };
+    }
+
+    afterEach(() => { delete window.MemoryCache; });
+
+    it('offers the switch and the showcase where the meter can follow what plays', () => {
+        const { host } = coverBlock(PLAYING);
+        expect(host.querySelector('.npfs-cover-wrap ag-filter-bar')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-showcase').getAttribute('aria-label')).toBe('Showcase mode');
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+    });
+
+    it('shows the meter in the cover\'s place when this device chose it', () => {
+        const { host } = coverBlock(PLAYING, 'meters');
+        const wrap = host.querySelector('.npfs-cover-wrap');
+        expect(wrap.querySelector('ag-vu-meter.npfs-meter')).not.toBeNull();
+        expect(wrap.querySelector('.npfs-cover')).toBeNull();
+    });
+
+    it('keeps the cover, and offers nothing, for a player the meter cannot follow', () => {
+        // AirPlay, Roon, HQPlayer, a network renderer: the device's choice waits.
+        const { host } = coverBlock({ ...PLAYING, level_meter: false }, 'meters');
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-view-showcase')).toBeNull();
+    });
+
+    it('remembers the choice on this device', () => {
+        window.MemoryCache = { get: vi.fn(), set: vi.fn() };
+        const { el } = coverBlock(PLAYING);
+        el._setCoverView('meters');
+        expect(el._coverView).toBe('meters');
+        expect(window.MemoryCache.set).toHaveBeenCalledWith('npfsCoverView', 'meters');
+    });
+
+    it('opens the showcase on the source it follows', () => {
+        const { host } = coverBlock(PLAYING);
+        const opened = vi.fn();
+        window.addEventListener('vu-showcase-open', opened);
+        host.querySelector('.npfs-view-showcase').click();
+        window.removeEventListener('vu-showcase-open', opened);
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(opened.mock.calls[0][0].detail).toEqual({ source_id: 'src_mpd' });
+    });
+
+    it('keeps the player in its two blocks with the meter shown', () => {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: PLAYING, _rendererActive: false, _nextTrack: null, _sources: [],
+            _coverView: 'meters', _coverSwapped: false, _coverErrorToken: null,
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        const scroll = host.querySelector('.npfs-scroll');
+        expect([...scroll.children].map((c) => c.className.split(' ')[0])).toEqual(
+            ['npfs-cover-wrap', 'npfs-info']);
+    });
+});
+
+describe('AgNowPlayingFullscreen — the level meter is Pro', () => {
+    const PLAYING = { source_id: 'src_mpd', title: 'Elle', playing: true, cover_token: 'url:x', level_meter: true };
+
+    function coverBlock(license, view = 'meters') {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _coverView: view, _coverSwapped: false, _coverErrorToken: null, _license: license,
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        el._targetSourceId = 'src_mpd';
+        const host = document.createElement('div');
+        litRender(el._renderCover(PLAYING), host);
+        return host;
+    }
+
+    it('shows a box without Pro its padlock, and the cover whatever the device chose', () => {
+        const host = coverBlock({ pro: false });
+        expect(host.querySelector('.npfs-view-locked ag-pro-lock')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-locked').classList.contains('pro-locked')).toBe(true);
+        expect(host.querySelector('.npfs-cover')).not.toBeNull();
+        expect(host.querySelector('ag-vu-meter')).toBeNull();
+        expect(host.querySelector('ag-filter-bar')).toBeNull();
+        expect(host.querySelector('.npfs-view-showcase')).toBeNull();
+    });
+
+    it('leads a box without Pro to the licence panel', () => {
+        const host = coverBlock({ pro: false });
+        const tabs = { selectTab: vi.fn() };
+        const query = vi.spyOn(document, 'querySelector').mockImplementation((sel) =>
+            (sel === 'ag-tabs' ? tabs : null));
+        host.querySelector('.npfs-view-locked').click();
+        query.mockRestore();
+        expect(tabs.selectTab).toHaveBeenCalledWith('admin', { keepOpen: false });
+    });
+
+    it('opens it for a box with Pro', () => {
+        const host = coverBlock({ pro: true });
+        expect(host.querySelector('ag-vu-meter')).not.toBeNull();
+        expect(host.querySelector('.npfs-view-locked')).toBeNull();
+    });
+});

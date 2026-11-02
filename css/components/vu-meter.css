@@ -1,0 +1,190 @@
+/* ── Level meter (ag-vu-meter) ──
+   Two analog dials drawn in SVG, in the dial's own units (its viewBox, 342 × 165): a
+   font size here is in those units, and grows with the dial. The needles are turned by
+   the component at each frame (a transform attribute); nothing here animates. */
+
+ag-vu-meter {
+    display: block;
+    position: relative;
+}
+
+ag-vu-meter .ag-vu-faces {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+ag-vu-meter[layout="row"] .ag-vu-faces {
+    flex-direction: row;
+    gap: var(--spacing-xl);
+}
+
+/* Side by side in landscape, left above right in portrait: the showcase on a tablet. */
+ag-vu-meter[layout="auto"] .ag-vu-faces {
+    flex-direction: row;
+    gap: var(--spacing-xl);
+}
+
+@media (orientation: portrait) {
+    ag-vu-meter[layout="auto"] .ag-vu-faces {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+}
+
+ag-vu-meter .ag-vu-face {
+    min-width: 0;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+/* Side by side, the two dials share the width. Only there: stacked, a flex basis of 0
+   is a height of 0 — the dials collapsed to their borders (measured in Chromium, 390 px
+   wide, 2026-11-01). */
+ag-vu-meter[layout="row"] .ag-vu-face,
+ag-vu-meter[layout="auto"] .ag-vu-face {
+    flex: 1 1 0;
+}
+
+@media (orientation: portrait) {
+    ag-vu-meter[layout="auto"] .ag-vu-face {
+        flex: none;
+    }
+}
+
+ag-vu-meter .ag-vu-dial {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+ag-vu-meter .ag-vu-arc,
+ag-vu-meter .ag-vu-ticks {
+    fill: none;
+    stroke: var(--text-secondary);
+    stroke-width: 1.5;
+}
+
+/* The scale's red band, 0 to +3 VU: a marking of the dial, not a state. */
+ag-vu-meter .ag-vu-red {
+    fill: none;
+    stroke: var(--color-error);
+    stroke-width: 6;
+}
+
+ag-vu-meter .ag-vu-label,
+ag-vu-meter .ag-vu-name,
+ag-vu-meter .ag-vu-channel,
+ag-vu-meter .ag-vu-peak-label {
+    font-family: var(--font-family);
+    font-weight: 600;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
+ag-vu-meter .ag-vu-label {
+    fill: var(--text-primary);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+ag-vu-meter .ag-vu-label.red {
+    fill: var(--color-error-text);
+}
+
+ag-vu-meter .ag-vu-name {
+    fill: var(--text-secondary);
+    font-size: var(--font-size-xl);
+    letter-spacing: 0.14em;
+}
+
+ag-vu-meter .ag-vu-channel {
+    fill: var(--text-secondary);
+    font-size: var(--font-size-md);
+    text-anchor: start;
+}
+
+ag-vu-meter .ag-vu-peak-label {
+    fill: var(--text-secondary);
+    font-size: var(--font-size-xxs);
+    letter-spacing: 0.08em;
+    text-anchor: end;
+}
+
+ag-vu-meter .ag-vu-peak {
+    fill: var(--bg-tertiary);
+}
+
+ag-vu-meter .ag-vu-peak.on {
+    fill: var(--color-error);
+}
+
+ag-vu-meter .ag-vu-needle {
+    stroke: var(--accent-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+ag-vu-meter .ag-vu-message {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
+    border-radius: var(--radius-lg);
+}
+
+/* ── The classic dial: a backlit cream face, the same in every theme ──
+   rule 6 exception — an analog VU meter's look, the showcase's (the mock-up the user
+   chose, 2026-11-01): no theme token is a lamp-lit card dial. Contrast against the face,
+   computed (WCAG): labels 13.6:1, red labels 5.0:1, the name and channel 8.0:1. */
+ag-vu-meter[variant="classic"] .ag-vu-face {
+    background: #f1e2bd;
+    border-color: #c9b68a;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-arc,
+ag-vu-meter[variant="classic"] .ag-vu-ticks {
+    stroke: #1c1917;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-red {
+    stroke: #b91c1c;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-label {
+    /* rule 6 exception — the classic dial's ink, see above */
+    fill: #1c1917;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-label.red {
+    /* rule 6 exception — the classic dial's red ink, see above */
+    fill: #b91c1c;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-name,
+ag-vu-meter[variant="classic"] .ag-vu-channel,
+ag-vu-meter[variant="classic"] .ag-vu-peak-label {
+    /* rule 6 exception — the classic dial's ink, see above */
+    fill: #44403c;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-peak {
+    fill: #d9c89d;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-peak.on {
+    fill: #dc2626;
+}
+
+ag-vu-meter[variant="classic"] .ag-vu-needle {
+    stroke: #111111;
+}

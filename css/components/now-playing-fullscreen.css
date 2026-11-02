@@ -148,6 +148,35 @@ body:not(.npfs-open) .topbar {
     margin: 0 auto;
 }
 
+/* The level meter in the cover's place: two dials stacked, as wide as the cover and,
+   their gap included, as tall (342 × 165 each). */
+.npfs-meter {
+    width: 100%;
+}
+
+/* Below the cover: the switch between the cover and the level meter, and the button
+   that opens the showcase. Only where the meter can follow what plays. */
+.npfs-view-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+/* On a box without Pro, the meter's place in that row: its padlock and its name, faded
+   (.pro-locked) — a tap leads to the licence panel. */
+.npfs-view-locked {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-height: 44px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
 .npfs-cover {
     width: 100%;
     aspect-ratio: 1;

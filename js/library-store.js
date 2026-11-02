@@ -30,6 +30,7 @@ import { apiGet, buildAuthedUrl } from './api.js';
 import { fetchFavoriteIds, addFavorite, removeFavorite } from './library-api.js';
 import { activeOutputError, outputErrorLabel } from './player-utils.js';
 import { showToast } from './ui-helpers.js';
+import { createSharedStream } from './core/shared-stream.js';
 
 const TTL_SNAPSHOT   = 30_000;
 const TTL_ROON_ZONES = 60_000;
@@ -119,115 +120,54 @@ export function notifyOutputError(state) {
     if (err) showToast('error', 'Playback blocked', outputErrorLabel(err));
 }
 
-/** sourceId-or-null → Set<callback> */
-const _subscribers = new Map();
-/** sourceId-or-null → EventSource */
-const _connections = new Map();
-/** sourceId-or-null → setTimeout handle for pending reconnect */
-const _reconnectTimers = new Map();
-
-const RECONNECT_MIN_MS = 2_000;
-const RECONNECT_MAX_MS = 30_000;
-/** sourceId-or-null → current backoff in ms */
-const _backoff = new Map();
-/** sourceId-or-null → transport errors since the stream last opened */
-const _errorsSinceOpen = new Map();
+/**
+ * The player's state stream for each source key (sourceId, or null for the active
+ * source): opened by its first subscriber, closed by its last, reconnected as
+ * core/shared-stream.js says. Its last state is replayed to a subscriber that joins
+ * it open: the server sends a state when it changes, so a late subscriber — the
+ * full-screen player opened while nothing plays — otherwise saw nothing until the
+ * next change, and its Play went out without the handle the idle state carries
+ * (measured 2026-10-11).
+ * @type {Map<string|null, import('./core/shared-stream.js').SharedStream>}
+ */
+const _playerStreams = new Map();
 
 /**
- * The last state each open stream delivered, replayed to a subscriber that joins a
- * stream already open: the server sends a state when it changes, so a late
- * subscriber — the full-screen player opened while nothing plays — otherwise saw
- * nothing until the next change, and its Play went out without the handle the idle
- * state carries (measured 2026-10-11). One entry per open stream, dropped with it.
- * @type {Map<string|null, object>}
+ * Keep what the active source's state feeds besides its subscribers: the snapshot
+ * cache, the offline snapshot, and the toast of a failing output.
+ *
+ * @param {object} state - PlayerState from the active-source stream.
  */
-const _lastStates = new Map();
-
-function _openSse(key) {
-    // A stream opening now makes a pending reconnect moot: left armed, it opened a
-    // second stream over this one, never closed, and every state then arrived twice
-    // for the life of the page (a subscriber joining while the box was out of reach).
-    const pending = _reconnectTimers.get(key);
-    if (pending) { clearTimeout(pending); _reconnectTimers.delete(key); }
-    const url = buildAuthedUrl('/player/state', key ? { source_id: key } : {});
-    if (!url) {
-        // No credentials: an EventSource opened anyway would collect a 401 and let the
-        // browser reconnect against it for as long as the tab lives. The keyless state is
-        // signalled once by api.js; here we simply stay silent.
-        return;
-    }
-    const es = new EventSource(url);
-    _connections.set(key, es);
-    es.addEventListener('open', () => { _errorsSinceOpen.delete(key); });
-
-    es.addEventListener('state', (e) => {
-        let state;
+function _keepActiveState(state) {
+    snapshot.value     = state;
+    snapshot.fetchedAt = Date.now();
+    // Debounced write — position ticks fire every second; writing on
+    // every event would add synchronous localStorage I/O to the hot
+    // path (CLAUDE.md §12). We coalesce into one write per 5 s.
+    if (_offlineSnapshotTimer) clearTimeout(_offlineSnapshotTimer);
+    _offlineSnapshotTimer = setTimeout(() => {
+        _offlineSnapshotTimer = null;
         try {
-            state = JSON.parse(e.data);
-        } catch (err) {
-            console.warn('[library-store] dropping malformed state event:', err);
-            return;
-        }
-        // First successful event resets the reconnect backoff.
-        _backoff.delete(key);
-        _lastStates.set(key, state);
-        // Unfiltered stream (active source) feeds the shared snapshot cache
-        // and the offline localStorage snapshot.
-        if (key === null) {
-            snapshot.value     = state;
-            snapshot.fetchedAt = Date.now();
-            // Debounced write — position ticks fire every second; writing on
-            // every event would add synchronous localStorage I/O to the hot
-            // path (CLAUDE.md §12). We coalesce into one write per 5 s.
-            if (_offlineSnapshotTimer) clearTimeout(_offlineSnapshotTimer);
-            _offlineSnapshotTimer = setTimeout(() => {
-                _offlineSnapshotTimer = null;
-                try {
-                    localStorage.setItem(OFFLINE_SNAPSHOT_KEY, JSON.stringify(state));
-                } catch { /* storage quota — non-blocking */ }
-            }, OFFLINE_SNAPSHOT_DEBOUNCE_MS);
-        }
-        if (key === null) notifyOutputError(state);
-        const subs = _subscribers.get(key);
-        if (subs) for (const cb of subs) {
-            try { cb(state); } catch (err) {
-                console.warn('[library-store] subscriber threw:', err);
-            }
-        }
-    });
-
-    es.onerror = () => {
-        // After a transport error the browser retries by itself, every few seconds, for
-        // as long as the page lives — the service worker no longer answers for a box out
-        // of reach with the 503 that closed the stream (sw.js). A first error is left to
-        // it: the stream drops at times, and comes back at once. A second one before the
-        // stream reopened means the box is out of reach: the stream is closed, and opened
-        // again below with a growing delay. A stream the server closed (401/4xx) too.
-        if (es.readyState !== EventSource.CLOSED) {
-            const errors = (_errorsSinceOpen.get(key) ?? 0) + 1;
-            _errorsSinceOpen.set(key, errors);
-            if (errors < 2) return;
-            es.close();
-        }
-        _connections.delete(key);
-        if (!_subscribers.has(key) || _subscribers.get(key).size === 0) return;
-        const next = Math.min((_backoff.get(key) ?? RECONNECT_MIN_MS) * 2, RECONNECT_MAX_MS);
-        _backoff.set(key, next);
-        _reconnectTimers.set(key, setTimeout(() => {
-            _reconnectTimers.delete(key);
-            if (_subscribers.get(key)?.size) _openSse(key);
-        }, next));
-    };
+            localStorage.setItem(OFFLINE_SNAPSHOT_KEY, JSON.stringify(state));
+        } catch { /* storage quota — non-blocking */ }
+    }, OFFLINE_SNAPSHOT_DEBOUNCE_MS);
+    notifyOutputError(state);
 }
 
-function _closeSse(key) {
-    const es = _connections.get(key);
-    if (es) { es.close(); _connections.delete(key); }
-    _lastStates.delete(key);
-    _errorsSinceOpen.delete(key);
-    const timer = _reconnectTimers.get(key);
-    if (timer) { clearTimeout(timer); _reconnectTimers.delete(key); }
-    _backoff.delete(key);
+function _playerStream(key) {
+    let stream = _playerStreams.get(key);
+    if (!stream) {
+        stream = createSharedStream({
+            label: 'library-store',
+            url: () => buildAuthedUrl('/player/state', key ? { source_id: key } : {}),
+            events: ['state'],
+            replay: ['state'],
+            // Only the unfiltered stream (active source) feeds the shared caches.
+            onEvent: key === null ? (_name, state) => _keepActiveState(state) : undefined,
+        });
+        _playerStreams.set(key, stream);
+    }
+    return stream;
 }
 
 /**
@@ -249,26 +189,34 @@ function _closeSse(key) {
  * @returns {() => void} unsubscribe function — call it on disconnect.
  */
 export function subscribePlayerState(cb, { sourceId } = {}) {
-    const key = sourceId || null;
-    if (!_subscribers.has(key)) _subscribers.set(key, new Set());
-    _subscribers.get(key).add(cb);
-    if (!_connections.has(key)) _openSse(key);
-    else if (_lastStates.has(key)) {
-        // A stream already open: hand over its last state now (_lastStates), after
-        // the caller has stored its unsubscribe — unless it is already gone.
-        queueMicrotask(() => {
-            if (_subscribers.get(key)?.has(cb) && _lastStates.has(key)) cb(_lastStates.get(key));
-        });
-    }
-    return () => {
-        const set = _subscribers.get(key);
-        if (!set) return;
-        set.delete(cb);
-        if (set.size === 0) {
-            _subscribers.delete(key);
-            _closeSse(key);
-        }
-    };
+    return _playerStream(sourceId || null).subscribe((_name, state) => cb(state));
+}
+
+/**
+ * The level meter's stream, `GET /player/levels`: `meter` events — its state,
+ * replayed to a late subscriber — and `levels` events, `[left, right]` in dB below
+ * full scale (null for silence), 25 a second while the box's MPD plays.
+ */
+const _levelStream = createSharedStream({
+    label: 'level-meter',
+    url: () => buildAuthedUrl('/player/levels'),
+    events: ['meter', 'levels'],
+    replay: ['meter'],
+});
+
+/**
+ * Follow the level meter. The first subscriber opens the stream, and the core turns
+ * MPD's copy of its stream on; the last one leaving closes it, and the core turns the
+ * copy off — unseen, the meter costs the box nothing. A screen that is hidden should
+ * unsubscribe.
+ *
+ * @param {(name: 'meter'|'levels', payload: object|Array<number|null>) => void} cb
+ *     Called with each event: a `meter` state `{state, reason?, format?, synced?}`
+ *     — off, starting, live, idle or unavailable — or a `levels` pair.
+ * @returns {() => void} unsubscribe function — call it on disconnect.
+ */
+export function subscribeLevels(cb) {
+    return _levelStream.subscribe(cb);
 }
 
 function isFresh(entry, ttl) {
