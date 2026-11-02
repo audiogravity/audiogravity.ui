@@ -644,6 +644,25 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
         expect(!!host.querySelector('ag-progress-bar')).toBe(bar);
     });
 
+    it('tells its bar the source, and no position as none', () => {
+        // The bar tells a new play on the same source from another source's track by
+        // it; and a position the source does not give must not read as 0, the track
+        // starting again.
+        const el = Object.create(AgNowPlaying.prototype);
+        for (const [k, v] of Object.entries({
+            _bgColors: new Map(), _brokenCovers: new Set(), _detailOpenId: null,
+            _albumTracks: new Map(), _offline: false, _outputs: [], _activeOutputId: null,
+        })) {
+            Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el._renderItem({ source_id: 'src_airplay', playback_status: 'Playing', title: 'Song',
+            duration: 240, elapsed: null }), host);
+        const bar = host.querySelector('ag-progress-bar');
+        expect(bar.source).toBe('src_airplay');
+        expect(bar.serverElapsed).toBeNull();
+    });
+
     it('draws a greyed button as inert', () => {
         const css = readStylesheet('css', 'components', 'now-playing.css');
         expect(cssRuleBody(css, '.np-btn:disabled')).toMatch(/opacity:\s*\.3/);

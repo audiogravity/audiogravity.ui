@@ -5,18 +5,38 @@
  * SSE polling interval, so the knob moves smoothly every second.
  *
  * The parent provides server-authoritative state; the molecule reconciles it:
- * - New track (title change): snap to server position.
+ * - New track (another title, or another source): the position the source reports.
+ *   When it reports none, 0 for a new play on the same source; for another source's
+ *   track, where a bar last saw it (see `_positions`).
  * - Paused or post-seek: accept server position.
  * - Server ahead of local: snap forward.
- * - Server behind local (stale cache): keep local — never rewind.
+ * - Server went back — a report lower than the source's previous one by more than
+ *   WENT_BACK_S: a restart, a seek from another controller, the next track of the
+ *   same name. Follow it back.
+ * - Server behind local without going back: keep local. A report can be up to 2 s old
+ *   (the pipeline's metadata cache) and the ticker up to a second ahead; following
+ *   such a report would step the bar back at every one of them.
+ * - A report of 0, or none, is no position: some sources say 0 all along (AirPlay
+ *   through shairport-sync 4.3.7, Debian's — it declares an MPRIS Position and never
+ *   fills it, read in its source). A restart reported as 0 is followed on the report
+ *   after it, the first that is a position.
+ * - A blank title is no track: the bar keeps the one it shows, and a title that comes
+ *   back the same is not a new play.
+ * - On a source that has given no position on this track, a new length under the same
+ *   title is a new track: two tracks of the same name follow each other, and nothing
+ *   else would say so.
  *
  * @element ag-progress-bar
  *
- * @prop {number}  serverElapsed - Server-authoritative playback position (seconds).
+ * @prop {?number} serverElapsed - Server-authoritative playback position (seconds),
+ *                                  null when the source reports none.
  * @prop {number}  duration      - Total track duration (seconds).
  * @prop {boolean} canSeek       - Whether seek interaction is enabled.
  * @prop {boolean} playing       - Whether playback is active (drives local ticker).
  * @prop {string}  title         - Current track title — change signals a new track.
+ * @prop {string}  source        - The source playing it (its source_id). A new title on
+ *                                  the same source is a new play; on another source, a
+ *                                  track that may be well under way.
  * @attr {boolean} compact       - Mini-player variant: hides the elapsed /
  *                                  remaining times row AND the position knob
  *                                  (the bar stays scrubbable — the dragging
@@ -39,10 +59,61 @@
 import { LitElement, html, nothing } from 'lit';
 import { fmtDuration } from '../utils-lit.js';
 
-// Shared elapsed cache — survives component destroy/recreate cycles.
-// Keyed by track title so the progress bar can restore its position
-// when the DOM node is recreated (e.g. fullscreen open/close, mini-player re-render).
-const _elapsedCache = new Map();
+/**
+ * How far below the source's previous report a new one must fall to mean the source
+ * went back (s). Reports never go back on their own: the core publishes them in the
+ * order it read them, and a read served from the pipeline's 2 s cache repeats a value,
+ * never an older one (read in the core, 2026-11-02: player/service.py
+ * `_publish_if_current`, audio_pipeline `_metadata_cache`; none went back on MPD that
+ * day, measured). The second of slack is for a UPnP speaker, whose position the core
+ * runs on between two of its reports (upnp_renderer) — the next one may land a little
+ * behind.
+ */
+const WENT_BACK_S = 1;
+
+/**
+ * How far two lengths may differ and still be the same track's (s): a source that gives
+ * its track's length gives the same one all along.
+ */
+const SAME_LENGTH_S = 1;
+
+/**
+ * Where each source's track stands: source → { title, elapsed, report }, written by
+ * every bar as it ticks and when it goes. Read back when a bar is created again — the
+ * full player closed and reopened, the mini-player's bar gone with a station and back
+ * with a track — and when a bar turns to another playing source that reports no position.
+ *
+ * Keyed by source and holding one track each, never by title: a title met again — the
+ * track before, replayed with Previous — is a new play, and a page-wide map of titles
+ * resumed it where it had been left, then kept it there. One entry per source also
+ * bounds it; the map of titles grew with every track played while the page was open.
+ *
+ * `report` is the source's last position a bar received. The position kept is only
+ * where the bar had got to: a track the source restarted while no bar showed it is
+ * still remembered well under way, and its first report, lower than the last one
+ * received, is what tells the next bar that the source went back.
+ */
+const _positions = new Map();
+
+/**
+ * Forget every source's position. For tests: nothing in the application calls it.
+ */
+export function forgetPositions() {
+    _positions.clear();
+}
+
+/**
+ * Where a source's track stood when a bar last saw it.
+ * @param {string} source - The source.
+ * @param {string} title  - The track it must still be playing.
+ * @returns {{elapsed: number, report: ?number}|undefined} Where the bar had got to and
+ *   the source's last position received, or undefined when the source has moved on to
+ *   another track since, or was never seen.
+ */
+function remembered(source, title) {
+    const kept = _positions.get(source);
+    return kept && kept.title === title ? kept : undefined;
+}
 
 export class AgProgressBar extends LitElement {
     static properties = {
@@ -51,6 +122,7 @@ export class AgProgressBar extends LitElement {
         canSeek:       { type: Boolean, attribute: 'can-seek' },
         playing:       { type: Boolean },
         title:         { type: String },
+        source:        { type: String },
         compact:       { type: Boolean },
         live:          { type: Boolean },
         _elapsed:      { state: true },
@@ -66,6 +138,7 @@ export class AgProgressBar extends LitElement {
         this.canSeek       = false;
         this.playing       = false;
         this.title         = '';
+        this.source        = '';
         this.compact       = false;
         this.live          = false;
         this._elapsed      = 0;
@@ -73,6 +146,10 @@ export class AgProgressBar extends LitElement {
         this._seekPending  = false;
         this._ticker       = null;
         this._prevTitle    = null;
+        this._prevSource   = null;
+        this._prevDuration = 0;
+        // The source's last report that was a position (> 0) on the current track.
+        this._lastReport   = null;
         this._trackEl      = null;
         this._boundDragMove = (e) => this._onDragMove(e);
         this._boundDragEnd  = (e) => this._onDragEnd(e);
@@ -80,9 +157,13 @@ export class AgProgressBar extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        // Restore elapsed from shared cache (survives destroy/recreate cycles).
-        if (this.title && _elapsedCache.has(this.title)) {
-            this._elapsed = _elapsedCache.get(this.title);
+        // Pick the track up where a bar last saw it (survives destroy/recreate cycles),
+        // and the source's last position with it, so a source that went back meanwhile
+        // is seen to have.
+        const kept = this.title ? remembered(this.source, this.title) : undefined;
+        if (kept) {
+            this._elapsed = kept.elapsed;
+            this._lastReport = kept.report;
         }
         // Ensure the ticker restarts after recreate (e.g. fullscreen close/reopen).
         this.updateComplete.then(() => this._syncTicker());
@@ -90,10 +171,8 @@ export class AgProgressBar extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        // Save elapsed to shared cache before destruction.
-        if (this.title && this._elapsed > 0) {
-            _elapsedCache.set(this.title, this._elapsed);
-        }
+        // Leave the position behind for the next bar.
+        if (this.title && this._elapsed > 0) this._remember();
         clearInterval(this._ticker);
         this._ticker = null;
         window.removeEventListener('pointermove', this._boundDragMove);
@@ -111,34 +190,79 @@ export class AgProgressBar extends LitElement {
             this._syncTicker();
         }
 
-        if (changed.has('title')) {
-            const trackChanged = this._prevTitle !== null && this.title !== this._prevTitle;
+        // A blank title is no track: a state that names none — between two tracks, or
+        // the full player between two sources — leaves the bar on the track it shows.
+        // Taken for one, a title blank for a moment then back meant two new plays, and
+        // a source that gives no position restarted the bar at 0:00 mid-song.
+        if (this.title && (changed.has('title') || changed.has('source') || changed.has('duration'))) {
+            const first = this._prevTitle === null;
+            const otherSource = !first && this.source !== this._prevSource;
+            // Two tracks of the same name in a row: only their lengths may tell them
+            // apart when the source gives no position — a position would have gone back.
+            const otherLength = !first && this._lastReport === null && this._prevDuration > 0
+                && this.duration > 0 && Math.abs(this.duration - this._prevDuration) > SAME_LENGTH_S;
+            const trackChanged = !first && (otherSource || this.title !== this._prevTitle || otherLength);
             this._prevTitle = this.title;
+            this._prevSource = this.source;
+            this._prevDuration = this.duration;
             if (trackChanged) {
-                // New track — use server value, or restore from cache.
-                this._elapsed = this.serverElapsed > 0
-                    ? this.serverElapsed
-                    : (_elapsedCache.get(this.title) ?? 0);
+                const report = this._report();
+                const kept = otherSource ? remembered(this.source, this.title) : undefined;
+                if (report > 0) {
+                    this._elapsed = report;
+                    this._lastReport = report;
+                } else if (kept) {
+                    // Another source's track, which may be well under way: where a bar
+                    // last saw it, since the source gives no position.
+                    this._elapsed = kept.elapsed;
+                    this._lastReport = kept.report;
+                } else {
+                    // A new play on the same source starts at its beginning — the track
+                    // before replayed with Previous included, whose old position a bar
+                    // once held.
+                    this._elapsed = 0;
+                    this._lastReport = null;
+                }
                 this._seekPending = false;
                 return;
             }
         }
 
         if (changed.has('serverElapsed') || changed.has('playing')) {
+            const report = this._report();
             if (this._seekPending) {
-                // Post-seek: always snap to server position.
-                this._elapsed = this.serverElapsed;
-                this._seekPending = false;
-            } else if (this.serverElapsed > 0) {
-                // Server reports a real position — use it if it moved forward
-                // or if we're paused (authoritative recalibration).
-                if (!this.playing || this.serverElapsed > this._elapsed) {
-                    this._elapsed = this.serverElapsed;
+                // Post-seek: snap to the first answer the source gives — a 0 included,
+                // the answer to a seek to the start. The 0 of a source that gives no
+                // position is never this one: such a source offers no seek (AirPlay:
+                // the core reads shairport-sync's CanSeek, false).
+                if (report !== null) {
+                    this._elapsed = report;
+                    this._seekPending = false;
+                }
+            } else if (report > 0) {
+                // A position: take it when paused (authoritative recalibration), when
+                // it is ahead, or when the source went back.
+                const wentBack = this._lastReport !== null && report < this._lastReport - WENT_BACK_S;
+                if (!this.playing || report > this._elapsed || wentBack) {
+                    this._elapsed = report;
                 }
             }
-            // When serverElapsed is 0 (AirPlay) and _elapsed > 0:
-            // keep the locally interpolated value — never reset to 0.
+            // A report of 0 or none moves nothing — see the class comment.
+            if (report > 0) this._lastReport = report;
         }
+    }
+
+    /**
+     * The position the source reports.
+     * @returns {number|null} Seconds, or null when it reports none.
+     */
+    _report() {
+        return Number.isFinite(this.serverElapsed) ? this.serverElapsed : null;
+    }
+
+    /** Leave where this source's track stands for the next bar to read. */
+    _remember() {
+        _positions.set(this.source, { title: this.title, elapsed: this._elapsed, report: this._lastReport });
     }
 
     _syncTicker() {
@@ -148,7 +272,7 @@ export class AgProgressBar extends LitElement {
                 this._ticker = setInterval(() => {
                     if (this._dragging) return;
                     this._elapsed += 1;
-                    if (this.title) _elapsedCache.set(this.title, this._elapsed);
+                    if (this.title) this._remember();
                 }, 1000);
             }
         } else {

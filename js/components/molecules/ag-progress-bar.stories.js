@@ -9,17 +9,19 @@ export default {
         canSeek:       { control: 'boolean' },
         playing:       { control: 'boolean' },
         title:         { control: 'text' },
+        source:        { control: 'text' },
         live:          { control: 'boolean' },
     },
 };
 
-const Template = ({ serverElapsed, duration, canSeek, playing, title, live = false }) => {
+const Template = ({ serverElapsed, duration, canSeek, playing, title, source = 'src_mpd', live = false }) => {
     const el = document.createElement('ag-progress-bar');
     el.serverElapsed = serverElapsed;
     el.duration      = duration;
     el.canSeek       = canSeek;
     el.playing       = playing;
     el.title         = title;
+    el.source        = source;
     el.live          = live;
     el.style.cssText = 'display:block;max-width:400px;padding:24px 16px;';
     el.addEventListener('seek', (e) => console.log('seek', e.detail));
@@ -37,6 +39,13 @@ NoDuration.args = { serverElapsed: 0, duration: 0, canSeek: false, playing: fals
 
 export const NoSeek = Template.bind({});
 NoSeek.args = { serverElapsed: 30, duration: 120, canSeek: false, playing: true, title: 'Track C' };
+
+// A source that gives no position (AirPlay through shairport-sync 4.3.7): the bar
+// counts the time on its own from where it was.
+export const NoPositionFromTheSource = Template.bind({});
+NoPositionFromTheSource.args = {
+    serverElapsed: null, duration: 240, canSeek: false, playing: true, title: 'Track D', source: 'src_shairport-sync',
+};
 
 // A radio station playing: no end and no position — a "Live" marker instead.
 export const Live = Template.bind({});

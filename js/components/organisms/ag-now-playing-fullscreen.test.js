@@ -1070,6 +1070,131 @@ describe('AgNowPlayingFullscreen — a live station has no progress to show', ()
     });
 });
 
+import { forgetPositions } from '../molecules/ag-progress-bar.js';
+
+describe('AgNowPlayingFullscreen — its bar after Next, through a 0, reopened', () => {
+    // Roon (`seek_position`, whole seconds) and a UPnP speaker report exactly 0 as a
+    // track starts — read in the core (roon_client, upnp_renderer). AirPlay through
+    // shairport-sync 4.3.7 (Debian's, on ARM) reports 0 all along, 5.6.2 a live
+    // position — read in their sources. MPD on a local file reports a fraction
+    // (0.273 s, measured on the box, 2026-11-02), which is why Next never showed the
+    // defect there. These drive the real player and read its real bar.
+    const ROON = {
+        source_id: 'src_roon', control_id: 'src_roon', origin: 'roon', played_on: 'local',
+        playing: true, playback_status: 'Playing', duration: 565, can_seek: true,
+        sources: [{ source_id: 'src_roon', playing: true }],
+    };
+    const AIRPLAY = {
+        source_id: 'src_airplay', control_id: 'src_airplay', origin: 'airplay', played_on: 'local',
+        playing: true, playback_status: 'Playing', duration: 240, can_seek: false,
+        sources: [{ source_id: 'src_airplay', playing: true }],
+    };
+    let el;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        forgetPositions();
+        el = document.createElement('ag-now-playing-fullscreen');
+        el._connectSse = () => {};      // no live state here: the states are applied by hand
+        document.body.append(el);
+    });
+
+    afterEach(() => {
+        el.remove();
+        document.body.classList.remove('npfs-open');
+        vi.useRealTimers();
+    });
+
+    /** Apply a state, let the player and its bar render, and return the bar. */
+    async function show(state) {
+        el._applyState(state);
+        await el.updateComplete;
+        const bar = el.querySelector('ag-progress-bar');
+        await bar.updateComplete;
+        return bar;
+    }
+
+    it('starts the next track at 0:00 when it starts at 0', async () => {
+        // After Next, the bar went on from 3:25 instead of 0:00, and stayed ahead of
+        // the music for the whole track, until the player was closed and reopened.
+        el._openPlayer('src_roon');
+        await show({ ...ROON, title: 'Track A', elapsed: 205 });
+        const bar = await show({ ...ROON, title: 'Track B', elapsed: 0 });
+        expect(el._state.elapsed).toBe(0);
+        expect(bar._elapsed).toBe(0);
+        await show({ ...ROON, title: 'Track B', elapsed: 4 });
+        expect(bar._elapsed).toBe(4);
+    });
+
+    it('keeps counting through a 0 on the same track', async () => {
+        // What the player's own hold was for, now the bar's: a 0 from a source that
+        // gives no position is not the track starting again.
+        el._openPlayer('src_airplay');
+        const bar = await show({ ...AIRPLAY, title: 'Song', elapsed: 60 });
+        vi.advanceTimersByTime(3000);
+        await show({ ...AIRPLAY, title: 'Song', elapsed: 0 });
+        expect(bar._elapsed).toBe(63);
+    });
+
+    it('reopened, picks the track up where its bar left it', async () => {
+        el._openPlayer('src_airplay');
+        const first = await show({ ...AIRPLAY, title: 'Song', elapsed: 0 });
+        vi.advanceTimersByTime(42000);
+        el._closePlayer();
+        vi.advanceTimersByTime(400);     // the closing slide
+        await el.updateComplete;
+        expect(el.querySelector('ag-progress-bar')).toBeNull();
+        el._openPlayer('src_airplay');
+        const again = await show({ ...AIRPLAY, title: 'Song', elapsed: 0 });
+        expect(again).not.toBe(first);
+        expect(again._elapsed).toBe(42);
+    });
+
+    /** Close the player and let its closing slide end. */
+    async function close() {
+        el._closePlayer();
+        vi.advanceTimersByTime(400);
+        await el.updateComplete;
+    }
+
+    it('reopened, sees the track restarted while it was closed', async () => {
+        el._openPlayer('src_roon');
+        await show({ ...ROON, title: 'Track A', elapsed: 178 });
+        vi.advanceTimersByTime(2000);
+        await close();
+        el._openPlayer('src_roon');
+        const bar = await show({ ...ROON, title: 'Track A', elapsed: 5 });
+        expect(bar._elapsed).toBe(5);
+    });
+
+    it('reopened, does not hand its bar the position it kept from its close', async () => {
+        // Closed at 2:00, while the mini-player's bar went on to 3:59: given to the new
+        // bar, the 2:00 read as the source going back.
+        el._openPlayer('src_roon');
+        await show({ ...ROON, title: 'Track A', elapsed: 120 });
+        await close();
+        const mini = Object.assign(document.createElement('ag-progress-bar'), {
+            source: 'src_roon', title: 'Track A', duration: 565, playing: true, serverElapsed: 238 });
+        document.body.append(mini);
+        await mini.updateComplete;
+        vi.advanceTimersByTime(1000);
+        mini.remove();
+        el._openPlayer('src_roon');
+        await el.updateComplete;
+        const bar = el.querySelector('ag-progress-bar');
+        await bar.updateComplete;
+        expect(bar.serverElapsed).toBeNull();
+        expect(bar._elapsed).toBe(239);
+    });
+
+    it('tells its bar the source, and no position as none', async () => {
+        el._openPlayer('src_roon');
+        const bar = await show({ ...ROON, title: 'Track A', elapsed: null });
+        expect(bar.source).toBe('src_roon');
+        expect(bar.serverElapsed).toBeNull();
+    });
+});
+
 describe('AgNowPlayingFullscreen — a play/pause tap sends the intent (real _control)', () => {
     function fs(state) {
         const el = Object.create(AgNowPlayingFullscreen.prototype);
