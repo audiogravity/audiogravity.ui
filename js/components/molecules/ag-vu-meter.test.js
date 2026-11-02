@@ -90,10 +90,24 @@ describe('ag-vu-meter', () => {
         expect(el.querySelectorAll('.ag-vu-label')).toHaveLength(22);   // 11 marks a dial
     });
 
-    it('says its look and its layout to the stylesheet', async () => {
-        const el = await meter({ variant: 'classic', layout: 'auto' });
-        expect(el.getAttribute('variant')).toBe('classic');
+    it('says its layout to the stylesheet', async () => {
+        const el = await meter({ layout: 'auto' });
         expect(el.getAttribute('layout')).toBe('auto');
+    });
+
+    it('says when its dials must fit the box it is given', async () => {
+        expect((await meter()).hasAttribute('fit')).toBe(false);
+        expect((await meter({ fit: true })).hasAttribute('fit')).toBe(true);
+    });
+
+    it('hands the stylesheet its drawing\'s proportions, from the drawing itself', async () => {
+        // In its own rendering, where nothing outside can overwrite them (review, 2026-11-02:
+        // set on the host's style, a parent's style binding would have wiped them).
+        const el = await meter();
+        const [, , width, height] = el.querySelector('.ag-vu-dial').getAttribute('viewBox').split(' ').map(Number);
+        const faces = el.querySelector('.ag-vu-faces');
+        expect(Number(faces.style.getPropertyValue('--ag-vu-aspect'))).toBeCloseTo(width / height, 9);
+        expect(el.getAttribute('style')).toBeNull();
     });
 
     it('follows the stream while it is in the page, and leaves it when it goes', async () => {
@@ -184,6 +198,33 @@ describe('ag-vu-meter — the dials\' layout', () => {
     it('shares the width between the dials side by side', () => {
         expect(cssRuleBody(sheet, 'ag-vu-meter[layout="auto"] .ag-vu-face')).toMatch(/flex:\s*1 1 0/);
         expect(sheet).toMatch(/ag-vu-meter\[layout="row"\] \.ag-vu-face,\s*ag-vu-meter\[layout="auto"\] \.ag-vu-face\s*\{/);
+    });
+
+    it('fitted, sizes each dial by the box\'s height as well as its width', () => {
+        // The showcase on a phone on its side overflowed 2 to 49 px (Chromium, 2026-11-02).
+        expect(cssRuleBody(sheet, 'ag-vu-meter[fit]')).toMatch(/container-type:\s*size/);
+        const stacked = cssRuleBody(sheet, 'ag-vu-meter[fit] .ag-vu-face');
+        expect(stacked).toMatch(/flex:\s*none/);
+        for (const unit of [/100cqw/, /100cqh/, /var\(--ag-vu-aspect\)/]) expect(stacked).toMatch(unit);
+        const side = cssRuleBody(mediaBlock(sheet, /@media\s*\(orientation:\s*landscape\)/),
+            'ag-vu-meter[fit][layout="auto"] .ag-vu-face');
+        for (const unit of [/100cqw/, /100cqh/, /var\(--ag-vu-aspect\)/]) expect(side).toMatch(unit);
+    });
+
+    it('fitted, subtracts the very gap its own rule sets', () => {
+        // The width of two dials is the box less the gap between them: declared in two
+        // places, a changed gap would make the showcase overflow again (review, 2026-11-02).
+        const token = (body, pattern) => body.match(pattern)?.[1];
+        const pairs = [
+            [sheet, 'ag-vu-meter[fit] .ag-vu-faces', 'ag-vu-meter[fit] .ag-vu-face', /100cqh - var\((--spacing-[a-z]+)\)/],
+            [mediaBlock(sheet, /@media\s*\(orientation:\s*landscape\)/), 'ag-vu-meter[fit][layout="auto"] .ag-vu-faces',
+                'ag-vu-meter[fit][layout="auto"] .ag-vu-face', /100cqw - var\((--spacing-[a-z]+)\)/],
+        ];
+        for (const [css, faces, face, inFormula] of pairs) {
+            const gap = token(cssRuleBody(css, faces), /gap:\s*var\((--spacing-[a-z]+)\)/);
+            expect(gap).toBeTruthy();
+            expect(token(cssRuleBody(css, face), inFormula)).toBe(gap);
+        }
     });
 
     it('stacks the showcase\'s dials in portrait, at their full height', () => {

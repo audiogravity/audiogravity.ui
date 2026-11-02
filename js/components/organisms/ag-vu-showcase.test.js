@@ -59,15 +59,16 @@ describe('ag-vu-showcase', () => {
         expect(subscribePlayerState).not.toHaveBeenCalled();
     });
 
-    it('opens on the source the player follows, with two classic dials', async () => {
+    it('opens on the source the player follows, with two dials side by side in landscape', async () => {
         const el = await showcase();
         await open(el);
         expect(subscribePlayerState).toHaveBeenCalledWith(expect.any(Function), { sourceId: 'src_mpd' });
         pushState({ title: 'Elle', level_meter: true });
         await el.updateComplete;
         const meter = el.querySelector('.ag-vus-panel ag-vu-meter');
-        expect(meter.getAttribute('variant')).toBe('classic');
         expect(meter.getAttribute('layout')).toBe('auto');
+        // Sized by the height left as well as the width: it must not scroll.
+        expect(meter.hasAttribute('fit')).toBe(true);
     });
 
     it('draws no dial before it knows what plays', async () => {
@@ -146,6 +147,31 @@ describe('ag-vu-showcase', () => {
         const el = await showcase();
         await open(el);
         expect(el.querySelector('.ag-vus-panel')).not.toBeNull();
+    });
+});
+
+import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
+
+describe('ag-vu-showcase — a phone on its side', () => {
+    // It overflowed 2 to 49 px: nothing must scroll (the user, 2026-11-02). jsdom lays
+    // nothing out: the contract is read from the stylesheet.
+    const sheet = readStylesheet('css', 'components', 'vu-showcase.css');
+    const phone = mediaBlock(sheet, /@media\s*\(height\s*<=\s*500px\)\s*and\s*\(orientation:\s*landscape\)/);
+
+    it('gives the dials all the height the rest leaves', () => {
+        expect(cssRuleBody(sheet, '.ag-vus-meters')).toMatch(/flex:\s*1 1 0/);
+    });
+
+    it('moves Exit to the end of the track\'s line', () => {
+        expect(cssRuleBody(phone, '.ag-vus-panel')).toMatch(/"track exit"/);
+        expect(cssRuleBody(phone, '.ag-vus-top')).toMatch(/grid-area:\s*exit/);
+        expect(cssRuleBody(phone, '.ag-vus-track')).toMatch(/grid-area:\s*track/);
+    });
+
+    it('keeps clear of the notch', () => {
+        const panel = cssRuleBody(phone, '.ag-vus-panel');
+        expect(panel).toMatch(/safe-area-inset-left/);
+        expect(panel).toMatch(/safe-area-inset-right/);
     });
 });
 

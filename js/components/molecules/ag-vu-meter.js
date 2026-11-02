@@ -22,10 +22,15 @@
  * "Elle" stood in the red 60 % of the time and pinned 36 %. A quiet acoustic recording in
  * DSD, near −38, barely moves them — as a real VU meter does.
  *
- * @property {'theme'|'classic'} variant - Dial colours: the theme's, or a backlit cream
- *     dial the same in every theme (the showcase).
+ * The dials are monochrome: one ink, the theme's text, in the player and the showcase
+ * alike (the user's choice, 2026-11-02).
+ *
  * @property {'stack'|'row'|'auto'} layout - Left above right, side by side, or side by
  *     side in landscape and stacked in portrait.
+ * @property {boolean} fit - Fit the dials into the box the parent gives the meter, its
+ *     height as well as its width — with layout stack (the full-screen player, in the
+ *     cover's square) or auto (the showcase, which must not scroll on a phone on its
+ *     side). Without it the dials take their width, and their height follows.
  * @property {boolean} live - Follow the core's stream; false to feed it with setLevels
  *     (stories, tests).
  */
@@ -52,6 +57,8 @@ const SILENT_AFTER_MS = 300;
 const W = 342;
 const H = 165;
 const CX = W / 2;
+/** The drawing's proportions, for the stylesheet's fitted size (fit): the viewBox's. */
+const ASPECT = W / H;
 const CY = H * 1.18;
 const R = H * 0.92;
 const TICK = H * 0.06;
@@ -156,8 +163,8 @@ const UNAVAILABLE = {
 
 export class AgVuMeter extends LitElement {
     static properties = {
-        variant: { type: String, reflect: true },
         layout:  { type: String, reflect: true },
+        fit:     { type: Boolean, reflect: true },
         live:    { type: Boolean },
         _status: { state: true },
     };
@@ -166,8 +173,8 @@ export class AgVuMeter extends LitElement {
 
     constructor() {
         super();
-        this.variant = 'theme';
         this.layout = 'stack';
+        this.fit = false;
         this.live = true;
         /** The core's last word on the meter: off, starting, live, idle, unavailable. */
         this._status = null;
@@ -320,7 +327,7 @@ export class AgVuMeter extends LitElement {
             ? (UNAVAILABLE[this._status.reason] ?? 'The level meter is not available right now.')
             : null;
         return html`
-            <div class="ag-vu-faces">
+            <div class="ag-vu-faces" style="--ag-vu-aspect: ${ASPECT}">
                 ${this._face('L', 'Left')}
                 ${this._face('R', 'Right')}
             </div>

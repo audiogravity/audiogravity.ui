@@ -124,7 +124,7 @@ export class AgVuShowcase extends LitElement {
                     </button>
                 </div>
                 ${s?.level_meter ? html`
-                    <ag-vu-meter class="ag-vus-meters" variant="classic" layout="auto"></ag-vu-meter>
+                    <ag-vu-meter class="ag-vus-meters" layout="auto" fit></ag-vu-meter>
                 ` : s ? html`
                     <p class="ag-vus-note">The level meter follows what the box's own player plays.</p>
                 ` : nothing}

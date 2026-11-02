@@ -913,7 +913,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         return html`
             <div class="npfs-cover-wrap">
                 ${showMeters ? html`
-                    <ag-vu-meter class="npfs-meter" variant="theme" layout="stack"></ag-vu-meter>
+                    <ag-vu-meter class="npfs-meter" layout="stack" fit></ag-vu-meter>
                 ` : html`
                 <div class="npfs-cover" style=${showCover ? `background-image:url('${primary}')` : ''}>
                     ${showCover ? html`
@@ -943,6 +943,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                 </div>
                 `}
                 ${meterAvailable ? this._renderViewSwitch(showMeters, !meterOpen) : nothing}
+                ${this._renderUpNext({ side: true })}
             </div>
         `;
     }
@@ -1148,7 +1149,18 @@ export class AgNowPlayingFullscreen extends LitElement {
         `;
     }
 
-    _renderUpNext() {
+    /**
+     * The next track of the queue, under the controls — or, given `side`, the same line
+     * under the cover. A phone held sideways has no width to give it beside the output and
+     * no height to give it a line of its own: there the stylesheet shows the copy under the
+     * cover, in the height the cover leaves, and hides the other. Rendered twice because
+     * CSS cannot move an element from one column to the other; the one hidden is out of
+     * the accessibility tree (display: none).
+     *
+     * @param {{side?: boolean}} [opts] - side: the copy under the cover.
+     * @returns {import('lit').TemplateResult|typeof nothing}
+     */
+    _renderUpNext({ side = false } = {}) {
         const t = this._nextTrack;
         if (!t) return nothing;
         const cover = t.cover_token ? coverUrl(t.cover_token) : null;
@@ -1156,7 +1168,7 @@ export class AgNowPlayingFullscreen extends LitElement {
         // Pro: the player will skip it. Marked as the queue view marks it.
         const locked = isLockedSource(t, this._license);
         return html`
-            <div class="npfs-up-next ${locked ? 'npfs-up-next--locked' : ''}">
+            <div class="npfs-up-next ${side ? 'npfs-up-next--side' : ''} ${locked ? 'npfs-up-next--locked' : ''}">
                 <span class="npfs-up-next-lbl">Next</span>
                 <div class="npfs-up-next-cv">
                     <svg class="npfs-up-next-cv-ph" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

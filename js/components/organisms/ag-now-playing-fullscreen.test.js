@@ -831,6 +831,106 @@ describe('AgNowPlayingFullscreen — "Add to playlist" for the track playing now
 });
 
 // ---------------------------------------------------------------------------
+// A phone on its side: the two columns, compact, nothing out of sight
+// ---------------------------------------------------------------------------
+
+describe('AgNowPlayingFullscreen — a phone on its side', () => {
+    // The user's rule (2026-11-02): held sideways, a phone shows everything at once, as a
+    // tablet does. In one column it had 380 to 430 px to scroll through; with these rules
+    // nothing overflowed on phones from 560 × 320 to 932 × 430 (Chromium, measured).
+    // jsdom lays nothing out: the contract is read from the stylesheet.
+    const sheet = () => readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+    const PHONE = /@media\s*\(height\s*<=\s*500px\)\s*and\s*\(width\s*>=\s*560px\)\s*and\s*\(orientation:\s*landscape\)\s*\{/;
+    const phoneBlock = () => mediaBlock(sheet(), PHONE);
+    const wideArea = () => mediaBlock(sheet(), /@container\s+npfs-scroll\s*\(width\s*>=\s*732px\)/);
+    const narrowArea = () => mediaBlock(sheet(), /@container\s+npfs-scroll\s*\(width\s*<\s*732px\)/);
+
+    it('takes the wide screen\'s two columns from 560 px wide, and keeps one column under', () => {
+        // Under 560 px two columns ran off both sides: 56 px at 450 × 390, the left edge
+        // out of reach (review, 2026-11-02, measured in Chromium).
+        expect(sheet()).toMatch(
+            /@media\s*\(width\s*>=\s*900px\)\s*and\s*\(orientation:\s*landscape\),\s*\(height\s*<=\s*500px\)\s*and\s*\(width\s*>=\s*560px\)\s*and\s*\(orientation:\s*landscape\)\s*\{/);
+        expect(phoneBlock()).not.toBe('');
+    });
+
+    it('sizes the cover, or the meter, by the height left under it, and leaves the other column its width', () => {
+        const block = phoneBlock();
+        expect(cssRuleBody(block, '.npfs-scroll')).toMatch(/container:\s*npfs-scroll\s*\/\s*size/);
+        const width = cssRuleBody(block, '.npfs-scroll > .npfs-cover-wrap');
+        expect(width).toMatch(/100cqh - var\(--npfs-cover-row, 0px\) - var\(--npfs-cover-next, 0px\)/);
+        expect(width).toMatch(/100cqw - 300px - var\(--spacing-xl\)/);
+        // The rows under it: the switch, or the padlock's 44 px touch target.
+        expect(cssRuleBody(block, '.npfs-cover-wrap:has(> .npfs-view-row)')).toMatch(/--npfs-cover-row:\s*36px/);
+        expect(cssRuleBody(block, '.npfs-cover-wrap:has(.npfs-view-locked)')).toMatch(/--npfs-cover-row:\s*50px/);
+    });
+
+    it('keeps the meter in the cover\'s square, its dials fitted in it', () => {
+        expect(cssRuleBody(sheet(), '.npfs-meter')).toMatch(/aspect-ratio:\s*1/);
+    });
+
+    it('keeps the header and the columns clear of the notch, on the spacing scale', () => {
+        const block = phoneBlock();
+        const header = cssRuleBody(block, '.npfs-header');
+        expect(header).toMatch(/max\(var\(--spacing-lg\), env\(safe-area-inset-left/);
+        expect(header).toMatch(/max\(var\(--spacing-lg\), env\(safe-area-inset-right/);
+        const scroll = cssRuleBody(block, '.npfs-scroll');
+        expect(scroll).toMatch(/max\(var\(--spacing-xl\), env\(safe-area-inset-left/);
+        expect(scroll).toMatch(/max\(var\(--spacing-xl\), env\(safe-area-inset-right/);
+    });
+
+    it('keeps a long title to two lines; the album keeps a share of the artist\'s line', () => {
+        // A max-content artist track took the whole line: the album fell to 0 px with an
+        // artist longer than the column (review, 2026-11-02, measured in Chromium).
+        const block = phoneBlock();
+        expect(cssRuleBody(block, '.npfs-title-col .ag-tm-title')).toMatch(/line-clamp:\s*2/);
+        expect(cssRuleBody(block, '.npfs-title-col')).toMatch(/grid-template-columns:\s*fit-content\(60%\)\s+minmax\(0, 1fr\)/);
+        expect(block).toMatch(/\.npfs-title-col \.ag-tm-artist:last-child,\s*\.npfs-title-col \.ag-tm-title \+ \.ag-tm-album\s*\{[^}]*grid-column:\s*1 \/ -1/);
+        expect(cssRuleBody(block, '.npfs-title-col .ag-tm-artist + .ag-tm-album::before')).toMatch(/content:\s*"· "/);
+    });
+
+    it('ends the output\'s label with an ellipsis when its card is narrow', () => {
+        const label = cssRuleBody(phoneBlock(), '.npfs-out-label');
+        expect(label).toMatch(/text-overflow:\s*ellipsis/);
+        expect(label).toMatch(/overflow:\s*hidden/);
+    });
+
+    it('lets "Next" and the output share a line where the area is wide enough', () => {
+        expect(cssRuleBody(wideArea(), '.npfs-scroll > .npfs-info > .npfs-up-next')).toMatch(/grid-column:\s*1/);
+        expect(cssRuleBody(wideArea(), '.npfs-scroll > .npfs-info > .npfs-up-next + .npfs-output-bar')).toMatch(/grid-column:\s*2/);
+        // Every other part across both columns.
+        expect(cssRuleBody(phoneBlock(), '.npfs-scroll > .npfs-info > *')).toMatch(/grid-column:\s*1 \/ -1/);
+    });
+
+    it('narrower, moves "Next" under the cover, on one line whose height the cover gives up', () => {
+        // On a phone the width of an iPhone SE, in Safari, "Next" on a line of its own ran
+        // 39 px off the screen (measured in Chromium at 667 × 320, 2026-11-02).
+        const narrow = narrowArea();
+        expect(cssRuleBody(narrow, '.npfs-scroll > .npfs-info > .npfs-up-next')).toMatch(/display:\s*none/);
+        const side = cssRuleBody(narrow, '.npfs-up-next--side');
+        expect(side).toMatch(/display:\s*flex/);
+        expect(side).toMatch(/height:\s*34px/);
+        expect(side).toMatch(/margin-top:\s*var\(--spacing-sm\)/);    // 6 px: 40 with the line
+        expect(cssRuleBody(narrow, '.npfs-cover-wrap:has(> .npfs-up-next--side)')).toMatch(/--npfs-cover-next:\s*40px/);
+        // A short artist keeps its name beside a long title.
+        expect(cssRuleBody(narrow, '.npfs-up-next--side .npfs-up-next-artist')).toMatch(/flex:\s*0 0 auto/);
+        expect(cssRuleBody(narrow, '.npfs-up-next--side .npfs-up-next-artist')).toMatch(/max-width:\s*45%/);
+    });
+
+    it('hides the copy under the cover everywhere else', () => {
+        // With both classes: `.npfs-up-next` comes later with the same weight, and with one
+        // class both copies showed on every screen (measured in Chromium, 2026-11-02).
+        expect(sheet()).toMatch(/\n\.npfs-up-next\.npfs-up-next--side\s*\{\s*display:\s*none;/);
+        expect(narrowArea()).toMatch(/\.npfs-up-next\.npfs-up-next--side\s*\{\s*display:\s*flex;/);
+    });
+
+    it('leaves a phone held upright as it was', () => {
+        // Its rules all sit in the blocks of a screen on its side.
+        expect(cssRuleBody(sheet(), '.npfs-header')).toMatch(/padding:\s*6px 16px 4px/);
+        expect(cssRuleBody(sheet(), '.npfs-info')).toMatch(/display:\s*contents/);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // A wide, landscape screen: the cover on the left, everything else beside it
 // ---------------------------------------------------------------------------
 
@@ -901,6 +1001,14 @@ describe('AgNowPlayingFullscreen — two columns on a wide screen', () => {
         for (const part of ['.npfs-meta', 'ag-format-strip', '.npfs-controls-row', 'ag-progress-bar']) {
             expect(info.querySelector(`:scope > ${part}`), part).not.toBeNull();
         }
+        // "Next" in that block, and its copy for a narrow phone on its side under the
+        // cover: the same track, the copy marked so the stylesheet can choose.
+        const next = info.querySelector(':scope > .npfs-up-next');
+        const side = scroll.querySelector(':scope > .npfs-cover-wrap > .npfs-up-next.npfs-up-next--side');
+        expect(next.classList.contains('npfs-up-next--side')).toBe(false);
+        expect(side).not.toBeNull();
+        expect(side.querySelector('.npfs-up-next-title').textContent).toBe('Freddie Freeloader');
+        expect(next.querySelector('.npfs-up-next-title').textContent).toBe('Freddie Freeloader');
     });
 });
 

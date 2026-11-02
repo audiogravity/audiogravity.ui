@@ -9,8 +9,8 @@ export default {
     title: 'Molecules/AgVuMeter',
     tags: ['autodocs'],
     argTypes: {
-        variant: { control: 'select', options: ['theme', 'classic'] },
         layout: { control: 'select', options: ['stack', 'row', 'auto'] },
+        fit: { control: 'boolean', description: 'Fit the dials into the box the parent gives (stack or auto)' },
         level: { control: { type: 'range', min: -40, max: 0, step: 1 }, description: 'dBFS RMS, around which the signal moves' },
     },
 };
@@ -26,11 +26,11 @@ function feed(meter, level) {
     }, 40);
 }
 
-const Template = ({ variant, layout, level, status }) => {
+const Template = ({ layout, level, status, fit = false }) => {
     const meter = document.createElement('ag-vu-meter');
     meter.live = false;
-    meter.variant = variant;
     meter.layout = layout;
+    meter.fit = fit;
     meter.style.maxWidth = layout === 'stack' ? '340px' : '900px';
     if (status) {
         meter.updateComplete.then(() => meter.setStatus(status));
@@ -40,18 +40,41 @@ const Template = ({ variant, layout, level, status }) => {
     return meter;
 };
 
-/** In the full-screen player, in the cover's place: the theme's colours, left above right. */
-export const InThePlayer = Template.bind({});
-InThePlayer.args = { variant: 'theme', layout: 'stack', level: -12 };
+/**
+ * A meter fitted into a box of the given size, as its parent gives it one.
+ * @param {object} args - The story's args, and the box's width and height.
+ * @returns {HTMLElement} The box, the meter in it.
+ */
+function fitted({ width, height, ...args }) {
+    const box = document.createElement('div');
+    box.style.width = width;
+    box.style.height = height;
+    const meter = Template({ ...args, fit: true });
+    meter.style.maxWidth = 'none';
+    meter.style.height = '100%';
+    box.append(meter);
+    return box;
+}
 
-/** The showcase's dials: a backlit cream face, side by side. */
-export const Classic = Template.bind({});
-Classic.args = { variant: 'classic', layout: 'row', level: -12 };
+/** In the full-screen player, in the cover's square: left above right, fitted in it. */
+export const InThePlayer = (args) => fitted({ ...args, width: '340px', height: '340px' });
+InThePlayer.args = { layout: 'stack', level: -12 };
+
+/**
+ * The showcase on a phone on its side: the dials as large as the height left allows, side
+ * by side in landscape — the box is lower than their width would make them.
+ */
+export const FittedToALowBox = (args) => fitted({ ...args, width: '700px', height: '160px' });
+FittedToALowBox.args = { layout: 'auto', level: -12 };
+
+/** The showcase's dials, side by side. */
+export const SideBySide = Template.bind({});
+SideBySide.args = { layout: 'row', level: -12 };
 
 /** A quiet acoustic recording, near −38 dBFS: the needles barely leave their rest. */
 export const QuietRecording = Template.bind({});
-QuietRecording.args = { variant: 'classic', layout: 'row', level: -36 };
+QuietRecording.args = { layout: 'row', level: -36 };
 
 /** A box whose music player has no meter output: the dials say so. */
 export const NotSetUp = Template.bind({});
-NotSetUp.args = { variant: 'theme', layout: 'stack', status: { state: 'unavailable', reason: 'not_configured' } };
+NotSetUp.args = { layout: 'stack', status: { state: 'unavailable', reason: 'not_configured' } };
