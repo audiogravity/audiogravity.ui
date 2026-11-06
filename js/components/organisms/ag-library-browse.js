@@ -804,6 +804,9 @@ export class AgLibraryBrowse extends LitElement {
      * ({@link _abandonRefresh}): the new source neither shows it nor waits for it, and
      * gets no reload from it afterwards, the switch having loaded it already.
      *
+     * BACKLOG: no message says when a Refresh is over (audiogravity.ops/BACKLOG.md, « Le Refresh
+     * de la bibliothèque ne dit pas quand il a fini », site issue #15).
+     *
      * @returns {Promise<void>}
      */
     async refresh() {
