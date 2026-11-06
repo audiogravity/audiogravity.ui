@@ -1887,6 +1887,7 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
     beforeEach(() => {
         apiGetMock.mockReset();
         apiPostMock.mockReset();
+        showToast.mockClear();
     });
 
     /** A browse on the local library whose reload is recorded rather than run. */
@@ -1922,6 +1923,7 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         apiPostMock.mockRejectedValue(refused);
         await el.refresh();
         expect(showToast).toHaveBeenCalledWith('warning', 'Library not refreshed', refused.detail);
+        expect(showToast).toHaveBeenCalledTimes(1);   // no "refreshed" after the refusal
         expect(el._load).toHaveBeenCalledWith({ refresh: true });
         expect(el._refreshing).toBe(false);
     });
@@ -1946,6 +1948,89 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         await el.refresh();
         warn.mockRestore();
         expect(el._load).toHaveBeenCalledWith({ refresh: true });
+        expect(showToast).not.toHaveBeenCalled();
+    });
+
+    describe('once the list is back, a toast says the scan is over (site issue #15)', () => {
+        it.each([
+            ['changed the library', true,
+                ['success', 'Library refreshed', 'The list now shows what the music folder holds.']],
+            ['found nothing new', false,
+                ['info', 'Library up to date', 'The music folder has not changed since it was last read.']],
+            ['cannot tell', null,
+                ['success', 'Library refreshed', 'The music folder was read again.']],
+            // A core from before the field: the same words as "cannot tell".
+            ['says nothing of it', undefined,
+                ['success', 'Library refreshed', 'The music folder was read again.']],
+        ])('the core %s', async (_case, changed, toast) => {
+            const { el, order } = local();
+            apiPostMock.mockImplementation(async (...args) => {
+                order.push(['POST', ...args]);
+                return changed === undefined ? { scanning: false } : { scanning: false, changed };
+            });
+            showToast.mockImplementation(() => { order.push('toast'); });
+            await el.refresh();
+            expect(showToast.mock.calls).toEqual([toast]);
+            // After the reload: the message speaks of the list on screen.
+            expect(order).toEqual([['POST', RESCAN, {}, false], 'reload', 'toast']);
+            showToast.mockImplementation(() => {});
+        });
+
+        it('a scan the GET sees end speaks with the GET\'s answer', async () => {
+            const { el } = local();
+            apiPostMock.mockResolvedValue({ scanning: true, changed: null });
+            apiGetMock.mockResolvedValueOnce({ scanning: true, changed: null })
+                .mockResolvedValueOnce({ scanning: false, changed: false });
+            await el.refresh();
+            expect(showToast.mock.calls).toEqual([
+                ['info', 'Library up to date', 'The music folder has not changed since it was last read.']]);
+        });
+
+        it('says nothing when the reload fails: the list shows why', async () => {
+            const { el } = local({
+                _load: vi.fn(async () => { el._error = 'MPD is not running.'; }),
+            });
+            apiPostMock.mockResolvedValue({ scanning: false, changed: true });
+            await el.refresh();
+            expect(showToast).not.toHaveBeenCalled();
+            expect(el._refreshing).toBe(false);
+        });
+
+        it('says nothing for a source with no folder to read', async () => {
+            const { el } = local({ sourceId: 'src_qobuz', readsFolder: false });
+            await el.refresh();
+            expect(showToast).not.toHaveBeenCalled();
+        });
+
+        it('says nothing once the page is left mid-scan', async () => {
+            const { el } = local();
+            apiPostMock.mockResolvedValue({ scanning: true });
+            // "Still scanning" twice only, so a loop that ignored the page ends (and fails
+            // the count below) instead of hanging the run.
+            let asked = 0;
+            apiGetMock.mockImplementation(async () => {
+                el.isConnected = false;
+                return { scanning: ++asked < 2 };
+            });
+            await el.refresh();
+            expect(apiGetMock).toHaveBeenCalledTimes(1);
+            expect(showToast).not.toHaveBeenCalled();
+            expect(el._load).toHaveBeenCalledWith({ refresh: true });
+        });
+
+        it('says nothing either once the page is left during the first wait (review)', async () => {
+            const { el } = local();
+            // An artist's page, left while the POST still waited for the scan (40 s at
+            // most): its answer then says the scan is over, and no GET follows.
+            apiPostMock.mockImplementation(async () => {
+                el.isConnected = false;
+                return { scanning: false, changed: true };
+            });
+            await el.refresh();
+            expect(apiGetMock).not.toHaveBeenCalled();
+            expect(showToast).not.toHaveBeenCalled();
+            expect(el._refreshing).toBe(false);
+        });
     });
 
     it('while the scan runs, waits with GET and never starts a second one', async () => {
@@ -2008,6 +2093,7 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         await el.refresh();
         expect(apiGetMock).toHaveBeenCalledTimes(1);
         expect(el._load).not.toHaveBeenCalled();   // the switch loaded the new source itself
+        expect(showToast).not.toHaveBeenCalled();
     });
 
     it('a source switch frees the new source at once, before the old request returns', async () => {
@@ -2037,11 +2123,12 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         await el.refresh();
         expect(el._load).toHaveBeenCalledWith({ refresh: true });
 
-        // The old request coming back changes nothing.
-        answer({ scanning: false });
+        // The old request coming back changes nothing — and says nothing.
+        answer({ scanning: false, changed: true });
         await pending;
         expect(el._load).toHaveBeenCalledTimes(1);
         expect(el._refreshing).toBe(false);
+        expect(showToast).not.toHaveBeenCalled();
     });
 
     it('gives up waiting after ten minutes, reloads, and stops turning', async () => {
@@ -2061,6 +2148,7 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         expect(apiGetMock.mock.calls.length).toBeLessThanOrEqual(3);
         expect(el._load).toHaveBeenCalledWith({ refresh: true });
         expect(el._refreshing).toBe(false);
+        expect(showToast).not.toHaveBeenCalled();
     });
 
     it('the section title\'s Refresh says when it is at work', () => {

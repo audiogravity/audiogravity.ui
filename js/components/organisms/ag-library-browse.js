@@ -804,8 +804,13 @@ export class AgLibraryBrowse extends LitElement {
      * ({@link _abandonRefresh}): the new source neither shows it nor waits for it, and
      * gets no reload from it afterwards, the switch having loaded it already.
      *
-     * BACKLOG: no message says when a Refresh is over (audiogravity.ops/BACKLOG.md, « Le Refresh
-     * de la bibliothèque ne dit pas quand il a fini », site issue #15).
+     * Once the list is back, a toast says the scan is over, and whether the music folder
+     * held anything new ({@link _sayRefreshed}): the turning icon is easy to miss on a
+     * phone, and nothing said the end (site issue #15). Only a scan that ended speaks: a
+     * refusal has had its own toast, a failure shows in the list, and an abandoned
+     * Refresh belongs to a source no longer shown — as does one whose page was left (an
+     * artist's: the main grid stays in the page), whichever wait it was in (review). A
+     * streaming source has no folder to read: its reload is the answer, in a second.
      *
      * @returns {Promise<void>}
      */
@@ -814,14 +819,40 @@ export class AgLibraryBrowse extends LitElement {
         const token = ++this._refreshToken;
         this._setRefreshing(true);
         try {
-            const scanned = this.readsFolder && await this._rescanFolder(this.sourceId, token);
+            const scan = this.readsFolder && await this._rescanFolder(this.sourceId, token);
             // After a finished scan the core's database stamp already says whether the
             // list changed — measured, it has moved by the time the scan reports done (15
             // scans out of 15, private MPD 0.24.5, 2026-10-30): forcing the walk would
             // re-enumerate an unchanged library (review). Without one, rebuild as before.
-            if (token === this._refreshToken) await this._load({ refresh: !scanned });
+            if (token === this._refreshToken) await this._load({ refresh: !scan });
+            if (scan && token === this._refreshToken && this.isConnected && !this._error) {
+                this._sayRefreshed(scan.changed);
+            }
         } finally {
             if (token === this._refreshToken) this._setRefreshing(false);
+        }
+    }
+
+    /**
+     * @private Say that a Refresh has read the music folder, in the words the core's
+     * answer allows.
+     *
+     * "Not changed since it was last read", rather than "nothing new": the reading may
+     * be another screen's. A tablet left on an old list, refreshed after the phone's
+     * Refresh brought the albums in, finds nothing new itself — and shows those albums
+     * once its list is back (review).
+     *
+     * @param {boolean|null|undefined} changed - Whether the scan changed the library:
+     *   music added, removed or modified. Null or absent when the core cannot tell.
+     */
+    _sayRefreshed(changed) {
+        if (changed === false) {
+            showToast('info', 'Library up to date',
+                'The music folder has not changed since it was last read.');
+        } else {
+            showToast('success', 'Library refreshed', changed
+                ? 'The list now shows what the music folder holds.'
+                : 'The music folder was read again.');
         }
     }
 
@@ -863,26 +894,27 @@ export class AgLibraryBrowse extends LitElement {
      *
      * @param {string} sourceId - The source whose folder is read.
      * @param {number} token - The Refresh this wait belongs to.
-     * @returns {Promise<boolean>} True when MPD said its scans were over; false when the
-     *   wait failed, was abandoned or gave up.
+     * @returns {Promise<{scanning: false, changed: (boolean|null)}|null>} The core's last
+     *   answer once MPD said its scans were over — `changed` tells whether they changed
+     *   the library; null when the wait failed, was abandoned or gave up.
      */
     async _rescanFolder(sourceId, token) {
         const endpoint = `/library/rescan?source_id=${encodeURIComponent(sourceId)}`;
         const giveUp = Date.now() + RESCAN_MAX_WAIT_MS;
         try {
-            let { scanning } = await apiPost(endpoint, {}, false);
-            while (scanning && this.isConnected && token === this._refreshToken
+            let answer = await apiPost(endpoint, {}, false);
+            while (answer.scanning && this.isConnected && token === this._refreshToken
                    && Date.now() < giveUp) {
-                ({ scanning } = await apiGet(endpoint));
+                answer = await apiGet(endpoint);
             }
-            return scanning === false;
+            return answer.scanning === false ? answer : null;
         } catch (e) {
             if (e?.status === 409 && e.detail) {
                 showToast('warning', 'Library not refreshed', e.detail);
             } else {
                 console.warn('[browse] rescan of the music folder failed:', e);
             }
-            return false;
+            return null;
         }
     }
 
