@@ -305,6 +305,12 @@ describe('outputErrorLabel', () => {
             .toBe('Output unavailable');
     });
 
+    it("shows the core's sentence for a track a service could not provide", () => {
+        setLicense(PRO);
+        expect(outputErrorLabel('HIGHRESAUDIO could not provide “Jolene”.'))
+            .toBe('HIGHRESAUDIO could not provide “Jolene”.');
+    });
+
     it('still names a busy device, and falls back for the rest', () => {
         setLicense(STARTER);
         expect(outputErrorLabel('Failed to open ALSA device "hw:0,0": Device or resource busy'))

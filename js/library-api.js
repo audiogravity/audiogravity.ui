@@ -353,6 +353,11 @@ const MAX_NAMED_REFUSALS = 5;
  * gap. Only a play can get here — a play that keeps nothing, and an add that
  * loses anything, answer 503 and travel as errors (see API.md, /library/queue).
  *
+ * The same fields come back from a play on MPD whose first tracks a streaming
+ * service could not provide, with `refused_by` naming the service: MPD skipped them
+ * and plays the next (a HIGHRESAUDIO playlist on 2026-11-07, which the interface
+ * had called "Playback failed" while the music played).
+ *
  * @param {object} [result] - The queue response, when the caller returned one.
  * @param {Function} [tell] - What shows the warning: showToast, or the play notice's update.
  */
@@ -363,9 +368,24 @@ function warnAboutRefusedTracks(result, tell = showToast) {
     const named = titles.slice(0, MAX_NAMED_REFUSALS).join(', ')
         + (titles.length > MAX_NAMED_REFUSALS ? '…' : '');
     const kept = result.tracks;
-    const what = refused === 1 && named
-        ? `HQPlayer could not open ${named}`
-        : `HQPlayer could not open ${refused} of ${refused + (kept || 0)} tracks`
-          + (named ? `: ${named}` : '');
+    const by = result.refused_by;
+    let what;
+    if (by) {
+        // A streaming service that could not provide the first tracks of a play on
+        // MPD: MPD skipped them and plays the next. They stay in the queue, so
+        // `tracks` counts them — no "of N" here. Titles in quotes, as the core
+        // writes them ("That'll Be The Day" reads badly bare in a list).
+        const quoted = titles.slice(0, MAX_NAMED_REFUSALS).map((t) => `“${t}”`).join(', ')
+            + (titles.length > MAX_NAMED_REFUSALS ? '…' : '');
+        what = refused === 1 && quoted
+            ? `${by} could not provide ${quoted}: the next track plays`
+            : `${by} could not provide ${refused === 1 ? 'a track' : `${refused} tracks`}`
+              + (quoted ? ` (${quoted})` : '') + ': the next one plays';
+    } else {
+        what = refused === 1 && named
+            ? `HQPlayer could not open ${named}`
+            : `HQPlayer could not open ${refused} of ${refused + (kept || 0)} tracks`
+              + (named ? `: ${named}` : '');
+    }
     tell('warning', 'Some tracks were skipped', `${what}.`);
 }

@@ -331,7 +331,21 @@ may then drop it without an error of its own, so the response says what it **kep
 `tracks` is the number HQPlayer actually queued, `refused` how many it dropped and
 `refused_titles` which ones (empty when they cannot be told apart). A `play` goes on with
 the tracks kept; a `play` that keeps none, or an `add` that loses any, answers **503** with
-the titles in the detail. A local-library item MPD does not know answers **400** before
+the titles in the detail.
+
+**When a streaming service cannot provide the first tracks of a play on MPD** — Qobuz,
+Tidal or HIGHRESAUDIO giving no address for a track (which happens even on a subscribed
+account), a session to sign in again, the service out of reach — MPD skips them and plays
+the next. The response is then a success with the same `refused` and `refused_titles`,
+plus **`refused_by`**, the service's name as the interface writes it (`"HIGHRESAUDIO"`):
+show it in place of HQPlayer's. Here `tracks` still counts the skipped tracks — they stay
+in the queue. In random order only the first track is known to be skipped, so `refused`
+is 1. A `play` of which no track could be had answers **503** in words:
+`HIGHRESAUDIO could not provide any of the 16 tracks.`, or `… could not provide
+“<title>”.` for one track. Skips are known only when MPD was playing or paused as the play
+arrived: from a stopped MPD the play answers at once, the next track simply plays, and a
+play of which nothing could be had shows on the local entry of `outputs[]` as its
+`error`. A local-library item MPD does not know answers **400** before
 anything is pushed. The item then appears in
 `PlayerState` under `source_id`/`control_id` `src_hqplayer`, badged by its **content**:
 `origin` is `qobuz`, `tidal`, `highresaudio`, `upnp`, `radio` or `library`, never
@@ -610,7 +624,12 @@ transport_state, error}`.
   `Failed to open ALSA device "hw:0,0": Device or resource busy`). `null` normally, and
   it clears itself once playback succeeds. **It may appear seconds after a play request
   has answered `200`**: whether a push to HQPlayer produced actual sound is decided after
-  the response (see `/library/queue`).
+  the response (see `/library/queue`). One case is said in words rather than quoted: a
+  streaming service that could not provide the track reads `HIGHRESAUDIO could not
+  provide “<title>”.` (or `… could not provide this track.`). Secrets in the engine's
+  words are masked — show the text as it comes. When MPD **stopped** on its error —
+  every track of a play it could not get, from a stopped MPD — no item is left to carry
+  it, and the local entry does, for about two minutes.
 
 `GET /player/outputs` is a **different list**: the full catalogue for *choosing* an
 output (MPD output blocks as `type: "mpd_output"` with an `output_id`, plus known
