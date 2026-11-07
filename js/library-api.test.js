@@ -208,6 +208,38 @@ describe('playWithFeedback', () => {
             .toBe('HQPlayer could not open 6 of 7 tracks: A, B, C, D, E….');
     });
 
+    // A streaming service that could not provide the first tracks of a play on MPD.
+    // MPD skipped them and played the next; the interface said "Playback failed",
+    // with the core's key in the text (a HIGHRESAUDIO playlist, 2026-11-07).
+
+    it('names the service and the track it could not provide, and says the next one plays', async () => {
+        const playFn = vi.fn().mockResolvedValue({
+            ok: true, action: 'play', tracks: 16,
+            refused: 1, refused_titles: ['Jolene'], refused_by: 'HIGHRESAUDIO',
+        });
+        await expect(playWithFeedback(playFn)).resolves.toBe(true);
+        const [type, title, message] = showToast.mock.calls[0];
+        expect(type).toBe('warning');
+        expect(title).toBe('Some tracks were skipped');
+        expect(message).toBe('HIGHRESAUDIO could not provide “Jolene”: the next track plays.');
+    });
+
+    it('lists the tracks a service could not provide, without counting them against the queue', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            tracks: 16, refused: 2, refused_titles: ['Jolene', "That'll Be The Day"],
+            refused_by: 'Qobuz',
+        }));
+        expect(showToast.mock.calls[0][2])
+            .toBe("Qobuz could not provide 2 tracks (“Jolene”, “That'll Be The Day”): the next one plays.");
+    });
+
+    it('still names the service when the titles are unknown', async () => {
+        await playWithFeedback(vi.fn().mockResolvedValue({
+            tracks: 3, refused: 1, refused_titles: [], refused_by: 'Tidal',
+        }));
+        expect(showToast.mock.calls[0][2]).toBe('Tidal could not provide a track: the next one plays.');
+    });
+
     it('says nothing when every track was kept', async () => {
         await playWithFeedback(vi.fn().mockResolvedValue({
             ok: true, tracks: 12, refused: 0, refused_titles: [],

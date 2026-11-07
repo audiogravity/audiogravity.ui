@@ -161,6 +161,13 @@ const STREAMING_RELAY = /\/(?:qobuz|tidal|highresaudio)\/stream\//;
 const REFUSED = /HTTP status 403\b/;
 
 /**
+ * The core's own sentence for a track a streaming service could not provide —
+ * `HIGHRESAUDIO could not provide “Jolene”.` —, already in words: shown as it comes.
+ * "Output unavailable" would blame an output that works.
+ */
+const COULD_NOT_PROVIDE = / could not provide /;
+
+/**
  * Plain-language rendering of {@link activeOutputError} — the raw ALSA/engine
  * string is never shown to the listener: this label is the message.
  *
@@ -169,9 +176,13 @@ const REFUSED = /HTTP status 403\b/;
  * them and plays what else the queue holds, reporting the refusal meanwhile. That is
  * no failure of the output, and is said as what it is. On a box with Pro the same
  * report means the service itself refused the track, and keeps the generic label.
- * A queue of streaming tracks alone reports nothing here: MPD skips them all and stops,
- * and a stopped MPD is left out of the playing items. The queue view says it in advance,
- * with a padlock on each of those tracks (`pro` on the queue item).
+ * A queue of streaming tracks alone: MPD skips them all and stops, and the core keeps
+ * the error it stopped on, on the local output, for a couple of minutes — so this label
+ * says it too. The queue view says it in advance, with a padlock on each of those
+ * tracks (`pro` on the queue item).
+ *
+ * A track a service could not provide comes in words from the core, and is shown as
+ * it comes.
  *
  * @param {string|null} raw - Value returned by {@link activeOutputError}.
  * @returns {string}
@@ -181,6 +192,7 @@ export function outputErrorLabel(raw) {
     if (proState() === 'locked' && STREAMING_RELAY.test(text) && REFUSED.test(text)) {
         return 'Streaming services are part of the Pro edition';
     }
+    if (COULD_NOT_PROVIDE.test(text)) return text;
     return /busy/i.test(text)
         ? 'Output in use by another player — stop it to play here'
         : 'Output unavailable';
