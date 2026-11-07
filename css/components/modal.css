@@ -424,14 +424,15 @@
     display: block;
 }
 
-/* On a phone the touch rule of components/button.css makes every .icon-btn at least 44px,
-   deliberately. The block grows to hold the button — a one-line block would otherwise have
-   it hang over its bottom edge — rather than the button shrinking below a finger. The 44px
-   is that rule's own value. */
+/* On a phone the touch rule of components/button.css makes every .icon-btn at least 44px.
+   Not this one (user's cap, 2026-11-07: "trop gros"): at 44px, and the block grown to hold
+   it, it took a fifth of a phone's code line and doubled a one-line block. It keeps its
+   28px, as on a computer — the site's own manual draws 32px, and both stand above the 24px
+   WCAG 2.2 sets as a minimum target (2.5.8) —, as the dialogs' buttons keep their 29px. */
 @media (width <= 768px) {
-    .manual-md .manual-code > pre {
-        min-height: calc(44px + 2 * var(--spacing-sm));
-        padding-right: calc(44px + 2 * var(--spacing-sm));
+    .manual-md .manual-copy {
+        min-height: 0;
+        min-width: 0;
     }
 }
 

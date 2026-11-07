@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readStylesheet, cssRuleBody, cssRules, filesUnder, openingTags, selectorList, appSources } from './test-utils.js';
+import { readStylesheet, cssRuleBody, cssRules, filesUnder, openingTags, selectorList, appSources, mediaBlock } from './test-utils.js';
 
 /** The pipeline diagram's styles live in its component, in a shadow root. */
 const PIPELINE = ['js', 'components', 'organisms', 'ag-audio-pipeline.js'];
@@ -196,6 +196,36 @@ describe('what the clean-up took out stays out', () => {
 
     it('no rule for the tab bar\'s stats button, which no screen renders', () => {
         expect(readStylesheet('css', 'layout.css')).not.toMatch(/tabs-stats-btn/);
+    });
+});
+
+describe('the manual\'s copy button', () => {
+    // On a phone the touch rule made it 44px and the code block grew to hold it: a fifth
+    // of a phone's code line, a one-line block 56px tall instead of 45 (measured in
+    // Chromium at 390px). The user found it too big (2026-11-07): it keeps its 28px.
+    const modal = readStylesheet('css', 'components', 'modal.css');
+    const phoneBlocks = [];
+    for (let rest = modal; ;) {
+        const block = mediaBlock(rest, /@media\s*\(width\s*<=\s*768px\)/);
+        if (!block) break;
+        phoneBlocks.push(block);
+        rest = rest.slice(rest.indexOf(block) + block.length);
+    }
+    const onPhone = (selector) => phoneBlocks.map((b) => cssRuleBody(b, selector)).filter(Boolean);
+
+    it('is 28px, as on a computer', () => {
+        expect(cssRuleBody(modal, '.manual-md .manual-copy')).toMatch(/(?:^|[;\s])width:\s*var\(--size-lg\)/);
+        expect(readStylesheet('css', 'themes.css')).toMatch(/--size-lg:\s*28px;/);
+    });
+
+    it('stays so on a phone: the touch rule\'s 44px is undone (user\'s cap)', () => {
+        const [body] = onPhone('.manual-md .manual-copy');
+        expect(body).toMatch(/min-height:\s*0/);
+        expect(body).toMatch(/min-width:\s*0/);
+    });
+
+    it('no longer grows a code block on a phone', () => {
+        expect(onPhone('.manual-md .manual-code > pre')).toEqual([]);
     });
 });
 
