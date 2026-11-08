@@ -130,7 +130,7 @@ describe('AgNowPlaying — auto-follow (_onState)', () => {
         applyOnState(s, [src('src_mpd', false), src('src_roon', true), src('src_shairport-sync', false)]);
         s.activeIdx = 1; // user on Roon
         s.userOverride = true;
-        // Roon stops; Spotify becomes active
+        // Roon stops; AirPlay becomes active
         applyOnState(s, [src('src_mpd', false), src('src_shairport-sync', true)]);
         expect(s.userOverride).toBe(false);
         expect(s.activeIdx).toBe(1); // src_shairport-sync is now index 1

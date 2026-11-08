@@ -36,7 +36,7 @@ vi.mock('../../ag-icons.js', () => ({
 vi.mock('../atoms/ag-pipeline-node.js', () => ({ renderPipelineNode: () => '' }));
 vi.mock('../atoms/ag-pipeline-link.js', () => ({ renderPipelineLink: () => '' }));
 
-const { AgAudioPipeline } = await import('./ag-audio-pipeline.js');
+const { AgAudioPipeline, steerableServices } = await import('./ag-audio-pipeline.js');
 
 /**
  * A bare instance — no constructor, no lifecycle, no DOM.
@@ -94,6 +94,39 @@ describe('the steering pop-up renders', () => {
         const host = open();
         host.pipeline.nodes = [];
         expect(() => host._renderSteeringPopover()).not.toThrow();
+    });
+});
+
+describe('the steering pop-up lists the services the core can move', () => {
+    const SERVICES = [
+        { id: 'mpd', label: 'MPD', steerable: true },
+        { id: 'networkaudiod', label: 'HQPlayer NAA', steerable: false },
+        { id: 'roonbridge', label: 'Roon Bridge', steerable: true },
+    ];
+
+    it('leaves out a service whose output AG cannot change — the NAA', () => {
+        expect(steerableServices(SERVICES).map(s => s.id)).toEqual(['mpd', 'roonbridge']);
+    });
+
+    it('lists every service when the core does not say (an older core)', () => {
+        const unsaid = SERVICES.map(({ steerable, ...rest }) => rest);
+        expect(steerableServices(unsaid)).toHaveLength(3);
+        expect(steerableServices(undefined)).toEqual([]);
+    });
+
+    it('renders without the NAA', () => {
+        const node = { ...NODE, internal_services: SERVICES };
+        const host = el({
+            pipeline: { nodes: [node] },
+            _steeringPopover: {
+                portId: 'p1', portLabel: 'Port 1', screenX: 100, screenY: 100,
+                deviceId: 'dev1', loading: null, result: null, node,
+            },
+            _closeSteeringPopover() {},
+        });
+        const rendered = JSON.stringify(host._renderSteeringPopover());
+        expect(rendered).toContain('Roon Bridge');
+        expect(rendered).not.toContain('HQPlayer NAA');
     });
 });
 

@@ -154,7 +154,7 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
     it('lifts override and follows new active after chosen source stops', () => {
         switchSource(fs, 'src_roon');
         fs.sources = [src('src_mpd'), src('src_roon')];
-        // Roon stops; Spotify becomes active
+        // Roon stops; AirPlay becomes active
         applyState(fs, state('src_shairport-sync', true, [src('src_mpd'), src('src_shairport-sync')]));
         expect(fs.userOverride).toBe(false);
         expect(fs.targetSourceId).toBe('src_shairport-sync');
@@ -546,18 +546,14 @@ describe('AgNowPlayingFullscreen — control body routing handle', () => {
 // ---------------------------------------------------------------------------
 // The exclusive DAC held by another local service made playback fail silently.
 // The active output entry now carries the engine's reason; the player shows a
-// plain-language line (raw message kept as the tooltip).
+// plain-language line (raw message kept as the tooltip). The _outputError /
+// _outputErrorLabel getters ask player-utils; this block used to replicate its
+// logic, and the copy went on passing when the real label changed (2026-11-08).
 
-/** Replicate the _outputError / _outputErrorLabel getters. */
-function outputError(state) {
-    return (state?.outputs ?? []).find(o => o.active)?.error ?? null;
-}
-function outputErrorLabel(state) {
-    const raw = outputError(state) ?? '';
-    return /busy/i.test(raw)
-        ? 'Output in use by another player — stop it to play here'
-        : 'Output unavailable';
-}
+import { activeOutputError, outputErrorLabel as labelOf } from '../../player-utils.js';
+
+const outputError = activeOutputError;
+const outputErrorLabel = state => labelOf(activeOutputError(state));
 
 describe('AgNowPlayingFullscreen — output error', () => {
     const BUSY = 'Failed to open ALSA device "hw:0,0": Device or resource busy';
@@ -589,6 +585,13 @@ describe('AgNowPlayingFullscreen — output error', () => {
     it('any other failure falls back to a generic label', () => {
         const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error: 'snd_pcm_open failed' }] };
         expect(outputErrorLabel(state)).toBe('Output unavailable');
+    });
+
+    it('a track MPD could not reach is said of the track, not of the output', () => {
+        const error = 'Failed to decode "http://127.0.0.1:8001/qobuz/stream/1"; '
+            + 'Failed to connect to 127.0.0.1 port 8001 after 0 ms: Could not connect to server';
+        const state = { outputs: [{ ...FS_LOCAL_OUT, active: true, error }] };
+        expect(outputErrorLabel(state)).toBe('Track could not be reached');
     });
 });
 

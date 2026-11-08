@@ -94,6 +94,19 @@ export function playbackEvents(previous, next) {
  * @property {Object} nodePositions - Manual positions for nodes (id -> {x, y}).
  * @property {boolean} showLegend - Whether the legend overlay is visible.
  */
+/**
+ * The services of a device the output window offers a switch for: those the core says
+ * AG can move to another output (`steerable`). Not the NAA, whose output the HQPlayer
+ * that streams to it chooses, nor a service AG does not run. A core that says nothing
+ * (an older one) lets every service through, as before.
+ *
+ * @param {Array<object>|undefined} services - The node's `internal_services`.
+ * @returns {Array<object>} The services to list, in their order.
+ */
+export function steerableServices(services) {
+    return (services || []).filter(svc => svc.steerable !== false);
+}
+
 export class AgAudioPipeline extends LitElement {
     static properties = {
         pipeline: { type: Object },
@@ -1136,7 +1149,7 @@ export class AgAudioPipeline extends LitElement {
         const { portId, portLabel, screenX, screenY, deviceId, loading, result } = this._steeringPopover;
         // Toujours utiliser les données fraîches du pipeline pour que les dots se mettent à jour
         const node = (this.pipeline?.nodes || []).find(n => n.id === deviceId) || this._steeringPopover.node;
-        const services = node?.internal_services || [];
+        const services = steerableServices(node?.internal_services);
         // Clamp position so the popover stays visible
         const popX = Math.min(screenX + 14, window.innerWidth - 240);
         const popY = Math.max(screenY - 8, 10);

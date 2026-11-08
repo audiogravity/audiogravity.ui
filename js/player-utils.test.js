@@ -288,21 +288,42 @@ describe('outputErrorLabel', () => {
         expect(outputErrorLabel(REFUSED(service))).toBe(PRO_EDITION);
     });
 
-    it('keeps the generic label on a box with Pro: the service itself refused the track', () => {
+    it('says it of the track on a box with Pro: the service itself refused it', () => {
         setLicense(PRO);
-        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Output unavailable');
+        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Track could not be read');
     });
 
     it('says nothing of Pro while the licence is not read', () => {
-        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Output unavailable');
+        expect(outputErrorLabel(REFUSED('qobuz'))).toBe('Track could not be read');
     });
 
     it('says nothing of Pro for a refusal that is not a relay, nor for a relay that did not refuse', () => {
         setLicense(STARTER);
         expect(outputErrorLabel('Failed to decode "http://radio.example/live.aac"; got HTTP status 403'))
-            .toBe('Output unavailable');
+            .toBe('Track could not be read');
         expect(outputErrorLabel('Failed to decode "http://192.0.2.10:8000/qobuz/stream/1"; got HTTP status 503'))
-            .toBe('Output unavailable');
+            .toBe('Track could not be read');
+    });
+
+    it('says a track that could not be reached of the track, not of the output', () => {
+        // The x86 box after a boot (2026-11-08): MPD resumed a Qobuz track through a
+        // core that was not listening yet; a moment later the same output played.
+        expect(outputErrorLabel('Failed to decode "http://127.0.0.1:8001/qobuz/stream/55635251'
+            + '?mode=redirect"; Failed to connect to 127.0.0.1 port 8001 after 0 ms: Could not '
+            + 'connect to server')).toBe('Track could not be reached');
+    });
+
+    it('says the same of a name that does not resolve or an address that does not answer', () => {
+        // libcurl 8.14.1's words, measured on both boxes (2026-11-08).
+        expect(outputErrorLabel('Failed to decode "http://radio.example.invalid/live.aac"; '
+            + 'Could not resolve host: radio.example.invalid')).toBe('Track could not be reached');
+        expect(outputErrorLabel('Failed to decode "http://192.0.2.10/live.aac"; '
+            + 'Connection timed out after 10001 milliseconds')).toBe('Track could not be reached');
+    });
+
+    it('keeps an output that fails an output', () => {
+        expect(outputErrorLabel('Failed to open "Heed Abacus" (alsa); Failed to open ALSA device '
+            + '"hw:0,0": No such file or directory')).toBe('Output unavailable');
     });
 
     it("shows the core's sentence for a track a service could not provide", () => {

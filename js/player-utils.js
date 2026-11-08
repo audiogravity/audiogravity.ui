@@ -168,6 +168,26 @@ const REFUSED = /HTTP status 403\b/;
 const COULD_NOT_PROVIDE = / could not provide /;
 
 /**
+ * MPD's report of a track it could not read, whatever the output: `Failed to decode
+ * "<uri>"; <reason>` — measured on MPD 0.24.5 for a stream whose relay did not answer
+ * at all (`Failed to connect to 127.0.0.1 port 8001 after 0 ms: Could not connect to
+ * server`, the core not listening yet when MPD resumed its queue at boot) and for a
+ * relay that answered an error (`got HTTP status 403`). An output that fails says
+ * `Failed to open "<output>" (alsa); …` instead: "Output unavailable" said of the
+ * first blamed an output that was playing a moment later.
+ */
+const TRACK_UNREADABLE = /Failed to decode /;
+
+/**
+ * Within it, a server that could not be reached at all, rather than one that answered:
+ * libcurl's words, as MPD passes them on — measured with libcurl 8.14.1 on the x86 and
+ * the ARM box (2026-11-08) for a port nobody listens on, a name that does not resolve
+ * and an address that does not answer. "Connection timed out" only: "Operation timed
+ * out" is a server reached that stopped sending.
+ */
+const UNREACHABLE = /Failed to connect|Could not resolve host|Connection timed out/;
+
+/**
  * Plain-language rendering of {@link activeOutputError} — the raw ALSA/engine
  * string is never shown to the listener: this label is the message.
  *
@@ -175,14 +195,16 @@ const COULD_NOT_PROVIDE = / could not provide /;
  * those queued before the trial ended included (decision of 2026-10-15): MPD skips
  * them and plays what else the queue holds, reporting the refusal meanwhile. That is
  * no failure of the output, and is said as what it is. On a box with Pro the same
- * report means the service itself refused the track, and keeps the generic label.
+ * report means the service itself refused the track: it is said of the track, which
+ * could not be read.
  * A queue of streaming tracks alone: MPD skips them all and stops, and the core keeps
  * the error it stopped on, on the local output, for a couple of minutes — so this label
  * says it too. The queue view says it in advance, with a padlock on each of those
  * tracks (`pro` on the queue item).
  *
  * A track a service could not provide comes in words from the core, and is shown as
- * it comes.
+ * it comes. Any other track MPD could not read is said of the track — not reached, or
+ * not read —, not of the output.
  *
  * @param {string|null} raw - Value returned by {@link activeOutputError}.
  * @returns {string}
@@ -193,6 +215,9 @@ export function outputErrorLabel(raw) {
         return 'Streaming services are part of the Pro edition';
     }
     if (COULD_NOT_PROVIDE.test(text)) return text;
+    if (TRACK_UNREADABLE.test(text)) {
+        return UNREACHABLE.test(text) ? 'Track could not be reached' : 'Track could not be read';
+    }
     return /busy/i.test(text)
         ? 'Output in use by another player — stop it to play here'
         : 'Output unavailable';
