@@ -73,7 +73,7 @@ Every other write route answers **403** to a guest token.
 ### Audio Pipeline — `/audio_pipeline/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audio_pipeline/current` | Current pipeline state + now playing. The streamer node's `metadata` may carry `unmatched_outputs` — `[{ label, output_type, hw }]`, the outputs currently carrying audio whose connector kind no declared topology port mentions; absent when idle or fully described. |
+| GET | `/audio_pipeline/current` | Current pipeline state + now playing. The streamer node's `metadata` may carry `unmatched_outputs` — `[{ label, output_type, hw }]`, the outputs currently carrying audio whose connector kind no declared topology port mentions; absent when idle or fully described. Each service of a node's `internal_services` carries `steerable`: `true` when its output can be changed (`POST /steering/switch-output`), `false` when it cannot — the NAA —, `null` when not known: offer the switch unless it is `false`. |
 
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
@@ -939,7 +939,8 @@ feature, so the gate is about the role, not the edition.
 
 These three fields were added without bumping `report_version`, so a client must treat an **absent** key and a `null` one as different answers: absent means the core predates them and said nothing; `null` means it looked and found nothing. Rendering the first as the second asserts a fact the payload never carried.
 
-`configured_device` and `pinned_device` are two **different** facts and the gap between them is the point: `pinned_device` is the `hw:X,Y` the stored pin resolves to (what AG believes it selected), `configured_device` is what the service is really playing on. For MPD that is the block MPD has **enabled**, not the first block in `mpd.conf` — native switching never rewrites the file. `device_matches_pin` is present **only when both are known**: a missing pin or an unparsable config is *unknown*, never "they agree". They drift apart when a config is hand-written or predates per-service pins, and that drift is exactly what a support report exists to surface.
+An output's `hw` is `hw:CARD=<id>,DEV=<n>`, its card named by its ALSA id.
+`configured_device` and `pinned_device` are two **different** facts and the gap between them is the point: `pinned_device` is the address the stored pin resolves to, `hw:CARD=<id>,DEV=<n>` (what AG believes it selected), `configured_device` is what the service is really playing on, as its file writes it — `hw:CARD=<id>,DEV=<n>`, or `hw:<card>,<device>` in a file written by hand or by an older AG; `device_matches_pin` compares the cards they reach. For MPD that is the block MPD has **enabled**, not the first block in `mpd.conf` — native switching never rewrites the file. `device_matches_pin` is present **only when both are known**: a missing pin or an unparsable config is *unknown*, never "they agree". They drift apart when a config is hand-written or predates per-service pins, and that drift is exactly what a support report exists to surface.
 
 `GET /audio-stack/library-scan-status` → `{ scanning: bool, job_id? }`. `scanning` is true while MPD's database `update` runs (its `updating_db` status field is set); `job_id` is that update's id when scanning. Best-effort — an unreachable MPD reports `{ scanning: false }` rather than erroring. The UI polls this (~1.5 s) after a library change (`/provision`, `/library`) to show a transient "indexing library" indicator and hide it once the scan settles; the indicator also probes it **once on mount**, so leaving and returning to the config tab mid-index re-attaches to the running scan instead of losing it. Admin-only.
 
@@ -1270,9 +1271,9 @@ Both refusals name the license, as the ones above do: their words are meant for 
 ### Output steering — `/steering/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/steering/status` | Which service drives which ALSA device — for MPD on several outputs, the one it has enabled, not the first of its configuration |
-| GET | `/steering/outputs` | Outputs a service can be switched to |
-| POST | `/steering/switch-output` | Point a service at another output. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else the NAA (`naa`). HQPlayer's and Roon's (`roonbridge`) are Pro: **403** without it ([Editions](#editions--what-a-box-without-pro-is-refused)) |
+| GET | `/steering/status` | Which service drives which ALSA device — for MPD on several outputs, the one it has enabled, not the first of its configuration. `current_devices` gives each as the output lists give it, `hw:CARD=<id>,DEV=<n>`: equal to the `system_device_id` of the output it plays on. `steerability` is `true` for each service whose output can be changed, among those the box declares: `mpd`, `airplay`, `hqplayerd`, `upmpdcli` — whose output is MPD's, and whose current device is MPD's — and `roonbridge`; never `naa` |
+| GET | `/steering/outputs` | Outputs a service can be switched to; each `system_device_id` is `hw:CARD=<id>,DEV=<n>` |
+| POST | `/steering/switch-output` | Point a service at another output. `upmpdcli` moves MPD. `hqplayer` — HQPlayer as the output — moves `hqplayerd` while the box's own HQPlayer runs, else it is the NAA's (`naa`), which answers **400** *The NAA's output is chosen in the HQPlayer that streams to it, not on this box*. HQPlayer's and Roon's (`roonbridge`) are Pro: **403** without it ([Editions](#editions--what-a-box-without-pro-is-refused)) |
 
 ### Service config editor — `/audio_app_config/*`
 Editing a service's own configuration file needs **no licence** — except HQPlayer Embedded's
