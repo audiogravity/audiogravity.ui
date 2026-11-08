@@ -154,7 +154,7 @@ describe('AgNowPlayingFullscreen — auto-follow (_applyState)', () => {
     it('lifts override and follows new active after chosen source stops', () => {
         switchSource(fs, 'src_roon');
         fs.sources = [src('src_mpd'), src('src_roon')];
-        // Roon stops; Spotify becomes active
+        // Roon stops; AirPlay becomes active
         applyState(fs, state('src_shairport-sync', true, [src('src_mpd'), src('src_shairport-sync')]));
         expect(fs.userOverride).toBe(false);
         expect(fs.targetSourceId).toBe('src_shairport-sync');

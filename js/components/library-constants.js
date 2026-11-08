@@ -360,8 +360,8 @@ export function resolvePlayingSource(state) {
 /**
  * Build the deduplicated list of searchable library sources for the search bar.
  * Combines playback-pipeline sources with known UPnP/DLNA media servers (which
- * are not part of the pipeline). mpris receivers (AirPlay, Spotify, the upmpdcli
- * bridge) are dropped — they expose no library API. Entries the backend marks
+ * are not part of the pipeline). mpris receivers (AirPlay, the upmpdcli bridge)
+ * are dropped — they expose no library API. Entries the backend marks
  * `selectable: false` are dropped too: a network renderer is an output and
  * HQPlayer a processor, so they appear among the playing sources for the player
  * to render but hold no catalogue to browse.

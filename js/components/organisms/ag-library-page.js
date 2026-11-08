@@ -647,7 +647,7 @@ export class AgLibraryPage extends LitElement {
      * Handle live PlayerState SSE events.
      * Keeps the source list fresh and surfaces a banner when what plays is NOT what
      * the screen shows (e.g. Roon starts playing while the user browses MPD).
-     * mpris sources (AirPlay, Spotify) are ignored — they have no library API.
+     * mpris sources (AirPlay) are ignored — they have no library API.
      * @param {object} state - PlayerState from the SSE stream.
      */
     _onPlayerState(state) {
@@ -676,7 +676,7 @@ export class AgLibraryPage extends LitElement {
             if (playing.group === this._groupOf(this._sourceId)) this._dismissedGroup = null;
             return;
         }
-        // Skip mpris receivers (AirPlay, Spotify) — no library to browse.
+        // Skip mpris receivers (AirPlay) — no library to browse.
         const info = state.sources?.find(s => s.source_id === state.source_id);
         if (info?.protocol === 'mpris') return;
         // And skip what is no source at all. Under external control the core names
