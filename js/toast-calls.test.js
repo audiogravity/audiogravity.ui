@@ -23,6 +23,8 @@ const VARIABLE_TYPES = {
     'js/components/molecules/ag-playlist-picker.js': ['toast.type'],
     // A play's outcome, passed on whole by tell() — whose own calls are read, below.
     'js/library-api.js': ['...toast'],
+    // A USB drive's notice: the core's level, kept only when it is one of the four.
+    'js/core/usb-drive-notice.js': ['level'],
 };
 
 /** Functions that pass their three arguments on to showToast or a toast's update, by file. */
