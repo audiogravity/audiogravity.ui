@@ -190,15 +190,6 @@ export const iconSearch = svg`
     <path d="m21 21-4.34-4.34"/>
     <circle cx="11" cy="11" r="8"/>`;
 
-/** Six dots (two columns × three rows) — drag-handle grip. (Lucide: grip-vertical) */
-export const iconDragHandle = svg`
-    <circle cx="9"  cy="5"  r="1" fill="currentColor" stroke="none"/>
-    <circle cx="9"  cy="12" r="1" fill="currentColor" stroke="none"/>
-    <circle cx="9"  cy="19" r="1" fill="currentColor" stroke="none"/>
-    <circle cx="15" cy="5"  r="1" fill="currentColor" stroke="none"/>
-    <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/>
-    <circle cx="15" cy="19" r="1" fill="currentColor" stroke="none"/>`;
-
 /** Arrow head + horizontal shaft pointing left. (Lucide: arrow-left) */
 export const iconArrowLeft = svg`
     <path d="m12 19-7-7 7-7"/>

@@ -199,3 +199,52 @@ describe('PlayerChangeController', () => {
         expect(subscribePlayerState).toHaveBeenCalledTimes(2);
     });
 });
+
+describe('PlayerChangeController — for a view that shows what plays', () => {
+    // The queue's play/pause button turns with the music: it reads the last state, and is
+    // asked to render as soon as what plays changes — not a SETTLE_MS later.
+    const hostWithUpdates = () => ({ addController: vi.fn(), requestUpdate: vi.fn() });
+
+    it('keeps the last state, and none before the first nor once stopped', () => {
+        const ctl = new PlayerChangeController(hostWithUpdates(), vi.fn());
+        expect(ctl.state).toBeNull();
+        ctl.follow(true);
+        const first = state(source());
+        send(first);
+        expect(ctl.state).toBe(first);
+        const tick = state(source({ elapsed: 203 }));
+        send(tick);
+        expect(ctl.state).toBe(tick);   // the latest, even when nothing changed
+        ctl.follow(false);
+        expect(ctl.state).toBeNull();
+    });
+
+    it('asks the view to render at once on the first state and on each change, not on a tick', () => {
+        const host = hostWithUpdates();
+        const ctl = new PlayerChangeController(host, vi.fn());
+        ctl.follow(true);
+        send(state(source()));
+        expect(host.requestUpdate).toHaveBeenCalledTimes(1);
+        send(state(source({ elapsed: 205 })));
+        expect(host.requestUpdate).toHaveBeenCalledTimes(1);
+        send(state(source({ playback_status: 'Paused' })));
+        expect(host.requestUpdate).toHaveBeenCalledTimes(2);   // before any settle delay
+        ctl.follow(false);
+    });
+
+    it('counts the changes, and keeps counting across a stop — never back to an old count', () => {
+        const ctl = new PlayerChangeController(hostWithUpdates(), vi.fn());
+        expect(ctl.changes).toBe(0);
+        ctl.follow(true);
+        send(state(source()));
+        send(state(source({ elapsed: 210 })));
+        expect(ctl.changes).toBe(1);
+        send(state(source({ playback_status: 'Paused' })));
+        expect(ctl.changes).toBe(2);
+        ctl.follow(false);
+        ctl.follow(true);
+        send(state(source({ playback_status: 'Paused' })));   // the same music, taken up afresh
+        expect(ctl.changes).toBe(3);
+        ctl.follow(false);
+    });
+});

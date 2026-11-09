@@ -93,6 +93,9 @@ export class AgLibraryRoonBrowser extends LitElement {
      */
     async _browseInto(item) {
         if (!this.zoneId || !item.id) return;
+        // BACKLOG: Roon holds the position (item_key, back): a move sent while another is
+        // on its way acts on a position already moved, and nothing holds it back. See
+        // audiogravity.ops/BACKLOG.md.
         await loadWithState(this, async () => {
             const params = new URLSearchParams({ zone_id: this.zoneId, item_key: item.id, limit: '100' });
             const data   = await apiGet(`/library/roon-browse?${params}`);

@@ -6,26 +6,52 @@ import { html, nothing } from 'lit';
 import { API_BASE_URL, API_KEY, DATE_NAMES_LOCALE } from '../core/config.js';
 import { hasCoreCredentials } from '../core/credentials.js';
 
+/** The latest {@link loadWithState} call of each host: only that one settles its state. */
+const latestLoad = new WeakMap();
+
 /**
  * Run an async function while toggling `host._loading` (and resetting
  * `host._error` to null). On failure, the error is logged to the console
  * AND its message is stored in `host._error`. Components that don't render
  * `_error` still get the console trace — failures are never silent.
+ *
+ * Calls can overlap — a list read again after an action while an earlier read is
+ * still out, a reader who changes pill twice. Only the latest call of a host
+ * settles `_loading` and `_error`: an earlier one that ends first used to clear
+ * `_loading` while the latest was still out, and one that failed late wrote its
+ * error over the latest's success. An overtaken failure is still logged.
+ *
+ * The data is the caller's to drop: `fn` gets `isLatest()`, true while no later
+ * call has been made for the same host. Checked where the answer comes back, it
+ * keeps an older answer arriving last from writing over a newer one (the queue).
+ *
+ * BACKLOG: the Roon and UPnP browsers do not check it, and Browse and Search keep
+ * tokens of their own. See audiogravity.ops/BACKLOG.md.
+ *
+ * `_loading` says a read is out, not that there is nothing to show: a view that
+ * already shows a list keeps it on screen while the list is read again, and puts
+ * up "Loading…" only while it has nothing to show (the queue, the outputs, the
+ * sources). Blanking it at every read made the list flash, and threw away the
+ * reader's place in it.
+ *
  * @template T
  * @param {object} host - Lit element instance.
- * @param {() => Promise<T>} fn - Async work to run.
+ * @param {(isLatest: () => boolean) => Promise<T>} fn - Async work to run.
  * @returns {Promise<T|undefined>} Result of `fn`, or undefined on failure.
  */
 export async function loadWithState(host, fn) {
+    const call = {};
+    latestLoad.set(host, call);
+    const isLatest = () => latestLoad.get(host) === call;
     host._loading = true;
     host._error   = null;
     try {
-        return await fn();
+        return await fn(isLatest);
     } catch (e) {
         console.error(`[${host.localName ?? 'host'}]`, e);
-        host._error = e?.message ?? String(e);
+        if (isLatest()) host._error = e?.message ?? String(e);
     } finally {
-        host._loading = false;
+        if (isLatest()) host._loading = false;
     }
 }
 

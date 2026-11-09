@@ -538,7 +538,10 @@ export class AgLibrarySources extends LitElement {
     }
 
     render() {
-        if (this._loading) return html`<div class="lib-loading">Loading…</div>`;
+        // Only while there is nothing to show. Read again after a connection changed, the
+        // screen stays as it is: blanked, it lost the reader's place and rebuilt every
+        // card below, each reading its own state again.
+        if (this._loading && this._nodes.length === 0) return html`<div class="lib-loading">Loading…</div>`;
 
         // Filtered by TYPE, not by a list of names. The list of six ids this
         // replaces is why the radio had no card at all: every source added to the

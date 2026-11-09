@@ -109,14 +109,19 @@ export class AgLibraryOutputs extends LitElement {
             showToast('error', 'Output switch failed', e?.message || 'Could not switch output');
         } finally {
             // Re-fetch the real state so the UI reflects what actually happened
-            // (rollback to the previous output if the switch did not take).
-            this._switching = null;
+            // (rollback to the previous output if the switch did not take). The output
+            // asked for says SWITCHING until it has come back: the list stays on screen
+            // while it is read again, and cleared first, it put ACTIVE back on the
+            // output left for the length of the read, then moved it again.
             await this._load();
+            this._switching = null;
         }
     }
 
     render() {
-        if (this._loading) return html`<div class="lib-loading">Loading…</div>`;
+        // Only while there is nothing to show: read again after a switch, the list stays
+        // on screen and the active output moves in it.
+        if (this._loading && this._outputs.length === 0) return html`<div class="lib-loading">Loading…</div>`;
 
         return html`
             <div class="lib-out-list">
