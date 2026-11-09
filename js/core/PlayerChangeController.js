@@ -18,6 +18,12 @@
  * - once what plays has played `counts` seconds, when it had not yet when seen: a listen
  *   counts from 30 seconds, so a track just started shows only then;
  * - when the page is shown again — a phone woken up — since what it showed may be old.
+ *
+ * A view that also SHOWS what plays reads `state`, the last state seen, and `changes`,
+ * which moves each time what plays changes: the view is asked to render at once then,
+ * not a SETTLE_MS later — the queue's play/pause button turns with the music. Equal
+ * `changes` mean nothing has changed in between: a view that showed something ahead of
+ * the box (a tap not yet answered) keeps it until then.
  */
 import { subscribePlayerState } from '../library-store.js';
 
@@ -88,6 +94,10 @@ export class PlayerChangeController {
         this._unsubscribe = null;
         /** What played at the last state; undefined until the first. @type {string|undefined} */
         this._seen = undefined;
+        /** The last state of the player while following; null otherwise. @type {?object} */
+        this.state = null;
+        /** How many times what plays has changed while followed, the first state included. */
+        this.changes = 0;
         this._soon = null;
         this._later = null;
         this._onState = this._onState.bind(this);
@@ -128,6 +138,8 @@ export class PlayerChangeController {
     _stop() {
         this._unsubscribe?.();
         this._unsubscribe = null;
+        // Not followed, the state goes stale at once: nothing must be read from it.
+        this.state = null;
         document.removeEventListener('visibilitychange', this._onPageShown);
         clearTimeout(this._soon);
         clearTimeout(this._later);
@@ -142,10 +154,14 @@ export class PlayerChangeController {
      * @returns {void}
      */
     _onState(state) {
+        this.state = state;
         const seen = playingSignature(state);
         const first = this._seen === undefined;
         if (!first && seen === this._seen) return;
         this._seen = seen;
+        this.changes += 1;
+        // Optional, like addController: the unit tests stand the host in with a bare object.
+        this.host.requestUpdate?.();
         if (!first) this._callSoon();
         clearTimeout(this._later);
         const wait = untilCounted(state, this._counts);

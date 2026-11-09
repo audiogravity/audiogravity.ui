@@ -1355,7 +1355,6 @@ export class AgLibraryPage extends LitElement {
                                 zone-id=${_zoneId}
                                 zone-display-name=${_zoneDisplayName}
                                 ?visible=${isQueue}
-                                @lib-open-np=${() => window.dispatchEvent(new CustomEvent('np-expand'))}
                             ></ag-library-queue>
                         </div>
                     </div>

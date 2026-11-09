@@ -67,6 +67,8 @@ export class AgLibraryUpnpBrowser extends LitElement {
     /** @param {string} objectId @param {string} title */
     async _browse(objectId, title) {
         if (!this.location) return;
+        // BACKLOG: an answer overtaken by a later one still writes its list — no
+        // isLatest() check. See audiogravity.ops/BACKLOG.md.
         await loadWithState(this, async () => {
             const params = new URLSearchParams({
                 location: this.location,

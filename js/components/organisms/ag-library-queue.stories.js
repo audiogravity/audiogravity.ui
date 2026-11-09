@@ -7,6 +7,10 @@ import { injectLibStyles } from './ag-library-page.js';
  * the stories exercise the real render paths: current track, up-next rows,
  * per-source badges and the source filter bar (mixed queues only), and the
  * padlock of a streaming track on a box without Pro.
+ *
+ * The play/pause button reads the player state the view follows once shown; here no
+ * stream runs, so a story hands the follower a state of its own (`player`), or none —
+ * the button then stands greyed, as it does until the box's state is known.
  */
 
 export default {
@@ -61,19 +65,32 @@ const SINGLE_ITEMS = [
 ];
 
 /**
+ * The box's player as the player state lists it, in a given state.
+ * @param {'Playing'|'Paused'} status - What it does.
+ * @returns {object} A player state holding that one entry.
+ */
+const player = (status) => ({ sources: [{
+    source_id: 'src_mpd', control_id: 'src_mpd', protocol: 'mpd', playing: true, playback_status: status,
+}] });
+
+/**
  * Mount the queue with a fixed state (no backend).
  * @param {Array<object>} items - Queue items (one flagged `is_current`).
  * @param {object} [license] - The box's /license/status; unread when omitted, which
  *   locks nothing.
+ * @param {object} [state] - The player state the view would follow; none when omitted.
  * @returns {HTMLElement} Wrapped, ready-to-render element.
  */
-const mount = (items, license) => {
+const mount = (items, license, state) => {
     injectLibStyles();
     const el = document.createElement('ag-library-queue');
     el.sourceId = 'src_mpd';
     el._load = async () => {};
     el._queue = { items };
     if (license) el._license = license;
+    // After the first render: that one tells the follower the view is not shown, and a
+    // follower told so drops any state it held.
+    if (state) el.updateComplete.then(() => { el._follow.state = state; el.requestUpdate(); });
     const wrap = document.createElement('div');
     wrap.style.cssText =
         'background: var(--bg-primary); color: var(--text-primary); '
@@ -83,10 +100,16 @@ const mount = (items, license) => {
 };
 
 /** Mixed providers: per-row source badges + the source filter bar. */
-export const MixedSources = { render: () => mount(MIXED_ITEMS) };
+export const MixedSources = { render: () => mount(MIXED_ITEMS, undefined, player('Playing')) };
 
 /** Single provider: no badges, no filter — the header already names it. */
-export const SingleSource = { render: () => mount(SINGLE_ITEMS) };
+export const SingleSource = { render: () => mount(SINGLE_ITEMS, undefined, player('Playing')) };
+
+/** The music paused: the button of the track playing offers Play. */
+export const Paused = { render: () => mount(SINGLE_ITEMS, undefined, player('Paused')) };
+
+/** The player's state not known yet: the button stands greyed, in its place. */
+export const PlayerStateUnknown = { render: () => mount(SINGLE_ITEMS) };
 
 /**
  * The mixed queue on a box whose trial ended: the streaming tracks wear the Pro tint

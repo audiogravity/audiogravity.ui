@@ -586,3 +586,24 @@ describe('AgLibrarySources — the Pro sections on each edition', () => {
         expect(AgLibrarySources.toNode({ source_id: 'src_mpd', name: 'Library', pro: false }).pro).toBe(false);
     });
 });
+
+describe('the screen read again after a connection changed', () => {
+    // It blanked behind "Loading…", then rebuilt every card below — each reading its own
+    // state again — over about a second: the reader lost their place.
+    const screenWith = (fields) => {
+        const el = bare('');
+        for (const [k, v] of Object.entries({
+            _license: null, _upnpServers: [], _upnpDiscovered: false, _upnpLoading: false,
+            _upnpExtraHost: '', sourceId: 'src_mpd', zoneId: '', zoneDisplayName: '', ...fields,
+        })) Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+        return el;
+    };
+    const LIBRARY = AgLibrarySources.toNode({ source_id: 'src_mpd', name: 'Library', kind: 'library', protocol: 'mpd' });
+
+    it('says "Loading…" only while there is nothing to show', () => {
+        expect(flat(screenWith({ _loading: true, _nodes: [] }).render())).toContain('Loading…');
+        const drawn = flat(screenWith({ _loading: true, _nodes: [LIBRARY] }).render());
+        expect(drawn).not.toContain('Loading…');
+        expect(drawn).toContain('<ag-library-source-card');
+    });
+});

@@ -160,3 +160,36 @@ describe('the outputs of a Pro source on a Starter box', () => {
         expect(new AgLibraryOutputs().locked).toBe(false);
     });
 });
+
+describe('the outputs read again', () => {
+    // After a switch the list is read again: it used to blank behind "Loading…" for the
+    // round trip, then come back drawn anew.
+    const OUTPUTS = [{ id: 'usb', label: 'USB', active: true }, { id: 'toslink', label: 'Optical', active: false }];
+
+    it('says "Loading…" only while there is nothing to show', () => {
+        expect(flat(makeEl({ _loading: true }).render())).toContain('Loading…');
+        const out = flat(makeEl({ _loading: true, _outputs: OUTPUTS }).render());
+        expect(out).not.toContain('Loading…');
+        expect(out.split('class="lib-out-card').length - 1).toBe(2);
+    });
+});
+
+describe('the output asked for, while the list is read again', () => {
+    // The list stays on screen now: cleared before the read, the switching mark gave
+    // ACTIVE back to the output left for the length of the read.
+    it('says SWITCHING until the list has come back, and READY nowhere meanwhile', async () => {
+        apiPost.mockResolvedValue({ success: true });
+        let answer;
+        apiGet.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+        const OUTPUTS = [{ id: 'usb', label: 'USB', active: true }, { id: 'toslink', label: 'Optical', active: false }];
+        const el = makeEl({ _outputs: OUTPUTS });
+        const done = el._activate({ id: 'toslink', active: false });
+        await vi.waitFor(() => expect(apiGet).toHaveBeenCalledWith('/steering/outputs'));
+        expect(el._switching).toBe('toslink');
+        const cards = flat(el.render()).split('class="lib-out-card').slice(1);
+        expect(cards[1]).toContain('SWITCHING');
+        answer([{ id: 'usb', label: 'USB', active: false }, { id: 'toslink', label: 'Optical', active: true }]);
+        await done;
+        expect(el._switching).toBe(null);
+    });
+});

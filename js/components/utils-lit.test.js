@@ -7,7 +7,98 @@ import {
     fmtDuration, getActivityLevel, getActivityLevelForCPU,
     getActivityLevelForMemory, getActivityLevelForRate,
     coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel } from './utils-lit.js';
+    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel,
+    loadWithState } from './utils-lit.js';
+
+/** A promise and the hands that settle it, for reads made to end in a chosen order. */
+function deferred() {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+}
+
+describe('loadWithState', () => {
+    // The lists read again after an action (the queue, the outputs, the sources) start a
+    // read while an earlier one is out: only the latest may settle what the view shows.
+    afterEach(() => { vi.restoreAllMocks(); });
+
+    it('holds _loading while the read is out, and hands back its result', async () => {
+        const host = {};
+        const read = deferred();
+        const done = loadWithState(host, () => read.promise);
+        expect(host._loading).toBe(true);
+        expect(host._error).toBeNull();
+        read.resolve('list');
+        expect(await done).toBe('list');
+        expect(host._loading).toBe(false);
+    });
+
+    it('keeps the message of a failed read, and logs it', async () => {
+        const host = { localName: 'ag-x' };
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        expect(await loadWithState(host, async () => { throw new Error('box unreachable'); })).toBeUndefined();
+        expect(host._error).toBe('box unreachable');
+        expect(host._loading).toBe(false);
+        expect(log).toHaveBeenCalled();
+    });
+
+    it('an earlier read ending first leaves _loading to the latest, still out', async () => {
+        const host = {};
+        const first = deferred();
+        const latest = deferred();
+        const a = loadWithState(host, () => first.promise);
+        const b = loadWithState(host, () => latest.promise);
+        first.resolve();
+        await a;
+        expect(host._loading).toBe(true);
+        latest.resolve();
+        await b;
+        expect(host._loading).toBe(false);
+    });
+
+    it('an overtaken read that fails late writes no error over the latest\'s success', async () => {
+        const host = {};
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const first = deferred();
+        const a = loadWithState(host, () => first.promise);
+        await loadWithState(host, async () => 'fresh');
+        first.reject(new Error('stale failure'));
+        await a;
+        expect(host._error).toBeNull();
+        expect(host._loading).toBe(false);
+        expect(log).toHaveBeenCalled();   // still never silent
+    });
+
+    it('tells its work whether it is still the latest read, for the answer to be dropped', async () => {
+        const host = {};
+        const slow = deferred();
+        let isFirstLatest;
+        const a = loadWithState(host, async (isLatest) => {
+            isFirstLatest = isLatest;
+            await slow.promise;
+            return isLatest();
+        });
+        expect(isFirstLatest()).toBe(true);
+        await loadWithState(host, async (isLatest) => isLatest());
+        expect(isFirstLatest()).toBe(false);
+        slow.resolve();
+        expect(await a).toBe(false);
+    });
+
+    it('keeps each host to its own reads', async () => {
+        const one = {};
+        const two = {};
+        const slow = deferred();
+        const a = loadWithState(one, () => slow.promise);
+        await loadWithState(two, async () => 'x');
+        expect(one._loading).toBe(true);
+        expect(two._loading).toBe(false);
+        slow.resolve();
+        await a;
+        expect(one._loading).toBe(false);
+    });
+});
 
 describe('svgIcon', () => {
     it('wraps an icon in a sized <svg> with the Lucide stroke convention', () => {

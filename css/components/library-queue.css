@@ -25,8 +25,12 @@
     }
 }
 
+/* Unavailable — Clear on a Roon queue; Refresh while its reading is out (`aria-disabled`,
+   which keeps the focus): the list stays on screen as it is read again, so the button is
+   what shows the reading. */
 .lib-queue-action.disabled,
-.lib-queue-action:disabled {
+.lib-queue-action:disabled,
+.lib-queue-action[aria-disabled="true"] {
     cursor: not-allowed;
     opacity: .6;
     pointer-events: none;
@@ -127,6 +131,7 @@
 }
 
 .lib-queue-now-play {
+    position: relative;
     width: 36px;
     height: 36px;
     background: var(--text-primary);
@@ -139,10 +144,28 @@
     flex-shrink: 0;
 }
 
+/* The play/pause button takes the finger over 44px, the touch rule's square, as drawn
+   at 36px: an invisible margin, as the padlock button's (pro-lock.css), nothing moves.
+   Beside a padlock the two margins meet in the 12px gap between them (8 + 4), and do
+   not overlap. */
+.lib-queue-now-play::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+}
+
 .lib-queue-now-play svg {
     width: 12px;
     height: 12px;
     fill: currentcolor;
+}
+
+/* Play/pause unavailable — the player's state not known yet, or a tap on its way: it
+   reads as such and keeps its place (`aria-disabled`, which keeps the focus; the click
+   does nothing). Same reading as the action buttons' (components/button.css). */
+.lib-queue-now-play[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .lib-queue-list-hd {
@@ -182,7 +205,7 @@
 
 .lib-queue-row {
     display: grid;
-    grid-template-columns: auto 36px 1fr auto auto;
+    grid-template-columns: 36px 1fr auto auto;
     align-items: center;
     gap: 12px;
     padding: 8px 20px;
@@ -209,19 +232,6 @@
     align-self: flex-start;
     margin-top: var(--spacing-xs);
     font-size: var(--font-size-xxs);
-}
-
-.lib-queue-grip {
-    color: var(--text-tertiary);
-    cursor: grab;
-}
-
-.lib-queue-grip svg {
-    width: 14px;
-    height: 14px;
-    stroke: currentcolor;
-    fill: none;
-    stroke-width: 1.7;
 }
 
 .lib-queue-col {
