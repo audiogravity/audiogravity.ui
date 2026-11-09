@@ -1381,6 +1381,7 @@ The SSE stream at `/sse/dashboard` emits JSON events. Key event types:
 | `profile_metrics` | Profile activation result |
 | `sysinfo` | CPU, memory, disk, network. **`cpu_throttled`**: one flag per entry of `cpu_per_core`, true when that CPU was slowed down since the previous event — for heat (Intel's throttle counters), or on a Raspberry Pi for an under-powered supply, which marks every core. `null` when the box measures neither, or on a Pi while its supply is fine: not measured, never "not throttled" |
 | `renderer_status` | UPnP renderer connection state — see below |
+| `usb_drive` | A USB drive plugged into the box or pulled out, as a message ready to show: `event` (`added` or `removed`), `level` (`success`, `info`, `warning` or `error`), `title`, `message`, `url` (the page a tapped notification opens) and `drive` (the drive's name). The same words go out as a push notification |
 
 ---
 

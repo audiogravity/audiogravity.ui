@@ -1,5 +1,6 @@
 import { apiGet, buildAuthedUrl } from './api.js';
 import { throttle, AppState, EventEmitter, AgTimerManager } from './common.js';
+import { showUsbDriveNotice } from './core/usb-drive-notice.js';
 
 // =====================
 // SERVER-SENT EVENTS (SSE)
@@ -137,6 +138,11 @@ export function handleWorkerMessage(e) {
             break;
         case 'renderer_status':
             window.dispatchEvent(new CustomEvent('renderer-status-update', { detail: data }));
+            break;
+        case 'usb_drive':
+            // Whatever page is open: a drive plugged in or pulled out, and whether
+            // it is mounted, in the core's own words.
+            showUsbDriveNotice(data);
             break;
     }
 }

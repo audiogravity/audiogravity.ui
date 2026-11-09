@@ -50,6 +50,7 @@ function connect(url) {
         eventSource.addEventListener('network_test_progress', parseAndForward('network_test_progress'));
         eventSource.addEventListener('audio_pipeline', parseAndForward('audio_pipeline'));
         eventSource.addEventListener('renderer_status', parseAndForward('renderer_status'));
+        eventSource.addEventListener('usb_drive', parseAndForward('usb_drive'));
         eventSource.addEventListener('disconnected', () => forward('disconnected'));
 
         // Throttled events

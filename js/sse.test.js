@@ -40,10 +40,13 @@ vi.mock('./common.js', () => ({
     AgTimerManager: { setInterval: vi.fn() },
 }));
 
+vi.mock('./core/usb-drive-notice.js', () => ({ showUsbDriveNotice: vi.fn() }));
+
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { handleWorkerMessage, connectSSE } from './sse.js';
 import { buildAuthedUrl } from './api.js';
+import { showUsbDriveNotice } from './core/usb-drive-notice.js';
 
 // The throttle wrapper is built once when the module loads, so its closed
 // window survives from one test to the next. Fake timers are installed for the
@@ -314,5 +317,46 @@ describe('closing the stream', () => {
         const handler = common.slice(common.indexOf("window.addEventListener('beforeunload'"));
         expect(handler.slice(0, handler.indexOf('\n});'))).toMatch(/\n\s*closeSSE\(\);/);
         expect(common).not.toMatch(/sseConnection\.close\(\)/);
+    });
+});
+
+describe('the worker and the page know the same events', () => {
+    // The page routes what the worker forwards, and the worker forwards only the
+    // events it listens to BY NAME: an EventSource hands a named event (`event:
+    // usb_drive`) to no one but its own listener. `usb_drive` was routed by the
+    // page, tested there, emitted by the core — and the worker never listened to
+    // it, so no toast ever showed (x86 box, 2026-11-09). Each side's tests passed.
+    const worker = readFileSync(resolve(import.meta.dirname, '../public/js/sse-worker.js'), 'utf8');
+    const page = readFileSync(resolve(import.meta.dirname, './sse.js'), 'utf8');
+    const listened = new Set([...worker.matchAll(/addEventListener\('([a-z_]+)'/g)].map(m => m[1]));
+    const routed = new Set([...page.matchAll(/case '([a-z_]+)':/g)].map(m => m[1]));
+    // Handled before the routing: the worker's own word that the stream is gone.
+    const beforeRouting = new Set(['disconnected']);
+
+    it('finds both lists', () => {
+        expect(routed.size).toBeGreaterThan(10);
+        expect(listened.size).toBeGreaterThan(10);
+    });
+
+    it('has the worker listen to every event the page routes', () => {
+        expect([...routed].filter(type => !listened.has(type))).toEqual([]);
+    });
+
+    it('has the page route every event the worker forwards', () => {
+        expect([...listened].filter(type => !routed.has(type) && !beforeRouting.has(type)))
+            .toEqual([]);
+    });
+});
+
+describe('usb_drive routing', () => {
+    it('shows the core\'s notice whatever page is open', () => {
+        const data = {
+            event: 'removed', level: 'warning', title: 'USB drive removed',
+            message: 'Micron CT2000X6SSD9 was removed — your music library is unavailable '
+                + 'until it is plugged back in.',
+            url: '/index.html#library', drive: 'Micron CT2000X6SSD9',
+        };
+        handleWorkerMessage({ data: { type: 'usb_drive', data } });
+        expect(showUsbDriveNotice).toHaveBeenCalledWith(data);
     });
 });
