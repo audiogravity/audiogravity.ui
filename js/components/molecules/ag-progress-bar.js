@@ -38,9 +38,11 @@
  *                                  the same source is a new play; on another source, a
  *                                  track that may be well under way.
  * @attr {boolean} compact       - Mini-player variant: hides the elapsed /
- *                                  remaining times row AND the position knob
- *                                  (the bar stays scrubbable — the dragging
- *                                  highlight on the track is the only visual).
+ *                                  remaining times row AND the position knob.
+ *                                  Seeking still follows `can-seek`; the
+ *                                  mini-player passes none, so its bar shows
+ *                                  the position only (seeking is the
+ *                                  full-screen player's).
  * @attr {boolean} live          - A live broadcast: no end to count down to and
  *                                  no position to seek to, so the bar gives way
  *                                  to a "Live" marker (its dot dims when paused)

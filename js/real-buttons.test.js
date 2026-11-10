@@ -4,15 +4,15 @@
  * A real button is reached with Tab, pressed with Enter or Space and announced by
  * the browser itself, with no code of ours. The badges, icons and dots that were
  * spans or divs announced with role="button" became buttons on 2026-09-29, drawn as
- * before by .plain-btn (css/components/button.css). Two elements keep the role
- * because they cannot become buttons, and stay out of the keyboard's reach — a
- * departure from WCAG 2.1.1, accepted because the app is used by touch:
- * - the radio card holds three buttons, and the swipe that removes a station does
- *   not start on a button;
- * - the mini player's cover holds the album-details bubble.
+ * before by .plain-btn (css/components/button.css). One element keeps the role
+ * because it cannot become a button, and stays out of the keyboard's reach — a
+ * departure from WCAG 2.1.1, accepted because the app is used by touch: the radio
+ * card holds three buttons, and the swipe that removes a station does not start on
+ * a button. The mini player's cover was the second until 2026-11-10: it held the
+ * album-details bubble, which now hangs beside it, and it is a button.
  *
  * Covers:
- * 1. role="button" is written on those two elements and nowhere else
+ * 1. role="button" is written on that element and nowhere else
  * 2. an exception is recognised by the whole name of its class, not part of it
  *
  * BACKLOG: a span or div that only has a click listener, with no role, is not checked
@@ -29,7 +29,6 @@ const BUTTON_ROLE = /\brole=("button"|'button'|\$\{[^}]*'button')/;
 /** The elements that cannot be buttons: their file, and a class their tag carries. */
 const CANNOT_BE_BUTTONS = [
     ['js/components/molecules/ag-radio-card.js', 'lib-radio-card'],
-    ['js/components/organisms/ag-now-playing.js', 'np-cover-wrap'],
 ];
 
 /** The exception a tag of this file is, if it is one. */
@@ -37,7 +36,7 @@ const exceptionOf = (file, tag) =>
     CANNOT_BE_BUTTONS.find(([f, cls]) => f === file && classesOf(tag).includes(cls));
 
 describe('what acts as a button is a <button>', () => {
-    it('role="button" sits on the two elements that cannot be buttons, and nowhere else', () => {
+    it('role="button" sits on the element that cannot be a button, and nowhere else', () => {
         const found = appSources().flatMap((file) => openingTags(readFileSync(file, 'utf8'))
             .filter((tag) => BUTTON_ROLE.test(tag))
             .map((tag) => {

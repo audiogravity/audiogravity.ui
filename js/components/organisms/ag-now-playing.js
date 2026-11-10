@@ -36,6 +36,10 @@ import { LicenseController } from '../../core/LicenseController.js';
  * - Tap or swipe up on the pull-tab that appears after dismissal: re-open
  * The banner auto-reappears when playback starts from idle.
  *
+ * The progress bar along its bottom shows the position only — moving in the track is
+ * the full-screen player's — so a swipe may start on it. The cover is a button that
+ * opens the album-details bubble, which hangs beside it rather than inside it.
+ *
  * @element ag-now-playing
  *
  * @dependency api.js - apiGet / apiPost for now-playing and control endpoints
@@ -472,7 +476,10 @@ export class AgNowPlaying extends LitElement {
     _handleTouchStart(e) {
         if (!this._hasItems || this._dismissed) return;
         if (e.touches.length > 1) return; // ignore pinch-zoom
-        if (e.target.closest('.np-controls, .np-cover-wrap, ag-progress-bar')) {
+        // The buttons and the cover keep the touch for themselves. The progress bar does
+        // not: it only shows the position (see _renderItem), so a swipe that starts on
+        // it — the bar runs along the very bottom of a phone's screen — is a swipe.
+        if (e.target.closest('.np-controls, .np-cover-wrap')) {
             this._touchIgnored = true;
             return;
         }
@@ -654,20 +661,23 @@ export class AgNowPlaying extends LitElement {
 
         return html`
             <div class="np-row" data-source="${item.source_id}" style="--np-bg-color: ${bgColor}">
-                <!-- Cover art + detail popover. Announced as a button, but out of the
-                     keyboard's reach: the album-details bubble is drawn inside it, which a
-                     button cannot hold. A departure from WCAG 2.1.1, accepted on
-                     2026-09-29: the app is used by touch. -->
-                <div class="np-cover-wrap"
-                    role="button"
-                    aria-label="Album details"
-                    @click="${(e) => this._toggleDetailPopover(item.source_id, e)}"
-                >
-                    ${coverSrc && !this._brokenCovers.has(primaryToken)
-                        ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy"
-                              @error=${() => { this._brokenCovers = new Set([...this._brokenCovers, primaryToken]); }}>`
-                        : html`<div class="np-cover np-cover--placeholder"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconMusicNote}</svg></div>`
-                    }
+                <!-- Cover art, and the album-details bubble it opens. The bubble hangs from
+                     the slot beside the cover button, never inside it: a button takes the
+                     press — it shrinks and fades under the finger (press.css) — and a
+                     bubble drawn inside the cover shrank and faded with it at every tap,
+                     its top jumping 23px (measured in Chromium, 2026-11-10). -->
+                <div class="np-cover-wrap">
+                    <button class="np-cover-btn plain-btn"
+                        aria-label="Album details"
+                        aria-expanded=${this._detailOpenId === item.source_id ? 'true' : 'false'}
+                        @click="${(e) => this._toggleDetailPopover(item.source_id, e)}"
+                    >
+                        ${coverSrc && !this._brokenCovers.has(primaryToken)
+                            ? html`<img class="np-cover" src="${coverSrc}" alt="Album cover" loading="lazy"
+                                  @error=${() => { this._brokenCovers = new Set([...this._brokenCovers, primaryToken]); }}>`
+                            : html`<span class="np-cover np-cover--placeholder"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconMusicNote}</svg></span>`
+                        }
+                    </button>
                     ${this._detailOpenId === item.source_id ? html`
                         <div class="np-detail-popover" @click="${(e) => e.stopPropagation()}">
                             <!-- Left: cover + metadata -->
@@ -686,7 +696,9 @@ export class AgNowPlaying extends LitElement {
                                     <div class="np-detail-row"><span class="np-detail-label">Source</span><span class="np-detail-value">${item.display_name}</span></div>
                                 </div>
                             </div>
-                            <!-- Right: tracklist -->
+                            <!-- Right: tracklist, disc by disc. BACKLOG: the track playing is
+                                 found by its number alone — on an album of several discs, it is
+                                 marked on each one. See audiogravity.ops/BACKLOG.md. -->
                             ${(this._albumTracks.get(item.source_id) ?? []).length > 0 ? html`
                                 <div class="np-detail-tracks">
                                     <div class="np-detail-tracks-title">Tracklist</div>
@@ -772,17 +784,19 @@ export class AgNowPlaying extends LitElement {
                 </div>
             </div>
             <!-- No bar on a broadcast, whatever length its player reports: a station AG
-                 cast to a renderer is live by AG's word, as the full player shows it. -->
+                 cast to a renderer is live by AG's word, as the full player shows it.
+                 The bar shows the position and takes no finger: moving in the track is
+                 the full-screen player's. It runs along the very bottom of a phone's
+                 screen, where the phone's own gestures start, and a touch there moved
+                 the track without being meant to (user's report, 2026-11-10). -->
             ${item.duration && !isLiveStream(item) ? html`
                 <ag-progress-bar
                     compact
                     .serverElapsed=${item.elapsed ?? null}
                     .duration=${item.duration}
-                    ?can-seek=${item.can_seek}
                     ?playing=${isPlaying}
                     .title=${item.title ?? ''}
                     .source=${item.source_id ?? ''}
-                    @seek=${(e) => this._sendControl(item.source_id, 'seek', e.detail.secs, item)}
                 ></ag-progress-bar>
             ` : nothing}
         `;

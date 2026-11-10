@@ -758,3 +758,140 @@ describe('the slider or the DSD padlock comes from the shared helpers', () => {
         expect(SOURCE).not.toMatch(/isSelfManagedDriver|isDsd\(/);
     });
 });
+
+/**
+ * A rendering shell: the fields _renderItem and the touch handler read, with no live
+ * element behind them (auth/DOM side-effects in jsdom).
+ * @param {object} [extra] - Fields to set or override.
+ * @returns {AgNowPlaying}
+ */
+function npShell(extra = {}) {
+    const el = Object.create(AgNowPlaying.prototype);
+    for (const [k, v] of Object.entries({
+        _bgColors: new Map(), _brokenCovers: new Set(), _detailOpenId: null,
+        _albumTracks: new Map(), _offline: false, _outputs: [], _activeOutputId: null,
+        _items: [], _hasItems: true, _dismissed: false, _license: undefined, ...extra,
+    })) {
+        Object.defineProperty(el, k, { value: v, writable: true, configurable: true });
+    }
+    return el;
+}
+
+/** A track on a source that can seek. */
+const SEEKABLE = { source_id: 'src_mpd', playback_status: 'Playing', title: 'So What',
+    duration: 545, elapsed: 60, can_seek: true };
+
+/**
+ * The mini-player's progress bar shows the position and takes no finger. It runs along
+ * the very bottom of a phone's screen, where the phone's own gestures start, and a touch
+ * there moved the track without being meant to (user's report, 2026-11-10; measured in
+ * Chromium the same day: a band 14px high, across the whole width, took the finger).
+ * Moving in the track is the full-screen player's.
+ */
+describe('the bar shows the position, and moving in the track is the full player\'s', () => {
+    beforeEach(() => { apiPost.mockReset(); apiPost.mockResolvedValue({ success: true }); });
+
+    it('gives its bar no seek, even on a source that can seek', () => {
+        const host = document.createElement('div');
+        litRender(npShell()._renderItem(SEEKABLE), host);
+        const bar = host.querySelector('ag-progress-bar');
+        expect(bar).not.toBeNull();
+        expect(bar.hasAttribute('can-seek')).toBe(false);
+        expect(bar.canSeek).toBe(false);
+    });
+
+    it('moves nothing when a finger presses and drags along its bar', async () => {
+        // The real path: the bar drawn in the page, a press on its track, a drag, a release.
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        try {
+            litRender(npShell()._renderItem(SEEKABLE), host);
+            const bar = host.querySelector('ag-progress-bar');
+            await bar.updateComplete;
+            const seeks = vi.fn();
+            bar.addEventListener('seek', seeks);
+            bar.querySelector('.ag-pb-track')
+                .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 40 }));
+            window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200 }));
+            window.dispatchEvent(new PointerEvent('pointerup', { clientX: 200 }));
+            expect(seeks).not.toHaveBeenCalled();
+            expect(apiPost).not.toHaveBeenCalled();
+        } finally {
+            host.remove();
+        }
+    });
+
+    it('does nothing on a tap of its bar', () => {
+        // A tap is a touch with no movement: no swipe to make of it, no seek either.
+        const el = npShell({ _items: [SEEKABLE], _activeSourceIdx: 0 });
+        const host = document.createElement('div');
+        litRender(el._renderItem(SEEKABLE), host);
+        el.querySelector = () => null;   // the bar a gesture moves: none in this shell
+        const expand = vi.fn();
+        window.addEventListener('np-expand', expand);
+        try {
+            const at = [{ clientX: 300, clientY: 809 }];
+            el._handleTouchStart({ touches: at, target: host.querySelector('ag-progress-bar'), preventDefault() {} });
+            el._handleTouchEnd({ changedTouches: at });
+        } finally {
+            window.removeEventListener('np-expand', expand);
+        }
+        expect(expand).not.toHaveBeenCalled();
+        expect(el._dismissed).toBe(false);
+        expect(el._activeSourceIdx).toBe(0);
+        expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('lets a swipe start on its bar, and keeps the buttons and the cover for a tap', () => {
+        const el = npShell();
+        const host = document.createElement('div');
+        litRender(el._renderItem(SEEKABLE), host);
+        el.querySelector = () => null;   // the bar a gesture moves: none in this shell
+        const touch = (target) => {
+            const e = { touches: [{ clientX: 100, clientY: 800 }], target, preventDefault: vi.fn() };
+            el._handleTouchStart(e);
+            return { ignored: el._touchIgnored, claimed: e.preventDefault.mock.calls.length > 0 };
+        };
+        expect(touch(host.querySelector('ag-progress-bar'))).toEqual({ ignored: false, claimed: true });
+        expect(touch(host.querySelector('.np-controls button'))).toEqual({ ignored: true, claimed: false });
+        expect(touch(host.querySelector('.np-cover-btn'))).toEqual({ ignored: true, claimed: false });
+    });
+});
+
+/**
+ * A button shrinks and fades under the finger (css/components/press.css). The album-details
+ * bubble used to be drawn inside the cover, and shrank and faded with it at every tap: it
+ * turned see-through and its top jumped 23px for about 0.15 s (measured in Chromium,
+ * 2026-11-10). It hangs beside the cover button now, inside nothing that takes the press.
+ */
+describe('the cover opens the album details, and only the cover takes the press', () => {
+    const render = (open, extra = {}) => {
+        const host = document.createElement('div');
+        litRender(npShell({ _detailOpenId: open ? 'src_mpd' : null })
+            ._renderItem({ ...SEEKABLE, album: 'Kind of Blue', ...extra }), host);
+        return host;
+    };
+
+    it('makes the cover a button that says whether the details are open', () => {
+        const closed = render(false).querySelector('.np-cover-wrap > button.np-cover-btn');
+        expect(closed?.getAttribute('aria-label')).toBe('Album details');
+        expect(closed?.getAttribute('aria-expanded')).toBe('false');
+        expect(render(true).querySelector('.np-cover-btn').getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('hangs the bubble beside the cover button, inside nothing that takes the press', () => {
+        const host = render(true);
+        const bubble = host.querySelector('.np-detail-popover');
+        expect(bubble).not.toBeNull();
+        expect(bubble.parentElement.classList.contains('np-cover-wrap')).toBe(true);
+        expect(bubble.closest('button, [role="button"]')).toBeNull();
+        expect(render(false).querySelector('.np-detail-popover')).toBeNull();
+    });
+
+    it('puts no block inside the button when there is no cover to show', () => {
+        // A button holds phrasing content: the placeholder is a span its class draws as a block.
+        const button = render(false, { cover_token: null }).querySelector('.np-cover-btn');
+        expect(button.querySelector('.np-cover--placeholder')?.tagName).toBe('SPAN');
+        expect(button.querySelector('div')).toBeNull();
+    });
+});

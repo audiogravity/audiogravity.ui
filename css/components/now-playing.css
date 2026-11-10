@@ -66,21 +66,23 @@ ag-now-playing {
     border-bottom: none;
 }
 
-/* Cover art */
+/* Cover art: the slot the details bubble hangs from, and the button that opens it.
+   The bubble is the button's sibling, never its child: the press feedback
+   (components/press.css) shrinks and fades a button under the finger, and a bubble
+   inside the cover shrank and faded with it at every tap. */
 .np-cover-wrap {
     position: relative;
     flex-shrink: 0;
     width: 52px;
     height: 52px;
-    cursor: pointer;
 }
 
-/* The details bubble is drawn inside the cover, which is announced as a button: a
-   finger on the bubble — to scroll it — presses the cover too, and the press feedback
-   (base.css) faded the cover and the bubble with it. */
-.np-cover-wrap:has(.np-detail-popover:active) {
-    filter: none;
-    transform: none;
+/* Sized by the cover it holds (.np-cover). The radius clips nothing — the cover
+   rounds its own corners —: it is what the focus ring follows. */
+.np-cover-btn {
+    display: block;
+    border-radius: var(--radius-cover);
+    cursor: pointer;
 }
 
 .np-detail-popover {
