@@ -15,7 +15,7 @@ vi.mock('./ui-helpers.js', () => ({ showToast: vi.fn() }));
 import {
     queueItem, upnpPlay, playWithFeedback,
     PLAYLISTS_CHANGED_EVENT, failureReason, fetchPlaylistTracks, createPlaylist,
-    addToPlaylist, removeFromPlaylist, renamePlaylist, deletePlaylist,
+    addToPlaylist, removeFromPlaylist, renamePlaylist, deletePlaylist, moveQueueItem, playQueueItem,
 } from './library-api.js';
 import { apiGet, apiPost, apiPut, apiDelete } from './api.js';
 import { showToast } from './ui-helpers.js';
@@ -451,5 +451,30 @@ describe('playlist helpers', () => {
             .toBe('This playlist no longer exists');
         expect(failureReason(new Error('Network down'))).toBe('Network down');
         expect(failureReason(undefined)).toBe('The request failed.');
+    });
+});
+
+describe('moveQueueItem', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('moves the track by its song id beside the track named, for the source browsed', async () => {
+        await moveQueueItem('src_highresaudio', '42', { before: '7' });
+        expect(apiPost).toHaveBeenCalledWith('/library/queue/42/move?source_id=src_highresaudio', { before: '7' });
+        await moveQueueItem('src_mpd', '42', { after: '9' });
+        expect(apiPost).toHaveBeenLastCalledWith('/library/queue/42/move?source_id=src_mpd', { after: '9' });
+    });
+
+    it('escapes the source in the address', async () => {
+        await moveQueueItem('src a&b', 7, { before: 3 });
+        expect(apiPost.mock.calls[0][0]).toBe('/library/queue/7/move?source_id=src%20a%26b');
+    });
+});
+
+describe('playQueueItem', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('plays the track by its song id, for the source browsed', async () => {
+        await playQueueItem('src_mpd', '42');
+        expect(apiPost).toHaveBeenCalledWith('/library/queue/42/play?source_id=src_mpd');
     });
 });

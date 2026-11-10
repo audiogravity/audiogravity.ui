@@ -205,7 +205,7 @@
 
 .lib-queue-row {
     display: grid;
-    grid-template-columns: 36px 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto;
     align-items: center;
     gap: 12px;
     padding: 8px 20px;
@@ -215,6 +215,77 @@
        as the row slides. The gesture's touch-action / user-select are stamped by
        the swipeRow directive. */
     background: var(--bg-primary);
+}
+
+/* A row of the box's own queue plays its track at a tap, anywhere but on its own
+   buttons (ag-library-queue, _onRowClick). */
+.lib-queue-row:not(.lib-queue-row--fixed) {
+    cursor: pointer;
+}
+
+/* A row that does not move — a Roon queue's, changed from the Roon app: no handle,
+   and the cover takes its column. */
+.lib-queue-row.lib-queue-row--fixed {
+    grid-template-columns: 36px 1fr auto auto;
+}
+
+/* The cover and the words of a track of the box's own queue, one real button: the
+   keyboard's way to play the track. Laid out as the fixed row lays them, a column
+   for each. */
+.lib-queue-play {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: var(--spacing-md);
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    text-align: start;
+    cursor: pointer;
+}
+
+/* The handle a track moves by (DragToReorderController). Held, it takes the gesture
+   whole — the directive stamps touch-action: none on it —, so a slide from it moves the
+   row instead of scrolling the list. Drawn 24 x 36, it takes the finger over 44px, the
+   touch rule's square: an invisible margin, as the play/pause button's, inside the row's
+   20px padding and its 12px gap. */
+.lib-queue-grip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 36px;
+    color: var(--text-tertiary);
+    cursor: grab;
+}
+
+.lib-queue-grip::before {
+    content: '';
+    position: absolute;
+    inset: -4px -10px;
+}
+
+/* Drawn as Lucide draws its dots, with the stroke the removal arrow has (.lib-queue-more
+   svg): the two icons of the row then read alike, in the same colour. */
+.lib-queue-grip svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentcolor;
+    fill: none;
+    stroke-width: 2;
+}
+
+/* In random order the queue's order decides nothing: the handle reads as unavailable,
+   moves nothing, and leaves the touch to the list. */
+.lib-queue-grip[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (hover: hover) {
+    .lib-queue-grip:hover:not([aria-disabled="true"]) {
+        color: var(--text-primary);
+    }
 }
 
 /* A streaming service's track on a box without Pro, which the player will skip: the

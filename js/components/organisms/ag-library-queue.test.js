@@ -42,10 +42,18 @@ vi.mock('../library-constants.js', () => ({
     originLabel: (o) => ({ qobuz: 'Qobuz', radio: 'Radio', library: 'Library' }[o] || o),
 }));
 const removeQueueItemMock = vi.fn();
-vi.mock('../../library-api.js', () => ({ removeQueueItem: (...a) => removeQueueItemMock(...a) }));
+const moveQueueItemMock = vi.fn();
+const playQueueItemMock = vi.fn();
+vi.mock('../../library-api.js', () => ({
+    removeQueueItem: (...a) => removeQueueItemMock(...a),
+    moveQueueItem: (...a) => moveQueueItemMock(...a),
+    playQueueItem: (...a) => playQueueItemMock(...a),
+}));
 const showToastMock = vi.fn();
 vi.mock('../../ui-helpers.js', () => ({ showToast: (...a) => showToastMock(...a) }));
-vi.mock('../../ag-icons.js', () => ({ iconPause: 'ICON-PAUSE', iconPlay: 'ICON-PLAY', iconArrowLeft: '' }));
+vi.mock('../../ag-icons.js', () => ({
+    iconPause: 'ICON-PAUSE', iconPlay: 'ICON-PLAY', iconArrowLeft: '', iconDragHandle: 'ICON-GRIP',
+}));
 vi.mock('../atoms/ag-library-cover.js', () => ({}));
 vi.mock('../atoms/ag-pro-lock.js', () => ({}));
 vi.mock('../atoms/ag-source-badge.js', () => ({}));
@@ -57,7 +65,9 @@ vi.mock('../../license-tiers.js', async (importOriginal) => ({
     openLicensePanel: (...a) => openLicensePanelMock(...a),
 }));
 
-import { AgLibraryQueue, queueSignature } from './ag-library-queue.js';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { AgLibraryQueue, dropNeighbour, movedItems, queueSignature } from './ag-library-queue.js';
 import { cssRuleBody, flat, readStylesheet } from '../../test-utils.js';
 
 /** Bare instance with sane defaults (no DOM, no lifecycle). */
@@ -68,6 +78,8 @@ const el = (overrides = {}) =>
         // …and the player follower: no state known yet, nothing changed.
         _follow: { state: null, changes: 0, follow: vi.fn() },
         _removing: new Set(), _queueOf: null, _toggling: false, _playPending: null, _refreshing: false,
+        // …and the drag controller: no row held, no move on its way.
+        _drag: { dragging: false }, _moving: 0, _readAgain: false,
         _originFilter: 'all', sourceId: 'src_mpd', zoneId: '', ...overrides,
     });
 
@@ -86,6 +98,8 @@ beforeEach(() => {
     apiGetMock.mockReset();
     apiPostMock.mockReset().mockResolvedValue({ success: true });
     removeQueueItemMock.mockReset().mockResolvedValue(undefined);
+    moveQueueItemMock.mockReset().mockResolvedValue({ ok: true });
+    playQueueItemMock.mockReset().mockResolvedValue({ ok: true });
     showToastMock.mockReset();
     openLicensePanelMock.mockReset();
 });
@@ -554,22 +568,6 @@ describe('ag-library-queue — the list stays on screen while it is read again',
     });
 });
 
-describe('ag-library-queue — no drag handle', () => {
-    // The rows wore a drag handle that moved nothing: the queue's order cannot be changed.
-    it('draws none on a row', () => {
-        const out = flat(el({ _queue: { items: [
-            { origin: 'library', position: 1, queue_id: '5', title: 'x', is_current: false },
-        ] } }).render());
-        expect(out).not.toContain('grip');
-    });
-
-    it('lays a row out without its column, and nothing grabs', () => {
-        const sheet = readStylesheet('css', 'components', 'library-queue.css');
-        expect(sheet).not.toMatch(/lib-queue-grip|cursor:\s*grab/);
-        expect(cssRuleBody(sheet, '.lib-queue-row')).toMatch(/grid-template-columns:\s*36px 1fr auto auto;/);
-    });
-});
-
 describe('ag-library-queue — up next is what comes after the track playing', () => {
     // It listed every track but the current one, those before it too — played, or skipped,
     // and not to play again: a track moved to the top of the list would have landed there.
@@ -615,6 +613,226 @@ describe('ag-library-queue — up next is what comes after the track playing', (
         await e._clear();
         expect(removeQueueItemMock.mock.calls.map(c => c[1])).toEqual(['1']);
     });
+});
+
+describe('ag-library-queue — moving a track by its handle', () => {
+    const track = (id, position, extra = {}) => ({ origin: 'library', position, queue_id: id,
+        title: `t${id}`, is_current: false, ...extra });
+    const ids = (e) => e._queue.items.map(i => i.queue_id);
+    /** The rendered rows, one string each. */
+    const rows = (e) => flat(e.render()).split('<div class="ag-swipe-wrap">').slice(1);
+
+    it('gives each row of the box\'s queue a handle — a real button', () => {
+        const [row] = rows(el({ _queue: { items: [track('5', 0)] } }));
+        expect(row).toMatch(/<button class="plain-btn lib-queue-grip" aria-label="Move"/);
+        expect(row).toContain('ICON-GRIP');
+        expect(row).toContain('aria-disabled=false');
+        expect(row).not.toContain('lib-queue-row--fixed');
+    });
+
+    it('greys the handles in random order', () => {
+        const [row] = rows(el({ _queue: { items: [track('5', 0)], shuffle: true } }));
+        expect(row).toContain('aria-disabled=true');
+    });
+
+    it('wires the handle\'s gesture to the row\'s track, and off in random order', () => {
+        const e = el();
+        const wiring = (shuffle) => e._renderHandle({ queue_id: '5' }, shuffle).values.find(v => v?._$litDirective$);
+        expect(wiring(false).values.slice(1)).toEqual(['5', true]);
+        expect(wiring(true).values.slice(1)).toEqual(['5', false]);
+        expect(wiring(false).values[0]).toBe(e._drag);
+    });
+
+    it('gives a Roon row none, the cover taking its column', () => {
+        const e = el({ sourceId: 'src_roon', zoneId: 'z', _queue: { items: [
+            { origin: 'roon', position: 0, queue_id: null, title: 'r', is_current: false }] } });
+        const [row] = rows(e);
+        expect(row).not.toContain('lib-queue-grip');
+        expect(row).toContain('lib-queue-row--fixed');
+    });
+
+    it('lays the handle out in a column of its own, 44px to the finger, and nothing else', () => {
+        const sheet = readStylesheet('css', 'components', 'library-queue.css');
+        expect(cssRuleBody(sheet, '.lib-queue-row')).toMatch(/grid-template-columns:\s*auto 1fr auto auto;/);
+        expect(cssRuleBody(sheet, '.lib-queue-play')).toMatch(/grid-template-columns:\s*36px 1fr;/);
+        expect(cssRuleBody(sheet, '.lib-queue-play')).toMatch(/gap:\s*var\(--spacing-md\);/);
+        // The whole row plays its track: a mouse sees it.
+        expect(cssRuleBody(sheet, '.lib-queue-row:not(.lib-queue-row--fixed)')).toMatch(/cursor:\s*pointer;/);
+        expect(cssRuleBody(sheet, '.lib-queue-row.lib-queue-row--fixed')).toMatch(/grid-template-columns:\s*36px 1fr auto auto;/);
+        expect(cssRuleBody(sheet, '.lib-queue-grip')).toMatch(/position:\s*relative;[\s\S]*width:\s*24px;[\s\S]*height:\s*36px;/);
+        expect(cssRuleBody(sheet, '.lib-queue-grip::before')).toMatch(/inset:\s*-4px -10px;/);
+        // Its dots stroked as the removal arrow is: the two read alike, in the same colour.
+        const stroke = /stroke:\s*currentcolor;\s*fill:\s*none;\s*stroke-width:\s*2;/;
+        expect(cssRuleBody(sheet, '.lib-queue-grip svg')).toMatch(stroke);
+        expect(cssRuleBody(sheet, '.lib-queue-more svg')).toMatch(stroke);
+        expect(cssRuleBody(sheet, '.lib-queue-grip[aria-disabled="true"]')).toMatch(/opacity:\s*0\.5;/);
+    });
+
+    it('draws the handle\'s dots as Lucide does, for its svg\'s stroke to reach them', () => {
+        // A dot's own fill or stroke beats the one its svg hands down: filled, unstroked,
+        // each came out half as wide as Lucide's — paler than the arrow, in the same colour.
+        const icons = readFileSync(path.join(process.cwd(), 'js', 'ag-icons.js'), 'utf8');
+        const grip = icons.match(/export const iconDragHandle = svg`([^`]*)`/)[1];
+        expect(grip.match(/<circle cx="(9|15)" cy="(5|12|19)" r="1"\/>/g)).toHaveLength(6);
+        expect(grip).not.toMatch(/fill=|stroke=/);
+    });
+
+    describe('dropNeighbour — the track a dropped one lands beside', () => {
+        // Shown: B C D E F (the current one above them, not shown).
+        const shown = ['B', 'C', 'D', 'E', 'F'].map(id => ({ queue_id: id }));
+        it.each([
+            ['to the top: before the first, right after the current one', 4, 0, { before: 'B' }],
+            ['down past one', 0, 1, { before: 'D' }],
+            ['to the end: after the last', 0, 4, { after: 'F' }],
+            ['up past one', 3, 2, { before: 'D' }],
+            ['the last but one to the end', 3, 4, { after: 'F' }],
+        ])('%s', (_, from, toIndex, neighbour) => {
+            expect(dropNeighbour(shown, from, toIndex)).toEqual(neighbour);
+        });
+
+        it('names a shown track: those a filter hides keep their places around it', () => {
+            // Queue: current, B(q), C(r), D(q), E(r), F(q); shown under q: B D F.
+            const q = [{ queue_id: 'B' }, { queue_id: 'D' }, { queue_id: 'F' }];
+            expect(dropNeighbour(q, 2, 0)).toEqual({ before: 'B' });   // F to the top
+            expect(dropNeighbour(q, 0, 2)).toEqual({ after: 'F' });    // B to the end
+            expect(dropNeighbour(q, 0, 1)).toEqual({ before: 'F' });   // B between D and F
+        });
+
+        it('names none when no other row is shown', () => {
+            expect(dropNeighbour([{ queue_id: 'B' }], 0, 0)).toBeNull();
+        });
+    });
+
+    describe('movedItems — the queue as the box will hold it', () => {
+        const queue = ['a', 'b', 'c', 'd'].map((id, position) => ({ queue_id: id, position }));
+        it('moves the track before its neighbour and numbers every position again', () => {
+            const out = movedItems(queue, 'd', { before: 'b' });
+            expect(out.map(i => i.queue_id)).toEqual(['a', 'd', 'b', 'c']);
+            expect(out.map(i => i.position)).toEqual([0, 1, 2, 3]);
+            expect(out[0]).toBe(queue[0]);   // an unmoved track keeps its object
+        });
+        it('moves the track after its neighbour, from above it or below it', () => {
+            expect(movedItems(queue, 'a', { after: 'c' }).map(i => i.queue_id)).toEqual(['b', 'c', 'a', 'd']);
+            expect(movedItems(queue, 'd', { after: 'a' }).map(i => i.queue_id)).toEqual(['a', 'd', 'b', 'c']);
+            expect(movedItems(queue, 'b', { after: 'd' }).map(i => i.queue_id)).toEqual(['a', 'c', 'd', 'b']);
+        });
+        it('leaves the queue alone for a track, or a neighbour, it does not hold', () => {
+            expect(movedItems(queue, 'zz', { before: 'a' })).toBe(queue);
+            expect(movedItems(queue, 'a', { after: 'zz' })).toBe(queue);
+        });
+    });
+
+    it('moves the track at once, before the box answers, then reads the queue', async () => {
+        const answer = deferred();
+        moveQueueItemMock.mockReturnValue(answer.promise);
+        const e = el({ _queue: { items: [track('1', 0, { is_current: true }), track('2', 1), track('3', 2)] } });
+        e._load = vi.fn();
+        const done = e._move('3', 0);   // dropped at the top
+        expect(ids(e)).toEqual(['1', '3', '2']);
+        expect(moveQueueItemMock).toHaveBeenCalledWith('src_mpd', '3', { before: '2' });
+        expect(e._load).not.toHaveBeenCalled();
+        answer.resolve({ ok: true });
+        await done;
+        expect(e._load).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing when dropped where it was', async () => {
+        const e = el({ _queue: { items: [track('2', 0), track('3', 1)] } });
+        await e._move('3', 1);
+        expect(moveQueueItemMock).not.toHaveBeenCalled();
+    });
+
+    it('a refused move puts the track back, with the box\'s reason', async () => {
+        moveQueueItemMock.mockRejectedValue(new Error('No such song'));
+        apiGetMock.mockResolvedValue({ items: [track('2', 0), track('3', 1)] });
+        const e = el({ _queue: { items: [track('2', 0), track('3', 1)] } });
+        await e._move('3', 0);
+        expect(showToastMock).toHaveBeenCalledWith('error', 'Move failed', 'No such song');
+        expect(ids(e)).toEqual(['2', '3']);
+    });
+
+    describe('when the queue repeats', () => {
+        // Shown: 3 4, then 1 — the track before the current one, again after the last.
+        const repeating = () => {
+            const e = el({ _queue: { items: [track('1', 0), track('2', 1, { is_current: true }),
+                track('3', 2), track('4', 3)], repeat: true } });
+            e._load = vi.fn();
+            return e;
+        };
+        const shown = (e) => e._view().shownNext.map(i => i.queue_id);
+
+        it('moves a track that plays again after the last to the top: it plays next', async () => {
+            const e = repeating();
+            await e._move('1', 0);
+            expect(moveQueueItemMock).toHaveBeenCalledWith('src_mpd', '1', { before: '3' });
+            expect(shown(e)).toEqual(['1', '3', '4']);
+        });
+
+        it('moves a track to the end: it plays last, once the queue has started over', async () => {
+            const e = repeating();
+            await e._move('3', 2);
+            expect(moveQueueItemMock).toHaveBeenCalledWith('src_mpd', '3', { after: '1' });
+            expect(shown(e)).toEqual(['4', '1', '3']);
+        });
+    });
+
+    it('holds a reading back while a row is held, asks the box nothing, and reads once it is let go', async () => {
+        apiGetMock.mockResolvedValue({ items: [track('9', 0)] });
+        const e = el({ _queue: { items: [track('2', 0)] } });
+        e._drag.dragging = true;
+        await e._load();
+        expect(apiGetMock).not.toHaveBeenCalled();   // a reading thrown away would be read for nothing
+        expect(ids(e)).toEqual(['2']);      // not under the finger
+        expect(e._readAgain).toBe(true);
+        e._drag.dragging = false;
+        e._resumeReadings();
+        await vi.waitFor(() => expect(ids(e)).toEqual(['9']));
+        expect(e._readAgain).toBe(false);
+    });
+
+    it('holds back the answer of a reading that left before a row was taken', async () => {
+        const answer = deferred();
+        apiGetMock.mockReturnValue(answer.promise);
+        const e = el({ _queue: { items: [track('2', 0)] } });
+        const reading = e._load();
+        e._drag.dragging = true;            // taken while the reading is out
+        answer.resolve({ items: [track('9', 0)] });
+        await reading;
+        expect(ids(e)).toEqual(['2']);
+        expect(e._readAgain).toBe(true);
+    });
+
+    it('holds back a reading that left before a move: it would show the old order', async () => {
+        const answer = deferred();
+        moveQueueItemMock.mockReturnValue(answer.promise);
+        const left = deferred();
+        apiGetMock.mockReturnValueOnce(left.promise)                              // left before the move
+            .mockResolvedValueOnce({ items: [track('3', 0), track('2', 1)] });   // after it
+        const e = el({ _queue: { items: [track('2', 0), track('3', 1)] } });
+        const reading = e._load();
+        const moving = e._move('3', 0);
+        left.resolve({ items: [track('2', 0), track('3', 1)] });
+        await reading;
+        expect(ids(e)).toEqual(['3', '2']);  // the old order did not come back
+        answer.resolve({ ok: true });
+        await moving;
+        expect(ids(e)).toEqual(['3', '2']);
+        expect(apiGetMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('asks the box nothing for a reading wanted while a move is on its way, and reads after it', async () => {
+        const answer = deferred();
+        moveQueueItemMock.mockReturnValue(answer.promise);
+        apiGetMock.mockResolvedValue({ items: [track('3', 0), track('2', 1)] });
+        const e = el({ _queue: { items: [track('2', 0), track('3', 1)] } });
+        const moving = e._move('3', 0);
+        await e._load();
+        expect(apiGetMock).not.toHaveBeenCalled();
+        answer.resolve({ ok: true });
+        await moving;
+        expect(apiGetMock).toHaveBeenCalledTimes(1);
+        expect(e._readAgain).toBe(false);
+    });
 
     it('tells a toggle of the random order, or of the repeat, as a change, for the list to follow it', () => {
         const mpd = (shuffle, repeat = false) => ({ sources: [{ protocol: 'mpd', source_id: 'src_mpd', playing: true,
@@ -622,6 +840,102 @@ describe('ag-library-queue — up next is what comes after the track playing', (
         expect(queueSignature(mpd(false))).not.toBe(queueSignature(mpd(true)));
         expect(queueSignature(mpd(false))).not.toBe(queueSignature(mpd(false, true)));
         expect(queueSignature(mpd(false))).toBe(queueSignature(mpd(false)));
+    });
+});
+
+describe('ag-library-queue — a tap on a track plays it', () => {
+    const track = (id, position, extra = {}) => ({ origin: 'library', position, queue_id: id,
+        title: `t${id}`, is_current: false, ...extra });
+    const rows = (e) => flat(e.render()).split('<div class="ag-swipe-wrap">').slice(1);
+    /** What the i-th row shown does on a click: its bound handler, or null. */
+    const rowClick = (e, i = 0) =>
+        e.render().values.find(Array.isArray)[i].values.find(v => typeof v === 'function') ?? null;
+    /** A click's target: one inside a button of the given class, or the row itself. */
+    const inButton = (cls) => ({ closest: (sel) => (sel === 'button'
+        ? { classList: { contains: (c) => c === cls } } : null) });
+    const ON_ROW = { closest: () => null };
+    const tap = (e, item) => e._onRowClick({ target: ON_ROW }, item);
+
+    it('makes the cover and the words of a row of the box\'s queue one real button', () => {
+        const [row] = rows(el({ _queue: { items: [track('5', 0)] } }));
+        expect(row).toMatch(/<button class="plain-btn lib-queue-play" data-swipe-through aria-label=Play t5/);
+        expect(row).toMatch(/lib-queue-play"[\s\S]*<ag-library-cover[\s\S]*lib-queue-col-t">t5</);
+    });
+
+    it('hears the click on the row: a mouse\'s, which the row\'s swipe sends to the row', async () => {
+        const e = el({ _queue: { items: [track('5', 0)] } });
+        e._load = vi.fn();
+        rowClick(e)({ target: ON_ROW });
+        expect(playQueueItemMock).toHaveBeenCalledWith('src_mpd', '5');
+    });
+
+    it('plays at a click on the cover or the words — a finger\'s, the keyboard\'s — once', () => {
+        const e = el({ _queue: { items: [track('5', 0)] } });
+        e._load = vi.fn();
+        rowClick(e)({ target: inButton('lib-queue-play') });
+        expect(playQueueItemMock).toHaveBeenCalledTimes(1);
+        // The button has no click of its own: the row hears it, once.
+        expect(e._renderTrack(track('5', 0), false, true).values.some(v => typeof v === 'function')).toBe(false);
+    });
+
+    it('leaves the row\'s other buttons their clicks: the handle, the arrow that removes, the padlock', () => {
+        const e = el({ _queue: { items: [track('5', 0)] } });
+        for (const cls of ['lib-queue-grip', 'lib-queue-more', 'pro-lock-btn']) {
+            rowClick(e)({ target: inButton(cls) });
+        }
+        expect(playQueueItemMock).not.toHaveBeenCalled();
+        expect(openLicensePanelMock).not.toHaveBeenCalled();
+    });
+
+    it('leaves a Roon row\'s words as words, and plays nothing from it', () => {
+        const e = el({ sourceId: 'src_roon', zoneId: 'z', _queue: { items: [
+            { origin: 'roon', position: 0, queue_id: null, title: 'r', is_current: false }] } });
+        const [row] = rows(e);
+        expect(row).not.toContain('lib-queue-play');
+        expect(row).toContain('lib-queue-col-t">r<');
+        expect(rowClick(e)).toBeNull();
+    });
+
+    it('plays the track by its song id, then reads the queue', async () => {
+        const e = el({ _queue: { items: [track('5', 0)] } });
+        e._load = vi.fn();
+        tap(e, track('5', 0));
+        await vi.waitFor(() => expect(e._load).toHaveBeenCalledTimes(1));
+        expect(playQueueItemMock).toHaveBeenCalledWith('src_mpd', '5');
+    });
+
+    it('plays nothing at the end of a swipe', () => {
+        const e = el({ _queue: { items: [track('5', 0)] } });
+        e._swipe.swiping = true;
+        tap(e, track('5', 0));
+        expect(playQueueItemMock).not.toHaveBeenCalled();
+    });
+
+    it('leads a locked track to the licence panel, as its padlock does', () => {
+        const STARTER = { status: 'starter', pro: false };
+        const e = el({ _license: STARTER, _queue: { items: [] } });
+        tap(e, track('5', 0, { origin: 'qobuz', pro: true }));
+        expect(openLicensePanelMock).toHaveBeenCalledWith(STARTER);
+        expect(playQueueItemMock).not.toHaveBeenCalled();
+    });
+
+    it('says why it was not played — where the music goes out, the box\'s reason', async () => {
+        playQueueItemMock.mockRejectedValue(Object.assign(new Error('409'), {
+            status: 409, detail: "The music goes out through HQPlayer: the queue shown is the box's own" }));
+        const e = el();
+        e._load = vi.fn();
+        await e._playTrack('5');
+        expect(showToastMock).toHaveBeenCalledWith('error', 'Not played',
+            "The music goes out through HQPlayer: the queue shown is the box's own");
+        expect(e._load).not.toHaveBeenCalled();
+    });
+
+    it('says a play refused for want of Pro as the players do', async () => {
+        playQueueItemMock.mockRejectedValue(Object.assign(new Error('403'), { status: 403, detail: 'Pro edition needed' }));
+        const e = el();
+        e._load = vi.fn();
+        await e._playTrack('5');
+        expect(showToastMock).toHaveBeenCalledWith('error', 'Playback blocked', 'Pro edition needed');
     });
 });
 

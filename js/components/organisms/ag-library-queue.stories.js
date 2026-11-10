@@ -12,10 +12,10 @@ import { injectLibStyles } from './ag-library-page.js';
  * stream runs, so a story hands the follower a state of its own (`player`), or none —
  * the button then stands greyed, as it does until the box's state is known.
  *
- * Up next lists what comes after the track playing: the tracks before it are not shown —
- * unless the queue repeats (`repeat` on the queue, as the core answers it), where they
- * follow, in the order they will play again; in random order (`shuffle`), every track
- * is listed.
+ * Each row of the box's queue carries the handle it moves by; in random order (`shuffle`
+ * on the queue, as the core answers it) the handles are greyed. Up next lists what comes
+ * after the track playing: the tracks before it are not shown — unless the queue repeats
+ * (`repeat`), where they follow, in the order they will play again.
  */
 
 export default {
@@ -116,7 +116,7 @@ export const Paused = { render: () => mount(SINGLE_ITEMS, undefined, player('Pau
 /** The player's state not known yet: the button stands greyed, in its place. */
 export const PlayerStateUnknown = { render: () => mount(SINGLE_ITEMS) };
 
-/** Random order: any track can come next, so all are listed. */
+/** Random order: any track can come next, so all are listed, and the handles are greyed. */
 export const Shuffle = { render: () => mount(SINGLE_ITEMS, undefined, player('Playing'), { shuffle: true }) };
 
 /**

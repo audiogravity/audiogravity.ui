@@ -190,6 +190,21 @@ export const iconSearch = svg`
     <path d="m21 21-4.34-4.34"/>
     <circle cx="11" cy="11" r="8"/>`;
 
+/**
+ * Six dots (two columns × three rows) — drag-handle grip. (Lucide: grip-vertical)
+ * Lucide's own drawing: each dot a radius-1 circle under the svg's 2-unit stroke, 4 units
+ * across. Filled without the stroke, as it was drawn here, a dot came out half as wide —
+ * 1.2px at 14px, paler to the eye than the queue's arrow beside it, in the same colour.
+ * The caller's svg strokes it: `stroke: currentcolor; fill: none; stroke-width: 2`.
+ */
+export const iconDragHandle = svg`
+    <circle cx="9" cy="12" r="1"/>
+    <circle cx="9" cy="5" r="1"/>
+    <circle cx="9" cy="19" r="1"/>
+    <circle cx="15" cy="12" r="1"/>
+    <circle cx="15" cy="5" r="1"/>
+    <circle cx="15" cy="19" r="1"/>`;
+
 /** Arrow head + horizontal shaft pointing left. (Lucide: arrow-left) */
 export const iconArrowLeft = svg`
     <path d="m12 19-7-7 7-7"/>

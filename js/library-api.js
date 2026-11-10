@@ -71,6 +71,34 @@ export function removeQueueItem(sourceId, queueId) {
 }
 
 /**
+ * Move a single track of the queue by its stable MPD song id (QueueItem.queue_id), just
+ * before or just after another track named the same way — the music goes on, the track
+ * playing included. The box reads both places when it moves the track, so a queue
+ * changed since it was shown still gets it beside that track.
+ * @param {string} sourceId - Active source (required).
+ * @param {string|number} queueId - The item's queue_id (MPD song id).
+ * @param {{before: string|number}|{after: string|number}} neighbour - The queue_id of the
+ *        track it goes just before, or just after.
+ * @returns {Promise<{ok: boolean, moved_id: number, position: number}>} `position`: its
+ *          0-based place in the queue once moved.
+ */
+export function moveQueueItem(sourceId, queueId, neighbour) {
+    return apiPost(`/library/queue/${queueId}/move?source_id=${encodeURIComponent(sourceId)}`, neighbour);
+}
+
+/**
+ * Play a single track of the queue by its stable MPD song id (QueueItem.queue_id); the
+ * tracks before it stay in the queue, behind it. Refused (409) while the music goes out
+ * through HQPlayer or a network speaker, and (403) for a streaming track without Pro.
+ * @param {string} sourceId - Active source (required).
+ * @param {string|number} queueId - The item's queue_id (MPD song id).
+ * @returns {Promise<{ok: boolean, played_id: number}>}
+ */
+export function playQueueItem(sourceId, queueId) {
+    return apiPost(`/library/queue/${queueId}/play?source_id=${encodeURIComponent(sourceId)}`);
+}
+
+/**
  * Ids of the user's favorited items on a streaming source (v1: albums). Used to
  * render the accurate favorite (★) state on browse/search grids.
  * @param {string} sourceId - Streaming source (src_qobuz / src_tidal / src_highresaudio).

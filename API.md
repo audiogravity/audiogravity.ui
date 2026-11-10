@@ -118,6 +118,8 @@ Every other write route answers **403** to a guest token.
 | GET | `/library/queue` | Current playback queue — `?source_id=`, optional `?limit=` |
 | POST | `/library/queue` | Add or play a library item — body `{ source_id, item_id, item_type, action, duration?, start_index?, start_item_id? }` (`duration` in seconds, 0–86400: for UPnP tracks, whose length MPD cannot know before decoding the stream — it feeds the queue display). `start_index` (0 = the first track) and `start_item_id` (that track's id, as the listing gave it) queue an album or a playlist **from one of its tracks** — the tracks before it are left out. The core reads the list again: a track that moved in between starts where it now is, one that left the list is **400**. HIGHRESAUDIO and Qobuz albums and playlists only — **400** with either field anywhere else |
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
+| POST | `/library/queue/{queue_id}/move` | Move one track beside another — `?source_id=`, body `{ before }` or `{ after }` |
+| POST | `/library/queue/{queue_id}/play` | Play one track of the queue — `?source_id=` |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
@@ -461,6 +463,28 @@ the last. `false` for Roon.
 the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not
 on its position. A removal MPD refuses (the id is not in the queue) — or cannot
 take because MPD is unreachable — answers **503 carrying the reason**.
+
+**Moving in the queue** — `POST /library/queue/{queue_id}/move?source_id=…` with
+`{ "before": id }` or `{ "after": id }` — exactly one — moves the item keyed by its
+**`queue_id`** just before, or just after, the item whose `queue_id` is `id` (the number, or
+the string the queue lists). The core reads both places when it moves the item, so a queue
+changed since it was listed — a removal on its way, another device's edit — still gets it
+beside that item. Just before the track that follows the current one makes it the next to
+play — except in random order (`shuffle`). The music goes on, the track playing included.
+Answers `{ ok, moved_id, position }`, `position` its 0-based index in the queue once moved.
+A body naming no neighbour, or both, answers **422**; the item named as its own neighbour
+**400**. A move MPD refuses (either id no longer in the queue) — or cannot take because MPD is
+unreachable — answers **503 carrying the reason**; a `source_id` with no MPD engine **400**; a
+guest **403**. Not for Roon, whose queue is changed from the Roon app.
+
+**Playing a track of the queue** — `POST /library/queue/{queue_id}/play?source_id=…` plays
+the item keyed by its **`queue_id`**; the tracks before it stay in the queue, behind it.
+Answers `{ ok, played_id }`. Open to a guest, as next and previous are. Refused with
+**409** while the music goes out through HQPlayer or a network speaker — the queue this
+returns is the box's own, which they do not play: the detail says where the music goes
+out; **403** for a streaming service's track on a box without Pro, or while the box's own
+HQPlayer holds its DAC on such a box; **503 carrying the reason** when MPD refuses (the id
+is not in the queue) or is unreachable; **400** for a `source_id` with no MPD engine.
 
 **Queue writes report MPD's verdict** — a refused add or play behind
 `POST /library/queue`, `/library/upnp-play` or `POST /radio/play` answers **503 with
