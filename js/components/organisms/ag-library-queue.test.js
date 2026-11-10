@@ -27,7 +27,11 @@ vi.mock('../../api.js', () => ({
     apiPost: (...a) => apiPostMock(...a),
 }));
 // The controller follows the player stream; a bare instance carries a stand-in instead.
-vi.mock('../../core/PlayerChangeController.js', () => ({ PlayerChangeController: class {} }));
+// Its signature of what plays is the real one: the queue's builds on it.
+vi.mock('../../core/PlayerChangeController.js', async (importOriginal) => ({
+    ...(await importOriginal()),
+    PlayerChangeController: class {},
+}));
 // The real loadWithState: which of two overlapping reads is the latest is its answer.
 vi.mock('../utils-lit.js', async (importOriginal) => ({
     ...(await importOriginal()),
@@ -53,7 +57,7 @@ vi.mock('../../license-tiers.js', async (importOriginal) => ({
     openLicensePanel: (...a) => openLicensePanelMock(...a),
 }));
 
-import { AgLibraryQueue } from './ag-library-queue.js';
+import { AgLibraryQueue, queueSignature } from './ag-library-queue.js';
 import { cssRuleBody, flat, readStylesheet } from '../../test-utils.js';
 
 /** Bare instance with sane defaults (no DOM, no lifecycle). */
@@ -563,6 +567,61 @@ describe('ag-library-queue — no drag handle', () => {
         const sheet = readStylesheet('css', 'components', 'library-queue.css');
         expect(sheet).not.toMatch(/lib-queue-grip|cursor:\s*grab/);
         expect(cssRuleBody(sheet, '.lib-queue-row')).toMatch(/grid-template-columns:\s*36px 1fr auto auto;/);
+    });
+});
+
+describe('ag-library-queue — up next is what comes after the track playing', () => {
+    // It listed every track but the current one, those before it too — played, or skipped,
+    // and not to play again: a track moved to the top of the list would have landed there.
+    const track = (id, position, extra = {}) => ({ origin: 'library', position, queue_id: id,
+        title: `t${id}`, is_current: false, ...extra });
+    const QUEUE = [track('1', 0), track('2', 1, { is_current: true }), track('3', 2), track('4', 3)];
+    const titles = (e) => [...flat(e.render()).matchAll(/lib-queue-col-t">([^<]*)</g)].map(m => m[1]);
+
+    it('lists the tracks after the current one, and counts them alone', () => {
+        const e = el({ _queue: { items: QUEUE } });
+        expect(titles(e)).toEqual(['t3', 't4']);
+        expect(flat(e.render())).toContain('2 tracks');
+    });
+
+    it('lists every other track in random order, any of which can come next', () => {
+        const e = el({ _queue: { items: QUEUE, shuffle: true } });
+        expect(titles(e)).toEqual(['t1', 't3', 't4']);
+    });
+
+    it('lists the whole queue when nothing is current', () => {
+        const e = el({ _queue: { items: QUEUE.map(i => ({ ...i, is_current: false })) } });
+        expect(titles(e)).toEqual(['t1', 't2', 't3', 't4']);
+    });
+
+    it('goes on, when the queue repeats, with the tracks before the current one: they play again after the last', () => {
+        const e = el({ _queue: { items: QUEUE, repeat: true } });
+        expect(titles(e)).toEqual(['t3', 't4', 't1']);
+        expect(flat(e.render())).toContain('3 tracks');
+    });
+
+    it('lists the queue in its own order when it repeats in random order, or with nothing current', () => {
+        expect(titles(el({ _queue: { items: QUEUE, repeat: true, shuffle: true } }))).toEqual(['t1', 't3', 't4']);
+        const none = QUEUE.map(i => ({ ...i, is_current: false }));
+        expect(titles(el({ _queue: { items: none, repeat: true } }))).toEqual(['t1', 't2', 't3', 't4']);
+    });
+
+    it('still offers Clear when only played tracks are left, and Clear takes them', async () => {
+        const items = [track('1', 0), track('2', 1, { is_current: true })];
+        const e = el({ _queue: { items } });
+        e._load = vi.fn();
+        expect(titles(e)).toEqual([]);
+        expect(flat(e.render())).toContain('>Clear</button>');
+        await e._clear();
+        expect(removeQueueItemMock.mock.calls.map(c => c[1])).toEqual(['1']);
+    });
+
+    it('tells a toggle of the random order, or of the repeat, as a change, for the list to follow it', () => {
+        const mpd = (shuffle, repeat = false) => ({ sources: [{ protocol: 'mpd', source_id: 'src_mpd', playing: true,
+            playback_status: 'Playing', title: 't', shuffle, repeat }] });
+        expect(queueSignature(mpd(false))).not.toBe(queueSignature(mpd(true)));
+        expect(queueSignature(mpd(false))).not.toBe(queueSignature(mpd(false, true)));
+        expect(queueSignature(mpd(false))).toBe(queueSignature(mpd(false)));
     });
 });
 

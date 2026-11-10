@@ -6,6 +6,12 @@
  * /api/library/queue/{queue_id} — keyed on the stable MPD song id, not the
  * position, so removal is reindex-safe.
  *
+ * Up next is what comes after the track playing: the tracks before it in the queue
+ * have played, or were skipped, and do not play again — they stay in the queue, out of
+ * the list, and Clear still takes them. When the queue repeats, they do come again,
+ * after its last track: the list then goes on with them, in the order they will play.
+ * In random order any track of the queue can come next, so the list shows them all.
+ *
  * The list stays on screen while it is read again: a removed track leaves it at once,
  * before the box answers, and the rows around it stay where they are — the reader keeps
  * their place and no cover is drawn again. "Loading…" stands in only while there is
@@ -39,7 +45,7 @@ import { iconPause, iconPlay, iconArrowLeft } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
 import { isLockedSource, openLicensePanel } from '../../license-tiers.js';
 import { LicenseController } from '../../core/LicenseController.js';
-import { PlayerChangeController } from '../../core/PlayerChangeController.js';
+import { PlayerChangeController, playingSignature } from '../../core/PlayerChangeController.js';
 import { playPauseIntent } from '../../player-utils.js';
 import '../atoms/ag-library-cover.js';
 import '../atoms/ag-pro-lock.js';
@@ -48,6 +54,20 @@ import '../atoms/ag-filter-bar.js';
 
 /** Sentinel filter value meaning "show every source". */
 const ALL_SOURCES = 'all';
+
+/**
+ * What counts as a change for the queue view: what plays, and how the box's player goes
+ * through its queue — in random order, or starting over after the last track — which
+ * decides what the list shows. Toggled in the full-screen player, either would
+ * otherwise wait for the next track to show here.
+ * @param {?object} state - A player state.
+ * @returns {string}
+ */
+export function queueSignature(state) {
+    const modes = (state?.sources || []).filter(s => s?.protocol === 'mpd')
+        .map(s => [Boolean(s.shuffle), Boolean(s.repeat)]);
+    return `${playingSignature(state)}|${JSON.stringify(modes)}`;
+}
 
 export class AgLibraryQueue extends LitElement {
     static properties = {
@@ -93,7 +113,7 @@ export class AgLibraryQueue extends LitElement {
         this._licenseCtl = new LicenseController(this);
         // While shown: read the queue again once what plays has changed (a track that
         // ended, a skip from another screen), and keep the play/pause button in step.
-        this._follow = new PlayerChangeController(this, () => this._load());
+        this._follow = new PlayerChangeController(this, () => this._load(), { signature: queueSignature });
     }
 
     /**
@@ -167,6 +187,32 @@ export class AgLibraryQueue extends LitElement {
             ? [{ label: 'All', value: ALL_SOURCES }, ...origins.map(o => ({ label: originLabel(o), value: o }))]
             : [];
         return { mixed, activeFilter, shownNext, filterOpts };
+    }
+
+    /**
+     * What the view shows of the queue: the track playing, and up next — the tracks after
+     * it in the queue; in random order every other track, since any can come next —, then
+     * the source filter over that. The tracks before the current one have played or were
+     * skipped: they stay in the queue, out of the list (`others` still counts them, for
+     * Clear) — unless the queue repeats: they come again after its last track, and follow
+     * it in the list, in the order they will play. With no current track, the whole queue
+     * is up next.
+     * @returns {{items: Array, current: ?object, others: Array, shuffle: boolean, upNext: Array,
+     *            mixed: boolean, activeFilter: string, shownNext: Array, filterOpts: Array}}
+     */
+    _view() {
+        const items   = this._queue?.items ?? [];
+        const current = items.find(i => i.is_current) ?? null;
+        const shuffle = Boolean(this._queue?.shuffle);
+        const others  = items.filter(i => !i.is_current);
+        let upNext = others;
+        if (current && !shuffle) {
+            const after = others.filter(i => i.position > current.position);
+            upNext = this._queue?.repeat
+                ? [...after, ...others.filter(i => i.position < current.position)]
+                : after;
+        }
+        return { items, current, others, shuffle, upNext, ...this._filterView(upNext) };
     }
 
     /**
@@ -303,7 +349,7 @@ export class AgLibraryQueue extends LitElement {
         });
         // Drop a filter whose source has left the up-next list, so it can't
         // silently reactivate if that source reappears in a later refresh.
-        const upNext = (this._queue?.items ?? []).filter(i => !i.is_current);
+        const { upNext } = this._view();
         if (this._originFilter !== ALL_SOURCES && !this._distinctOrigins(upNext).includes(this._originFilter)) {
             this._originFilter = ALL_SOURCES;
         }
@@ -372,21 +418,22 @@ export class AgLibraryQueue extends LitElement {
 
     async _clear() {
         if (this._isRoon()) return;
-        // Clear only what the active filter is showing (all up-next when unfiltered),
-        // so Clear matches what the user actually sees. Removing by stable song id
-        // (deleteid) is reindex-safe, so order doesn't matter.
-        const upNext = (this._queue?.items ?? []).filter(i => !i.is_current);
-        const { shownNext } = this._filterView(upNext);
+        // Clear empties the queue but for the track playing — the tracks already played,
+        // which the list does not show, included — and keeps to the active filter's
+        // source when one is set, so it never takes what the reader filtered out.
+        // Removing by stable song id (deleteid) is reindex-safe, so order doesn't matter.
+        const { others, activeFilter } = this._view();
+        const targets = activeFilter === ALL_SOURCES ? others : others.filter(i => i.origin === activeFilter);
         // Off the screen at once, as a single removal is — and nothing left for a second
         // tap to clear while the first is still at work.
-        const ids = shownNext.map(i => i.queue_id);
+        const ids = targets.map(i => i.queue_id);
         this._dropFromView(ids);
         // Per-item failures don't abort the sweep (the rest must still clear);
         // they are summarised in ONE toast — the reload shows the survivors,
         // the toast says why they survived.
         let failed = 0;
         let lastReason = null;
-        for (const item of shownNext) {
+        for (const item of targets) {
             try {
                 await removeQueueItem(this.sourceId, item.queue_id);
             } catch (e) {
@@ -410,19 +457,14 @@ export class AgLibraryQueue extends LitElement {
         // Only while there is nothing to show: a list read again stays on screen.
         if (this._loading && !this._queue) return html`<div class="lib-loading">Loading…</div>`;
 
-        const queue       = this._queue;
-        const items       = queue?.items ?? [];
-        const current     = items.find(i => i.is_current);
-        const upNext      = items.filter(i => !i.is_current);
+        // Source-filter + per-row badges only make sense once the shared MPD
+        // queue mixes providers (Qobuz + radio + local…). A single-source queue
+        // stays clean — its one source is already named in the header above.
+        const { current, others, upNext, mixed, activeFilter, shownNext, filterOpts } = this._view();
         // Label by what is actually playing (origin) rather than the MPD engine:
         // a radio stream queued from "Local Library" is still radio.
         const sourceLabel = queueSourceLabel(current?.origin, this.sourceId);
         const ctxLabel    = this.zoneDisplayName ? `${sourceLabel} · ${this.zoneDisplayName}` : sourceLabel;
-
-        // Source-filter + per-row badges only make sense once the shared MPD
-        // queue mixes providers (Qobuz + radio + local…). A single-source queue
-        // stays clean — its one source is already named in the header above.
-        const { mixed, activeFilter, shownNext, filterOpts } = this._filterView(upNext);
 
         return html`
             <div class="lib-queue-ctx">
@@ -458,7 +500,7 @@ export class AgLibraryQueue extends LitElement {
                     <button class="lib-queue-action"
                         aria-disabled=${this._refreshing ? 'true' : 'false'}
                         @click=${() => this._refresh()}>Refresh</button>
-                    ${upNext.length > 0 ? html`
+                    ${others.length > 0 ? html`
                         <button
                             class="lib-queue-action ${this._isRoon() ? 'disabled' : ''}"
                             ?disabled=${this._isRoon()}

@@ -83,11 +83,16 @@ export class PlayerChangeController {
      * @param {object} [options]
      * @param {number} [options.counts=0] - Call back too once what plays has played this
      *   many seconds, when it had not yet when seen; 0 for never.
+     * @param {(state: ?object) => string} [options.signature=playingSignature] - What
+     *   counts as a change for this view: the same string, no change. The queue adds how
+     *   its player goes through it — in random order, starting over after the last track
+     *   —, which decides how it lists its tracks.
      */
-    constructor(host, onChange, { counts = 0 } = {}) {
+    constructor(host, onChange, { counts = 0, signature = playingSignature } = {}) {
         this.host = host;
         this._onChange = onChange;
         this._counts = counts;
+        this._signature = signature;
         /** Whether the view asked to follow; kept while it is out of the page. */
         this._wanted = false;
         /** @type {?() => void} */
@@ -155,7 +160,7 @@ export class PlayerChangeController {
      */
     _onState(state) {
         this.state = state;
-        const seen = playingSignature(state);
+        const seen = this._signature(state);
         const first = this._seen === undefined;
         if (!first && seen === this._seen) return;
         this._seen = seen;

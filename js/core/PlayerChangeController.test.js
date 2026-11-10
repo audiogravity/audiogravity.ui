@@ -248,3 +248,35 @@ describe('PlayerChangeController — for a view that shows what plays', () => {
         ctl.follow(false);
     });
 });
+
+describe('PlayerChangeController — what counts as a change, the view\'s call', () => {
+    // The queue lists its tracks one way or another as its player plays in random order
+    // or not: a toggle of the random order is a change for it, not for Stats.
+    const withShuffle = (on) => state(source({ shuffle: on }));
+
+    it('takes the signature a view gives it', () => {
+        const onChange = vi.fn();
+        const host = { addController: vi.fn(), requestUpdate: vi.fn() };
+        const signature = (s) => JSON.stringify((s?.sources || []).map(x => !!x.shuffle));
+        const ctl = new PlayerChangeController(host, onChange, { signature });
+        ctl.follow(true);
+        send(withShuffle(false));
+        send(withShuffle(true));
+        expect(ctl.changes).toBe(2);
+        expect(host.requestUpdate).toHaveBeenCalledTimes(2);
+        vi.advanceTimersByTime(SETTLE_MS);
+        expect(onChange).toHaveBeenCalledTimes(1);
+        ctl.follow(false);
+    });
+
+    it('keeps what plays as its signature otherwise: a toggle of the random order is no change', () => {
+        const onChange = vi.fn();
+        const ctl = new PlayerChangeController(makeHost(), onChange);
+        ctl.follow(true);
+        send(withShuffle(false));
+        send(withShuffle(true));
+        vi.advanceTimersByTime(SETTLE_MS * 2);
+        expect(onChange).not.toHaveBeenCalled();
+        ctl.follow(false);
+    });
+});

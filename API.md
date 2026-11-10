@@ -450,6 +450,12 @@ its address — a station saved with a relay address included: a box without Pro
 the player skips it, so show it locked while `/license/status` says `pro: false`
 ([Editions](#editions--what-a-box-without-pro-is-refused)). `false` for Roon, whose queue needs
 Pro whole.
+**`shuffle`** (on the queue) is `true` when the player plays it in random order (MPD's
+`random`), stopped too: what follows the current track in the queue is then not what plays
+next, and moving a track does not change it. `false` for Roon.
+**`repeat`** (on the queue) is `true` when the player starts it over after its last track
+(MPD's `repeat`), stopped too: the tracks before the current one then play again, after
+the last. `false` for Roon.
 
 **Removing from the queue** — `DELETE /library/queue/{queue_id}?source_id=…`, keyed on
 the item's **`queue_id`** (the MPD `Id`, stable across reindexing; `None` for Roon), not

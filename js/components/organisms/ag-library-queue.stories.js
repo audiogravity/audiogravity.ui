@@ -11,6 +11,11 @@ import { injectLibStyles } from './ag-library-page.js';
  * The play/pause button reads the player state the view follows once shown; here no
  * stream runs, so a story hands the follower a state of its own (`player`), or none —
  * the button then stands greyed, as it does until the box's state is known.
+ *
+ * Up next lists what comes after the track playing: the tracks before it are not shown —
+ * unless the queue repeats (`repeat` on the queue, as the core answers it), where they
+ * follow, in the order they will play again; in random order (`shuffle`), every track
+ * is listed.
  */
 
 export default {
@@ -81,12 +86,12 @@ const player = (status) => ({ sources: [{
  * @param {object} [state] - The player state the view would follow; none when omitted.
  * @returns {HTMLElement} Wrapped, ready-to-render element.
  */
-const mount = (items, license, state) => {
+const mount = (items, license, state, { shuffle = false, repeat = false } = {}) => {
     injectLibStyles();
     const el = document.createElement('ag-library-queue');
     el.sourceId = 'src_mpd';
     el._load = async () => {};
-    el._queue = { items };
+    el._queue = { items, shuffle, repeat };
     if (license) el._license = license;
     // After the first render: that one tells the follower the view is not shown, and a
     // follower told so drops any state it held.
@@ -110,6 +115,26 @@ export const Paused = { render: () => mount(SINGLE_ITEMS, undefined, player('Pau
 
 /** The player's state not known yet: the button stands greyed, in its place. */
 export const PlayerStateUnknown = { render: () => mount(SINGLE_ITEMS) };
+
+/** Random order: any track can come next, so all are listed. */
+export const Shuffle = { render: () => mount(SINGLE_ITEMS, undefined, player('Playing'), { shuffle: true }) };
+
+/**
+ * The second track playing: the first, before it in the queue, has played and is not
+ * listed — Up next starts with what plays next.
+ */
+export const PlayedTracksNotListed = {
+    render: () => mount(SINGLE_ITEMS.map((it, i) => ({ ...it, is_current: i === 1 })), undefined, player('Playing')),
+};
+
+/**
+ * The same queue repeating: the first track plays again once the last has, so Up next
+ * goes on with it after the last — the order they will play in.
+ */
+export const Repeat = {
+    render: () => mount(SINGLE_ITEMS.map((it, i) => ({ ...it, is_current: i === 1 })), undefined,
+        player('Playing'), { repeat: true }),
+};
 
 /**
  * The mixed queue on a box whose trial ended: the streaming tracks wear the Pro tint
