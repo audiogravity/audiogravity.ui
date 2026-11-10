@@ -78,7 +78,7 @@ Every other write route answers **403** to a guest token.
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
 | GET | `/audio_pipeline/now-playing` | Every active playback source |
-| GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played |
+| GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played — each track once, in disc then track order |
 | GET | `/audio_pipeline/cover` | Resolve cover art for a now-playing item |
 | POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }`. The returned `success` reflects **MPD's verdict for every action**: `false` means **no change was confirmed** — the device refused (a live radio stream, a Tidal first listen still downloading, a mixerless output) or the exchange timed out before a verdict. A client that flipped its UI optimistically should flip it back; the state published on the SSE bus right after **every** control is the reference to converge on. **On the HQPlayer path a timed-out verdict is now rarer, not impossible**: HQPlayer answers the first command of a connection after a delay of its own (2.37–4.55 s measured across the LAN on a *stopped* instance), and the wait for a command is 8 s — so `false` still means "not confirmed", never "not done". The SSE state remains the reference |
 | GET | `/audio_pipeline/library-cover/{path}?sig=` | **Renderer-facing** (public, HMAC-signed): local-library album art for a cast file's `albumArtURI`. Not called by the UI. |

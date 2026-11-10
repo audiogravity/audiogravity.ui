@@ -201,12 +201,9 @@ describe('a touch screen shows the press instead', () => {
         expect(main).toMatch(/@import 'base\.css';\s*@import 'components\/press\.css';/);
     });
 
-    it('leaves the Now Playing cover still while its details bubble is touched', () => {
-        const [rule] = styleRules(readFileSync('css/components/now-playing.css', 'utf8'))
-            .filter((r) => r.selector === '.np-cover-wrap:has(.np-detail-popover:active)');
-        expect(rule?.body).toMatch(/(?<![-\w])filter\s*:\s*none/);
-        expect(rule?.body).toMatch(/(?<![-\w])transform\s*:\s*none/);
-    });
+    // The Now Playing cover's details bubble used to sit inside the cover, which took
+    // the press, so it needed an exception here; it now hangs beside the cover button
+    // and nothing presses it — held in ag-now-playing.test.js.
 });
 
 describe('the check', () => {
