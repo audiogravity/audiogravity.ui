@@ -1,8 +1,8 @@
 /**
  * Unit tests for the app's Halloween dress as a whole (css/components/halloween.css): what the
- * class public/halloween-boot.js sets on <html> brings out, every 31 October.
+ * class public/holiday-boot.js sets on <html> brings out, every 31 October.
  *
- * The day itself: js/halloween-boot.test.js. The spiders: ag-halloween-spiders.test.js. The
+ * The day itself: js/holiday-boot.test.js. The spiders: ag-halloween-spiders.test.js. The
  * radio's stations: ag-library-radio.test.js. The splash screen's two copies, held together:
  * js/splash-screen.test.js.
  *

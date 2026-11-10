@@ -1,7 +1,7 @@
 /**
  * @module Halloween
  * @description The app's Halloween dress, every 31 October by the device's clock, or with
- * `?halloween` in the address: drawn only while <html> has the class public/halloween-boot.js
+ * `?halloween` in the address: drawn only while <html> has the class public/holiday-boot.js
  * puts there. Prefix: ag-hw-
  *
  * The splash screen: a spider lets itself down above the icon, a bat flies behind the name, the
@@ -193,11 +193,6 @@ html:not(.ag-halloween) .splash-spider,
 html:not(.ag-halloween) .splash-tagline--halloween,
 html.ag-halloween .splash-tagline:not(.splash-tagline--halloween) {
     display: none;
-}
-
-/* The bat flies from one side of the screen to the other: kept on it. */
-html.ag-halloween #ag-splash-screen {
-    overflow: hidden;
 }
 
 /* The wave a pumpkin's orange, and stronger: at the everyday half strength, the orange read as

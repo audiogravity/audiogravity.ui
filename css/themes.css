@@ -403,6 +403,13 @@ body {
       assets/halloween.css), on its light page as on its dark one. Never text. */
    --halloween-orange: #ea580c;
 
+   /* Christmas's red and gold (css/components/christmas.css): the splash screen's two waves,
+      every 24 and 25 December. Not states, and the same in every theme: those of the landing's
+      Christmas drawings (audiogravity.site, assets/christmas/), the screen's black ground being
+      the same whatever the theme. Never text. */
+   --christmas-red: #e3262f;
+   --christmas-gold: #ffcc33;
+
    /* What the Pro edition locks on a Starter box — a locked tab, a Pro source's card, a
       locked Config tile: one tint, from the brand colour. Not from red: red, orange and
       green carry a meaning that holds only while they stay rare (UI guidelines rule 10),

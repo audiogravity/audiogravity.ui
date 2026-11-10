@@ -52,7 +52,7 @@ describe('isHalloween', () => {
         expect(isHalloween()).toBe(false);
         await turn(true);
         expect(isHalloween()).toBe(true);
-        // On the body, it is not the day's: halloween-boot.js puts it on <html>.
+        // On the body, it is not the day's: holiday-boot.js puts it on <html>.
         await turn(false);
         document.body.classList.add(HALLOWEEN_CLASS);
         expect(isHalloween()).toBe(false);

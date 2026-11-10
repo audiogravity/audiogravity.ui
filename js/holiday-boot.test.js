@@ -1,5 +1,6 @@
 /**
- * Unit tests for public/halloween-boot.js: the one rule that says it is Halloween.
+ * Unit tests for public/holiday-boot.js: the one rule that says it is Halloween — or
+ * Christmas.
  *
  * The script runs as the page would run it, with a document of its own each time, so that
  * the listeners of one test never hear another's events.
@@ -10,11 +11,13 @@
  * 3. the class kept right while the page stays open: when it comes back into view, at
  *    midnight, and within the hour of a clock set late — one timer waiting at a time
  * 4. loaded before the first paint on both pages
+ * 5. Christmas the same way: 24 and 25 December, ?christmas, its own class, on and off at
+ *    midnight — and neither day's class on the other's
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { readStylesheet } from './test-utils.js';
 
-const SOURCE = readStylesheet('public', 'halloween-boot.js');
+const SOURCE = readStylesheet('public', 'holiday-boot.js');
 
 /**
  * Open a page at a moment, with an address: the script runs once, on a document of its own.
@@ -36,6 +39,7 @@ function open(at, search = '') {
     return {
         location,
         get on() { return page.documentElement.classList.contains('ag-halloween'); },
+        get christmas() { return page.documentElement.classList.contains('ag-christmas'); },
         /** The page is hidden or shown again. */
         show(state = 'visible') {
             page.visibilityState = state;
@@ -122,10 +126,67 @@ describe('kept right while the page stays open', () => {
     });
 });
 
+describe('Christmas', () => {
+    it.each([
+        [new Date(2026, 11, 24, 0, 0, 1), true],
+        [new Date(2026, 11, 25, 23, 59, 59), true],
+        [new Date(2031, 11, 24, 12, 0), true],
+        [new Date(2026, 11, 23, 23, 59, 59), false],
+        [new Date(2026, 11, 26, 0, 0), false],
+        [new Date(2026, 5, 24, 12, 0), false],   // another month's 24th
+        [new Date(2026, 0, 25, 12, 0), false],   // and 25th
+    ])('%s: %s', (at, expected) => {
+        expect(open(at).christmas).toBe(expected);
+    });
+
+    it.each([
+        ['?christmas', true],
+        ['?christmas=1', true],
+        ['?tab=library&christmas', true],
+        ['?christmasx', false],
+        ['?nochristmas', false],
+        ['', false],
+    ])('a look on another day, "%s": %s', (search, expected) => {
+        expect(open(new Date(2026, 4, 12, 10, 0), search).christmas).toBe(expected);
+    });
+
+    it('wears its own class, never the other day\'s', () => {
+        const eve = open(new Date(2026, 11, 24, 18, 0));
+        expect([eve.christmas, eve.on]).toEqual([true, false]);
+        const halloween = open(new Date(2026, 9, 31, 18, 0));
+        expect([halloween.christmas, halloween.on]).toEqual([false, true]);
+        const look = open(new Date(2026, 4, 12, 10, 0), '?halloween');
+        expect([look.christmas, look.on]).toEqual([false, true]);
+        const other = open(new Date(2026, 4, 12, 10, 0), '?christmas');
+        expect([other.christmas, other.on]).toEqual([true, false]);
+    });
+
+    it('comes on at midnight on the 24th and goes at midnight after the 25th, for a screen left on', () => {
+        const page = open(new Date(2026, 11, 23, 23, 59, 30));
+        expect(page.christmas).toBe(false);
+        vi.advanceTimersByTime(31_000);
+        expect(page.christmas).toBe(true);
+        vi.advanceTimersByTime(24 * 3600_000);
+        expect(page.christmas).toBe(true);    // the 25th
+        vi.advanceTimersByTime(24 * 3600_000);
+        expect(page.christmas).toBe(false);   // the 26th
+    });
+
+    it('reads the date again when the page comes back into view, both days with one timer', () => {
+        const page = open(new Date(2026, 11, 25, 22, 0));
+        page.show('hidden');
+        vi.setSystemTime(new Date(2026, 11, 26, 7, 30));
+        page.show();
+        expect(page.christmas).toBe(false);
+        for (let i = 0; i < 5; i += 1) page.show();
+        expect(vi.getTimerCount()).toBe(1);
+    });
+});
+
 describe('where it runs', () => {
     it.each(['index.html', 'login.html'])('%s loads it as a plain script, before the stylesheet', (file) => {
         const page = readStylesheet(file);
-        const tag = '<script src="/halloween-boot.js"></script>';
+        const tag = '<script src="/holiday-boot.js"></script>';
         expect(page.split(tag)).toHaveLength(2);
         expect(page.indexOf(tag)).toBeLessThan(page.indexOf('<link rel="stylesheet" href="css/main.css">'));
         expect(page.indexOf(tag)).toBeLessThan(page.indexOf('<body'));

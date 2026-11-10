@@ -1,7 +1,7 @@
 /**
  * Unit tests for ag-halloween-spiders: spiders on their threads every 31 October.
  *
- * The day is public/halloween-boot.js's to say (js/halloween-boot.test.js): it sets a class on
+ * The day is public/holiday-boot.js's to say (js/holiday-boot.test.js): it sets a class on
  * <html>, which the element follows through HalloweenController (js/core/HalloweenController.test.js).
  *
  * Covers:
@@ -20,7 +20,7 @@ import { readStylesheet, cssRuleBody, mediaBlock } from '../../test-utils.js';
 import { HALLOWEEN_CLASS } from '../../core/HalloweenController.js';
 import './ag-halloween-spiders.js';
 
-/** What halloween-boot.js says: it is Halloween, or not. */
+/** What holiday-boot.js says: it is Halloween, or not. */
 function halloween(on) {
     document.documentElement.classList.toggle(HALLOWEEN_CLASS, on);
 }
@@ -93,7 +93,7 @@ describe('ag-halloween-spiders', () => {
     });
 
     it('lets them down when the day comes and takes them in when it ends, without a reload', async () => {
-        // At midnight, or when an app left open comes back into view: halloween-boot.js's doing.
+        // At midnight, or when an app left open comes back into view: holiday-boot.js's doing.
         const el = await mount(false);
         await turn(el, true);
         expect(el.querySelectorAll('.ag-hw-spider')).toHaveLength(2);

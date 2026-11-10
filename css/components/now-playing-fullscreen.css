@@ -198,7 +198,7 @@ body:not(.npfs-open) .topbar {
     box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
 }
 
-/* Halloween (public/halloween-boot.js, css/components/halloween.css): the cover glows like a
+/* Halloween (public/holiday-boot.js, css/components/halloween.css): the cover glows like a
    lantern, its shadow in the pumpkin's orange. On the cover alone — the stand-in drawn when there
    is none sits inside it, and a glow on both doubled it (code review, 2026-10-27). Still: a
    flicker would draw the shadow again at every frame. */

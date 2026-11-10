@@ -25,11 +25,17 @@
    out of black in the fade.
 
    The gap is the app's 12px, written as a value: login.html redefines --spacing-md for
-   its own page (css/login.css), and the screen has to be the same on both pages. */
+   its own page (css/login.css), and the screen has to be the same on both pages.
+
+   What crosses its edges on a day the app dresses up for — Halloween's bat and spider's
+   thread, Christmas's sleigh (css/components/halloween.css, christmas.css) — is clipped
+   here, for every day, rather than by each day's stylesheet; on an ordinary day nothing
+   on the screen reaches them. */
 #ag-splash-screen {
     position: fixed;
     inset: 0;
     z-index: 999999; /* Always above everything */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;

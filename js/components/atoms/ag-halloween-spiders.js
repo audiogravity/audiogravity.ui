@@ -15,7 +15,7 @@
  * top of the screen crossed the app's name and the tabs on a computer.
  *
  * On any other day it draws nothing, and so it does for a viewer who asks for less motion. The
- * day is public/halloween-boot.js's to say — it puts the dress on and takes it off, at midnight
+ * day is public/holiday-boot.js's to say — it puts the dress on and takes it off, at midnight
  * too — and this element follows it through HalloweenController. The sign-in page hangs the
  * same two (login.html), with nothing fixed above them there.
  *
