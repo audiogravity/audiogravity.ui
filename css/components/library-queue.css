@@ -90,6 +90,14 @@
     align-items: center;
 }
 
+/* The cover of the track playing, a real button that opens the full-screen player:
+   drawn as the cover alone, in its column. Flex, so the inline-block cover sits on no
+   line box — no gap under it, the button exactly its 54px. */
+.lib-queue-now-cover {
+    display: flex;
+    cursor: pointer;
+}
+
 /* The track playing is a streaming service's, on a box without Pro: the Pro tint, and
    the padlock in a column of its own, between the text and the button. */
 .lib-queue-now.lib-queue-now--locked {

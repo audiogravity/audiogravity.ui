@@ -1073,9 +1073,88 @@ describe('ag-library-queue — the play/pause button of the track playing', () =
             { action: 'pause', source_id: 'src_roon', control_id: 'roon:zone-1' });
     });
 
-    it('is no longer a way to the full-screen player', () => {
-        // The file's text: the event was fired from a handler, which a flattened template drops.
+    it('leaves the full-screen player to the cover: the button plays and pauses, nothing else', async () => {
+        const opened = [];
+        const ear = (ev) => opened.push(ev.detail);
+        window.addEventListener('np-expand', ear);
+        try {
+            await tap(playingView([MPD()]));
+        } finally {
+            window.removeEventListener('np-expand', ear);
+        }
+        expect(opened).toEqual([]);
+        // Nor does the view take the library's relay after a play (lib-open-np): the file's
+        // text, the event being fired from a handler, which a flattened template drops.
         const queue = readStylesheet('js', 'components', 'organisms', 'ag-library-queue.js');
         expect(queue).not.toContain('lib-open-np');
+    });
+});
+
+describe('ag-library-queue — the cover of the track playing opens the full-screen player', () => {
+    const MPD = (fields = {}) => ({ source_id: 'src_mpd', control_id: 'src_mpd', protocol: 'mpd',
+        playing: true, playback_status: 'Playing', title: 'So What', ...fields });
+    const AIRPLAY = { source_id: 'src_shairport', control_id: 'src_shairport', protocol: 'mpris',
+        playing: true, playback_status: 'Playing', active: true };
+    const CURRENT = { origin: 'library', position: 0, queue_id: '1', title: 'So What', is_current: true };
+    const view = (sources, over = {}) => el({
+        _follow: { state: sources ? { sources } : null, changes: 1, follow: vi.fn() },
+        _queue: { items: [CURRENT] },
+        ...over,
+    });
+    /** The handler bound right after `marker` in a mocked template tree, or null. */
+    const handlerAfter = (node, marker) => {
+        if (Array.isArray(node)) {
+            for (const n of node) { const f = handlerAfter(n, marker); if (f) return f; }
+            return null;
+        }
+        if (!node || typeof node !== 'object' || !node.strings) return null;
+        const at = node.strings.findIndex(s => s.includes(marker));
+        if (at >= 0) {
+            const f = node.values.slice(at).find(v => typeof v === 'function');
+            if (f) return f;
+        }
+        for (const v of node.values) { const f = handlerAfter(v, marker); if (f) return f; }
+        return null;
+    };
+    /** What a tap on the cover asks of the full-screen player: the np-expand details. */
+    const tapCover = (e) => {
+        const opened = [];
+        const ear = (ev) => opened.push(ev.detail);
+        window.addEventListener('np-expand', ear);
+        try {
+            handlerAfter(e.render(), 'lib-queue-now-cover')();
+        } finally {
+            window.removeEventListener('np-expand', ear);
+        }
+        return opened;
+    };
+
+    it('makes the cover a real button, named for what it does', () => {
+        const markup = flat(view([MPD()]).render());
+        expect(markup).toMatch(/<button class="plain-btn lib-queue-now-cover" aria-label="Open the player"[^>]*>\s*<ag-library-cover/);
+    });
+
+    it('opens it on the box\'s own player, whatever else plays', () => {
+        // A phone plays over AirPlay; the queue's player, MPD, is paused under it.
+        const paused = MPD({ playback_status: 'Paused' });
+        expect(tapCover(view([AIRPLAY, paused]))).toEqual([{ source_id: 'src_mpd', item: paused }]);
+    });
+
+    it('opens it on the Roon zone shown, for a Roon queue', () => {
+        const zone = (id) => ({ source_id: 'src_roon', control_id: `roon:${id}`, protocol: 'roon',
+            playing: true, playback_status: 'Playing', zone_id: id });
+        const shown = zone('zone-1');
+        const e = view([MPD(), zone('zone-2'), shown], { sourceId: 'src_roon', zoneId: 'zone-1' });
+        expect(tapCover(e)).toEqual([{ source_id: 'src_roon', item: shown }]);
+    });
+
+    it('opens it on what it shows by itself while the player\'s state is not known', () => {
+        expect(tapCover(view(null))).toEqual([{}]);
+    });
+
+    it('stays the cover in its 54px column: a flex button, no line box under it', () => {
+        const sheet = readStylesheet('css', 'components', 'library-queue.css');
+        expect(cssRuleBody(sheet, '.lib-queue-now-row')).toMatch(/grid-template-columns:\s*54px 1fr auto;/);
+        expect(cssRuleBody(sheet, '.lib-queue-now-cover')).toMatch(/display:\s*flex;[\s\S]*cursor:\s*pointer;/);
     });
 });
