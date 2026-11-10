@@ -1,0 +1,316 @@
+/**
+ * @module Christmas
+ * @description The app's Christmas dress, every 24 and 25 December by the device's clock: drawn
+ * only while <html> has the class public/holiday-boot.js puts there. Prefix: ag-xm-
+ * `?christmas` in the address puts that class on, on any day, but the splash screen shows only in
+ * the installed app, never in a browser tab (public/splash-boot.js): to see the dress before the
+ * day, set the device's date to the 24th and open the app.
+ *
+ * The splash screen alone, and no other change to the interface (user's choice, 2026-11-10, on
+ * an animated mock-up): snow falls on its black ground, Santa's sleigh crosses the sky once, a fir
+ * tree whose bulbs blink stands left of the icon, two gifts are set down at its foot, the waves
+ * are red and gold, and the line reads "merrily". The landing's figures (audiogravity.site,
+ * assets/christmas/), each drawn once, in public/pics/christmas, in their own colours: the screen
+ * is always black (css/components/splash-screen.css), so there is no ink to follow. Nothing in the
+ * dress takes a pointer, and everything that moves moves whole elements — translate, scale,
+ * opacity — which the browser composites without drawing them again.
+ *
+ * What it costs: the browser's processor, never the box's — the box only serves these files, and
+ * only on those two days (eight drawings, 21 kB). Measured on the sign-in page as the installed
+ * app opens it (Chromium on the .254, CPU slowed four times, 3 s from the navigation, medians of
+ * six, 2026-11-10): the main thread busy 780 ms against 534 on another day — the snow, the sleigh,
+ * the tree and the gifts each 50 to 90 ms of it, all spent while the page loads — and every
+ * animation run by the compositor, none frame by frame on the main thread. The screen began to
+ * fade at the same moment, 2.42 s against 2.41: its minimum on screen covers the extra work.
+ */
+
+/* =====================
+   SPLASH SCREEN
+   ===================== */
+
+/* The installed app's opening (css/components/splash-screen.css): its markup, on index.html and
+   login.html, carries the day's pieces and line, which no other day shows. The screen keeps on it
+   what flies across it, every day, in its own rule.
+
+   Sizes, places and gaps are written as values, never as the spacing steps: login.html redefines
+   those steps for its own page (css/login.css), and the screen has to be the same on both pages —
+   the reason css/components/splash-screen.css gives for its own. They are the figures' geometry
+   against the screen's 96px icon. */
+html:not(.ag-christmas) .splash-snow,
+html:not(.ag-christmas) .splash-sleigh,
+html:not(.ag-christmas) .splash-tree,
+html:not(.ag-christmas) .splash-gift,
+html:not(.ag-christmas) .splash-tagline--christmas,
+html.ag-christmas .splash-tagline:not(.splash-tagline--christmas) {
+    display: none;
+}
+
+/* The waves: a red one, then a gold one, half a cycle apart. As strong as Halloween's orange, for
+   the reason css/components/halloween.css gives. */
+html.ag-christmas #ag-splash-screen .splash-wave {
+    --splash-wave-from: 0.9;
+
+    border-color: var(--christmas-red);
+}
+
+html.ag-christmas #ag-splash-screen .splash-wave--second {
+    border-color: var(--christmas-gold);
+}
+
+/* Snow, in two planes behind everything: far — smaller, dimmer, slower — then near, each a tile of
+   the landing's cartoon snow repeated over the screen and moved down. Two pieces that move, not a
+   piece per flake, which kept the landing far busier (audiogravity.site, assets/christmas.css).
+
+   They fall in a frame that stays still and clears the band of the name and the line, so that no
+   flake sits on a letter: the screen's content is centred, the name from 36px under the middle to
+   64px, the line down to 92px. A mask reads only how opaque a colour is: #000000 lets the snow show,
+   transparent hides it. */
+html.ag-christmas #ag-splash-screen .splash-snow {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+
+    /* stylelint-disable-next-line property-no-vendor-prefix -- no autoprefixer here; iOS/WebKit before 15.4 knows only -webkit-mask-image */
+    -webkit-mask-image: linear-gradient(to bottom, #000000 calc(50% - 6px), transparent calc(50% + 26px), transparent calc(50% + 100px), #000000 calc(50% + 132px));
+    mask-image: linear-gradient(to bottom, #000000 calc(50% - 6px), transparent calc(50% + 26px), transparent calc(50% + 100px), #000000 calc(50% + 132px));
+}
+
+html.ag-christmas #ag-splash-screen .ag-xm-plane {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background-repeat: repeat;
+}
+
+/* Each piece names its timing in the screen's three custom properties, so that the screen's
+   exemption from the app's Animations setting keeps it. The snow falls once, for longer than the
+   screen ever stays (8 s at most, js/splash-screen.js), fading in as the screen comes in: its
+   tile's turn is never seen. The far plane twice, at two sizes and out of step: once, its tile
+   drew a grid (mock-up, 2026-11-10). */
+html.ag-christmas #ag-splash-screen .ag-xm-far {
+    --splash-duration: 15s;
+    --splash-delay: 0ms;
+    --ag-xm-snow: 0.5;
+
+    top: -300px;
+    height: calc(100% + 300px);
+    background-image: url("/pics/christmas/snow-far.svg"), url("/pics/christmas/snow-far.svg");
+    background-size: 260px 300px, 196px 226px;
+    background-position: 0 0, 104px 131px;
+    animation: agXmSnowFar var(--splash-duration) linear var(--splash-delay) 1 both;
+}
+
+html.ag-christmas #ag-splash-screen .ag-xm-near {
+    --splash-duration: 10s;
+    --splash-delay: 0ms;
+    --ag-xm-snow: 0.85;
+
+    top: -420px;
+    height: calc(100% + 420px);
+    background-image: url("/pics/christmas/snow-near.svg");
+    background-size: 360px 420px;
+    animation: agXmSnowNear var(--splash-duration) linear var(--splash-delay) 1 both;
+}
+
+@keyframes agXmSnowFar {
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+
+    3% { opacity: var(--ag-xm-snow); }
+
+    100% {
+        opacity: var(--ag-xm-snow);
+        transform: translateY(300px);
+    }
+}
+
+@keyframes agXmSnowNear {
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+
+    4.5% { opacity: var(--ag-xm-snow); }
+
+    100% {
+        opacity: var(--ag-xm-snow);
+        transform: translateY(420px);
+    }
+}
+
+/* Santa's sleigh crosses the sky once, right to left, above the snow, as the first wave goes out of
+   the icon; it bobs as it flies. Its flight and its bob on two elements, the bob on the ::before,
+   which the screen's exemption reaches.
+
+   It flies in the middle of the sky, whatever the screen's height: the tree's star is 113px above
+   the middle of the screen (measured in Chromium, the screen's content being centred), so the sky
+   is 50vh - 113px high, its middle 25vh - 56px down, and the sleigh, 51px high, starts 25vh - 82px
+   down. At 16vh it crossed the tree and the icon on a phone held sideways (code review,
+   2026-11-10, measured at 844 x 390 and 932 x 430). Never above the screen's top. */
+html.ag-christmas #ag-splash-screen .splash-sleigh {
+    --splash-duration: 1700ms;
+    --splash-delay: 600ms;
+
+    position: absolute;
+    top: max(0px, calc(25vh - 82px));
+    left: 0;
+    z-index: -1;
+    width: 116px;
+    aspect-ratio: 240 / 106;
+    pointer-events: none;
+    animation: agXmSplashRide var(--splash-duration) linear var(--splash-delay) 1 both;
+}
+
+html.ag-christmas #ag-splash-screen .splash-sleigh::before {
+    --splash-duration: 500ms;
+    --splash-delay: 0ms;
+    --splash-count: infinite;
+
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("/pics/christmas/sleigh.svg") center / contain no-repeat;
+    animation: agXmBob var(--splash-duration) ease-in-out var(--splash-delay) var(--splash-count) alternate;
+}
+
+@keyframes agXmSplashRide {
+    0% { transform: translate(calc(100vw + 8px), 8px) rotate(1deg); }
+    50% { transform: translate(calc(50vw - 58px), -6px) rotate(-1deg); }
+    100% { transform: translate(-124px, 0) rotate(0deg); }
+}
+
+@keyframes agXmBob {
+    from { translate: 0 -1.5px; }
+    to { translate: 0 1.5px; }
+}
+
+/* A fir tree stands left of the icon, on the same ground, a little taller than it and 6px from it:
+   the waves, which reach 22px past the icon, pass behind it. It comes in with the icon, in whose
+   box it stands. Its bulbs, two strings over the drawing in the same frame, blink apart. */
+html.ag-christmas #ag-splash-screen .splash-tree {
+    position: absolute;
+    right: calc(100% + 6px);
+    bottom: -2px;
+    z-index: 1;
+    width: 88px;
+    aspect-ratio: 120 / 160;
+    pointer-events: none;
+    background: url("/pics/christmas/tree.svg") center bottom / contain no-repeat;
+}
+
+html.ag-christmas #ag-splash-screen .ag-xm-lights {
+    --splash-duration: 2.2s;
+    --splash-delay: 0ms;
+    --splash-count: infinite;
+
+    position: absolute;
+    inset: 0;
+    background: url("/pics/christmas/lights-warm.svg") center bottom / contain no-repeat;
+    animation: agXmBlink var(--splash-duration) ease-in-out var(--splash-delay) var(--splash-count);
+}
+
+html.ag-christmas #ag-splash-screen .ag-xm-cool {
+    --splash-duration: 2.9s;
+    --splash-delay: -1.1s;
+
+    background-image: url("/pics/christmas/lights-cool.svg");
+}
+
+@keyframes agXmBlink {
+    0%,
+    100% { opacity: 1; }
+
+    45% { opacity: 0.3; }
+    60% { opacity: 0.95; }
+    80% { opacity: 0.5; }
+}
+
+/* Two gifts set down at the foot of the icon, one on each side, as the icon comes to rest — the red
+   one before the tree's foot, the green one smaller — each with a squash and a small bounce, then
+   still. In front of the icon's corners, so that they stand on its ground. */
+html.ag-christmas #ag-splash-screen .splash-gift {
+    --splash-duration: 520ms;
+    --splash-delay: 560ms;
+
+    position: absolute;
+    bottom: -2px;
+    z-index: 2;
+    pointer-events: none;
+    transform-origin: 50% 100%;
+    background: center bottom / contain no-repeat;
+    animation: agXmGiftDrop var(--splash-duration) linear var(--splash-delay) 1 both;
+}
+
+html.ag-christmas #ag-splash-screen .splash-gift--left {
+    left: -24px;
+    width: 34px;
+    height: 37px;
+    background-image: url("/pics/christmas/gift-red.svg");
+}
+
+html.ag-christmas #ag-splash-screen .splash-gift--right {
+    --splash-delay: 720ms;
+
+    right: -19px;
+    width: 27px;
+    height: 29px;
+    background-image: url("/pics/christmas/gift-green.svg");
+}
+
+@keyframes agXmGiftDrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-30px);
+        animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+    }
+
+    45% {
+        opacity: 1;
+        transform: translateY(0) scale(1.1, 0.88);
+        animation-timing-function: ease-out;
+    }
+
+    65% {
+        transform: translateY(-5px) scale(0.96, 1.05);
+        animation-timing-function: ease-in;
+    }
+
+    82% {
+        transform: translateY(0) scale(1.03, 0.97);
+        animation-timing-function: ease-out;
+    }
+
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* =====================
+   LESS MOTION
+   ===================== */
+
+/* Nothing moves for a viewer who asks for less motion: the snow and the bulbs hold still, the gifts
+   are set down already, and the sleigh does not fly. Through the screen's id, with !important:
+   themes.css cuts every animation to 0.01ms under this setting, which would leave the snow where
+   its fall ends. The app's own Animations setting does not still them: the screen keeps its motion
+   whatever that setting says (css/components/splash-screen.css). */
+@media (prefers-reduced-motion: reduce) {
+    html.ag-christmas #ag-splash-screen .splash-sleigh {
+        display: none;
+    }
+
+    html.ag-christmas #ag-splash-screen .ag-xm-plane,
+    html.ag-christmas #ag-splash-screen .ag-xm-lights,
+    html.ag-christmas #ag-splash-screen .splash-gift {
+        animation: none !important;
+    }
+
+    html.ag-christmas #ag-splash-screen .ag-xm-plane {
+        opacity: var(--ag-xm-snow);
+    }
+}

@@ -24,7 +24,7 @@ export const Default = Template.bind({});
 Default.args = {};
 
 /**
- * On 31 October — the class public/halloween-boot.js sets on <html> that day: the Halloween
+ * On 31 October — the class public/holiday-boot.js sets on <html> that day: the Halloween
  * button above the search, and the Halloween genre among the others.
  */
 export const OnHalloween = {

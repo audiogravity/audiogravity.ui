@@ -54,9 +54,9 @@
          A separate file for the same reasons as the one above. -->
     <script src="/splash-boot.js"></script>
 
-    <!-- Whether it is Halloween: the class every piece of the day's dress needs, on <html>
-         before the splash screen paints. A separate file for the same reasons as the one above. -->
-    <script src="/halloween-boot.js"></script>
+    <!-- Whether it is Halloween or Christmas: the class every piece of the day's dress needs, on
+         <html> before the splash screen paints. A separate file for the same reasons as the one above. -->
+    <script src="/holiday-boot.js"></script>
 
     <!-- With no session, leaves for login.html before this page draws anything: its
          splash screen would show, then be cut by the redirect js/common.js makes once
@@ -253,19 +253,28 @@
          those images are painted from: on the user's theme, a light one cut from black to white
          at every launch. login.html carries the same markup. -->
     <div id="ag-splash-screen" data-theme="minimal" class="dark-mode" role="status" aria-label="Loading Audiogravity" aria-live="polite">
+        <!-- Christmas only, like the tree and the gifts by the icon and the third line below: drawn
+             while <html> has the class public/holiday-boot.js sets on 24 and 25 December
+             (css/components/christmas.css). -->
+        <span class="splash-snow" aria-hidden="true"><span class="ag-xm-plane ag-xm-far"></span><span class="ag-xm-plane ag-xm-near"></span></span>
+        <span class="splash-sleigh" aria-hidden="true"></span>
         <div class="splash-mark">
             <span class="splash-wave" aria-hidden="true"></span>
             <span class="splash-wave splash-wave--second" aria-hidden="true"></span>
             <!-- Halloween only, like the second line below: drawn while <html> has the class
-                 public/halloween-boot.js sets (css/components/halloween.css), which also flies
+                 public/holiday-boot.js sets (css/components/halloween.css), which also flies
                  a bat behind the name. -->
             <div class="ag-hw-spider splash-spider" aria-hidden="true"><div class="ag-hw-sway"><div class="ag-hw-body"></div></div></div>
+            <span class="splash-tree" aria-hidden="true"><span class="ag-xm-lights"></span><span class="ag-xm-lights ag-xm-cool"></span></span>
             <img class="ag-app-icon splash-app-icon" src="pics/apple-touch-180.png" alt=""
                  aria-hidden="true" width="96" height="96">
+            <span class="splash-gift splash-gift--left" aria-hidden="true"></span>
+            <span class="splash-gift splash-gift--right" aria-hidden="true"></span>
         </div>
         <span class="ag-wordmark splash-wordmark">Audiogravi<sup>ty</sup></span>
         <span class="splash-tagline">Your audio chain, fully controlled</span>
         <span class="splash-tagline splash-tagline--halloween">Your audio chain, frightfully controlled</span>
+        <span class="splash-tagline splash-tagline--christmas">Your audio chain, merrily controlled</span>
     </div>
 
     <!-- Skip to main content link (for keyboard users) -->

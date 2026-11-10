@@ -1,7 +1,7 @@
 /**
  * @module HalloweenController
  * @description The app's Halloween dress, as a component reads it: on while <html> carries the
- * class public/halloween-boot.js keeps there — every 31 October by the device's clock, or with
+ * class public/holiday-boot.js keeps there — every 31 October by the device's clock, or with
  * `?halloween` in the address. That script holds the one rule and puts the class on and off, at
  * midnight too; nothing here reads the date. Most of the dress is drawn by CSS from the class
  * alone (css/components/halloween.css); a component draws its part through this controller,
