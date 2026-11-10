@@ -30,7 +30,8 @@
  * puts the track back, with the box's reason.
  *
  * While shown, the view follows the player: it reads the queue again a moment after
- * what plays changes, and its play/pause button turns with the music.
+ * what plays changes, and its play/pause button turns with the music. A tap on the cover
+ * of the track playing opens the full-screen player on that player.
  *
  * On a box without Pro, a track of a streaming service (`pro` on the item, as the core
  * answers it) wears the Pro tint and the padlock: its relay refuses it there and the
@@ -486,6 +487,20 @@ export class AgLibraryQueue extends LitElement {
     }
 
     /**
+     * Open the full-screen player on the player that holds this queue — the box's own, or
+     * the Roon zone shown —, whatever else plays meanwhile: the same request the
+     * mini-player makes (np-expand, heard by ag-now-playing-fullscreen), with the player's
+     * entry to show until its own state arrives. While that player's state is not known,
+     * the full-screen player opens on what it shows by itself.
+     */
+    _openPlayer() {
+        const entry = this._playerEntry();
+        window.dispatchEvent(new CustomEvent('np-expand', {
+            detail: entry ? { source_id: entry.source_id, item: entry } : {},
+        }));
+    }
+
+    /**
      * The play/pause button of the track playing. Unavailable — greyed, never removed, so
      * nothing moves under the finger — while the player's state is not known, and while a
      * tap is on its way.
@@ -715,11 +730,14 @@ export class AgLibraryQueue extends LitElement {
                 <div class="lib-queue-now ${this._isLocked(current) ? 'lib-queue-now--locked' : ''}">
                     <div class="lib-queue-lbl">Now playing</div>
                     <div class="lib-queue-now-row">
-                        <ag-library-cover
-                            cover=${coverUrl(current.cover_token)}
-                            fallback="track"
-                            size="54"
-                        ></ag-library-cover>
+                        <button class="plain-btn lib-queue-now-cover" aria-label="Open the player"
+                            @click=${() => this._openPlayer()}>
+                            <ag-library-cover
+                                cover=${coverUrl(current.cover_token)}
+                                fallback="track"
+                                size="54"
+                            ></ag-library-cover>
+                        </button>
                         <div class="lib-queue-now-col">
                             <span class="lib-queue-now-t">${current.title}</span>
                             <span class="lib-queue-now-a">${current.artist ?? ''}</span>
