@@ -13,7 +13,9 @@
  * from the left), so an edge swipe opens the panel without also removing a row; a
  * mouse is exempt (it never opens those panels). See gesture-constants.js. A
  * gesture that STARTS on an interactive control (a row's action buttons) is
- * ignored too, so pressing a button never drags the row. A
+ * ignored too, so pressing a button never drags the row — except a control marked
+ * `data-swipe-through`: the row's own content drawn as one button, a tap on which
+ * acts (a queue track it plays), where a slide is the row's swipe all the same. A
  * browser-initiated `pointercancel`
  * (vertical scroll / system gesture) never commits. The swiped row is transformed
  * IMPERATIVELY (`el.style.transform`)
@@ -55,6 +57,16 @@ const REVEAL_SELECTOR = '.ag-swipe-reveal';
  * only: a role attribute must not disable the row's own swipe.
  */
 const INTERACTIVE_TAGS = 'button, a, input, select, textarea, label';
+
+/**
+ * The mark of a control that is the row's own content rather than one of its small
+ * actions — a queue track's cover and words, one button a tap plays: most of the row,
+ * so a slide starting on it is the row's swipe. Its tap after a swipe is suppressed
+ * like any other (`swiping`). A press there holds the pointer on the row from the
+ * start, so a mouse's click lands on the row, never on the control (measured in
+ * Chromium on 2026-11-10): listen for the tap on the row (see ag-library-queue).
+ */
+const SWIPE_THROUGH = 'data-swipe-through';
 
 /** Key for a host with a single swipeable element (no per-row identity). */
 export const SINGLE = Symbol('single-swipe-target');
@@ -206,7 +218,8 @@ export class SwipeToDismissController {
         const control = typeof e.target?.closest === 'function'
             ? e.target.closest(INTERACTIVE_TAGS)
             : null;
-        if (control && (typeof el?.contains !== 'function' || el.contains(control))) return;
+        const ownsTheGesture = control && !control.hasAttribute?.(SWIPE_THROUGH);
+        if (ownsTheGesture && (typeof el?.contains !== 'function' || el.contains(control))) return;
         if (this._pointerId !== null) return;                    // a gesture is already in flight
         // The previous gesture's trailing-click suppression is over the moment a new
         // one begins; leaving its 0 ms timer to fire mid-drag flipped `swiping` false

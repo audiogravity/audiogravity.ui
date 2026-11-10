@@ -239,6 +239,29 @@ describe('SwipeToDismissController', () => {
             expect(onCommit).not.toHaveBeenCalled();
         });
 
+        it('arms on the row\'s own content drawn as one button, marked to let the swipe through', () => {
+            // A queue track's cover and words: one button a tap plays, most of the row.
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const content = { hasAttribute: (name) => name === 'data-swipe-through' };
+            const el = { ...makeEl(), contains: (node) => node === content };
+            c.start({ ...ev(200, 'pointerdown'), target: { closest: () => content } }, el, 'row1');
+            expect(el.captured).toBe(1);
+            c.move(ev(40));
+            c.end(ev(40, 'pointerup'));
+            expect(onCommit).toHaveBeenCalledWith('row1');
+            expect(c.swiping).toBe(true);             // its trailing tap plays nothing
+        });
+
+        it('still ignores a button of the row that is not so marked', () => {
+            const onCommit = vi.fn();
+            const c = new SwipeToDismissController(host, { onCommit });
+            const action = { hasAttribute: () => false };
+            const el = { ...makeEl(), contains: (node) => node === action };
+            c.start({ ...ev(200, 'pointerdown'), target: { closest: () => action } }, el, 'row1');
+            expect(el.captured).toBe(null);
+        });
+
         it('arms when the event carries no DOM target (synthetic events must not throw)', () => {
             const c = new SwipeToDismissController(host, { onCommit: vi.fn() });
             const el = makeEl();
