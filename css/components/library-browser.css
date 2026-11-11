@@ -149,6 +149,14 @@
     gap: var(--spacing-sm);
 }
 
+/* "Show more", once a long level has listed the rows that load on their own
+   (ag-library-upnp-browser, AUTO_LOAD_ROWS): further pages come on a tap. */
+.lib-browser-more {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
 /* ── Roon action-item tinted cover variant ── */
 ag-library-cover.lib-browser-cv--act { color: var(--accent-primary-text); }
 

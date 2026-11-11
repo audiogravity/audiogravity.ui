@@ -1,7 +1,9 @@
 /**
  * @module AgUpnpItem
  * @description Row molecule for a single UPnP browse result.
- * Renders containers (folder) and tracks differently.
+ * A track carries Play and "+". An album or a playlist of the server carries them too —
+ * they play or queue it whole — and still opens on a tap, to pick a track in it. Any
+ * other container (a folder, an artist, a genre) only opens, behind its chevron.
  * Fires events so the parent organism handles navigation and playback.
  *
  * @element ag-upnp-item
@@ -29,8 +31,8 @@ import '../atoms/ag-library-cover.js';
  * drew a folder for them.
  *
  * A music album only — or the bare `object.container.album`, which says no more. A
- * server that also shares pictures lists `object.container.album.photoAlbum`: it holds
- * no music, and keeps the folder.
+ * server that also shares pictures lists `object.container.album.photoAlbum`: taken for
+ * an album, it got Play and "+", which could only fail — it holds no audio.
  *
  * @param {{hint?: string, upnp_class?: string}} item - A UPnP browse entry.
  * @returns {'track'|'album'|'playlist'|'container'} An ag-library-cover `fallback` name.
@@ -43,6 +45,19 @@ export function upnpFallback(item) {
     }
     if (cls.startsWith('object.container.playlistContainer')) return 'playlist';
     return 'container';
+}
+
+/**
+ * Whether an entry is a container played whole — an album or a playlist of the server.
+ * Folders are not (decided with the user, 2026-11-11): one may hold nothing but other
+ * folders, and read in depth it could fill the queue with thousands of tracks.
+ *
+ * @param {{hint?: string, upnp_class?: string}} item - A UPnP browse entry.
+ * @returns {boolean}
+ */
+export function isPlayableContainer(item) {
+    const kind = upnpFallback(item);
+    return kind === 'album' || kind === 'playlist';
 }
 
 export class AgUpnpItem extends LitElement {
@@ -80,6 +95,8 @@ export class AgUpnpItem extends LitElement {
 
         const isContainer = item.hint === 'container';
         const artUrl      = coverUrl(item.cover_token || (item.art_uri ? `url:${item.art_uri}` : null));
+        // A track plays; so does an album or a playlist, whole. Other containers only open.
+        const playable    = isContainer ? isPlayableContainer(item) : Boolean(item.res);
 
         return html`
             <div
@@ -95,35 +112,46 @@ export class AgUpnpItem extends LitElement {
                     ${item.subtitle ? html`<span class="lib-browser-st">${item.subtitle}</span>` : nothing}
                 </div>
                 <div class="lib-browser-right">
-                    ${isContainer
-                        ? html`<svg viewBox="0 0 24 24" width="12" height="12"
-                                fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round">${iconChevronRight}</svg>`
-                        : item.res ? html`
-                                <button class="lib-lr-add" aria-label="Play"
-                                    ?disabled=${acting}
-                                    @click=${(e) => this._play(e, 'play')}>
-                                    ${acting
-                                        ? html`<span style="font-size: var(--font-size-xxs);font-family:var(--font-mono)">…</span>`
-                                        : html`<svg viewBox="0 0 24 24" width="14" height="14"
-                                                fill="currentColor" stroke="none">
-                                                ${iconPlay}
-                                            </svg>`
-                                    }
-                                </button>
-                                <button class="lib-lr-add" aria-label="Add to queue"
-                                    @click=${(e) => this._play(e, 'add')}>
-                                    <svg viewBox="0 0 24 24" width="14" height="14"
-                                        fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round">
-                                        ${iconPlus}
-                                    </svg>
-                                </button>`
-                        : nothing
+                    ${playable
+                        ? this._renderActions(acting)
+                        : isContainer
+                            ? html`<svg viewBox="0 0 24 24" width="12" height="12"
+                                    fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round">${iconChevronRight}</svg>`
+                            : nothing
                     }
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Play and "+" — for a track, or for an album or a playlist taken whole.
+     *
+     * @param {boolean} acting - A play of this entry is under way: Play shows it.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderActions(acting) {
+        return html`
+            <button class="lib-lr-add" aria-label="Play"
+                ?disabled=${acting}
+                @click=${(e) => this._play(e, 'play')}>
+                ${acting
+                    ? html`<span style="font-size: var(--font-size-xxs);font-family:var(--font-mono)">…</span>`
+                    : html`<svg viewBox="0 0 24 24" width="14" height="14"
+                            fill="currentColor" stroke="none">
+                            ${iconPlay}
+                        </svg>`
+                }
+            </button>
+            <button class="lib-lr-add" aria-label="Add to queue"
+                @click=${(e) => this._play(e, 'add')}>
+                <svg viewBox="0 0 24 24" width="14" height="14"
+                    fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    ${iconPlus}
+                </svg>
+            </button>`;
     }
 }
 
