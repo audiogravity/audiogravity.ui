@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { readStylesheet, cssRuleBody } from '../../test-utils.js';
-import { upnpFallback } from './ag-upnp-item.js';
+import { upnpFallback, isPlayableContainer } from './ag-upnp-item.js';
 
 /** The `d` of the stem of Lucide's music note, as drawn by ag-library-cover. */
 const NOTE_STEM = 'M9 18V5l12-2v13';
@@ -25,7 +25,8 @@ describe('upnpFallback — the kind of entry named to the cover', () => {
     });
 
     it('keeps a photo album a folder: it holds no music', () => {
-        // A NAS that also shares pictures lists them: they hold no music.
+        // A NAS that also shares pictures lists them; taken for albums they got Play and
+        // "+", which could only fail (review, 2026-11-11).
         expect(upnpFallback({ hint: 'container', upnp_class: 'object.container.album.photoAlbum' }))
             .toBe('container');
     });
@@ -111,6 +112,99 @@ describe('ag-upnp-item — a row on screen', () => {
         // Lucide plus: the same two strokes as ag-library-add-btn, the "+" of every other row.
         expect([...buttons[1].querySelectorAll('path')].map((p) => p.getAttribute('d')))
             .toEqual(['M5 12h14', 'M12 5v14']);
+    });
+});
+
+describe('isPlayableContainer — what plays whole from its row', () => {
+    it('is an album or a playlist of the server', () => {
+        expect(isPlayableContainer({ hint: 'container', upnp_class: 'object.container.album.musicAlbum' }))
+            .toBe(true);
+        expect(isPlayableContainer({ hint: 'container', upnp_class: 'object.container.playlistContainer' }))
+            .toBe(true);
+    });
+
+    it('is never a folder, an artist, a genre, a photo album, nor a track', () => {
+        // Folders were left out on purpose (user, 2026-11-11): one may hold only folders.
+        for (const item of [
+            { hint: 'container', upnp_class: 'object.container.storageFolder' },
+            { hint: 'container', upnp_class: 'object.container.person.musicArtist' },
+            { hint: 'container', upnp_class: 'object.container' },
+            { hint: 'container', upnp_class: 'object.container.album.photoAlbum' },
+            { hint: 'item', upnp_class: 'object.item.audioItem.musicTrack', res: 'http://x/1.flac' },
+        ]) {
+            expect(isPlayableContainer(item)).toBe(false);
+        }
+    });
+});
+
+describe('ag-upnp-item — an album or a playlist of the server', () => {
+    /**
+     * Mount a row and collect the events it sends.
+     *
+     * @param {object} item - A UPnP browse entry.
+     * @returns {Promise<{el: HTMLElement, events: Array<{type: string, detail: object}>}>}
+     */
+    async function mount(item) {
+        const el = document.createElement('ag-upnp-item');
+        el.item = item;
+        const events = [];
+        for (const type of ['upnp-navigate', 'upnp-play']) {
+            el.addEventListener(type, (e) => events.push({ type, detail: e.detail }));
+        }
+        document.body.appendChild(el);
+        await el.updateComplete;
+        return { el, events };
+    }
+
+    afterEach(() => { document.body.innerHTML = ''; });
+
+    const album = {
+        id: '0$albums$*a12', title: 'Purple Rain', subtitle: 'Prince', hint: 'container', res: null,
+        art_uri: null, cover_token: null, upnp_class: 'object.container.album.musicAlbum',
+    };
+    const labels = (el) => [...el.querySelectorAll('.lib-browser-right button')]
+        .map((b) => b.getAttribute('aria-label'));
+    /** Lucide chevron-right (ag-icons.js iconChevronRight): the "opens" mark. */
+    const CHEVRON = 'm9 18 6-6-6-6';
+    const drawsChevron = (el) => [...el.querySelectorAll('.lib-browser-right path')]
+        .some((p) => p.getAttribute('d') === CHEVRON);
+
+    it('carries Play and "+" instead of the chevron', async () => {
+        const { el } = await mount(album);
+
+        expect(labels(el)).toEqual(['Play', 'Add to queue']);
+        expect(drawsChevron(el)).toBe(false);
+    });
+
+    it('plays or queues it whole from those buttons', async () => {
+        const { el, events } = await mount(album);
+        const [play, add] = el.querySelectorAll('.lib-browser-right button');
+        play.click();
+        add.click();
+
+        expect(events).toEqual([
+            { type: 'upnp-play', detail: { item: album, action: 'play' } },
+            { type: 'upnp-play', detail: { item: album, action: 'add' } },
+        ]);
+    });
+
+    it('still opens on a tap of the row, to pick a track in it', async () => {
+        const { el, events } = await mount(album);
+        el.querySelector('.lib-browser-row').click();
+
+        expect(events).toEqual([{ type: 'upnp-navigate', detail: { item: album } }]);
+    });
+
+    it('gives the same buttons to a playlist of the server', async () => {
+        const { el } = await mount({ ...album, upnp_class: 'object.container.playlistContainer' });
+        expect(labels(el)).toEqual(['Play', 'Add to queue']);
+    });
+
+    it('leaves a folder with its chevron alone: it opens, it does not play', async () => {
+        const { el } = await mount({ ...album, title: '02_lossless', upnp_class: 'object.container.storageFolder' });
+
+        expect(labels(el)).toEqual([]);
+        expect(drawsChevron(el)).toBe(true);
     });
 });
 

@@ -2194,3 +2194,66 @@ describe('ag-library-browse — Refresh has MPD read the music folder first', ()
         expect(el._load).not.toHaveBeenCalled();
     });
 });
+
+describe('ag-library-browse — the next page, as the reader nears the end', () => {
+    // The observer moved to InfiniteScrollController, shared with the media server
+    // browser; the grid keeps its two entry points and hands them on.
+    const withScroll = (over = {}) => {
+        const scroll = { sync: vi.fn(), detach: vi.fn() };
+        return { el: makeEl({ _scroll: scroll, ...over }), scroll };
+    };
+
+    it('watches its sentinel while more albums remain', () => {
+        const { el, scroll } = withScroll({ _hasMore: true });
+        el._syncObserver();
+        expect(scroll.sync).toHaveBeenCalledWith(true);
+    });
+
+    it('stops watching once the grid holds every album', () => {
+        const { el, scroll } = withScroll({ _hasMore: false });
+        el._syncObserver();
+        expect(scroll.sync).toHaveBeenCalledWith(false);
+    });
+
+    it('lets go of it on a reload', () => {
+        const { el, scroll } = withScroll();
+        el._detachObserver();
+        expect(scroll.detach).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('ag-library-browse — _loadMore tells whether a page landed', () => {
+    // InfiniteScrollController looks at the end again only after a page that landed:
+    // a grid whose page left the sentinel in reach (a tall screen) used to stop there.
+    const PAGE = 50;
+    const albums = (n, from = 0) => Array.from({ length: n }, (_, k) => ({ id: `a${from + k}`, title: `A${from + k}` }));
+
+    it('answers true when the next page is appended', async () => {
+        const el = makeEl({ _hasMore: true, _offset: PAGE, _albums: albums(PAGE), _loadingMore: false });
+        el._fetchPage = vi.fn(async () => albums(PAGE, PAGE));
+        expect(await el._loadMore()).toBe(true);
+        expect(el._albums).toHaveLength(2 * PAGE);
+    });
+
+    it('answers false for a page that a reload made stale, and keeps it out', async () => {
+        const el = makeEl({ _hasMore: true, _offset: PAGE, _albums: albums(PAGE), _loadingMore: false });
+        el._fetchPage = vi.fn(async () => { el._loadToken += 1; return albums(PAGE, PAGE); });
+        expect(await el._loadMore()).toBe(false);
+        expect(el._albums).toHaveLength(PAGE);
+    });
+
+    it('answers false when the page failed, so nothing asks again in a loop', async () => {
+        const el = makeEl({ _hasMore: true, _offset: PAGE, _albums: albums(PAGE), _loadingMore: false });
+        el._fetchPage = vi.fn(async () => { throw new Error('gone'); });
+        const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+        expect(await el._loadMore()).toBe(false);
+        quiet.mockRestore();
+    });
+
+    it('answers false with nothing left to load', async () => {
+        const el = makeEl({ _hasMore: false, _loadingMore: false });
+        el._fetchPage = vi.fn();
+        expect(await el._loadMore()).toBe(false);
+        expect(el._fetchPage).not.toHaveBeenCalled();
+    });
+});

@@ -39,6 +39,7 @@ import {
 } from '../../library-api.js';
 import { FavoritesController } from '../../core/FavoritesController.js';
 import { ScrollEdgesController } from '../../core/ScrollEdgesController.js';
+import { InfiniteScrollController } from '../../core/InfiniteScrollController.js';
 import { keepInView, scrollParent } from '../../core/keep-in-view.js';
 import { BodyPortalController } from '../../core/BodyPortalController.js';
 import { iconBack, iconChevronRight, iconPlus } from '../../ag-icons.js';
@@ -363,7 +364,11 @@ export class AgLibraryBrowse extends LitElement {
         this._offset      = 0;
         /** Generation counter: a page that resolves under an older token is dropped. */
         this._loadToken   = 0;
-        this._observer    = null;
+        /** The next page, asked for as the reader nears the end of the grid. */
+        this._scroll      = new InfiniteScrollController(this, {
+            selector: '#lib-browse-sentinel',
+            onNearEnd: () => this._loadMore(),
+        });
         /**
          * @type {{playlist: object, wide: boolean, backLabel: string}|null} The playlist
          * whose page is on screen, in the grid's place; null while the grid is.
@@ -780,7 +785,7 @@ export class AgLibraryBrowse extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        this._detachObserver();
+        // The sentinel's observer is let go by InfiniteScrollController.hostDisconnected.
         window.removeEventListener(PLAYLISTS_CHANGED_EVENT, this._playlistsListener);
     }
 
@@ -1025,18 +1030,26 @@ export class AgLibraryBrowse extends LitElement {
         });
     }
 
+    /**
+     * The next page of albums, appended.
+     * @returns {Promise<boolean>} Whether a page landed — what has InfiniteScrollController
+     *   look at the end again: a page that leaves the sentinel in reach is followed by the
+     *   next one, without waiting for the reader to scroll.
+     */
     async _loadMore() {
-        if (this._loadingMore || !this._hasMore) return;
+        if (this._loadingMore || !this._hasMore) return false;
         this._loadingMore = true;
         const token = this._loadToken;
         try {
             const page = await this._fetchPage(this._offset);
-            if (token !== this._loadToken) return;   // a reload happened; this page is stale
+            if (token !== this._loadToken) return false;   // a reload happened; this page is stale
             this._albums  = [...this._albums, ...page];
             this._offset += page.length;
             this._hasMore = page.length === PAGE_SIZE;
+            return true;
         } catch (e) {
             console.error('[browse] load more failed:', e);
+            return false;
         } finally {
             if (token === this._loadToken) this._loadingMore = false;
         }
@@ -1203,27 +1216,20 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     // ------------------------------------------------------------------
-    // IntersectionObserver for infinite scroll
+    // Infinite scroll (InfiniteScrollController)
     // ------------------------------------------------------------------
 
+    /** Watch the sentinel while there are more albums to load (called after each render). */
     _syncObserver() {
         // 'Recent' used to cap the list at 50 and disable infinite scroll, because it was
         // a slice rather than an order. It is a sort over the whole library now, so every
         // pill scrolls through everything.
-        const active = this._hasMore;
-        if (!active) { this._detachObserver(); return; }
-        if (this._observer) return;
-        const sentinel = this.querySelector('#lib-browse-sentinel');
-        if (!sentinel) return;
-        this._observer = new IntersectionObserver(
-            (entries) => { if (entries[0].isIntersecting) this._loadMore(); },
-            { rootMargin: '0px 0px 200px 0px' },
-        );
-        this._observer.observe(sentinel);
+        this._scroll.sync(this._hasMore);
     }
 
+    /** Stop watching: the grid is reloading. Leaving the page is the controller's own affair. */
     _detachObserver() {
-        if (this._observer) { this._observer.disconnect(); this._observer = null; }
+        this._scroll.detach();
     }
 
     // ------------------------------------------------------------------

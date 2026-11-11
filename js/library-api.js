@@ -24,8 +24,8 @@ import { showToast } from './ui-helpers.js';
  * @param {string} [opts.searchQuery] - Original search query (search hierarchy).
  * @param {string} [opts.itemTitle]   - Display title; helps Roon refresh stale item_keys.
  * @param {number} [opts.startIndex]  - Queue an album or a playlist from this position on
- *   (0 = its first track); the tracks before it are left out. HIGHRESAUDIO and Qobuz albums
- *   and playlists — the core refuses it elsewhere.
+ *   (0 = its first track); the tracks before it are left out. Albums and playlists of
+ *   HIGHRESAUDIO, Qobuz and media servers (`upnp:…`) — the core refuses it elsewhere.
  * @param {string} [opts.startItemId] - The id of the track at `startIndex`. The core reads
  *   the list again when it plays: if the track moved meanwhile it starts where the track now
  *   is, and if it left, the play is refused rather than started on another track.
