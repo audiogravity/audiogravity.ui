@@ -519,6 +519,43 @@ export const RECIPES = {
             return { clip: { ...s, height: end - s.y } };
         },
     },
+    'media-server': {
+        // A media server's albums, each row with its Play and "+", which play it whole.
+        // Opened through the page's state: _fetchUpnpServerAndSwitch only reads the known
+        // servers, where a source card's tap would POST /player/source.
+        tab: 'library', height: 1400,
+        needs: ['MinimServer among the known media servers'],
+        async run(page) {
+            const opened = await page.evaluate(async () => {
+                const { apiGet } = await import('/js/api.js');
+                const known = await apiGet('/library/upnp-known-servers');
+                const server = known.find((s) => /minimserver/i.test(s.manufacturer ?? ''));
+                return server
+                    ? document.querySelector('ag-library-page')._fetchUpnpServerAndSwitch(server.id)
+                    : false;
+            });
+            if (!opened) throw new Error('no MinimServer among the known media servers');
+            const browser = page.locator('.lib-view.active ag-library-upnp-browser');
+            await browser.locator('ag-upnp-item').first().waitFor({ timeout: 15000 });
+            // The level of every album: MinimServer names it "<count> albums".
+            await page.evaluate(() => {
+                const el = document.querySelector('ag-library-upnp-browser');
+                const albums = el._items.find((item) => /\balbums$/i.test(item.title));
+                if (!albums) throw new Error('no "… albums" level at the server\'s root');
+                el._browseInto(albums);
+            });
+            await page.waitForFunction(() => document.querySelector('ag-library-upnp-browser')?._items
+                ?.some((item) => item.upnp_class?.startsWith('object.container.album.musicAlbum')),
+            null, { timeout: 15000 });
+            await page.waitForTimeout(4000);   // the covers
+            // The server's name sits in .lib-context, a sibling of the browser. The figure
+            // ends on the sixth album's bottom rule, never across a row.
+            const both = union(await box(page, '.lib-view.active .lib-context'),
+                await box(page, '.lib-view.active ag-library-upnp-browser'));
+            const sixth = await box(page, '.lib-view.active ag-upnp-item', 5);
+            return { clip: { ...both, height: sixth.y + sixth.height - both.y } };
+        },
+    },
     radio: {
         tab: 'library', height: 1400,
         async run(page) {
