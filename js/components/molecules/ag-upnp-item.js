@@ -6,7 +6,8 @@
  *
  * @element ag-upnp-item
  *
- * @attr {object}  .item   - UPnP item descriptor: { id, title, subtitle, hint, res, art_uri, cover_token }
+ * @attr {object}  .item   - UPnP item descriptor: { id, title, subtitle, hint, res, art_uri,
+ *                           cover_token, upnp_class }
  * @attr {boolean} acting  - Whether this item is currently loading (play in progress)
  *
  * @fires upnp-navigate - Bubbles. detail: { item } — user tapped a container
@@ -18,6 +19,31 @@ import { LitElement, html, nothing } from 'lit';
 import { coverUrl } from '../utils-lit.js';
 import { iconChevronRight, iconPlus, iconPlay } from '../../ag-icons.js';
 import '../atoms/ag-library-cover.js';
+
+/**
+ * The kind of entry named to ag-library-cover, which draws the picture shown when the
+ * server sends no artwork. Read from the entry's DIDL class: an album or a playlist is
+ * music whose artwork is missing — the music note, as for a track — while any other
+ * container (a folder, an artist, a genre) is something to open, and keeps the folder.
+ * Album containers do come without artwork on some servers; deciding on `hint` alone
+ * drew a folder for them.
+ *
+ * A music album only — or the bare `object.container.album`, which says no more. A
+ * server that also shares pictures lists `object.container.album.photoAlbum`: it holds
+ * no music, and keeps the folder.
+ *
+ * @param {{hint?: string, upnp_class?: string}} item - A UPnP browse entry.
+ * @returns {'track'|'album'|'playlist'|'container'} An ag-library-cover `fallback` name.
+ */
+export function upnpFallback(item) {
+    if (item?.hint !== 'container') return 'track';
+    const cls = item.upnp_class ?? '';
+    if (cls === 'object.container.album' || cls.startsWith('object.container.album.musicAlbum')) {
+        return 'album';
+    }
+    if (cls.startsWith('object.container.playlistContainer')) return 'playlist';
+    return 'container';
+}
 
 export class AgUpnpItem extends LitElement {
     static properties = {
@@ -62,7 +88,7 @@ export class AgUpnpItem extends LitElement {
             >
                 <ag-library-cover
                     cover=${artUrl || ''}
-                    fallback=${isContainer ? 'container' : 'track'}
+                    fallback=${upnpFallback(item)}
                 ></ag-library-cover>
                 <div class="lib-browser-meta">
                     <span class="lib-browser-t">${item.title}</span>

@@ -138,11 +138,15 @@
     text-overflow: ellipsis;
 }
 
+/* The gap is the one the other library rows put between their buttons (.lib-lr-actions):
+   a UPnP track carries Play and "+" side by side, and without it the two bordered
+   buttons touched and read as one. A single child (Roon's play, a chevron) is unaffected. */
 .lib-browser-right {
     color: var(--text-tertiary);
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    gap: var(--spacing-sm);
 }
 
 /* ── Roon action-item tinted cover variant ── */

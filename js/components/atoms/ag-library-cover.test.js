@@ -73,6 +73,46 @@ describe('ag-library-cover — deferred image loading', () => {
 });
 
 /**
+ * One picture for any missing artwork.
+ *
+ * The player shows a music note when it has no cover. The library drew a disc for an
+ * album, another for a track and a bulleted list for a playlist: three more pictures
+ * for the same absence, the track's looking like the output button of the top bar at
+ * row size (user, iPhone, 2026-11-11). Callers keep naming the kind of item, so the
+ * tests are written on the names they pass.
+ */
+describe('ag-library-cover — missing artwork', () => {
+    /**
+     * @param {HTMLElement} el - A rendered ag-library-cover.
+     * @returns {boolean} Whether its drawing is the music note (Lucide music).
+     */
+    const drawsNote = (el) =>
+        el.querySelector('.ag-libcv-icon path')?.getAttribute('d') === 'M9 18V5l12-2v13'
+        && el.querySelectorAll('.ag-libcv-icon circle').length === 2;
+
+    it.each(['album', 'playlist', 'track', 'note'])(
+        'draws the music note behind a coverless %s', async (fallback) => {
+            expect(drawsNote(await mount({ cover: '', fallback }))).toBe(true);
+        });
+
+    it('draws it too once a cover has failed to load', async () => {
+        const el = await mount({ cover: '/api/audio_pipeline/cover?token=gone', fallback: 'album' });
+        el.querySelector('img.ag-libcv-img').dispatchEvent(new Event('error'));
+        await el.updateComplete;
+
+        expect(drawsNote(el)).toBe(true);
+    });
+
+    it.each(['container', 'radio', 'list', 'next', 'queue', 'play'])(
+        'keeps its own picture for a %s, which is not artwork', async (fallback) => {
+            const el = await mount({ cover: '', fallback });
+
+            expect(drawsNote(el)).toBe(false);
+            expect(el.querySelectorAll('.ag-libcv-icon *').length).toBeGreaterThan(0);
+        });
+});
+
+/**
  * The 2:1 cell.
  *
  * HIGHRESAUDIO's editorial playlists are banners, not covers — 410 × 205, every one of

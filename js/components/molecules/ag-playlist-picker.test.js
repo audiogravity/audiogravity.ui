@@ -79,6 +79,17 @@ describe('ag-playlist-picker — the list', () => {
         expect(el.textContent).toContain('Tukuman');
     });
 
+    it('draws the music note behind a playlist without artwork, as for any missing cover', async () => {
+        apiGet.mockResolvedValue([TEST_PLAYLIST]);
+        const el = await mount();
+        requestPlaylistAdd(TRACK);
+        await settle(el);
+        // rows(el)[0] is "New playlist", drawn with its "+".
+        const cover = rows(el)[1].querySelector('ag-library-cover');
+        expect(cover.getAttribute('fallback')).toBe('playlist');
+        expect(cover.querySelector('.ag-libcv-icon path').getAttribute('d')).toBe('M9 18V5l12-2v13');
+    });
+
     it('says when the account has no playlist yet', async () => {
         apiGet.mockResolvedValue([]);
         const el = await mount();

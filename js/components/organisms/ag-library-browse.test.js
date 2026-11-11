@@ -669,7 +669,7 @@ describe('ag-library-browse — a playlist is told from an album', () => {
         const el = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists' });
         const row = el._renderListRow({ id: 'editorial:1', title: 'Montreux', artist: 'Editor’s Pick' });
         expect(row.values).toContain('Playlist · Editor’s Pick');
-        expect(row.values).toContain('list');   // not the album glyph behind the cover
+        expect(row.values).toContain('playlist');   // named a playlist to the cover, not an album
     });
 
     it('queues from the same answer it renders from', () => {
@@ -703,16 +703,17 @@ describe('ag-library-browse — the ★ is offered only where the grid holds alb
     });
 
     it('shows one glyph for one coverless item, card and row alike', () => {
-        // The grid on top and the list below render the SAME item in one viewport;
-        // two answers put a disc beside a list. The card used to hardcode the disc.
+        // The grid on top and the list below render the SAME item in one viewport, so
+        // the card and the row name the same kind of item to the cover, which picks the
+        // picture. The card used to hardcode the album's.
         const pl = makeEl({ sourceId: 'src_highresaudio', _filter: 'playlists', _fav: { has: () => false } });
         const alb = makeEl({ sourceId: 'src_highresaudio', _filter: 'favorites', _fav: { has: () => false } });
-        expect(pl._playlistFallback).toBe('list');
+        expect(pl._playlistFallback).toBe('playlist');
         expect(alb._playlistFallback).toBe('album');
         const item = { id: 'editorial:1', title: 'Montreux' };
         // Flattened, so a hardcoded attribute is seen: it would read fallback="album".
-        expect(text(pl._renderAlbumCard(item))).toContain('fallback=list');
-        expect(text(pl._renderListRow(item))).toContain('fallback=list');
+        expect(text(pl._renderAlbumCard(item))).toContain('fallback=playlist');
+        expect(text(pl._renderListRow(item))).toContain('fallback=playlist');
         expect(text(alb._renderAlbumCard({ ...item, id: 'alb1' }))).toContain('fallback=album');
     });
 });

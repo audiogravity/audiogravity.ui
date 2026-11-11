@@ -94,22 +94,14 @@ export const iconOutput = svg`
     <circle cx="12" cy="12" r="9"/>
     <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>`;
 
-/** Musical note — generic "no cover" placeholder. (Lucide: music) */
+/**
+ * Musical note — the one "no cover" picture, for any missing artwork: the player's, and
+ * every album, playlist and track of the library (ag-library-cover). (Lucide: music)
+ */
 export const iconMusicNote = svg`
     <path d="M9 18V5l12-2v13"/>
     <circle cx="6" cy="18" r="3"/>
     <circle cx="18" cy="16" r="3"/>`;
-
-/** Disc with small inner dot — album glyph. (Lucide: disc) */
-export const iconAlbum = svg`
-    <circle cx="12" cy="12" r="10"/>
-    <circle cx="12" cy="12" r="2"/>`;
-
-/** Disc with medium inner ring — track glyph. (Lucide: disc-2) */
-export const iconTrack = svg`
-    <circle cx="12" cy="12" r="10"/>
-    <circle cx="12" cy="12" r="4"/>
-    <path d="M12 12h.01"/>`;
 
 /** Folder / container glyph (library-cover `container`). (Lucide: folder) */
 export const iconFolder = svg`

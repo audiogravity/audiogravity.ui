@@ -20,20 +20,31 @@ const Template = ({ item, acting }) => {
 
 export const Container = Template.bind({});
 Container.args = {
-    item: { id: '1', title: 'Albums', subtitle: null, hint: 'container', res: null, art_uri: null, cover_token: null },
+    item: { id: '1', title: 'Albums', subtitle: null, hint: 'container', res: null, art_uri: null,
+            cover_token: null, upnp_class: 'object.container' },
+    acting: false,
+};
+
+/** An album the server sends without artwork: the music note, not the folder. */
+export const AlbumWithoutArtwork = Template.bind({});
+AlbumWithoutArtwork.args = {
+    item: { id: '4', title: 'Animals', subtitle: 'Pink Floyd', hint: 'container', res: null,
+            art_uri: null, cover_token: null, upnp_class: 'object.container.album.musicAlbum' },
     acting: false,
 };
 
 export const Track = Template.bind({});
 Track.args = {
     item: { id: '2', title: 'Wish You Were Here', subtitle: 'Pink Floyd', hint: 'item',
-            res: 'http://server/track.flac', art_uri: null, cover_token: null },
+            res: 'http://server/track.flac', art_uri: null, cover_token: null,
+            upnp_class: 'object.item.audioItem.musicTrack' },
     acting: false,
 };
 
 export const TrackPlaying = Template.bind({});
 TrackPlaying.args = {
     item: { id: '3', title: 'Money', subtitle: 'Pink Floyd', hint: 'item',
-            res: 'http://server/track.flac', art_uri: null, cover_token: null },
+            res: 'http://server/track.flac', art_uri: null, cover_token: null,
+            upnp_class: 'object.item.audioItem.musicTrack' },
     acting: true,
 };
