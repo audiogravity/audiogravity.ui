@@ -40,6 +40,9 @@
  *
  * @attr {Object}  pkg  - The package being installed, as `/packages/` returns it
  * @attr {boolean} show - Whether the dialog is visible
+ * @attr {string}  note - What the install interrupts, as plain text (the page's
+ *   playback warning: REPAIR, over a package still installed, restarts its
+ *   service), or '' when nothing is at stake
  *
  * @fires install-confirmed - `{ packageId, version, webPassword }` — version is
  *   null when the package offers no choice, which means "whatever the package's
@@ -60,6 +63,7 @@ export class AgPackageInstallDialog extends LitElement {
     static properties = {
         pkg:  { type: Object },
         show: { type: Boolean },
+        note: { type: String },
 
         _loading:  { state: true },
         _notices:  { state: true },
@@ -76,6 +80,7 @@ export class AgPackageInstallDialog extends LitElement {
         super();
         this.pkg  = null;
         this.show = false;
+        this.note = '';
         this._loading  = false;
         this._notices  = [];
         this._versions = [];
@@ -362,6 +367,7 @@ export class AgPackageInstallDialog extends LitElement {
                     Install ${this.pkg?.label}? Nothing is configured by installing it —
                     that is a separate step.
                 </p>` : nothing}
+            ${this.note ? html`<p class="ag-pid-hint">${this.note.trim()}</p>` : nothing}
             ${this._failed ? html`
                 <p class="ag-pid-warning">
                     The vendor could not be reached, so the versions it publishes cannot

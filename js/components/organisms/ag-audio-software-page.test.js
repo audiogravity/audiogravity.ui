@@ -88,7 +88,7 @@ describe('Single-package confirmation — vendor text is plain text', () => {
         const box = document.createElement('div');
         render(dialog.messageTemplate, box);
         expect(box.textContent).toBe(
-            'Update <b>x</b> from version 1.0 to 2<i>? This restarts <b>x</b> — anything playing through it will stop.');
+            'Update <b>x</b> from version 1.0 to 2<i>? This restarts <b>x</b> if it is running — anything playing through it will stop.');
         expect(box.querySelector('b, i')).toBeNull();
         dialog.dispatchEvent(new CustomEvent('dialog-cancel'));
         await asked;

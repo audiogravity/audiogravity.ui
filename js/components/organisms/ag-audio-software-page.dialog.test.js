@@ -87,6 +87,17 @@ describe('the install dialog of the audio software page', () => {
         const [dialog] = dialogsOnBody();
         expect(dialog.pkg).toBe(HQPLAYERD);
         expect(dialog.show).toBe(true);
+        expect(dialog.note).toBe('');   // a first install: nothing runs yet
+    });
+
+    it('is told what a REPAIR interrupts: the install of a package still there', async () => {
+        const page = await mountPage();
+        page.packages = [{ ...HQPLAYERD, installed_version: '6.1.0-4' }];
+        await page._handleAction({ detail: { packageId: 'hqplayerd', action: 'install' } });
+        await page.updateComplete;
+        const [dialog] = dialogsOnBody();
+        expect(dialog.note).toBe(
+            ' This restarts HQPlayer Embedded if it is running — anything playing through it will stop.');
     });
 
     it('closes when the dialog is dismissed', async () => {
