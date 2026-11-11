@@ -442,3 +442,31 @@ describe('ag-package-install-dialog — a vendor trial limit', () => {
         expect(el.textContent).toContain('Nothing is configured by installing it');
     });
 });
+
+/**
+ * REPAIR installs over a package still installed, and the core then puts its
+ * service back as it stood — restarting one that runs, as an update does. The
+ * page gives the dialog the sentence its update confirmation carries.
+ */
+describe('ag-package-install-dialog — what an install over a package interrupts', () => {
+    const WARNING = ' This restarts MPD if it is running — anything playing through it will stop.';
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        apiGet.mockReset();
+    });
+
+    it('says it when the page gives it', async () => {
+        serve();
+        const el = await open({ ...MPD, installed_version: '0.24.5-1' });
+        el.note = WARNING;
+        await el.updateComplete;
+        expect(el.textContent).toContain(WARNING.trim());
+    });
+
+    it('says nothing of the kind otherwise', async () => {
+        serve();
+        const el = await open(MPD);
+        expect(el.textContent).not.toContain('This restarts');
+    });
+});

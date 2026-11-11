@@ -278,8 +278,10 @@ export class AgAudioSoftwarePage extends LitElement {
     updated(changed) {
         super.updated(changed);
         if (changed.has('_installDialogFor') && this._installDialog) {
-            this._installDialog.pkg = this._installDialogFor;
-            this._installDialog.show = Boolean(this._installDialogFor);
+            const pkg = this._installDialogFor;
+            this._installDialog.pkg = pkg;
+            this._installDialog.note = pkg ? this._playbackWarningText(pkg, 'install') : '';
+            this._installDialog.show = Boolean(pkg);
         }
         if (changed.has('_uninstallDialogFor') && this._uninstallDialog) {
             const pkg = this._uninstallDialogFor;
@@ -488,14 +490,19 @@ export class AgAudioSoftwarePage extends LitElement {
     /**
      * Warn that an operation will interrupt whatever is playing through it.
      *
-     * Updating a package restarts the service it drives — the package's own
-     * post-install script does it, so nothing here can avoid it — and
-     * uninstalling stops it outright. Said in the confirmation rather than
-     * enforced by a guard: the only reliable way to know whether that service is
-     * currently playing is to rebuild the whole audio pipeline, ALSA probing
-     * included, which is far too much to pay before every operation and is blind
-     * to Roon anyway. The person pressing the button knows whether they are
-     * listening; this makes sure they know what the button does.
+     * Updating a package restarts the service it drives when that service runs —
+     * the package's own scripts do it, or the core when they stop it or leave the
+     * previous version running — and leaves one that was stopped stopped: the core
+     * puts it back as it stood. So does installing over a package still there —
+     * REPAIR —, whose scripts stop or restart the service as an update's do;
+     * installing over nothing interrupts nothing. Uninstalling stops it outright.
+     *
+     * Said in the confirmation rather than enforced by a guard: the only reliable
+     * way to know whether that service is currently playing is to rebuild the
+     * whole audio pipeline, ALSA probing included, which is far too much to pay
+     * before every operation and is blind to Roon anyway. The person pressing the
+     * button knows whether they are listening; this makes sure they know what the
+     * button does.
      *
      * Plain text, as every message of showConfirm and every Lit template wants
      * it: both show it as text. Escaping it put entities on screen (`&gt;=` in
@@ -508,11 +515,12 @@ export class AgAudioSoftwarePage extends LitElement {
      */
     _playbackWarningText(pkg, action, label = pkg.label) {
         // No service_id: nothing AG starts or stops (Roon Server), so nothing to
-        // warn about. Installing something that is not running yet is harmless.
-        if (!pkg.service_id || action === 'install') return '';
+        // warn about. Installing something that is not there yet is harmless; over
+        // a package still installed — REPAIR — it is an update's interruption.
+        if (!pkg.service_id || (action === 'install' && !pkg.installed_version)) return '';
         return action === 'uninstall'
             ? ` This stops and removes ${label} — anything playing through it will stop.`
-            : ` This restarts ${label} — anything playing through it will stop.`;
+            : ` This restarts ${label} if it is running — anything playing through it will stop.`;
     }
 
     async _handleAction(e) {

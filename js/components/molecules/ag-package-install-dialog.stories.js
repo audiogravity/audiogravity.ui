@@ -71,6 +71,7 @@ const Template = (args) => {
     return html`
         <ag-package-install-dialog
             .pkg=${args.pkg}
+            .note=${args.note || ''}
             ?show=${args.show}>
         </ag-package-install-dialog>
     `;
@@ -161,6 +162,25 @@ NothingToShow.args = {
         installed_version: null,
         offers_version_choice: false,
     },
+    notices: [],
+    versions: [],
+};
+
+/**
+ * REPAIR: MPD failed while installed, and its install runs again over it. Its
+ * package stops it as it updates, and the core starts it again — the page says so,
+ * as an update's confirmation does.
+ */
+export const Repair = Template.bind({});
+Repair.args = {
+    show: true,
+    pkg: {
+        id: 'mpd',
+        label: 'Music Player Daemon',
+        installed_version: '0.24.5-1',
+        offers_version_choice: false,
+    },
+    note: ' This restarts Music Player Daemon if it is running — anything playing through it will stop.',
     notices: [],
     versions: [],
 };
