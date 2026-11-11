@@ -1802,3 +1802,48 @@ describe('AgNowPlayingFullscreen — the level meter is Pro', () => {
         expect(host.querySelector('.npfs-cover')).not.toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// Its Queue button draws what the Queue tab draws
+// ---------------------------------------------------------------------------
+
+import '../molecules/ag-lib-tabbar.js';
+
+describe('AgNowPlayingFullscreen — the Queue button wears the Queue tab\'s drawing', () => {
+    // It leads to the Queue tab, and wore the bulleted list — the Browse tab's drawing
+    // (user, 2026-11-11). Compared drawing to drawing, so the two cannot drift apart.
+
+    /** The drawing of an svg: its shapes' markup, Lit's markers left out. */
+    const drawing = (svg) => [...svg.children].map((c) => c.outerHTML);
+
+    /** The svg of a tab of the library's tab bar. */
+    async function tabIcon(label) {
+        const bar = document.createElement('ag-lib-tabbar');
+        document.body.appendChild(bar);
+        await bar.updateComplete;
+        const svg = bar.querySelector(`button[aria-label="${label}"] svg`);
+        bar.remove();
+        return svg;
+    }
+
+    function playerQueueIcon() {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true, _state: { source_id: 'src_mpd', title: 'So What', playing: true },
+            _rendererActive: false, _nextTrack: null, _sources: [],
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        return host.querySelector('.npfs-header-actions button[aria-label="Queue"] svg');
+    }
+
+    it('draws the Queue tab\'s icon', async () => {
+        expect(drawing(playerQueueIcon())).toEqual(drawing(await tabIcon('Queue')));
+    });
+
+    it('no longer draws the Browse tab\'s', async () => {
+        expect(drawing(playerQueueIcon())).not.toEqual(drawing(await tabIcon('Browse')));
+    });
+});

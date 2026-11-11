@@ -327,7 +327,7 @@ export class AgPlaylistPage extends LitElement {
         return html`
             <div class="ag-pp-head ${this.wide ? 'ag-pp-head--wide' : ''}">
                 <ag-library-cover class="ag-pp-cover" cover=${coverUrl(this.playlist.cover_token)}
-                    fallback="list" ?wide=${this.wide} size=${this.wide ? 240 : 112}></ag-library-cover>
+                    fallback="playlist" ?wide=${this.wide} size=${this.wide ? 240 : 112}></ag-library-cover>
                 <div class="ag-pp-info">
                     <span class="ag-pp-kicker">${this._editable
                         ? 'Your playlist' : (source ? `Playlist · ${source}` : 'Playlist')}</span>

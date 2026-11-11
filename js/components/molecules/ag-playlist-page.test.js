@@ -97,6 +97,13 @@ describe('ag-playlist-page — what it shows', () => {
         expect(rows(el)[0].note).toBe('6:37');
     });
 
+    it('draws the music note at its head when the playlist has no artwork', async () => {
+        const el = await mount();
+        const cover = el.querySelector('ag-library-cover.ag-pp-cover');
+        expect(cover.getAttribute('fallback')).toBe('playlist');
+        expect(cover.querySelector('.ag-libcv-icon path').getAttribute('d')).toBe('M9 18V5l12-2v13');
+    });
+
     it('heads the page with the playlist, counted from its tracks', async () => {
         const el = await mount();
         expect(el.querySelector('.ag-pp-kicker').textContent).toBe('Your playlist');

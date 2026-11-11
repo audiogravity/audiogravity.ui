@@ -8,7 +8,7 @@ export default {
         cover: { control: 'text' },
         fallback: {
             control: 'select',
-            options: ['list', 'album', 'container', 'track', 'radio', 'next', 'queue', 'play', 'note'],
+            options: ['list', 'album', 'playlist', 'container', 'track', 'radio', 'next', 'queue', 'play', 'note'],
         },
         size: { control: 'number' },
         wide: { control: 'boolean' },
@@ -27,13 +27,14 @@ const Template = (args) => html`
 export const FallbackList = Template.bind({});
 FallbackList.args = { cover: '', fallback: 'list', size: 40 };
 
+/** Any missing artwork — album, playlist, track — draws the music note, as the player does. */
 export const FallbackAlbum = Template.bind({});
 FallbackAlbum.args = { cover: '', fallback: 'album', size: 40 };
 
 export const FallbackRadio = Template.bind({});
 FallbackRadio.args = { cover: '', fallback: 'radio', size: 40 };
 
-/** A row of the listening history with no cover (ag-stats-top, ag-stats-recent). */
+/** A row of the listening history with no cover (ag-stats-top, ag-stats-recent): the same note. */
 export const FallbackNote = Template.bind({});
 FallbackNote.args = { cover: '', fallback: 'note', size: 44 };
 

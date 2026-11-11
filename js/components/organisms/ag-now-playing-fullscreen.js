@@ -37,7 +37,7 @@ import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, inTransition, showsVolumeControl, showsDsdLock, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
-import { iconChevronDoubleDown, iconQueue, iconOutput, iconMusicNote, iconGauge } from '../../ag-icons.js';
+import { iconChevronDoubleDown, iconQueuePlay, iconOutput, iconMusicNote, iconGauge } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, isLockedSource, openLicensePanel, proState } from '../../license-tiers.js';
@@ -1233,10 +1233,12 @@ export class AgNowPlayingFullscreen extends LitElement {
                     </button>
                     <span class="npfs-title">Now Playing</span>
                     <div class="npfs-header-actions">
+                        <!-- The Queue tab's drawing: the button leads there. It had the
+                             bulleted list, which is the Browse tab's (user, 2026-11-11). -->
                         <button class="npfs-header-btn" aria-label="Queue"
                             @click=${() => { this._closePlayer(); window.dispatchEvent(new CustomEvent('lib-goto', { detail: { view: 'queue' } })); }}>
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                                ${iconQueue}
+                                ${iconQueuePlay}
                             </svg>
                         </button>
                         <ag-sleep-timer

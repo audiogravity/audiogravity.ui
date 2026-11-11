@@ -261,7 +261,7 @@ export class AgPlaylistPicker extends LitElement {
                 ${playlists.map((p) => html`
                     <li>
                         <button class="ag-plp-row" ?disabled=${this._busy} @click=${() => this._addTo(p)}>
-                            <ag-library-cover cover=${coverUrl(p.cover_token)} fallback="list" size="40"></ag-library-cover>
+                            <ag-library-cover cover=${coverUrl(p.cover_token)} fallback="playlist" size="40"></ag-library-cover>
                             <span class="ag-plp-col">
                                 <span class="ag-plp-t">${p.title}</span>
                                 ${p.artist ? html`<span class="ag-plp-s">${p.artist}</span>` : nothing}

@@ -1231,12 +1231,12 @@ export class AgLibraryBrowse extends LitElement {
     // ------------------------------------------------------------------
 
     /**
-     * @returns {string} The glyph shown behind a missing cover. One value for the card
-     * and the row: the same coverless playlist appears in both — the grid on top, the
-     * list below — so two answers would put a disc and a list side by side in one
-     * viewport for one item.
+     * @returns {string} The kind of item named to ag-library-cover, which draws the
+     * picture shown behind a missing cover. One value for the card and the row: the same
+     * coverless playlist appears in both — the grid on top, the list below — so two
+     * answers would put two pictures side by side in one viewport for one item.
      */
-    get _playlistFallback() { return this._showsPlaylists ? 'list' : 'album'; }
+    get _playlistFallback() { return this._showsPlaylists ? 'playlist' : 'album'; }
 
     /**
      * @returns {boolean} Whether the artwork on screen is a 2:1 banner rather than a

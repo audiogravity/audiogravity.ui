@@ -10,7 +10,8 @@
  *
  * @attr {string}  cover     - Resolved cover URL (empty/falsy → show fallback only)
  * @attr {string}  fallback  - Fallback glyph name. One of:
- *                              list | album | container | track | radio | next | queue | play | note
+ *                              list | album | playlist | container | track | radio | next | queue | play | note
+ *                              (`album`, `playlist`, `track` and `note` all draw the music note — see ICONS)
  * @attr {number}  size      - Cell width in pixels (default 40); also the height unless `wide`
  * @attr {boolean} wide      - The artwork is a 2:1 banner, not a square cover: the cell is
  *                             `size` wide and half that high. HIGHRESAUDIO's editorial
@@ -30,23 +31,33 @@
 
 import { LitElement, html, nothing } from 'lit';
 import {
-    iconQueue, iconAlbum, iconTrack, iconFolder,
+    iconQueue, iconFolder,
     iconRadio, iconUpNext, iconQueueEdit, iconPlay, iconMusicNote,
 } from '../../ag-icons.js';
 
 // Keys are the atom's public `fallback` attribute API; intentionally remapped
 // to the canonical ag-icons.js names (e.g. `container` → iconFolder).
+//
+// Every missing artwork draws the same music note, whatever the item: an album, a
+// playlist, a track, a row of the listening history (ag-stats-top, ag-stats-recent).
+// It is what the player shows when it has no cover, so the library and the player
+// say "no artwork" with one picture. Albums and tracks used to have a disc each
+// (Lucide disc, disc-2): beside the player's note that read as a second meaning, and
+// drawn at row size the circle with a ring and a dot looked like the output button
+// of the top bar. Callers still name the kind of item; the picture is decided here.
+// What is not artwork keeps its own picture: a folder to open, a radio station, an
+// entry of Roon's browser, and the actions Roon offers.
 const ICONS = {
     list:      iconQueue,
-    album:     iconAlbum,
-    track:     iconTrack,
+    album:     iconMusicNote,
+    playlist:  iconMusicNote,
+    track:     iconMusicNote,
+    note:      iconMusicNote,
     container: iconFolder,
     radio:     iconRadio,
     next:      iconUpNext,
     queue:     iconQueueEdit,
     play:      iconPlay,
-    // A row of the listening history with no cover (ag-stats-top, ag-stats-recent).
-    note:      iconMusicNote,
 };
 
 export class AgLibraryCover extends LitElement {
