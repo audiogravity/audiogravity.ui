@@ -446,6 +446,52 @@ describe('ag-package-card — configuration state', () => {
     });
 });
 
+describe('ag-package-card — Restart required', () => {
+    let el;
+
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { el?.remove(); });
+
+    /** Shairport Sync: its key in audio-config.json is not its unit's name. */
+    const SHAIRPORT = {
+        ...basePkg, id: 'airplay', label: 'Shairport Sync', service_id: 'airplay',
+        service_unit: 'shairport-sync.service', status: 'installed', installed_version: '5.6.3-dietpi1',
+    };
+
+    /** @param {Object} pkg - The package. @returns {Promise<HTMLElement>} Its card, with a restart owed. */
+    async function owed(pkg) {
+        const card = document.createElement('ag-package-card');
+        Object.assign(card, { pkg, restartRequired: true });
+        document.body.appendChild(card);
+        await card.updateComplete;
+        return card;
+    }
+
+    it('asks to restart the unit, not the package\'s key', async () => {
+        // "Service 'airplay.service' is not managed by Audiogravity" (2026-11-11).
+        el = await owed(SHAIRPORT);
+        const pressed = vi.fn();
+        el.addEventListener('package-restart-service', pressed);
+        el.querySelector('.restart-badge').click();
+        expect(pressed).toHaveBeenCalledOnce();
+        expect(pressed.mock.calls[0][0].detail).toEqual(
+            { packageId: 'airplay', serviceUnit: 'shairport-sync.service' });
+    });
+
+    it('is not offered without a unit to restart', async () => {
+        // The services module not loaded, or a key audio-config.json does not declare.
+        el = await owed({ ...SHAIRPORT, service_unit: null });
+        expect(el.querySelector('.restart-badge')).toBeNull();
+    });
+
+    it('is not offered while no restart is owed', async () => {
+        el = await owed(SHAIRPORT);
+        el.restartRequired = false;
+        await el.updateComplete;
+        expect(el.querySelector('.restart-badge')).toBeNull();
+    });
+});
+
 describe('ag-package-card — which way the offered version goes', () => {
     beforeEach(() => { document.body.innerHTML = ''; });
 

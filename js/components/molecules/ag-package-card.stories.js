@@ -33,9 +33,11 @@ const Template = (args) => html`
     <ag-package-card 
         .pkg="${args.pkg}"
         .configuredByAg="${args.configuredByAg !== false}"
+        .restartRequired="${Boolean(args.restartRequired)}"
         ?isChecking="${args.isChecking}"
         ?isGuest="${args.isGuest}"
-        @package-action="${(e) => console.log('Action:', e.detail)}">
+        @package-action="${(e) => console.log('Action:', e.detail)}"
+        @package-restart-service="${(e) => console.log('Restart:', e.detail)}">
     </ag-package-card>
   </div>
 `;
@@ -198,6 +200,31 @@ InstalledUpToDate.args = {
         installed_version: '4.3.7-1',
         available_version: '4.3.7-1'
     },
+    isChecking: false,
+    isGuest: false
+};
+
+/**
+ * Updated, and its service still runs the previous version: its package did not
+ * restart it. The core says so in the package it describes (`restart_needed`), on
+ * every device, until the service restarts — the page passes it as `restartRequired`.
+ * The button restarts the systemd unit (`service_unit`), not the service's key in
+ * audio-config.json (`service_id`), which for Shairport Sync is not the unit's name.
+ */
+export const RestartOwed = Template.bind({});
+RestartOwed.args = {
+    pkg: {
+        ...pkgMock,
+        id: 'airplay',
+        label: 'Shairport Sync',
+        description: 'AirPlay audio receiver with multi-room sync',
+        service_id: 'airplay',
+        service_unit: 'shairport-sync.service',
+        installer_type: 'apt_simple',
+        installed_version: '5.6.3-dietpi1',
+        available_version: '5.6.3-dietpi1'
+    },
+    restartRequired: true,
     isChecking: false,
     isGuest: false
 };

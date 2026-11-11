@@ -24,7 +24,6 @@ import {
     showConfirm,
     handleError,
     AppState,
-    MemoryCache,
     AgTimerManager,
     EventEmitter,
     addToHistory,
@@ -48,15 +47,14 @@ const hasUpdates = pkg => Boolean(pkg.installed_version && pkg.available_version
     && pkg.installed_version !== pkg.available_version);
 
 /**
- * Whether a package's service runs on its old files once an install or update of it
- * went through, until it is restarted — the card's "Restart required". Not for one the
- * core starts or restarts itself (`restarts_after_install`): the badge said so about
- * HQPlayer Embedded seconds after the core had restarted it, and a click cut the music
- * for nothing. When that restart fails, the action's result says so (`restart_needed`).
- * @param {Object} pkg - Package payload as returned by GET /packages/.
- * @returns {boolean}
+ * Where this browser kept the packages whose service owed a restart — the card's
+ * "Restart required" — before the core held them. A rule here lit it after every
+ * install and update of a package with a service, Shairport Sync's seconds after its
+ * package had restarted it on the new version, and no other device saw it. Dropped
+ * once rather than offered again: the badge is now each package's `restart_needed`,
+ * which the core checks against systemd every time it describes the package.
  */
-const restartOwedAfterInstall = pkg => Boolean(pkg.service_id && !pkg.restarts_after_install);
+const LEGACY_RESTART_NEEDED_KEY = 'softwareRestartNeeded';
 
 /** What each action is called while it runs: `${Action}ing` said "Updateing". */
 const ACTION_RUNNING = { install: 'Installing', update: 'Updating', uninstall: 'Uninstalling' };
@@ -88,7 +86,9 @@ export class AgAudioSoftwarePage extends LitElement {
         this._webPasswordDialogFor = null;
         this._pollInterval = null;
         this._loaded = false;
-        this._restartNeeded = new Set(MemoryCache.get('softwareRestartNeeded', []));
+        try {
+            localStorage.removeItem(LEGACY_RESTART_NEEDED_KEY);
+        } catch { /* storage unavailable: nothing was kept either */ }
         // Services the box runs on the packaged defaults rather than on a
         // configuration Audiogravity wrote. Installing a package never
         // configures it — deliberately — so the card has to say so, or a
@@ -295,7 +295,10 @@ export class AgAudioSoftwarePage extends LitElement {
 
     _handleTabChanged(data) {
         if (data.active === 'audio-software') {
-            if (!this._loaded) {
+            // Again while a card shows "Restart required": its service may have been
+            // restarted meanwhile — from the Services tab, say — and only the core
+            // can tell. Nothing is re-read otherwise.
+            if (!this._loaded || this.packages.some(pkg => pkg.restart_needed)) {
                 this._loadPackages();
             }
             // Every time the tab is shown, not only the first: the user may have
@@ -325,16 +328,10 @@ export class AgAudioSoftwarePage extends LitElement {
 
         const pkgIndex = this.packages.findIndex(p => p.id === pkg.id);
         if (pkgIndex !== -1) {
-            // "Restart required" is lit from an action's result (_runPackageAction),
-            // never from "installing/updating" turning to "installed" here: a
-            // simulation, and an update the box refused, end on that change too with
-            // nothing installed, and an operation run from another device lit the
-            // badge on this one — a second press restarted the service again, cutting
-            // the music for nothing (review, 2026-10-04).
-            if (pkg.status === 'not_installed') {
-                this._restartNeeded.delete(pkg.id);
-                MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
-            }
+            // "Restart required" comes with the package, as the core describes it
+            // (`restart_needed`) — never from "installing/updating" turning to
+            // "installed": a simulation, and an update the box refused, end on that
+            // change too with nothing installed (review, 2026-10-04).
             this.packages[pkgIndex] = { ...pkg };
             this.requestUpdate();
             this._updateGlobalUpdateBadge();
@@ -616,11 +613,12 @@ export class AgAudioSoftwarePage extends LitElement {
                 `/packages/${packageId}/${action}?dry_run=${simulated}${versionParam}${acceptParam}${purgeParam}`,
                 webPassword ? { web_password: webPassword } : {});
 
-            // From what was done — see _handlePackageStateUpdate.
-            if (result.restart_needed || (!simulated && result.success && action !== 'uninstall'
-                    && restartOwedAfterInstall(currentPkg))) {
-                this._markRestartNeeded(packageId);
-            }
+            // As the core read it once the operation was over: never after a
+            // simulation, a refusal or an uninstall, nor once the package's own
+            // scripts restarted its service on the new version. The package the
+            // core sends with its new state says it as well; this shows it should
+            // that message be missed.
+            if (result.restart_needed) this._setRestartNeeded(packageId, true);
             if (simulated) {
                 // Its own words: shown as the real action's, SIMULATE ended on
                 // "Install Successful" for nothing installed.
@@ -716,34 +714,58 @@ export class AgAudioSoftwarePage extends LitElement {
         }
     }
 
+    /**
+     * "Restart required" was pressed on a card: restart the package's service, if it
+     * still owes one.
+     *
+     * Asked of the core first. Every device shows the badge, and another may have
+     * restarted the service since this card was drawn: pressing it on both restarted
+     * the service twice, cutting the music twice (review, 2026-10-04). The listing,
+     * not the package's own route, which asks the vendor for its versions as well.
+     *
+     * @param {CustomEvent} e - `package-restart-service` with `{ packageId, serviceUnit }`;
+     *   `serviceUnit` is the systemd unit, which the services route takes — the
+     *   package's `service_id` is refused where it is not the unit's name.
+     * @returns {Promise<void>}
+     */
     async _handleRestartService(e) {
-        const { packageId, serviceId } = e.detail;
+        const { packageId, serviceUnit } = e.detail;
+        const label = this.packages.find(p => p.id === packageId)?.label || serviceUnit;
+        await this._loadPackages();
+        const described = this.packages.find(p => p.id === packageId);
+        // A listing kept from before going offline says nothing of now.
+        if (!this.packagesFetch.stale && described && !described.restart_needed) {
+            showToast('info', 'No restart needed', `${label} needs no restart any more.`);
+            return;
+        }
         try {
-            const result = await apiPost(`/services/${serviceId}/restart`);
+            const result = await apiPost(`/services/${encodeURIComponent(serviceUnit)}/restart`);
             // The route answers 200 with `success: false` when the restart was
             // refused or failed: "restarted successfully" was shown anyway.
             if (result && result.success === false) {
                 showToast('error', 'Service Restart Failed',
-                    result.message || `${serviceId} could not be restarted`);
+                    result.message || `${label} could not be restarted`);
                 return;
             }
-            this._restartNeeded.delete(packageId);
-            MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
-            this.requestUpdate();
-            showToast('success', 'Service restarted', `${serviceId} is running again.`);
+            // Restarted: the core says the same the next time it describes the
+            // package, having asked systemd.
+            this._setRestartNeeded(packageId, false);
+            showToast('success', 'Service restarted', `${label} is running again.`);
         } catch (error) {
             handleError(error, 'Service restart failed');
         }
     }
 
     /**
-     * Show the restart badge on a package's card, and remember it across reloads.
+     * Show or clear the restart badge on a package's card, until the core next
+     * describes the package — that description is what holds.
      *
-     * @param {string} packageId - The package whose service needs a restart.
+     * @param {string} packageId - The package whose service owes a restart, or no longer does.
+     * @param {boolean} owed - Whether it does.
      */
-    _markRestartNeeded(packageId) {
-        this._restartNeeded.add(packageId);
-        MemoryCache.set('softwareRestartNeeded', [...this._restartNeeded]);
+    _setRestartNeeded(packageId, owed) {
+        this.packages = this.packages.map(pkg =>
+            (pkg.id === packageId ? { ...pkg, restart_needed: owed } : pkg));
         this.requestUpdate();
     }
 
@@ -771,9 +793,10 @@ export class AgAudioSoftwarePage extends LitElement {
         this._webPasswordDialogFor = null;
         if (!pkg) return;
         try {
+            // "Restart required", when the restart after it failed, comes with the
+            // packages read again below.
             const result = await apiPost(`/packages/${packageId}/web_password`,
                 { web_password: webPassword });
-            if (result.restart_needed) this._markRestartNeeded(packageId);
             if (result.success && result.warning) {
                 showToast('warning', 'Password Set, Restart Left', result.message);
             } else if (result.success) {
@@ -858,13 +881,9 @@ export class AgAudioSoftwarePage extends LitElement {
             `${packages(updates.length)}, one after the other…`, 0);
 
         try {
+            // "Restart required" comes with the packages read again below.
             const results = await apiPost(`/packages/update_all?dry_run=${simulated}`, pkgIds);
 
-            // From what was done, as for a single update (_runPackageAction).
-            const updated = new Map(updates.map(pkg => [pkg.id, pkg]));
-            results.filter(r => r.restart_needed || (!simulated && r.success
-                    && restartOwedAfterInstall(updated.get(r.package_id) || {})))
-                .forEach(r => this._markRestartNeeded(r.package_id));
             const incomplete = results.filter(r => r.success && r.warning);
             const successCount = results.filter(r => r.success).length;
             const failCount = results.length - successCount;
@@ -1111,7 +1130,7 @@ export class AgAudioSoftwarePage extends LitElement {
                             .pkg=${pkg}
                             .animationsEnabled=${AppState.animationsEnabled}
                             .isChecking=${pkg.isChecking || false}
-                            .restartRequired=${this._restartNeeded.has(pkg.id)}
+                            .restartRequired=${Boolean(pkg.restart_needed)}
                             .configuredByAg=${!this._unconfigured.has(pkg.service_id)}
                             .delayIndex=${index}>
                         </ag-package-card>
