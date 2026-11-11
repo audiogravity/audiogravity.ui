@@ -15,6 +15,8 @@
  * @fires package-check-update - Dispatched when manual update check is requested
  * @fires package-set-web-password - `{ packageId }` — its web interface has no
  *   password yet and the operator asked to set one
+ * @fires package-restart-service - `{ packageId, serviceUnit }` — "Restart required"
+ *   was pressed; `serviceUnit` is the systemd unit to restart (`pkg.service_unit`)
  */
 
 import { LitElement, html, nothing } from 'lit';
@@ -103,10 +105,18 @@ export class AgPackageCard extends LitElement {
         }));
     }
 
+    /**
+     * "Restart required" was pressed: ask the page to restart the package's service.
+     *
+     * By its systemd unit (`service_unit`), never by `service_id`, the service's key in
+     * audio-config.json: for Shairport Sync (`airplay`), HQPlayer NAA and Roon Bridge
+     * the two differ, and the restart was refused — "Service 'airplay.service' is not
+     * managed by Audiogravity".
+     */
     _handleRestartService() {
-        if (!this.pkg?.service_id) return;
+        if (!this.pkg?.service_unit) return;
         this.dispatchEvent(new CustomEvent('package-restart-service', {
-            detail: { packageId: this.pkg.id, serviceId: this.pkg.service_id },
+            detail: { packageId: this.pkg.id, serviceUnit: this.pkg.service_unit },
             bubbles: true,
             composed: true
         }));
@@ -456,7 +466,7 @@ export class AgPackageCard extends LitElement {
                                     @click=${(e) => { e.stopPropagation(); this._handleSetWebPassword(); }}>
                                 <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconKey}</svg> Set pwd<span class="sr-only">: the web interface password</span>
                             </button>` : ''}
-                        ${this.restartRequired && this.pkg.service_id ? html`
+                        ${this.restartRequired && this.pkg.service_unit ? html`
                             <button class="badge warning animate-pulse restart-badge" @click=${(e) => { e.stopPropagation(); this._handleRestartService(); }}>
                                 <svg class="ag-spin" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${iconSpinner}</svg> Restart required
                             </button>` : ''}

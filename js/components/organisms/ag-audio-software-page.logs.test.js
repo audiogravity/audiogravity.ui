@@ -32,8 +32,9 @@ vi.mock(import('../../common.js'), async (importOriginal) => ({
 import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
 
 const HQPLAYERD = { id: 'hqplayerd', label: 'HQPlayer Embedded', service_id: 'hqplayerd',
-    status: 'installed', restarts_after_install: true };
-const MPD = { id: 'mpd', label: 'MPD', service_id: 'mpd', status: 'installed' };
+    service_unit: 'hqplayerd.service', status: 'installed' };
+const MPD = { id: 'mpd', label: 'MPD', service_id: 'mpd', service_unit: 'mpd.service',
+    status: 'installed' };
 
 /** The log window, as the page finds it in the document: what it is told, and nothing else. */
 function logsModal() {
@@ -53,7 +54,6 @@ function page(simulated) {
     })) {
         Object.defineProperty(el, name, { value, writable: true });
     }
-    el._restartNeeded = new Set();
     el._logCursor = { packageId: null, lastSeq: 0 };
     el.requestUpdate = vi.fn();
     el._updateGlobalUpdateBadge = vi.fn();

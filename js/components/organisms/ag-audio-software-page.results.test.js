@@ -1,15 +1,22 @@
 /**
  * Unit tests for ag-audio-software-page.js — what the page does with the core's answers.
  *
- * - The "Restart required" badge: never for a package the core restarts itself
- *   (`restarts_after_install`) — it said so about HQPlayer Embedded seconds
- *   after the core had restarted it, and a click cut the music for nothing —
- *   unless the action's result says that restart failed (`restart_needed`). Lit
- *   from an action's result, never from the state turning "installed": a
- *   simulation, an update the box refused, and another device's operation all
- *   end on that change too.
- * - The restart button reads `success`: the route answers 200 with
- *   `success: false`, and "restarted successfully" was shown anyway.
+ * - The "Restart required" badge is each package's `restart_needed`, as the core
+ *   describes it: whether its service still runs what an install or update
+ *   replaced, asked of systemd each time, so it goes out once the service
+ *   restarted — whatever restarted it — and every device shows the same. Kept in
+ *   this browser instead, it was seen on no other device and outlived the
+ *   restarts made another way (2026-11-11). An action's result lights it at once;
+ *   the state turning "installed" never does — a simulation and an update the box
+ *   refused end on that change too. A rule here once lit it after every install
+ *   and update of a package with a service: for Shairport Sync, seconds after its
+ *   package had restarted it on the new version.
+ * - The restart button asks the core first whether the restart is still owed —
+ *   another device may have done it — then restarts the systemd unit
+ *   (`service_unit`), not the package's `service_id`: "Service 'airplay.service'
+ *   is not managed by Audiogravity". And it reads `success`: the route answers
+ *   200 with `success: false`, and "restarted successfully" was shown anyway.
+ * - The badges this browser kept under the old rule are dropped once.
  * - "Update all" reads `warning`: it said "All Updates Complete" about an
  *   update whose next step was left, and the core's message was lost.
  * - A web interface password is set on an installed package from its card,
@@ -45,14 +52,17 @@ import { AgAudioSoftwarePage } from './ag-audio-software-page.js';
 
 const HQPLAYERD = {
     id: 'hqplayerd', label: 'HQPlayer Embedded', service_id: 'hqplayerd',
-    status: 'installing', restarts_after_install: true,
+    service_unit: 'hqplayerd.service', status: 'installing',
     web_credentials: { username: 'hqplayer', port: 8088, already_set: false },
 };
-const MPD = { id: 'mpd', label: 'MPD', service_id: 'mpd', status: 'updating',
-    restarts_after_install: false };
+const MPD = { id: 'mpd', label: 'MPD', service_id: 'mpd', service_unit: 'mpd.service',
+    status: 'updating' };
+/** Its key in audio-config.json is not its unit's name. */
+const SHAIRPORT = { id: 'airplay', label: 'Shairport Sync', service_id: 'airplay',
+    service_unit: 'shairport-sync.service', status: 'installed' };
 
 /** A page instance with the parts that touch the DOM or timers stubbed out. */
-function page(packages = [HQPLAYERD, MPD]) {
+function page(packages = [HQPLAYERD, MPD, SHAIRPORT]) {
     const el = Object.create(AgAudioSoftwarePage.prototype);
     // Own data properties: the Lit setters need state only the constructor makes.
     for (const [name, value] of Object.entries({
@@ -61,13 +71,26 @@ function page(packages = [HQPLAYERD, MPD]) {
     })) {
         Object.defineProperty(el, name, { value, writable: true });
     }
-    el._restartNeeded = new Set();
+    el.packagesFetch = { stale: false };
     el.requestUpdate = vi.fn();
     el._updateGlobalUpdateBadge = vi.fn();
     el._loadPackages = vi.fn();
     el._openLogsModal = vi.fn();
     el._startPolling = vi.fn();
     return el;
+}
+
+/** Whether the page shows "Restart required" on a package's card. */
+const badged = (el, packageId) => Boolean(el.packages.find(p => p.id === packageId)?.restart_needed);
+
+/**
+ * Have the page's next reading of the packages answer this listing, as the core
+ * gives it.
+ * @param {Object} el - The page.
+ * @param {Object[]} listing - The packages the core describes.
+ */
+function coreDescribes(el, listing) {
+    el._loadPackages = vi.fn(async () => { el.packages = listing.map(p => ({ ...p })); });
 }
 
 /** The SSE event the core sends once an operation is over. */
@@ -99,43 +122,74 @@ describe('the restart badge', () => {
         return el;
     }
 
-    it('is not shown for a package the core restarts itself', async () => {
-        apiPost.mockResolvedValue({ success: true, message: 'Successfully installed HQPlayer Embedded' });
+    it('is not shown when the core says nothing is owed', async () => {
+        // HQPlayer Embedded: the core restarts it itself once installed.
+        apiPost.mockResolvedValue({ success: true, restart_needed: false,
+            message: 'Successfully installed HQPlayer Embedded' });
         const el = page();
         await el._runPackageAction(el.packages[0], 'install', null, true, 'MyOwnPass42');
-        expect(el._restartNeeded.has('hqplayerd')).toBe(false);
+        expect(badged(el, 'hqplayerd')).toBe(false);
     });
 
-    it('is still shown for a package the core does not restart', async () => {
+    it('is not shown after an update whose package restarted its service', async () => {
+        // Shairport Sync 5.6.2 → 5.6.3 on the x86 box, 2026-11-11: it was.
+        apiPost.mockResolvedValue({ success: true, restart_needed: false,
+            message: 'Successfully updated Shairport Sync' });
+        const el = page();
+        await el._runPackageAction(el.packages[2], 'update');
+        expect(badged(el, 'airplay')).toBe(false);
+    });
+
+    it('is not shown on a success the core gave no word on', async () => {
         const el = await updateMpd({ success: true, message: 'Successfully updated MPD' });
-        expect(el._restartNeeded.has('mpd')).toBe(true);
+        expect(badged(el, 'mpd')).toBe(false);
+    });
+
+    it('is shown at once where the service still runs the previous version', async () => {
+        // MPD's package does not restart it.
+        const el = await updateMpd({ success: true, restart_needed: true,
+            message: 'Successfully updated MPD' });
+        expect(badged(el, 'mpd')).toBe(true);
     });
 
     it('is not shown after a simulation, whatever it found', async () => {
         // The core gives the card back its state: "updating", then "installed".
         for (const success of [true, false]) {
             const el = await updateMpd({ success, message: 'Simulation: …' }, true);
-            expect(el._restartNeeded.has('mpd')).toBe(false);
+            expect(badged(el, 'mpd')).toBe(false);
         }
     });
 
     it('is not shown after an update the box refused', async () => {
         const el = await updateMpd({ success: false, message: 'MPD was not updated: dpkg is busy' });
-        expect(el._restartNeeded.has('mpd')).toBe(false);
+        expect(badged(el, 'mpd')).toBe(false);
     });
 
-    it('is not shown for an operation run from another device', () => {
-        // Its result went to that device; restarting from both cut the music twice.
+    it('is not lit by the state turning "installed"', () => {
         const el = page();
         el._handlePackageStateUpdate(installed(MPD));
-        expect(el._restartNeeded.has('mpd')).toBe(false);
+        expect(badged(el, 'mpd')).toBe(false);
+    });
+
+    it('is the core\'s, whichever device ran the operation', () => {
+        // Kept in the browser that ran it, no other device saw it.
+        const el = page();
+        el._handlePackageStateUpdate({ detail: { ...MPD, status: 'installed', restart_needed: true } });
+        expect(badged(el, 'mpd')).toBe(true);
+    });
+
+    it('goes out when the core describes the package without it', () => {
+        // Its service restarted from the Services page, or by a reboot.
+        const el = page([{ ...MPD, status: 'installed', restart_needed: true }]);
+        el._handlePackageStateUpdate(installed(MPD));
+        expect(badged(el, 'mpd')).toBe(false);
     });
 
     it('is not shown after an uninstall', async () => {
         apiPost.mockResolvedValue({ success: true, message: 'Successfully uninstalled MPD' });
         const el = page();
         await el._runPackageAction(el.packages[1], 'uninstall');
-        expect(el._restartNeeded.has('mpd')).toBe(false);
+        expect(badged(el, 'mpd')).toBe(false);
     });
 
     it('is shown when the restart the core owed failed', async () => {
@@ -143,38 +197,121 @@ describe('the restart badge', () => {
             message: 'HQPlayer Embedded is installed, but its new settings only take effect once hqplayerd.service restarts' });
         const el = page();
         await el._runPackageAction(el.packages[0], 'install', null, true, 'MyOwnPass42');
-        expect(el._restartNeeded.has('hqplayerd')).toBe(true);
+        expect(badged(el, 'hqplayerd')).toBe(true);
+    });
+});
+
+describe('the packages read again when the tab is shown', () => {
+    /** A page already loaded once, showing these packages. */
+    function loaded(packages) {
+        const el = page(packages);
+        el._loaded = true;
+        el._loadConfiguredServices = vi.fn().mockResolvedValue();
+        return el;
+    }
+
+    it('while a card shows "Restart required": its service may have restarted since', () => {
+        const el = loaded([{ ...MPD, status: 'installed', restart_needed: true }, SHAIRPORT]);
+        el._handleTabChanged({ active: 'audio-software' });
+        expect(el._loadPackages).toHaveBeenCalledOnce();
+    });
+
+    it('not otherwise', () => {
+        const el = loaded([{ ...MPD, status: 'installed' }, SHAIRPORT]);
+        el._handleTabChanged({ active: 'audio-software' });
+        expect(el._loadPackages).not.toHaveBeenCalled();
     });
 });
 
 describe('the restart button', () => {
+    /** Press "Restart required" on a card, as the card dispatches it. */
+    const press = (el, pkg) => el._handleRestartService(
+        { detail: { packageId: pkg.id, serviceUnit: pkg.service_unit } });
+
+    /** The page, the package's card showing the badge. */
+    const owing = pkg => page([{ ...pkg, status: 'installed', restart_needed: true }]);
+
+    it('restarts the unit, not the package\'s key in audio-config.json', async () => {
+        // "Service 'airplay.service' is not managed by Audiogravity" (2026-11-11).
+        apiPost.mockResolvedValue({ success: true, message: 'ok' });
+        await press(owing(SHAIRPORT), SHAIRPORT);
+        expect(apiPost).toHaveBeenCalledExactlyOnceWith('/services/shairport-sync.service/restart');
+        expect(showToast).toHaveBeenCalledWith('success', 'Service restarted',
+            'Shairport Sync is running again.');
+    });
+
+    it('asks the core first whether the restart is still owed', async () => {
+        apiPost.mockResolvedValue({ success: true, message: 'ok' });
+        const el = owing(MPD);
+        coreDescribes(el, [{ ...MPD, status: 'installed', restart_needed: true }]);
+        await press(el, MPD);
+        expect(el._loadPackages.mock.invocationCallOrder[0])
+            .toBeLessThan(apiPost.mock.invocationCallOrder[0]);
+    });
+
+    it('restarts nothing another device already restarted', async () => {
+        // Pressed on both, the service restarted twice: the music cut twice.
+        const el = owing(MPD);
+        coreDescribes(el, [{ ...MPD, status: 'installed', restart_needed: false }]);
+        await press(el, MPD);
+        expect(apiPost).not.toHaveBeenCalled();
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('info', 'No restart needed',
+            'MPD needs no restart any more.');
+        expect(badged(el, 'mpd')).toBe(false);
+    });
+
+    it('restarts when the listing could only be read from before going offline', async () => {
+        apiPost.mockResolvedValue({ success: true, message: 'ok' });
+        const el = owing(MPD);
+        coreDescribes(el, [{ ...MPD, status: 'installed', restart_needed: false }]);
+        el.packagesFetch.stale = true;
+        await press(el, MPD);
+        expect(apiPost).toHaveBeenCalledExactlyOnceWith('/services/mpd.service/restart');
+    });
+
     it('says so when the core could not restart the service', async () => {
         apiPost.mockResolvedValue({ success: false, message: 'Action restart failed: timed out' });
-        const el = page();
-        el._restartNeeded.add('mpd');
-        await el._handleRestartService({ detail: { packageId: 'mpd', serviceId: 'mpd' } });
+        const el = owing(MPD);
+        await press(el, MPD);
         expect(showToast).toHaveBeenCalledWith('error', 'Service Restart Failed',
             'Action restart failed: timed out');
-        expect(el._restartNeeded.has('mpd')).toBe(true);  // still owed
+        expect(badged(el, 'mpd')).toBe(true);  // still owed
+    });
+
+    it('names the package when the core gives no reason', async () => {
+        apiPost.mockResolvedValue({ success: false });
+        await press(owing(MPD), MPD);
+        expect(showToast).toHaveBeenCalledWith('error', 'Service Restart Failed',
+            'MPD could not be restarted');
     });
 
     it('clears the badge once it worked', async () => {
         apiPost.mockResolvedValue({ success: true, message: 'ok' });
-        const el = page();
-        el._restartNeeded.add('mpd');
-        await el._handleRestartService({ detail: { packageId: 'mpd', serviceId: 'mpd' } });
-        expect(el._restartNeeded.has('mpd')).toBe(false);
+        const el = owing(MPD);
+        await press(el, MPD);
+        expect(badged(el, 'mpd')).toBe(false);
         expect(showToast.mock.calls[0][0]).toBe('success');
+    });
+});
+
+describe('the badges this browser kept', () => {
+    it('are dropped once: the core holds them now', () => {
+        // The one Shairport Sync's card kept on an iPhone after its update (2026-11-11).
+        localStorage.setItem('softwareRestartNeeded', JSON.stringify(['airplay']));
+        const el = document.createElement('ag-audio-software-page');
+        expect(localStorage.getItem('softwareRestartNeeded')).toBeNull();
+        expect(badged(el, 'airplay')).toBe(false);
     });
 });
 
 describe('update all', () => {
     /** Run "Update all" with the confirmation accepted and the core's results. */
-    async function updateAll(results, simulated = false) {
+    async function updateAll(results, simulated = false, listing = null) {
         const el = page([
             { ...HQPLAYERD, status: 'installed', installed_version: '6.0.2-3', available_version: '6.1.0-1' },
             { ...MPD, status: 'installed', installed_version: '0.24.4-1', available_version: '0.24.5-1' },
         ]);
+        if (listing) coreDescribes(el, listing);
         el.dryRun = simulated;
         window.showConfirm = vi.fn().mockResolvedValue(true);
         apiPost.mockResolvedValue(results);
@@ -202,29 +339,16 @@ describe('update all', () => {
         expect(showToast.mock.calls.at(-1)).toEqual(['success', 'Updates complete', '2 packages updated.']);
     });
 
-    it('shows the restart badge where the restart failed', async () => {
+    it('shows the restart badges the core gives with the packages read again', async () => {
         const el = await updateAll([
-            { success: true, warning: true, restart_needed: true, package_id: 'hqplayerd',
-              message: 'HQPlayer Embedded is updated, but its new settings only take effect once it restarts' },
-            { success: true, package_id: 'mpd', message: 'Successfully updated MPD' },
+            { success: true, restart_needed: false, package_id: 'hqplayerd',
+              message: 'Successfully updated HQPlayer Embedded' },
+            { success: true, restart_needed: true, package_id: 'mpd', message: 'Successfully updated MPD' },
+        ], false, [
+            { ...HQPLAYERD, status: 'installed', restart_needed: false },
+            { ...MPD, status: 'installed', restart_needed: true },
         ]);
-        expect(el._restartNeeded.has('hqplayerd')).toBe(true);
-    });
-
-    it('shows the restart badge where the core restarts nothing itself', async () => {
-        const el = await updateAll([
-            { success: true, package_id: 'hqplayerd', message: 'Successfully updated HQPlayer Embedded' },
-            { success: true, package_id: 'mpd', message: 'Successfully updated MPD' },
-        ]);
-        expect([...el._restartNeeded]).toEqual(['mpd']);
-    });
-
-    it('shows no restart badge after simulated updates', async () => {
-        const el = await updateAll([
-            { success: true, package_id: 'hqplayerd', message: 'Simulation: …' },
-            { success: true, package_id: 'mpd', message: 'Simulation: …' },
-        ], true);
-        expect([...el._restartNeeded]).toEqual([]);
+        expect([badged(el, 'hqplayerd'), badged(el, 'mpd')]).toEqual([false, true]);
     });
 });
 
@@ -257,12 +381,13 @@ describe('setting the web interface password from the card', () => {
             'HQPlayer Embedded: its web interface password could not be set');
     });
 
-    it('shows the restart badge when the restart after it failed', async () => {
+    it('shows the restart badge the core gives when the restart after it failed', async () => {
         apiPost.mockResolvedValue({ success: true, warning: true, restart_needed: true,
             message: "HQPlayer Embedded's web interface password is set, but its new settings only take effect once hqplayerd.service restarts" });
         const el = page();
+        coreDescribes(el, [{ ...HQPLAYERD, status: 'installed', restart_needed: true }]);
         await el._handleWebPasswordConfirmed({ detail: { packageId: 'hqplayerd', webPassword: 'MyOwnPass42' } });
-        expect(el._restartNeeded.has('hqplayerd')).toBe(true);
+        expect(badged(el, 'hqplayerd')).toBe(true);
         expect(showToast.mock.calls[0][0]).toBe('warning');
     });
 });
