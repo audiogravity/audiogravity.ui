@@ -29,6 +29,7 @@ import {
     AgTidalConnection, tidalSignInCode, tidalReturnCode, clipboardReadAllowed,
 } from './ag-tidal-connection.js';
 import { apiPost } from '../../api.js';
+import { flat } from '../../test-utils.js';
 import { loadConnection } from '../utils-lit.js';
 
 /** Tidal's return address, as the core's tests write it. */
@@ -66,14 +67,6 @@ function pasteEvent(text) {
 
 /** Let the pending request settle. */
 const settle = () => new Promise((resolve) => { setTimeout(resolve); });
-
-/** Every string a template would print, nested templates included. */
-function printed(tpl) {
-    if (typeof tpl === 'string') return tpl;
-    if (!tpl?.strings) return '';
-    return tpl.strings.reduce(
-        (out, s, i) => out + s + (i < tpl.values.length ? printed(tpl.values[i]) : ''), '');
-}
 
 /**
  * The browser the clipboard code finds: https or not, with the APIs given.
@@ -563,7 +556,7 @@ describe('AgTidalConnection — back in the app, the copied address is picked up
         expect(el._error).toBe('');
         expect(el._reading).toBe(false);
         expect(apiPost).not.toHaveBeenCalled();
-        expect(printed(el._renderDisconnected())).toContain('paste it here');
+        expect(flat(el._renderDisconnected())).toContain('paste it here');
     });
 
     it('reads nothing where the browser does not offer it — the hint asks for a paste', async () => {
@@ -614,7 +607,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
         apiPost.mockResolvedValueOnce({ authorize_url: NEW_PAGE });
         const el = waitingCard({ _redirect: 'https://tidal.com/android/login/auth?code=spent',
                                  _error: LOGIN_FAILED });
-        expect(printed(el._renderDisconnected())).toContain('Reopen Tidal page');
+        expect(flat(el._renderDisconnected())).toContain('Reopen Tidal page');
 
         await el._connect();
 
@@ -628,12 +621,12 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
 
     it('waits while an address is being sent, and shows it', async () => {
         const sending = waitingCard({ _submitting: true });
-        expect(printed(sending._renderDisconnected())).toMatch(/aria-disabled=true/);
+        expect(flat(sending._renderDisconnected())).toMatch(/aria-disabled=true/);
 
         await sending._connect();
         expect(apiPost).not.toHaveBeenCalled();
 
-        expect(printed(waitingCard()._renderDisconnected())).toMatch(/aria-disabled=false/);
+        expect(flat(waitingCard()._renderDisconnected())).toMatch(/aria-disabled=false/);
     });
 
     it("cuts the Tidal tab's handle on the app, so Tidal's page cannot send it elsewhere", async () => {
@@ -667,7 +660,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
 
         await el._connect();
 
-        const text = printed(el._renderDisconnected());
+        const text = flat(el._renderDisconnected());
         expect(el._blockedUrl).toBe(NEW_PAGE);
         expect(text).toContain('did not open the Tidal page');
         expect(text).toContain(NEW_PAGE);
@@ -679,7 +672,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
 
         el._onOpenedByLink();
 
-        const text = printed(el._renderDisconnected());
+        const text = flat(el._renderDisconnected());
         expect(text).not.toContain('did not open the Tidal page');
         expect(text).toContain('that just opened');
     });
@@ -691,7 +684,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
         await el._connect();
 
         expect(el._blockedUrl).toBe('');
-        expect(printed(el._renderDisconnected())).toContain('that just opened');
+        expect(flat(el._renderDisconnected())).toContain('that just opened');
     });
 
     it('starts one sign-in at a time', () => {
@@ -724,7 +717,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
         await el._connect();
 
         expect(el._clipboardAuto).toBe(true);
-        const text = printed(el._renderDisconnected());
+        const text = flat(el._renderDisconnected());
         expect(text).toContain('come back here');
         expect(text).toMatch(/allow\s+clipboard access if your browser asks/);
         expect(text).toContain('Or paste it below');
@@ -733,7 +726,7 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
 
 describe('AgTidalConnection waiting card', () => {
     it('has no Finish button: the connection completes on its own', () => {
-        const text = printed(waitingCard()._renderDisconnected());
+        const text = flat(waitingCard()._renderDisconnected());
 
         expect(text).not.toContain('Finish login');
         expect(text).toMatch(/completes\s+on its own/);
@@ -743,7 +736,7 @@ describe('AgTidalConnection waiting card', () => {
     });
 
     it('says it is connecting while the request runs', () => {
-        expect(printed(waitingCard({ _submitting: true })._renderDisconnected()))
+        expect(flat(waitingCard({ _submitting: true })._renderDisconnected()))
             .toContain('Connecting…');
     });
 });
