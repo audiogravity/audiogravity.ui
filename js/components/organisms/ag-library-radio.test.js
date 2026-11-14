@@ -39,7 +39,11 @@ vi.mock('../library-constants.js', () => ({
 }));
 // The dialog itself is covered in ui-helpers.test.js; here only the answer matters.
 vi.mock('../../ui-helpers.js', () => ({ confirmRemoval: vi.fn(async () => false) }));
+// The pane that scrolls is found in the real layout; here only what is asked of it matters.
+vi.mock('../../core/keep-in-view.js', () => ({ scrollParent: vi.fn(() => null) }));
+vi.mock('../../core/scroll-behavior.js', () => ({ scrollBehavior: () => 'smooth' }));
 import { readFileSync } from 'node:fs';
+import { flat } from '../../test-utils.js';
 import { live } from 'lit/directives/live.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -697,5 +701,201 @@ describe('the Halloween stations, on 31 October', () => {
         // The option's label, once: the button is gone with the day.
         expect(controls.split('🎃 Halloween')).toHaveLength(2);
         expect(controls).not.toContain('lib-radio-halloween');
+    });
+});
+
+describe('ag-library-radio — Edit station, from Favorites too, and in sight', () => {
+    /*
+     * Every card of My Live Radio and Favorites offers Edit station, but the form was
+     * drawn by My Live Radio's header alone: in Favorites the tap opened it unseen.
+     * And above a long list it opened out of sight (Chromium, 2026-11-14).
+     */
+    const FAVOURITE = { uuid: 'uuid-99', name: 'Station 99', url: 'https://stream.example/99',
+                        favicon: '', tags: 'jazz' };
+    const OTHER = { ...FAVOURITE, uuid: 'uuid-7', name: 'Station 7' };
+
+    beforeEach(() => vi.clearAllMocks());
+
+    /** A constructed instance showing one list: its handlers are bound class fields. */
+    async function radio(name) {
+        const { AgLibraryRadio } = await import('./ag-library-radio.js');
+        const el = new AgLibraryRadio();
+        el._view = name;
+        el._stations = [FAVOURITE];
+        return el;
+    }
+
+    it('opens the edit form in Favorites, filled with the station', async () => {
+        const el = await radio('favorites');
+
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        const text = flat(el.render());
+        expect(text).toContain('lib-radio-custom-form');
+        expect(text).toContain('Edit station');
+        expect(text).toContain('Station 99');
+        expect(text).toContain('Update');
+    });
+
+    it('draws no form in Favorites until Edit is tapped, and no Add there', async () => {
+        const text = flat((await radio('favorites')).render());
+        expect(text).not.toContain('lib-radio-custom-form');
+        expect(text).not.toContain('Add custom station');
+        expect(flat((await radio('library')).render())).toContain('+ Add custom station');
+    });
+
+    it('saves an edit made in Favorites, then shows Favorites again', async () => {
+        const api = await import('../../radio-api.js');
+        api.radioFavorites.mockResolvedValueOnce([{ station: { ...FAVOURITE, name: 'Renamed' } }]);
+        const el = await radio('favorites');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        el._updateCustomField('title', 'Renamed');
+
+        await el._submitCustomForm({ preventDefault() {} });
+
+        expect(api.radioEditStation).toHaveBeenCalledWith('uuid-99',
+            expect.objectContaining({ title: 'Renamed', url: 'https://stream.example/99' }));
+        expect(api.radioFavorites).toHaveBeenCalledTimes(1);
+        expect(api.radioLibrary).not.toHaveBeenCalled();
+        expect(el._customFormOpen).toBe(false);
+        expect(el._stations.map((s) => s.name)).toEqual(['Renamed']);
+    });
+
+    it('reloads My Live Radio after an edit made there', async () => {
+        const api = await import('../../radio-api.js');
+        const el = await radio('library');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        await el._submitCustomForm({ preventDefault() {} });
+
+        expect(api.radioLibrary).toHaveBeenCalledTimes(1);
+        expect(api.radioFavorites).not.toHaveBeenCalled();
+    });
+
+    it('closes an open form when the tab changes: an Edit begun in Favorites stays there', async () => {
+        const el = await radio('favorites');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        el._switchView('library');
+
+        expect(el._customFormOpen).toBe(false);
+        expect(el._customEditUuid).toBeNull();
+        expect(flat(el.render())).not.toContain('lib-radio-custom-form');
+    });
+
+    it('brings the form into sight after each Edit, by taking its pane back to the top', async () => {
+        const { scrollParent } = await import('../../core/keep-in-view.js');
+        const pane = { scrollTo: vi.fn() };
+        scrollParent.mockReturnValue(pane);
+        const el = await radio('favorites');
+        const form = {};
+        el.renderRoot = { querySelector: vi.fn(() => form) };
+
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        el.updated(new Map([['_customForm', {}]]));
+        expect(el.renderRoot.querySelector).toHaveBeenCalledWith('.lib-radio-custom-form');
+        expect(scrollParent).toHaveBeenCalledWith(form, 'y');
+        expect(pane.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+
+        // The same station again, after the reader scrolled: nothing else changes, and
+        // the form is brought back all the same.
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        el.updated(new Map([['_customForm', {}]]));
+        expect(pane.scrollTo).toHaveBeenCalledTimes(2);
+
+        // Typing, or any other update, leaves the pane where the reader put it.
+        el._updateCustomField('title', 'typing');
+        el.updated(new Map([['_customForm', {}]]));
+        el.updated(new Map([['_stations', []]]));
+        expect(pane.scrollTo).toHaveBeenCalledTimes(2);
+    });
+
+    it('moves nothing for Add, at the top already, nor where no pane scrolls', async () => {
+        const { scrollParent } = await import('../../core/keep-in-view.js');
+        const el = await radio('library');
+        el.renderRoot = { querySelector: vi.fn(() => ({})) };
+
+        el._openCustomForm();
+        el.updated(new Map([['_customFormOpen', false]]));
+        expect(scrollParent).not.toHaveBeenCalled();
+
+        scrollParent.mockReturnValue(null);   // a short list: nothing scrolls
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        expect(() => el.updated(new Map([['_customForm', {}]]))).not.toThrow();
+    });
+
+    it('closes the form when its station leaves the list shown', async () => {
+        const api = await import('../../radio-api.js');
+        const el = await radio('favorites');
+        el._favoriteUuids = new Set(['uuid-99']);
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        await el._toggleMembership('favorite', FAVOURITE, false);
+
+        expect(api.radioRemoveFavorite).toHaveBeenCalledWith('uuid-99');
+        expect(el._stations).toEqual([]);
+        expect(el._customFormOpen).toBe(false);
+    });
+
+    it('keeps it open when the station leaves the other list only', async () => {
+        const el = await radio('favorites');
+        el._libraryUuids = new Set(['uuid-99']);
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        await el._toggleMembership('library', FAVOURITE, false);
+
+        expect(el._stations).toEqual([FAVOURITE]);
+        expect(el._customFormOpen).toBe(true);
+    });
+
+    it('leaves the next form open when a save succeeds after the reader moved on', async () => {
+        const api = await import('../../radio-api.js');
+        let finish;
+        api.radioEditStation.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+        const el = await radio('favorites');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        const saving = el._submitCustomForm({ preventDefault() {} });
+
+        el._switchView('library');                        // the reader moves on…
+        el._onCardEdit({ detail: { station: OTHER } });   // …and edits another station
+        finish({});
+        await saving;
+
+        expect(el._customFormOpen).toBe(true);
+        expect(el._customEditUuid).toBe('uuid-7');
+        expect(el._customSaving).toBe(false);
+    });
+
+    it("lets a save that ends after the reader moved on leave the next form, and that tab, alone", async () => {
+        const api = await import('../../radio-api.js');
+        let finish;
+        api.radioEditStation.mockImplementationOnce(() => new Promise((resolve, reject) => {
+            finish = { resolve, reject };
+        }));
+        const el = await radio('favorites');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+        const saving = el._submitCustomForm({ preventDefault() {} });
+
+        el._switchView('library');                        // the reader moves on…
+        el._onCardEdit({ detail: { station: OTHER } });   // …and edits another station
+        finish.reject(Object.assign(new Error('404'), { detail: 'Station uuid-99 not saved' }));
+        await saving;
+
+        expect(el._customFormOpen).toBe(true);
+        expect(el._customEditUuid).toBe('uuid-7');
+        expect(el._error).toBe('');
+        expect(el._customSaving).toBe(false);
+    });
+
+    it('closes the form it saved, and shows its failure, when the reader stayed', async () => {
+        const api = await import('../../radio-api.js');
+        api.radioEditStation.mockRejectedValueOnce(Object.assign(new Error('503'), { detail: 'The box could not save it' }));
+        const el = await radio('favorites');
+        el._onCardEdit({ detail: { station: FAVOURITE } });
+
+        await el._submitCustomForm({ preventDefault() {} });
+
+        expect(el._error).toBe('The box could not save it');
+        expect(el._customFormOpen).toBe(true);
     });
 });

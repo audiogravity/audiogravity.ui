@@ -40,6 +40,8 @@ import { RADIO_COUNTRIES, RADIO_GENRES, RADIO_HALLOWEEN_GENRE } from '../library
 import { HalloweenController } from '../../core/HalloweenController.js';
 import { catalogueErrorMessage } from '../utils-lit.js';
 import { confirmRemoval } from '../../ui-helpers.js';
+import { scrollParent } from '../../core/keep-in-view.js';
+import { scrollBehavior } from '../../core/scroll-behavior.js';
 import '../molecules/ag-radio-card.js';
 
 /**
@@ -89,11 +91,14 @@ export class AgLibraryRadio extends LitElement {
         // and leave the local Set out of sync with the backend).
         this._pendingFavoriteUuids = new Set();
         this._pendingLibraryUuids  = new Set();
-        // Custom-station form (visible only in the My Live Radio sub-tab).
+        // The station form: Add in My Live Radio; Edit in My Live Radio and in Favorites,
+        // the two lists whose cards offer it.
         this._customFormOpen = false;
         this._customForm     = { title: '', url: '', image_url: '', genre: '' };
         this._customSaving   = false;
         this._customEditUuid = null;
+        /** Set by Edit: the next update brings the form into sight (see updated()). */
+        this._revealForm = false;
         this._halloween = new HalloweenController(this);
     }
 
@@ -107,6 +112,28 @@ export class AgLibraryRadio extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         clearTimeout(this._searchDebounceTimer);
+    }
+
+    /**
+     * Bring the station form into sight after each Edit. Edit is tapped on a card
+     * anywhere in the list, and the form opens above the list: for a station further
+     * down it opened out of sight, and the tap seemed to do nothing (measured in
+     * Chromium: 1 348 px above the screen for the 30th station of My Live Radio).
+     *
+     * The pane goes back to its top rather than the form being aligned with the
+     * pane's edge: the form sits at the top of the view, and there the page's own
+     * layout already clears the app's bars and the library's sticky one — an aligned
+     * form would have its title under them on a phone. The pane is the one that
+     * scrolls by design (keep-in-view.js), at the reader's motion preference.
+     * @param {Map<string, unknown>} changed - Properties changed since the last update.
+     */
+    updated(changed) {
+        super.updated?.(changed);
+        if (!this._revealForm || !this._customFormOpen) return;
+        this._revealForm = false;
+        const form = this.renderRoot.querySelector('.lib-radio-custom-form');
+        const pane = form && scrollParent(form, 'y');
+        pane?.scrollTo({ top: 0, behavior: scrollBehavior() });
     }
 
     // ------------------------------------------------------------------
@@ -198,8 +225,9 @@ export class AgLibraryRadio extends LitElement {
         this._loading = false;
         this._view = view;
         this._error = '';
-        // Close any open custom-station form when leaving My Live Radio.
-        if (view !== 'library') this._customFormOpen = false;
+        // An open station form belongs to the list it was opened from: an Edit begun in
+        // Favorites must not reappear in My Live Radio, for a station it may not hold.
+        this._closeCustomForm();
         if (view === 'library') {
             this._loadLibrary();
         } else if (view === 'favorites') {
@@ -344,6 +372,10 @@ export class AgLibraryRadio extends LitElement {
                 this[cfg.uuidsKey] = next;
                 if (this._view === cfg.view) {
                     this._stations = this._stations.filter(s => s.uuid !== station.uuid);
+                    // Its form goes with it: a station gone from the list may be gone from
+                    // the box too (one added by hand, in no other list), and saving it
+                    // would only earn a refusal.
+                    if (this._customEditUuid === station.uuid) this._closeCustomForm();
                 }
             }
         } catch (err) {
@@ -440,6 +472,8 @@ export class AgLibraryRadio extends LitElement {
         };
         this._customEditUuid = station.uuid;
         this._customFormOpen = true;
+        // Every Edit, the same station's again included: the reader may have scrolled.
+        this._revealForm = true;
     };
 
     _closeCustomForm = () => {
@@ -467,17 +501,22 @@ export class AgLibraryRadio extends LitElement {
             image_url: image_url.trim() || undefined,
             genre:     genre.trim() || undefined,
         };
+        // The reader may move on while it saves — to another tab, another station: only
+        // the form that was saved closes, and only its own failure is reported.
+        const view = this._view;
+        const editing = this._customEditUuid;
+        const stillHere = () => this._view === view && this._customEditUuid === editing;
         try {
-            if (this._customEditUuid) {
-                await radioEditStation(this._customEditUuid, payload);
+            if (editing) {
+                await radioEditStation(editing, payload);
             } else {
                 await radioAddCustomStation(payload);
             }
-            this._customFormOpen = false;
-            this._customEditUuid = null;
-            await this._loadLibrary();
+            if (stillHere()) this._closeCustomForm();
+            // The list on screen shows the change.
+            await (this._view === 'favorites' ? this._loadFavorites() : this._loadLibrary());
         } catch (err) {
-            this._error = err?.detail || 'Could not save station';
+            if (stillHere()) this._error = err?.detail || 'Could not save station';
         } finally {
             this._customSaving = false;
         }
@@ -496,7 +535,8 @@ export class AgLibraryRadio extends LitElement {
             <div class="lib-radio">
                 ${this._renderTabs()}
                 ${this._view === 'search'   ? this._renderSearchControls()  : nothing}
-                ${this._view === 'library'  ? this._renderLibraryHeader()   : nothing}
+                ${this._customFormOpen ? this._renderCustomForm()
+                    : this._view === 'library' ? this._renderLibraryHeader() : nothing}
                 ${this._renderBody()}
             </div>
         `;
@@ -611,16 +651,28 @@ export class AgLibraryRadio extends LitElement {
         return 'No stations available.';
     }
 
+    /**
+     * @private My Live Radio's header while no form is open: the way to add a station
+     * by hand.
+     * @returns {import('lit').TemplateResult}
+     */
     _renderLibraryHeader() {
-        if (!this._customFormOpen) {
-            return html`
-                <div class="lib-radio-fav-header">
-                    <button class="lib-radio-add-btn" @click=${this._openCustomForm}>
-                        + Add custom station
-                    </button>
-                </div>
-            `;
-        }
+        return html`
+            <div class="lib-radio-fav-header">
+                <button class="lib-radio-add-btn" @click=${this._openCustomForm}>
+                    + Add custom station
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * The station form: Add a custom station, or Edit a saved one. Drawn above the
+     * list whenever it is open — a tab change closes it, so that is the list it was
+     * opened from: My Live Radio's, or Favorites' for an Edit begun there.
+     * @returns {import('lit').TemplateResult}
+     */
+    _renderCustomForm() {
         const isEdit = !!this._customEditUuid;
         const f = this._customForm;
         return html`
