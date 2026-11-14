@@ -110,7 +110,7 @@ export class AgFooter extends LitElement {
                 
                 <span><a href="https://audiogravity.app" target="_blank" rel="noopener"><span
                             class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> © 2026 — <a
-                        href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a></span>
+                        href="https://audiogravity.app/docs/legal/eula" target="_blank" rel="noopener">Proprietary License</a></span>
 
                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
                     <!-- The address of the box's core, named the way the sign-in badge,
