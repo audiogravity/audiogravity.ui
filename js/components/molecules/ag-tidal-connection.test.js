@@ -636,6 +636,30 @@ describe('AgTidalConnection — Reopen Tidal page', () => {
         expect(printed(waitingCard()._renderDisconnected())).toMatch(/aria-disabled=false/);
     });
 
+    it("cuts the Tidal tab's handle on the app, so Tidal's page cannot send it elsewhere", async () => {
+        const tab = { opener: window };
+        open.mockReturnValue(tab);
+        apiPost.mockResolvedValueOnce({ authorize_url: NEW_PAGE });
+
+        await waitingCard()._connect();
+
+        expect(tab.opener).toBeNull();
+    });
+
+    it('still waits for Tidal when the handle cannot be cut', async () => {
+        const tab = {};
+        Object.defineProperty(tab, 'opener', { set() { throw new Error('SecurityError'); } });
+        open.mockReturnValue(tab);
+        apiPost.mockResolvedValueOnce({ authorize_url: NEW_PAGE });
+        const el = waitingCard({ _awaiting: false });
+
+        await el._connect();
+
+        expect(el._awaiting).toBe(true);
+        expect(el._error).toBe('');
+        expect(el._blockedUrl).toBe('');
+    });
+
     it('offers the page as a link when the browser refuses to open it', async () => {
         open.mockReturnValue(null);
         apiPost.mockResolvedValueOnce({ authorize_url: NEW_PAGE });

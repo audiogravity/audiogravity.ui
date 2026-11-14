@@ -239,7 +239,8 @@ export class AgTidalConnection extends LitElement {
      *
      * The page opens after the request, so a popup blocker may refuse it —
      * `window.open` then returns null — and the card offers it as a link instead,
-     * which a tap opens.
+     * which a tap opens. An opened tab loses its handle on the app (`opener`), so
+     * Tidal's page cannot send the app elsewhere.
      */
     async _connect() {
         if (this._starting || this._submitting) return;
@@ -249,6 +250,12 @@ export class AgTidalConnection extends LitElement {
             const data = await apiPost('/tidal/connection');
             if (data?.authorize_url) {
                 const tab = window.open(data.authorize_url, '_blank');
+                if (tab) {
+                    // Not the 'noopener' feature: with it window.open always returns null,
+                    // and a blocked page could no longer be told from an opened one. Best
+                    // effort — failing to cut the handle must not cost the sign-in.
+                    try { tab.opener = null; } catch { /* the tab is open all the same */ }
+                }
                 this._blockedUrl = tab ? '' : data.authorize_url;
                 this._redirect = '';   // an earlier paste belongs to the replaced sign-in
                 this._awaiting = true;
