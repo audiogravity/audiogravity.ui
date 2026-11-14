@@ -419,7 +419,7 @@ async function loadLicenseBadge() {
  * Load API version
  */
 function loadVersion() {
-    elements.versionInfo.innerHTML = `<a class="version-link" href="https://audiogravity.app" target="_blank" rel="noopener"><span class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> &copy; 2026 — <a class="version-link" href="https://github.com/audiogravity/audiogravity.site/blob/main/EULA.md" target="_blank" rel="noopener">Proprietary License</a>`;
+    elements.versionInfo.innerHTML = `<a class="version-link" href="https://audiogravity.app" target="_blank" rel="noopener"><span class="ag-wordmark ag-wordmark--in-text">Audiogravi<sup>ty</sup></span></a> &copy; 2026 — <a class="version-link" href="https://audiogravity.app/docs/legal/eula" target="_blank" rel="noopener">Proprietary License</a>`;
 }
 
 // =====================
