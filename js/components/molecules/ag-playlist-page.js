@@ -25,7 +25,7 @@
  * @attr {string}  source-id  - The streaming source the playlist belongs to.
  * @attr {string}  zone-id    - Roon zone, passed through to the queue (unused elsewhere).
  * @attr {string}  back-label - What the back button returns to ("My playlists").
- * @attr {boolean} wide       - The artwork is a 2:1 banner (HIGHRESAUDIO's selections).
+ * @attr {boolean} wide       - The artwork is a 2:1 banner (HIGHRESAUDIO's and Qobuz's selections).
  * @prop {{id: string, title: string, artist?: string, cover_token?: string}} playlist -
  *   The playlist as the browse lists it; `artist` carries its description.
  *

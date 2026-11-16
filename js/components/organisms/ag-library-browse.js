@@ -31,7 +31,7 @@ import { coverUrl, loadWithState, svgIcon } from '../utils-lit.js';
 import {
     getHraCategories, getHraGenres, getHraLabels, getHraPlaylistGroups,
     getHraConnection, hasSubscription,
-    getQobuzShelves, getQobuzGenres,
+    getQobuzShelves, getQobuzGenres, getQobuzPlaylistTags,
     getTidalShelves, getTidalGenres, getTidalMoods, getTidalExplore, getTidalPage,
 } from '../../library-store.js';
 import {
@@ -84,6 +84,12 @@ const MPD_SORT     = { all: 'title', az: 'title', recent: 'added' };
 // would be true and misleading at once.
 const GENRES_FILTER = 'genres';
 const PLAYLISTS_FILTER = 'playlists';
+/**
+ * The playlist tree a source publishes itself, as opposed to the account's own — one
+ * key on all three streaming sources, and the tree a playlist browse opens on. HRA's
+ * and Qobuz's are the ones narrowed by a strip below, and drawn as banners.
+ */
+const PLAYLIST_EDITORIAL = 'editorial';
 // Qobuz, laid out the way HIGHRESAUDIO is: five shelves, each opening a strip of its
 // own. Four pills used to sit here, two of which were single hard-coded shelves out of
 // the nine the catalogue holds — the same defect the HRA menu had before it was
@@ -103,7 +109,7 @@ const QOBUZ_GENRES_PILL = [GENRES_FILTER, 'Genres'];
 // account's own. It has no third: `editor-picks` and `last-created` answer the same
 // playlists, so offering both would be one shelf under two names.
 const QOBUZ_PLAYLIST_KINDS = [
-    ['editorial', 'Editorial', 'Editorial playlists'],
+    [PLAYLIST_EDITORIAL, 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
 ];
 // Tidal, laid out like the other two: five shelves, each opening a strip of its own.
@@ -128,7 +134,7 @@ const TIDAL_EXPLORE_PILL = ['explore', 'Explore'];
 // because that is what they are — a third shelf of playlists, beside the other two.
 // Third entry: the grid's heading, for the reason HRA's has one.
 const TIDAL_PLAYLIST_KINDS = [
-    ['editorial', 'Editorial', 'Editorial playlists'],
+    [PLAYLIST_EDITORIAL, 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
     ['charts', 'Charts', 'Charts'],
 ];
@@ -149,10 +155,8 @@ const HRA_GENRES_PILL = [GENRES_FILTER, 'Genres'];
 const HRA_PLAYLISTS_PILL = [PLAYLISTS_FILTER, 'Playlists'];
 // Third entry: the shelf heading. It is NOT the pill label plus the word "playlists" —
 // that reading gave "Mine playlists". A button and a heading are not the same sentence.
-/** The tree HRA publishes itself — the only one with shelves under it. */
-const HRA_PLAYLIST_EDITORIAL = 'editorial';
 const HRA_PLAYLIST_KINDS = [
-    [HRA_PLAYLIST_EDITORIAL, 'Editorial', 'Editorial playlists'],
+    [PLAYLIST_EDITORIAL, 'Editorial', 'Editorial playlists'],
     ['mine', 'Mine', 'My playlists'],
     ['genre', 'Genre', 'Playlists by genre'],
     ['theme', 'Theme', 'Playlists by theme'],
@@ -177,9 +181,14 @@ const HRA_VAULT_PILL = ['vault', 'Vault'];
 // walking the whole tree, and they are titles like *Mr. Slowhand — Eric Clapton*,
 // not rubbish. Any shelf HRA adds later still appears under All until it is listed
 // here, and asking for an unknown one answers empty rather than failing.
-const HRA_PLAYLIST_ALL = '';
+// Qobuz's editorial tree gets the same strip, from the categories Qobuz lists itself.
+/** The unnarrowed editorial tree, on both sources that narrow it. */
+const PLAYLIST_ALL = '';
+const PLAYLIST_ALL_PILL = [PLAYLIST_ALL, 'All'];
+// Qobuz's genre strip sits right under its categories, so its "All" says what it widens.
+const PLAYLIST_ALL_GENRES_PILL = [PLAYLIST_ALL, 'All genres'];
 const HRA_PLAYLIST_CATEGORIES = [
-    [HRA_PLAYLIST_ALL, 'All'],
+    PLAYLIST_ALL_PILL,
     ['New Releases', 'New Releases'],
     ['Recommended', 'Recommended'],
     ['Popular', 'Popular'],
@@ -244,6 +253,7 @@ export class AgLibraryBrowse extends LitElement {
         _albums:      { state: true },
         _hraCategories: { state: true },
         _qobuzShelves: { state: true },
+        _qobuzPlaylistTags: { state: true },
         _tidalShelves: { state: true },
         _tidalMoods:  { state: true },
         _mood:        { state: true },
@@ -260,6 +270,7 @@ export class AgLibraryBrowse extends LitElement {
         _label:       { state: true },
         _playlistKind: { state: true },
         _playlistCategory: { state: true },
+        _playlistGenre: { state: true },
         _playlistGroup: { state: true },
         _hraSubscribed: { state: true },
         _filter:      { state: true },
@@ -288,6 +299,8 @@ export class AgLibraryBrowse extends LitElement {
         this._hraCategories = [];
         /** @type {Array<{title: string, label: string}>} Qobuz shelves, one pill each. */
         this._qobuzShelves = [];
+        /** @type {Array<{title: string, label: string}>} Qobuz playlist categories, one pill each. */
+        this._qobuzPlaylistTags = [];
         /** @type {Array<{title: string, label: string}>} Tidal shelves, one pill each. */
         this._tidalShelves = [];
         /** @type {Array<{title: string, label: string}>} Tidal moods, one pill each. */
@@ -330,9 +343,18 @@ export class AgLibraryBrowse extends LitElement {
          */
         this._genre       = null;
         /** @type {string} Which playlist tree is shown: 'editorial' or 'mine' on both sources. */
-        this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
-        /** @type {string} Which HRA shelf the editorial tree is narrowed to; '' = all. */
-        this._playlistCategory = HRA_PLAYLIST_ALL;
+        this._playlistKind = PLAYLIST_EDITORIAL;
+        /**
+         * @type {string} What the editorial tree is narrowed to — an HRA shelf, or a
+         * Qobuz category's title; '' = all.
+         */
+        this._playlistCategory = PLAYLIST_ALL;
+        /**
+         * @type {string} The genre Qobuz's editorial tree is narrowed to — a top-level
+         * genre's path; '' = all. Its own state, not `_genre`: that one is the Genres
+         * pill's, and a genre browsed there must not silently narrow the playlists.
+         */
+        this._playlistGenre = PLAYLIST_ALL;
         /** @type {Array<{title: string, label: string}>} HRA record labels, one pill each. */
         this._hraLabels   = [];
         /** @type {Record<string, Array<{title: string, label: string}>>} Playlist groupings. */
@@ -568,8 +590,9 @@ export class AgLibraryBrowse extends LitElement {
             this._pageEntry = '';
             this._pageLinks = [];
             this._section = '';
-            this._playlistKind = HRA_PLAYLIST_KINDS[0][0];
-            this._playlistCategory = HRA_PLAYLIST_ALL;
+            this._playlistKind = PLAYLIST_EDITORIAL;
+            this._playlistCategory = PLAYLIST_ALL;
+            this._playlistGenre = PLAYLIST_ALL;
             this._playlistGroup = '';
             // A playlist's page belongs to the source it was opened on.
             this._openedPlaylist = null;
@@ -602,7 +625,10 @@ export class AgLibraryBrowse extends LitElement {
         if (changed.has('sourceId') || changed.has('artistId') || changed.has('_hraSubscribed')) {
             this._edges.measure();
         }
-        if (changed.has('_genres') || changed.has('_genre') || changed.has('_filter')) {
+        // `_playlistKind` too: the genre slot also holds Qobuz's playlist genres, which
+        // appear when Editorial is chosen with no other change.
+        if (changed.has('_genres') || changed.has('_genre') || changed.has('_filter')
+            || changed.has('_playlistKind')) {
             this._genreEdges.measure();
         }
         // The entries strip is filled asynchronously, and it holds the fourteen pills
@@ -614,6 +640,7 @@ export class AgLibraryBrowse extends LitElement {
             this._entryEdges.measure();
         }
         if (changed.has('_hraPlaylistGroups') || changed.has('_playlistKind')
+            || changed.has('_qobuzPlaylistTags')
             || changed.has('_page') || changed.has('_section')) {
             this._shelfEdges.measure();
         }
@@ -698,6 +725,17 @@ export class AgLibraryBrowse extends LitElement {
         if (!this._isQobuz) return;
         this._qobuzShelves = shelves;
         this._openFirstEntry(QOBUZ_SHELVES_PILL[0], '_category', this._shelfPills);
+    }
+
+    /**
+     * @private Fill the Qobuz playlist category strip; a failure leaves it empty and
+     * retryable. Nothing is chosen on arrival: the strip opens on All, whose grid is
+     * already on screen, so landing here must not reload it.
+     */
+    async _loadQobuzPlaylistTags() {
+        const tags = await getQobuzPlaylistTags();
+        // The source can have changed while the answer was in flight.
+        if (this._isQobuz) this._qobuzPlaylistTags = tags;
     }
 
     /** @private Fill the HRA label strip; a failure leaves it empty and retryable. */
@@ -1009,6 +1047,14 @@ export class AgLibraryBrowse extends LitElement {
             if (this._filter === QOBUZ_GENRES_PILL[0] && !this._genres.length) {
                 this._loadGenres();
             }
+            if (this._showsQobuzEditorial && !this._qobuzPlaylistTags.length) {
+                this._loadQobuzPlaylistTags();
+            }
+            // The editorial tree's genre strip is the top level of the same tree the
+            // Genres pill shows, so it is fetched once for both.
+            if (this._showsQobuzEditorial && !this._genres.length) {
+                this._loadGenres();
+            }
         }
         this._detachObserver();
         this._albums      = [];
@@ -1111,6 +1157,12 @@ export class AgLibraryBrowse extends LitElement {
         }
         if (this._filter === QOBUZ_PLAYLISTS_PILL[0]) {
             params.set('type', this._playlistKind);
+            if (this._showsQobuzEditorial && this._playlistCategory) {
+                params.set('tag', this._playlistCategory);
+            }
+            if (this._showsQobuzEditorial && this._playlistGenre) {
+                params.set('genre', this._playlistGenre);
+            }
             return apiGet(`/library/qobuz-playlists?${params}`);
         }
         if (this._filter === QOBUZ_GENRES_PILL[0]) {
@@ -1141,7 +1193,7 @@ export class AgLibraryBrowse extends LitElement {
                 // below is the choice, as it is in the genres.
                 if (!this._playlistGroup) return [];
                 // A grouping browses the editorial tree; it is not a third tree.
-                params.set('type', HRA_PLAYLIST_EDITORIAL);
+                params.set('type', PLAYLIST_EDITORIAL);
                 params.set('group_type', this._playlistKind);
                 params.set('group', this._playlistGroup);
                 return apiGet(`/library/highresaudio-playlists?${params}`);
@@ -1246,17 +1298,22 @@ export class AgLibraryBrowse extends LitElement {
 
     /**
      * @returns {boolean} Whether the artwork on screen is a 2:1 banner rather than a
-     * square cover. True only of HIGHRESAUDIO's editorial selections: their covers are
-     * teasers, measured at 410 × 205 on 32 taken across the whole catalogue, and a square
-     * cell showed the middle half of each. Deliberately NOT extended to:
-     * — Qobuz and Tidal playlists, whose covers are square;
-     * — the account's own HRA playlists, which carry whatever artwork the account gave
-     *   them and have no shape we have measured.
+     * square cover. True of the editorial selections of two sources:
+     * — HIGHRESAUDIO's: their covers are teasers, measured at 410 × 205 on 32 taken
+     *   across the whole catalogue, and a square cell showed the middle half of each;
+     * — Qobuz's: the core hands over the landscape artwork Qobuz's own player shows
+     *   (800 × 380 or 400 × 190 — 200 of 200 sampled on 2026-11-16 carry one), where it
+     *   used to hand over the square cover of the first album in the playlist. The cell
+     *   is 2:1, so `object-fit: cover` trims 2.5 % off each side of a 2.1:1 picture.
+     * Deliberately NOT extended to:
+     * — Tidal playlists, whose covers are square;
+     * — the account's own playlists, on HRA (whatever artwork the account gave them,
+     *   no shape measured) as on Qobuz (album covers, square).
      * Read by the card and the list row from this one getter, for the reason
      * `_playlistFallback` above exists: the two are shown in the same viewport, so two
      * answers would put a banner beside a crop of it.
      */
-    get _bannerCovers() { return this._showsEditorialPlaylists; }
+    get _bannerCovers() { return this._showsEditorialPlaylists || this._showsQobuzEditorial; }
 
     /**
      * @returns {boolean} Whether the grid on screen holds playlists rather than albums.
@@ -1594,9 +1651,19 @@ export class AgLibraryBrowse extends LitElement {
         // that the pill already shows just above. HIGHRESAUDIO only: Qobuz and Tidal
         // use that very filter value for their own playlists, and without this guard
         // their grid was titled "Editorial playlists" too.
-        // Qobuz's two trees name their grid the same way, from the same third column;
-        // it has no shelves or groupings under them, so that is all it needs.
+        // Qobuz's two trees name their grid the same way, from the same third column —
+        // unless a category or a genre narrows the editorial one: then they name it, as
+        // HRA's shelves do ("Moods · Jazz", not "Editorial playlists", which the strip
+        // says), category first, in the order of the strips above.
         if (this._isQobuz && this._filter === QOBUZ_PLAYLISTS_PILL[0]) {
+            if (this._showsQobuzEditorial) {
+                const tag = this._playlistCategory
+                    && this._qobuzPlaylistTags.find((t) => t.title === this._playlistCategory);
+                const genre = this._playlistGenre
+                    && this._genres.find((g) => g.path === this._playlistGenre);
+                const named = [tag?.label, genre?.title].filter(Boolean);
+                if (named.length) return named.join(' · ');
+            }
             const kind = QOBUZ_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
             return kind ? kind[2] : QOBUZ_PLAYLISTS_PILL[1];
         }
@@ -1962,9 +2029,11 @@ export class AgLibraryBrowse extends LitElement {
     }
 
     /**
-     * @private Pick one entry of a shelf's strip.
-     * @param {'_category'|'_label'|'_playlistGroup'} prop - Where the choice is kept.
-     * @param {string} value - The entry's addressing title.
+     * @private Pick one entry of a shelf's strip — every strip below the filter bar
+     * that simply narrows the grid goes through here, so they all behave alike.
+     * @param {'_category'|'_label'|'_section'|'_mood'|'_playlistGroup'|'_playlistCategory'|'_playlistGenre'} prop
+     *   Where the choice is kept.
+     * @param {string} value - The entry's addressing title ('' widens a playlist strip back to All).
      */
     _setEntry(prop, value) {
         if (this[prop] === value) return;   // re-tapping the open entry costs nothing
@@ -1998,7 +2067,7 @@ export class AgLibraryBrowse extends LitElement {
     get _showsEditorialShelves() {
         return this._isHighresaudio
             && this._filter === HRA_PLAYLISTS_PILL[0]
-            && this._playlistKind === HRA_PLAYLIST_EDITORIAL;
+            && this._playlistKind === PLAYLIST_EDITORIAL;
     }
 
     /**
@@ -2019,6 +2088,17 @@ export class AgLibraryBrowse extends LitElement {
     get _playlistKindLabel() {
         const kind = HRA_PLAYLIST_KINDS.find(([k]) => k === this._playlistKind);
         return (kind ? kind[1] : this._playlistKind).toLowerCase();
+    }
+
+    /**
+     * @returns {boolean} Whether Qobuz's editorial tree — the one its categories and
+     * genres narrow, and the one drawn with banners — is up. Kept apart from
+     * {@link _showsEditorialShelves}, which is HRA's and leads to HRA's own strips.
+     */
+    get _showsQobuzEditorial() {
+        return this._isQobuz
+            && this._filter === QOBUZ_PLAYLISTS_PILL[0]
+            && this._playlistKind === PLAYLIST_EDITORIAL;
     }
 
     /** @returns {boolean} Whether a playlist grouping — genre or theme — is up. */
@@ -2053,28 +2133,59 @@ export class AgLibraryBrowse extends LitElement {
      * 1762 selections in one undifferentiated pile is not a shelf, it is a heap. It
      * sits below rather than replacing the trees, so "Mine" stays one tap away — and
      * it opens on "All", so the grid is already full before anything is chosen.
+     *
+     * Qobuz's editorial tree (6,716 selections) gets the same strip, built from the
+     * categories Qobuz lists — Hi-Res, New Releases, Focus, Moods… —, and none until
+     * that list has arrived: "All" alone would be a strip with nothing to choose.
      */
     _renderPlaylistCategories() {
-        if (!this._showsEditorialShelves) return nothing;
+        let pills = null;
+        if (this._showsEditorialShelves) pills = HRA_PLAYLIST_CATEGORIES;
+        else if (this._showsQobuzEditorial && this._qobuzPlaylistTags.length) {
+            pills = [PLAYLIST_ALL_PILL, ...this._qobuzPlaylistTags.map((t) => [t.title, t.label])];
+        }
+        if (!pills) return nothing;
         return this._renderStrip({
             strip: 'shelves',
             edges: this._shelfEdges,
-            pills: HRA_PLAYLIST_CATEGORIES,
+            pills,
             active: this._playlistCategory,
-            pick: (cat) => this._setPlaylistCategory(cat),
+            pick: (cat) => this._setEntry('_playlistCategory', cat),
         });
     }
 
     /**
-     * @private Switch between HRA's two playlist trees. Leaving the editorial one
-     * takes its shelf with it: coming back to a narrowed tree with no strip on
-     * screen to widen it is a dead end.
+     * @private The genre strip under Qobuz's categories: "All genres", then the
+     * thirteen top-level genres of the Genres pill's own tree, which a category
+     * crosses with — Jazz in Hi-Res is 89 selections. Top level only: every one of
+     * the thirteen holds selections, while sub-genres almost never do (11 of 16
+     * sampled held none on 2026-11-16).
+     *
+     * It borrows the Genres pill's slot and controller: the two strips are never on
+     * screen together, since each belongs to its own pill.
+     */
+    _renderQobuzPlaylistGenres() {
+        if (!this._showsQobuzEditorial || !this._genres.length) return nothing;
+        return this._renderStrip({
+            strip: 'genres',
+            edges: this._genreEdges,
+            pills: [PLAYLIST_ALL_GENRES_PILL, ...this._genres.map((g) => [g.path, g.title])],
+            active: this._playlistGenre,
+            pick: (genre) => this._setEntry('_playlistGenre', genre),
+        });
+    }
+
+    /**
+     * @private Switch between a source's playlist trees. Leaving the editorial one
+     * takes its shelf — HRA's, or Qobuz's category and genre — with it: coming back to
+     * a narrowed tree with no strip on screen to widen it is a dead end.
      * @param {string} kind
      */
     _setPlaylistKind(kind) {
         if (kind === this._playlistKind) return;
         this._playlistKind = kind;
-        this._playlistCategory = HRA_PLAYLIST_ALL;
+        this._playlistCategory = PLAYLIST_ALL;
+        this._playlistGenre = PLAYLIST_ALL;
         // A grouping opens on its first entry, as the categories and labels do: HRA
         // serves no unfiltered view of one, so an empty grid would be all there is
         // until the reader taps. Its list is fetched on the first visit only.
@@ -2084,16 +2195,6 @@ export class AgLibraryBrowse extends LitElement {
             if (groups.length) this._playlistGroup = groups[0].title;
             else this._loadHraPlaylistGroups(kind);
         }
-        this._load();
-    }
-
-    /**
-     * @private Narrow the editorial tree to one HRA shelf, or widen it back with ''.
-     * @param {string} category
-     */
-    _setPlaylistCategory(category) {
-        if (category === this._playlistCategory) return;
-        this._playlistCategory = category;
         this._load();
     }
 
@@ -2184,6 +2285,7 @@ export class AgLibraryBrowse extends LitElement {
             ${this._renderGenres()}
             ${this._renderPlaylistKinds()}
             ${this._renderPlaylistCategories()}
+            ${this._renderQobuzPlaylistGenres()}
             ${this._renderPlaylistGroups()}
 
             ${_error ? html`<div class="lib-empty">Error: ${_error}</div>`

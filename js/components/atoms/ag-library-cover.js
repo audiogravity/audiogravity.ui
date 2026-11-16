@@ -19,9 +19,13 @@
  *                             32 of them sampled across the whole catalogue, every one
  *                             410 × 205. In a square cell `object-fit: cover` kept the
  *                             middle 205 × 205 and threw the rest away, which is half of a
- *                             composition laid out horizontally. A call site keeps whichever
- *                             dimension its layout owns: a card fixes its width (120 → 120 × 60),
- *                             a list row fixes its height (80 → 80 × 40, the row's usual 40).
+ *                             composition laid out horizontally. Qobuz's editorial playlists
+ *                             are drawn so too: their landscape artwork is 800 × 380 or
+ *                             400 × 190 (200 of 200 sampled on 2026-11-16), a 2.1:1 picture
+ *                             the 2:1 cell trims by 2.5 % on each side. A call site keeps
+ *                             whichever dimension its layout owns: a card fixes its width
+ *                             (120 → 120 × 60), a list row fixes its height (80 → 80 × 40,
+ *                             the row's usual 40).
  *
  * @dependency css/components/library-cover.css
  *

@@ -38,6 +38,7 @@ const getHraLabelsMock = vi.fn();
 const getHraPlaylistGroupsMock = vi.fn();
 const getQobuzShelvesMock = vi.fn();
 const getQobuzGenresMock = vi.fn();
+const getQobuzPlaylistTagsMock = vi.fn();
 const getTidalShelvesMock = vi.fn();
 const getTidalGenresMock = vi.fn();
 const getTidalMoodsMock = vi.fn();
@@ -54,6 +55,7 @@ vi.mock('../../library-store.js', () => ({
     getHraPlaylistGroups: (...args) => getHraPlaylistGroupsMock(...args),
     getQobuzShelves: (...args) => getQobuzShelvesMock(...args),
     getQobuzGenres: (...args) => getQobuzGenresMock(...args),
+    getQobuzPlaylistTags: (...args) => getQobuzPlaylistTagsMock(...args),
     getTidalShelves: (...args) => getTidalShelvesMock(...args),
     getTidalGenres: (...args) => getTidalGenresMock(...args),
     getTidalMoods: (...args) => getTidalMoodsMock(...args),
@@ -743,9 +745,18 @@ describe('ag-library-browse — banner covers', () => {
         expect(text(mine._renderListRow(item))).toContain('?wide=false');
     });
 
-    it('leaves Qobuz and Tidal playlists square — their covers are square', () => {
-        expect(el({ sourceId: 'src_qobuz' })._bannerCovers).toBe(false);
+    it("draws Qobuz's selections as banners too — the core hands over their landscape artwork", () => {
+        const qobuz = el({ sourceId: 'src_qobuz' });
+        expect(qobuz._bannerCovers).toBe(true);
+        expect(text(qobuz._renderAlbumCard(item))).toContain('?wide=true');
+        expect(text(qobuz._renderListRow(item))).toContain('?wide=true');
+    });
+
+    it("leaves the account's own Qobuz playlists and Tidal's square — their covers are square", () => {
+        expect(el({ sourceId: 'src_qobuz', _playlistKind: 'mine' })._bannerCovers).toBe(false);
+        expect(el({ sourceId: 'src_qobuz', _filter: 'favorites' })._bannerCovers).toBe(false);
         expect(el({ sourceId: 'src_tidal', _filter: 'editorial' })._bannerCovers).toBe(false);
+        expect(el({ sourceId: 'src_tidal' })._bannerCovers).toBe(false);
     });
 
     it('leaves the HRA album grids square — only the playlists are banners', () => {
@@ -818,8 +829,11 @@ describe('ag-library-browse — HIGHRESAUDIO editorial shelves', () => {
 
     it('picking a shelf reloads; picking the one already open does not', () => {
         const el = shelfEl({ _load() { this.loads = (this.loads ?? 0) + 1; } });
-        el._setPlaylistCategory('Moods');
-        el._setPlaylistCategory('Moods');
+        // Through the strip's own handler, not a method called beside it.
+        el._renderStrip = (opts) => opts;
+        const { pick } = el._renderPlaylistCategories();
+        pick('Moods');
+        pick('Moods');
         expect(el.loads).toBe(1);
         expect(el._playlistCategory).toBe('Moods');
     });
@@ -1199,6 +1213,7 @@ describe('ag-library-browse — Qobuz playlists', () => {
         return makeEl({
             sourceId: 'src_qobuz', _filter: 'playlists',
             _playlistEdges: { overflows: false, attach() {}, measure() {} },
+            _qobuzPlaylistTags: [],
             ...over,
         });
     }
@@ -1222,9 +1237,249 @@ describe('ag-library-browse — Qobuz playlists', () => {
         expect(plEl()._albumOpts({ id: 'pl1' }, 'play').itemType).toBe('playlist');
     });
 
-    it('has no shelf strip under its trees, unlike HRA', () => {
+    it("is not HRA's editorial tree — that one also decides the 2:1 artwork", () => {
         expect(plEl({ _playlistKind: 'editorial' })._showsEditorialShelves).toBe(false);
-        expect(plEl({ _playlistKind: 'editorial' })._renderPlaylistCategories()).toBe(null);
+    });
+});
+
+describe('ag-library-browse — Qobuz playlist categories', () => {
+    // What the core answers on /library/qobuz-playlist-tags: Qobuz's own order and its
+    // English names, keyed by slug (measured 2026-11-16: thirteen of them).
+    const TAGS = [
+        { title: 'hi-res', label: 'Hi-Res', holds: 'playlists' },
+        { title: 'new', label: 'New Releases', holds: 'playlists' },
+        { title: 'focus', label: 'Focus', holds: 'playlists' },
+        { title: 'mood', label: 'Moods', holds: 'playlists' },
+    ];
+
+    // The top level of the Qobuz genre tree, as /library/qobuz-genres lists it.
+    const GENRES = [
+        { title: 'Classique', path: '10', subgenres: [{ title: 'Opéra', path: '13' }] },
+        { title: 'Jazz', path: '80', subgenres: [{ title: 'Be Bop', path: '81' }] },
+        { title: 'Pop/Rock', path: '112', subgenres: [] },
+    ];
+
+    const tagEl = (over = {}) => makeEl({
+        sourceId: 'src_qobuz', _filter: 'playlists',
+        _playlistKind: 'editorial', _playlistCategory: '', _qobuzPlaylistTags: TAGS,
+        _playlistGenre: '', _genre: null,
+        _shelfEdges: { overflows: false, attach() {}, measure() {} },
+        _genreEdges: { overflows: false, attach() {}, measure() {} },
+        _genres: GENRES, _qobuzShelves: [],
+        _detachObserver() {}, _fav: { load() {} }, ...over,
+    });
+
+    beforeEach(() => {
+        apiGetMock.mockReset().mockResolvedValue([]);
+        getQobuzPlaylistTagsMock.mockReset();
+        getQobuzGenresMock.mockReset().mockResolvedValue([]);
+    });
+
+    it('offers All ahead of the categories, in the order the core listed them', () => {
+        const el = tagEl();
+        expect(el._showsQobuzEditorial).toBe(true);
+        const strip = text(el._renderPlaylistCategories());
+        const at = ['All', 'Hi-Res', 'New Releases', 'Focus', 'Moods'].map((l) => strip.indexOf(l));
+        expect(at.every((i) => i >= 0)).toBe(true);
+        expect([...at].sort((a, b) => a - b)).toEqual(at);
+        expect(el._playlistCategory).toBe('');
+    });
+
+    it('shows no strip until the list has arrived — All alone chooses nothing', () => {
+        expect(tagEl({ _qobuzPlaylistTags: [] })._renderPlaylistCategories()).toBe(null);
+    });
+
+    it("shows no strip over the account's own tree, nor on another pill", () => {
+        expect(tagEl({ _playlistKind: 'mine' })._renderPlaylistCategories()).toBe(null);
+        expect(tagEl({ _filter: 'favorites' })._showsQobuzEditorial).toBe(false);
+        expect(tagEl({ sourceId: 'src_tidal' })._showsQobuzEditorial).toBe(false);
+    });
+
+    it('asks Qobuz for the category by its slug rather than filtering here', async () => {
+        await tagEl({ _playlistCategory: 'mood' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/qobuz-playlists?');
+        expect(url).toContain('type=editorial');
+        expect(url).toContain('tag=mood');
+    });
+
+    it('sends no category on All', async () => {
+        await tagEl()._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('tag=');
+    });
+
+    it("sends none for the account's own tree, whatever is left in the state", async () => {
+        await tagEl({ _playlistKind: 'mine', _playlistCategory: 'mood' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('tag=');
+    });
+
+    it('picking a category reloads; leaving the editorial tree drops it', () => {
+        const el = tagEl({ _load() { this.loads = (this.loads ?? 0) + 1; } });
+        el._renderStrip = (opts) => opts;
+        el._renderPlaylistCategories().pick('focus');
+        expect(el._playlistCategory).toBe('focus');
+        el._setPlaylistKind('mine');
+        expect(el._playlistCategory).toBe('');
+        expect(el.loads).toBe(2);
+    });
+
+    it('the chosen category names the grid, by its label', () => {
+        expect(tagEl({ _playlistCategory: 'mood' })._sectionLabel).toBe('Moods');
+        expect(tagEl()._sectionLabel).toBe('Editorial playlists');
+        expect(tagEl({ _playlistKind: 'mine' })._sectionLabel).toBe('My playlists');
+    });
+
+    it('never prints a slug as a heading, should the list not hold it', () => {
+        expect(tagEl({ _playlistCategory: 'danslecasque' })._sectionLabel)
+            .toBe('Editorial playlists');
+    });
+
+    it('draws the selections as banners whatever narrows them', () => {
+        expect(tagEl({ _playlistCategory: 'mood', _playlistGenre: '80' })._bannerCovers).toBe(true);
+    });
+
+    it('a playlist opened from the grid keeps the banner shape on its own page', () => {
+        const el = tagEl();
+        el.updateComplete = Promise.resolve();
+        el.querySelectorAll = () => [];
+        Object.defineProperty(el, '_scroller', { get: () => null });
+        el._openPlaylist({ id: '72780212', title: 'Hi-Res Masters : 1956' });
+        expect(el._openedPlaylist.wide).toBe(true);
+    });
+
+    it('fills the strip when the list lands, without reloading the grid already up', async () => {
+        getQobuzPlaylistTagsMock.mockResolvedValue(TAGS);
+        const el = tagEl({ _qobuzPlaylistTags: [], _load: vi.fn() });
+        await el._loadQobuzPlaylistTags();
+        expect(el._qobuzPlaylistTags).toEqual(TAGS);
+        expect(el._load).not.toHaveBeenCalled();
+    });
+
+    it('does not fill the strip when the source changed while the list was in flight', async () => {
+        getQobuzPlaylistTagsMock.mockResolvedValue(TAGS);
+        const el = tagEl({ _qobuzPlaylistTags: [] });
+        el.sourceId = 'src_highresaudio';
+        await el._loadQobuzPlaylistTags();
+        expect(el._qobuzPlaylistTags).toEqual([]);
+    });
+
+    it('asks for the list on every load while it is missing — Refresh repairs the strip', async () => {
+        getQobuzPlaylistTagsMock.mockResolvedValue([]);
+        const el = tagEl({ _qobuzPlaylistTags: [] });
+        await el._load();
+        await el._load();
+        expect(getQobuzPlaylistTagsMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not ask for it once it is there, nor where the strip is not shown', async () => {
+        await tagEl()._load();
+        await tagEl({ _qobuzPlaylistTags: [], _playlistKind: 'mine' })._load();
+        await tagEl({ _qobuzPlaylistTags: [], _filter: 'favorites' })._load();
+        expect(getQobuzPlaylistTagsMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('ag-library-browse — Qobuz playlists by genre', () => {
+    // A category crosses with a genre: Jazz alone is 1,098 selections, Jazz in Hi-Res 89
+    // (measured 2026-11-16). The genres are the top level of the Genres pill's own tree.
+    const GENRES = [
+        { title: 'Classique', path: '10', subgenres: [{ title: 'Opéra', path: '13' }] },
+        { title: 'Jazz', path: '80', subgenres: [{ title: 'Be Bop', path: '81' }] },
+        { title: 'Pop/Rock', path: '112', subgenres: [] },
+    ];
+    const TAGS = [{ title: 'hi-res', label: 'Hi-Res' }, { title: 'mood', label: 'Moods' }];
+
+    const genreEl = (over = {}) => makeEl({
+        sourceId: 'src_qobuz', _filter: 'playlists',
+        _playlistKind: 'editorial', _playlistCategory: '', _playlistGenre: '', _genre: null,
+        _qobuzPlaylistTags: TAGS, _genres: GENRES, _qobuzShelves: [],
+        _shelfEdges: { overflows: false, attach() {}, measure() {} },
+        _genreEdges: { overflows: false, attach() {}, measure() {} },
+        _detachObserver() {}, _fav: { load() {} }, ...over,
+    });
+
+    beforeEach(() => {
+        apiGetMock.mockReset().mockResolvedValue([]);
+        getQobuzGenresMock.mockReset().mockResolvedValue([]);
+        getQobuzPlaylistTagsMock.mockReset().mockResolvedValue([]);
+    });
+
+    it('offers All genres, then the top-level genres in the order the core listed them', () => {
+        const strip = text(genreEl()._renderQobuzPlaylistGenres());
+        const at = ['All genres', 'Classique', 'Jazz', 'Pop/Rock'].map((l) => strip.indexOf(l));
+        expect(at.every((i) => i >= 0)).toBe(true);
+        expect([...at].sort((a, b) => a - b)).toEqual(at);
+    });
+
+    it('offers no sub-genre — they almost never hold a selection', () => {
+        const strip = text(genreEl()._renderQobuzPlaylistGenres());
+        expect(strip).not.toContain('Be Bop');
+        expect(strip).not.toContain('Opéra');
+    });
+
+    it('shows no strip before the tree has arrived, over Mine, or on another pill', () => {
+        expect(genreEl({ _genres: [] })._renderQobuzPlaylistGenres()).toBe(null);
+        expect(genreEl({ _playlistKind: 'mine' })._renderQobuzPlaylistGenres()).toBe(null);
+        expect(genreEl({ _filter: 'genres' })._renderQobuzPlaylistGenres()).toBe(null);
+        expect(genreEl({ sourceId: 'src_highresaudio' })._renderQobuzPlaylistGenres()).toBe(null);
+    });
+
+    it('asks Qobuz for the genre by its path', async () => {
+        await genreEl({ _playlistGenre: '80' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('/library/qobuz-playlists?');
+        expect(url).toContain('genre=80');
+        expect(url).not.toContain('tag=');
+    });
+
+    it('crosses the genre with the category in one request', async () => {
+        await genreEl({ _playlistCategory: 'hi-res', _playlistGenre: '80' })._fetchPage(0);
+        const url = apiGetMock.mock.calls[0][0];
+        expect(url).toContain('tag=hi-res');
+        expect(url).toContain('genre=80');
+    });
+
+    it('sends no genre on All genres, nor for the account tree', async () => {
+        await genreEl()._fetchPage(0);
+        await genreEl({ _playlistKind: 'mine', _playlistGenre: '80' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('genre=');
+        expect(apiGetMock.mock.calls[1][0]).not.toContain('genre=');
+    });
+
+    it("is not narrowed by the genre browsed under the Genres pill — that is another pill's", async () => {
+        await genreEl({ _genre: '80' })._fetchPage(0);
+        expect(apiGetMock.mock.calls[0][0]).not.toContain('genre=');
+    });
+
+    it('picking a genre reloads; leaving the editorial tree drops it', () => {
+        const el = genreEl({ _load() { this.loads = (this.loads ?? 0) + 1; } });
+        el._renderStrip = (opts) => opts;
+        const { pick } = el._renderQobuzPlaylistGenres();
+        pick('80');
+        pick('80');
+        expect(el._playlistGenre).toBe('80');
+        el._setPlaylistKind('mine');
+        expect(el._playlistGenre).toBe('');
+        expect(el.loads).toBe(2);
+    });
+
+    it('names the grid after the category and the genre, in the order of the strips', () => {
+        expect(genreEl({ _playlistCategory: 'mood', _playlistGenre: '80' })._sectionLabel)
+            .toBe('Moods · Jazz');
+        expect(genreEl({ _playlistGenre: '80' })._sectionLabel).toBe('Jazz');
+        expect(genreEl({ _playlistCategory: 'mood' })._sectionLabel).toBe('Moods');
+        expect(genreEl({ _playlistGenre: '999' })._sectionLabel).toBe('Editorial playlists');
+    });
+
+    it('asks for the genre tree on every load while it is missing, and only on Editorial', async () => {
+        await genreEl({ _genres: [] })._load();
+        await genreEl({ _genres: [] })._load();
+        expect(getQobuzGenresMock).toHaveBeenCalledTimes(2);
+        getQobuzGenresMock.mockClear();
+        await genreEl()._load();
+        await genreEl({ _genres: [], _playlistKind: 'mine' })._load();
+        await genreEl({ _genres: [], _filter: 'favorites' })._load();
+        expect(getQobuzGenresMock).not.toHaveBeenCalled();
     });
 });
 
