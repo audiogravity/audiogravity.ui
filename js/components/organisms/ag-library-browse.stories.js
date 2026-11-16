@@ -193,6 +193,43 @@ export const QobuzPlaylists = {
     }),
 };
 
+/**
+ * The categories the core lists on /library/qobuz-playlist-tags: Qobuz's own thirteen,
+ * in its order and under its English names (measured 2026-11-16).
+ */
+const QOBUZ_PLAYLIST_TAGS = [
+    ['hi-res', 'Hi-Res'], ['new', 'New Releases'], ['focus', 'Focus'], ['mood', 'Moods'],
+    ['artist', 'Artists'], ['danslecasque', 'Listening with...'], ['label', 'Label Stories'],
+    ['qobuzdigs', 'Qobuz Digs'], ['event', 'Events & Media'],
+    ['auditoriums', 'Hi-Fi Audio Partners'], ['speakers', 'Test your speakers'],
+    ['ideal-discography', 'Essential Discography'], ['popular', 'Top playlists'],
+].map(([title, label]) => ({ title, label, holds: 'playlists' }));
+
+/**
+ * Qobuz Playlists › Editorial, narrowed to one category and one genre: All, then
+ * Qobuz's thirteen categories; under them All genres, then the top-level genres; the
+ * two naming the grid, and the selections drawn 2:1 like HRA's.
+ */
+export const QobuzPlaylistCategories = {
+    render: () => mount('src_qobuz', {
+        _filter: 'playlists', _playlistKind: 'editorial',
+        _qobuzPlaylistTags: QOBUZ_PLAYLIST_TAGS, _playlistCategory: 'mood',
+        _genres: QOBUZ_GENRES, _playlistGenre: '80',
+    }),
+    play: standsOn((el) => {
+        const strip = el.querySelector('[data-strip="shelves"]');
+        expect(strip.textContent).toContain('All');
+        expect(strip.querySelectorAll('.lib-pill')).toHaveLength(14);
+        expect(strip.querySelector('.lib-pill.on').textContent).toBe('Moods');
+        const genres = el.querySelector('[data-strip="genres"]');
+        expect(genres.querySelectorAll('.lib-pill')).toHaveLength(QOBUZ_GENRES.length + 1);
+        expect(genres.querySelector('.lib-pill.on').textContent).toBe('Jazz');
+        expect(genres.textContent).not.toContain('Be Bop');
+        expect(el._sectionLabel).toBe('Moods · Jazz');
+        expect(el.querySelector('ag-library-cover').wide).toBe(true);
+    }),
+};
+
 /** The shelves the core lists on /library/tidal-shelves — the ones that hold something. */
 const TIDAL_SHELVES = [
     // `holds` is stated by the core, not guessed: Exclusif is 281 playlists and no

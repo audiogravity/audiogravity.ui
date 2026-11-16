@@ -149,7 +149,8 @@ Every other write route answers **403** to a guest token.
 | GET | `/library/qobuz-genres` | Qobuz genres with their sub-genres, alphabetical at both levels — `[{title, path, subgenres}]`. **`path` is opaque**: Qobuz's is a numeric id, HRA's a title path. Round-trip it, display `title`, never parse it — four genre names carry a `/` of their own (*Pop/Rock*, *Soul/Funk/R&B*, *Hip-Hop/Rap*, *Blues/Country/Folk*). Two genres publish one sub-genre or none |
 | GET | `/library/qobuz-genre?genre=<path>` | Album grid of a Qobuz genre or sub-genre. Browses the Selection shelf: Qobuz has no albums-of-a-genre endpoint, and Selection is the only shelf where a sub-genre answers at all. An unknown path yields `[]` |
 | GET | `/library/qobuz-purchases` | Albums the account bought. Unlike HRA's Vault the ids carry **no marker** — a purchased album reads and plays through the ordinary Qobuz path |
-| GET | `/library/qobuz-playlists?type=editorial\|mine` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `qobuz-playlist-tracks` on its own. In `mine`, a playlist the account owns comes back as `mine:<id>` — the id `/library/playlists*` edit it by — and one it only follows keeps its bare id; every route that reads a playlist takes either form. `type` defaults to `editorial`; any other value is **422** |
+| GET | `/library/qobuz-playlists?type=editorial\|mine&tag=&genre=` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `qobuz-playlist-tracks` on its own. In `mine`, a playlist the account owns comes back as `mine:<id>` — the id `/library/playlists*` edit it by — and one it only follows keeps its bare id; every route that reads a playlist takes either form. `type` defaults to `editorial`; any other value is **422**. `tag` narrows `editorial` to one category — a `title` from `qobuz-playlist-tags`; `genre` to one genre — a **top-level** `path` from `qobuz-genres` (a sub-genre almost never holds a selection). The two combine; an unknown value of either answers `[]`; both are ignored for `mine`. **Covers**: `editorial` carries Qobuz's landscape artwork (800 × 380 or 400 × 190) — draw it 2:1, like HRA's selections; `mine` carries square album covers |
+| GET | `/library/qobuz-playlist-tags` | The categories Qobuz files its editorial playlists under — `[{title, label, holds}]`, in **Qobuz's own order**. `title` (Qobuz's slug, e.g. `hi-res`) is what `qobuz-playlists` takes as `tag`; `label` is the English name to display; `holds` is `playlists`. A filter, not a partition: one playlist can sit in several categories |
 | GET | `/library/qobuz-playlist-tracks?playlist_id=` | Tracks of a Qobuz playlist, of either tree — `playlist_id` bare or `mine:<id>`. Every track, however long the playlist; each keeps its number in its album (`/library/playlist-tracks` numbers them by their place). **400** for a playlist that does not exist or no longer does |
 | GET | `/library/tidal-shelves` | Tidal catalogue shelves — `[{title, label, holds}]`, same shape as `qobuz-shelves`. Shelves that hold nothing are left out: Tidal's own `hasAlbums` flag is **not** trusted (one shelf sets it and answers 404, another clears it and holds 281 playlists), so the core asks. **Read `holds`** — a shelf serves albums *or* playlists, *Exclusif* is 281 playlists and no album, and both arrive in the album model |
 | GET | `/library/tidal-genres` | Tidal genres — `[{title, path, subgenres}]`, alphabetical **by displayed label**. `subgenres` is always `[]`: Tidal publishes none, so the strip never drills. **`path` is opaque** — Tidal's slug differs from its name (`Hiphop` displays as *Hip Hop / Rap*, `Film` as *Bandes originales*) |
@@ -250,14 +251,15 @@ Every other write route answers **403** to a guest token.
 > the account's own playlists have no such field.
 
 > **`holds` — what a shelf's grid is made of, and why it is stated.** Every shelf list
-> (`highresaudio-categories`, `-labels`, `qobuz-shelves`, `tidal-shelves`, `tidal-moods`,
-> and each `sections` entry of `tidal-page`) carries `holds`: `albums`, `playlists`, or
+> (`highresaudio-categories`, `-labels`, `qobuz-shelves`, `qobuz-playlist-tags`, `tidal-shelves`,
+> `tidal-moods`, and each `sections` entry of `tidal-page`) carries `holds`: `albums`, `playlists`, or
 > **empty, which means albums** — what every shelf held before one did not. Playlists are
 > mapped onto the album model on every source, so nothing in a grid row tells the two
 > apart; a client that assumes albums queues a playlist id through the album route, which
-> **fails**, and offers a ★ that files it in the album favourites, which does not. Only
-> Tidal sets it today (its *Exclusif* shelf is 281 playlists and no album). Do not infer
-> it from a row's shape — that is the mistake this field exists to close.
+> **fails**, and offers a ★ that files it in the album favourites, which does not. Tidal
+> sets it (its *Exclusif* shelf is 281 playlists and no album), and `qobuz-playlist-tags`
+> sets `playlists` on every category. Do not infer it from a row's shape — that is the
+> mistake this field exists to close.
 
 > **Ordering — what the core sorts, and what it leaves alone.** HIGHRESAUDIO publishes its
 > genres in no usable order and its search hits in none at all, and asked (2026-08-28) for the
@@ -266,7 +268,7 @@ Every other write route answers **403** to a guest token.
 > `/library/qobuz-genres`, Tidal's three lists (`tidal-shelves`, `-genres`, `-moods` — sorted
 > on the **displayed label**, since its addressing key is a slug that differs), and the **artists** of
 > `/library/search?source_id=src_highresaudio`. Everything else keeps the order the source
-> gives it — Qobuz's shelves included — the shop categories (their own shelf order), the album grids, and the **albums** of
+> gives it — Qobuz's shelves and playlist categories included — the shop categories (their own shelf order), the album grids, and the **albums** of
 > a search, which stay in relevance order. Artists are capped first and sorted second, so the
 > cap keeps the best matches and the alphabet only decides how they are shown. This is
 > unrelated to `sort=` on `/library/albums`, which streaming sources still ignore.

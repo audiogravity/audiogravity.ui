@@ -71,11 +71,13 @@ const hraCategories = { value: null, fetchedAt: 0, inFlight: null };
 const hraGenres = { value: null, fetchedAt: 0, inFlight: null };
 const hraLabels = { value: null, fetchedAt: 0, inFlight: null };
 const hraSearchFilters = { value: null, fetchedAt: 0, inFlight: null };
-// Qobuz's two fixed lists. Catalogue-wide, not account-wide — the nine shelves and the
-// thirteen genres are the same for every subscriber — so, unlike HRA's, they are not
-// cleared when an account signs out: there is nothing of the account's in them.
+// Qobuz's fixed lists. Catalogue-wide, not account-wide — the nine shelves, the
+// thirteen genres and the playlist categories are the same for every subscriber — so,
+// unlike HRA's, they are not cleared when an account signs out: there is nothing of the
+// account's in them.
 const qobuzShelves = { value: null, fetchedAt: 0, inFlight: null };
 const qobuzGenres = { value: null, fetchedAt: 0, inFlight: null };
+const qobuzPlaylistTags = { value: null, fetchedAt: 0, inFlight: null };
 // Tidal's three browsable lists. Catalogue-wide like Qobuz's, so no account
 // invalidation — but their labels DO come in the language of the account's country,
 // which is why the core sorts them on what it displays rather than on their key.
@@ -340,6 +342,22 @@ export async function getQobuzShelves({ force = false } = {}) {
  */
 export async function getQobuzGenres({ force = false } = {}) {
     return cachedList(qobuzGenres, '/library/qobuz-genres', { force });
+}
+
+/**
+ * Resolve the categories Qobuz files its editorial playlists under — Hi-Res, New
+ * Releases, Focus, Moods… — one pill each under Playlists › Editorial.
+ *
+ * Same `{title, label}` shape and same rules as {@link getQobuzShelves}. Unlike the
+ * shelves, Qobuz serves this list itself, in its own order, and the core keeps it so:
+ * the title is the value `/library/qobuz-playlists` takes as `tag`.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.force] - Bypass the cache and refetch.
+ * @returns {Promise<Array<{title: string, label: string}>>} empty on any failure
+ */
+export async function getQobuzPlaylistTags({ force = false } = {}) {
+    return cachedList(qobuzPlaylistTags, '/library/qobuz-playlist-tags', { force });
 }
 
 /**

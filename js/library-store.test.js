@@ -662,6 +662,41 @@ describe('getQobuzGenres', () => {
     });
 });
 
+import { getQobuzPlaylistTags } from './library-store.js';
+
+describe('getQobuzPlaylistTags', () => {
+    const TAGS = [
+        { title: 'hi-res', label: 'Hi-Res', holds: 'playlists' },
+        { title: 'mood', label: 'Moods', holds: 'playlists' },
+    ];
+
+    beforeEach(() => { _apiGet.mockReset(); });
+
+    it('reads the categories from their own endpoint', async () => {
+        _apiGet.mockResolvedValueOnce(TAGS);
+        expect(await getQobuzPlaylistTags()).toEqual(TAGS);
+        expect(_apiGet).toHaveBeenCalledWith('/library/qobuz-playlist-tags');
+    });
+
+    it('serves the cached list once it has one', async () => {
+        expect(await getQobuzPlaylistTags()).toEqual(TAGS);
+        expect(_apiGet).not.toHaveBeenCalled();
+    });
+
+    it('asks the core again after an empty answer', async () => {
+        _apiGet.mockResolvedValueOnce([]);
+        expect(await getQobuzPlaylistTags({ force: true })).toEqual([]);
+        _apiGet.mockResolvedValueOnce(TAGS);
+        expect(await getQobuzPlaylistTags()).toEqual(TAGS);
+        expect(_apiGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers with an empty list rather than throwing when the core is unreachable', async () => {
+        _apiGet.mockRejectedValue(new Error('503'));
+        expect(await getQobuzPlaylistTags({ force: true })).toEqual([]);
+    });
+});
+
 // ---------------------------------------------------------------------------
 // getTidalShelves / getTidalGenres / getTidalMoods — Tidal's three fixed lists
 //
