@@ -16,6 +16,10 @@ import { injectLibStyles } from './ag-library-page.js';
  * on the queue, as the core answers it) the handles are greyed. Up next lists what comes
  * after the track playing: the tracks before it are not shown — unless the queue repeats
  * (`repeat`), where they follow, in the order they will play again.
+ *
+ * With HQPlayer as the output or a network speaker selected, the queue is theirs
+ * (`output` on the answer): the list AG sent them, read-only — no handle, no removal, no
+ * Clear —, and a sentence instead of "Queue is empty" when AG does not know that list.
  */
 
 export default {
@@ -78,20 +82,28 @@ const player = (status) => ({ sources: [{
     source_id: 'src_mpd', control_id: 'src_mpd', protocol: 'mpd', playing: true, playback_status: status,
 }] });
 
+/** HQPlayer as the player state lists it, playing. */
+const HQPLAYER = { sources: [{
+    source_id: 'src_hqplayer', control_id: 'src_hqplayer', protocol: 'hqplayer', playing: true,
+    playback_status: 'Playing',
+}] };
+
 /**
  * Mount the queue with a fixed state (no backend).
  * @param {Array<object>} items - Queue items (one flagged `is_current`).
  * @param {object} [license] - The box's /license/status; unread when omitted, which
  *   locks nothing.
  * @param {object} [state] - The player state the view would follow; none when omitted.
+ * @param {object} [queue] - The rest of the answer: `shuffle`, `repeat`, and for a queue
+ *   that plays elsewhere `output`, `output_name`, `known`.
  * @returns {HTMLElement} Wrapped, ready-to-render element.
  */
-const mount = (items, license, state, { shuffle = false, repeat = false } = {}) => {
+const mount = (items, license, state, { shuffle = false, repeat = false, ...queue } = {}) => {
     injectLibStyles();
     const el = document.createElement('ag-library-queue');
     el.sourceId = 'src_mpd';
     el._load = async () => {};
-    el._queue = { items, shuffle, repeat };
+    el._queue = { items, shuffle, repeat, ...queue };
     if (license) el._license = license;
     // After the first render: that one tells the follower the view is not shown, and a
     // follower told so drops any state it held.
@@ -142,3 +154,18 @@ export const Repeat = {
  * on a padlock leads to the licence panel; each track can still be removed.
  */
 export const AfterTheTrial = { render: () => mount(MIXED_ITEMS, STARTER) };
+
+/** HQPlayer as the output: the list AG sent it, read-only — no handle, no removal, no Clear. */
+export const OnHQPlayer = {
+    render: () => mount(
+        SINGLE_ITEMS.map(i => ({ ...i, queue_id: null, origin: 'qobuz' })),
+        undefined, HQPLAYER,
+        { output: 'hqplayer', output_name: 'HQPlayer Embedded', known: true },
+    ),
+};
+
+/** A network speaker whose list AG does not know: restarted, or changed from elsewhere. */
+export const OnASpeakerListUnknown = {
+    render: () => mount([], undefined, undefined,
+        { output: 'renderer', output_name: 'Living room', known: false }),
+};

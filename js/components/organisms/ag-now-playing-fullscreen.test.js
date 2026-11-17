@@ -1847,3 +1847,45 @@ describe('AgNowPlayingFullscreen — the Queue button wears the Queue tab\'s dra
         expect(drawing(playerQueueIcon())).not.toEqual(drawing(await tabIcon('Browse')));
     });
 });
+
+describe('AgNowPlayingFullscreen — HQPlayer\'s "Up next" (real _applyState)', () => {
+    /** A bare instance whose fetch of the box's queue is watched. */
+    function bare() {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({ _state: null, _nextTrack: null, _sources: [],
+            _open: true, _coverSwapped: false, _coverErrorToken: null })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        Object.assign(el, { _userSourceOverride: false, _seekPending: null, _volumePending: undefined,
+            _controlRecentTime: null, _setPrimaryCover: () => {}, _fetchNextTrack: vi.fn() });
+        return el;
+    }
+
+    it('takes it from the state: HQPlayer plays on the box\'s DAC yet holds its own list', () => {
+        const el = bare();
+        el._targetSourceId = 'src_hqplayer';
+        el._applyState({ source_id: 'src_hqplayer', control_id: 'src_hqplayer', played_on: 'local',
+            title: 'So What', playing: true,
+            queue_next: { title: 'Freddie Freeloader', artist: 'Miles Davis' } });
+        expect(el._nextTrack).toEqual({ title: 'Freddie Freeloader', artist: 'Miles Davis' });
+        expect(el._fetchNextTrack).not.toHaveBeenCalled();
+    });
+
+    it('clears it at HQPlayer\'s last entry', () => {
+        const el = bare();
+        el._nextTrack = { title: 'stale' };
+        el._targetSourceId = 'src_hqplayer';
+        el._applyState({ source_id: 'src_hqplayer', control_id: 'src_hqplayer', played_on: 'local',
+            title: 'Blue in Green', playing: true, queue_next: null });
+        expect(el._nextTrack).toBeNull();
+    });
+
+    it('leaves the box\'s own player reading its queue', () => {
+        const el = bare();
+        el._targetSourceId = 'src_mpd';
+        el._applyState({ source_id: 'src_mpd', control_id: 'src_mpd', played_on: 'local',
+            title: 'So What', playing: true, queue_next: { title: 'not this one' } });
+        expect(el._fetchNextTrack).toHaveBeenCalledTimes(1);
+        expect(el._nextTrack).toBeNull();
+    });
+});

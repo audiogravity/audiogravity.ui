@@ -378,7 +378,11 @@ export class AgNowPlayingFullscreen extends LitElement {
         // literal 'upnp_renderer' would miss any other network output added
         // later. Any non-local output pushes its own queue.
         const playsOnNetworkOutput = !!state.played_on && state.played_on !== 'local';
-        if (playsOnNetworkOutput) {
+        // HQPlayer plays on the box's DAC — "local" — yet holds a list of its own,
+        // which the core names in state.queue_next as well, from what AG sent it.
+        const holdsItsOwnList = playsOnNetworkOutput
+            || (state.control_id ?? state.source_id) === 'src_hqplayer';
+        if (holdsItsOwnList) {
             this._nextTrack = state.queue_next ?? null;
         } else if (trackChanged && this._open) {
             this._fetchNextTrack(state);
@@ -557,8 +561,9 @@ export class AgNowPlayingFullscreen extends LitElement {
 
     async _fetchNextTrack(state) {
         const s = state ?? this._state;
-        // HQPlayer has no AG-visible queue — keyed on the routing identity
-        // (control_id, spec §3), not the display identity.
+        // HQPlayer's next comes with the state (queue_next, _applyState), as a
+        // speaker's does — keyed on the routing identity (control_id, spec §3), not
+        // the display identity.
         if (!s?.source_id || (s.control_id ?? s.source_id) === 'src_hqplayer') return;
         // A Roon zone's queue is Pro: not asked of the core on a Starter box.
         if (isLockedSource(s, this._license)) return;

@@ -23,7 +23,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { fmtListened, fmtWhen } from '../stats-format.js';
-import { coverUrl } from '../utils-lit.js';
+import { coverUrl, trackTitle } from '../utils-lit.js';
 import '../atoms/ag-library-cover.js';
 
 /**
@@ -35,7 +35,7 @@ import '../atoms/ag-library-cover.js';
 export function recentLines(listen) {
     if (listen.live) return { title: listen.station || 'Live stream', sub: 'Live radio' };
     return {
-        title: listen.title || 'Unknown track',
+        title: trackTitle(listen),
         sub: [listen.artist, listen.album].filter(Boolean).join(' — '),
     };
 }

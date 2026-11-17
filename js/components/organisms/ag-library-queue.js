@@ -20,8 +20,15 @@
  *
  * A tap on a track's row plays it — anywhere but on the row's handle, its arrow that
  * removes and its padlock —, via POST /api/library/queue/{queue_id}/play; the tracks
- * above it are skipped. The box refuses it, and says so, while the music goes out
- * through HQPlayer or a network speaker: the queue shown is the box's own, not theirs.
+ * above it are skipped.
+ *
+ * While the music goes out through HQPlayer or a network speaker, the queue shown is
+ * theirs (`output` on the answer): the list AG sent them, with the track playing marked.
+ * Read-only — its rows carry no `queue_id`, so no handle, no removal, no tap to play, and
+ * no Clear. BACKLOG: a tap to play there — audiogravity.ops/BACKLOG.md, « Toucher un
+ * titre de la file pour le jouer ». AG cannot ask either what it holds, so when it follows no list there
+ * (`known` false: nothing sent since that output started, or its list changed from
+ * elsewhere) the view says so rather than "Queue is empty".
  *
  * The list stays on screen while it is read again: a removed track leaves it at once,
  * before the box answers, and a moved one takes its place at the release; the rows
@@ -51,7 +58,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { apiGet, apiPost } from '../../api.js';
-import { coverUrl, fmtDuration, loadWithState } from '../utils-lit.js';
+import { coverUrl, fmtDuration, loadWithState, trackTitle } from '../utils-lit.js';
 import { queueSourceLabel, originLabel } from '../library-constants.js';
 import { moveQueueItem, playQueueItem, removeQueueItem } from '../../library-api.js';
 import { showToast } from '../../ui-helpers.js';
@@ -345,7 +352,7 @@ export class AgLibraryQueue extends LitElement {
                 size="36"
             ></ag-library-cover>
             <span class="lib-queue-col">
-                <span class="lib-queue-col-t">${item.title}</span>
+                <span class="lib-queue-col-t">${trackTitle(item)}</span>
                 <span class="lib-queue-col-a">${item.artist ?? ''}${item.album ? ` — ${item.album}` : ''}</span>
                 <!-- BACKLOG: no specific name here — a queue item carries the origin
                      kind but not the provider name, so two media servers or two
@@ -354,7 +361,7 @@ export class AgLibraryQueue extends LitElement {
             </span>`;
         if (!playable) return words;
         return html`
-            <button class="plain-btn lib-queue-play" data-swipe-through aria-label=${`Play ${item.title}`}>${words}</button>`;
+            <button class="plain-btn lib-queue-play" data-swipe-through aria-label=${`Play ${trackTitle(item)}`}>${words}</button>`;
     }
 
     /**
@@ -434,7 +441,9 @@ export class AgLibraryQueue extends LitElement {
      * The box's MPD counts stopped too: it then has no track in the state — only what
      * plays or is paused does — but its queue still names a current track (a Stop from
      * another screen, the box restarted), and the core takes a Play for it. A Roon zone
-     * is reached only through what it plays: null when it plays nothing.
+     * is reached only through what it plays: null when it plays nothing. A queue that
+     * plays elsewhere (`output`) is held by HQPlayer or the speaker: their entry, there
+     * while they play or pause.
      * @returns {?object} An entry of the state's `sources`.
      */
     _playerEntry() {
@@ -442,6 +451,11 @@ export class AgLibraryQueue extends LitElement {
         if (this._isRoon()) {
             return sources.find(s => s.protocol === 'roon' && s.playing
                 && (!this.zoneId || !s.zone_id || s.zone_id === this.zoneId)) ?? null;
+        }
+        const output = this._queue?.output;
+        if (output) {
+            const protocol = output === 'hqplayer' ? 'hqplayer' : 'upnp';
+            return sources.find(s => s.protocol === protocol) ?? null;
         }
         return sources.find(s => s.protocol === 'mpd') ?? null;
     }
@@ -532,7 +546,6 @@ export class AgLibraryQueue extends LitElement {
 
     async _load() {
         if (!this.sourceId) return;
-        if (this.sourceId === 'src_hqplayer') return;
         if (this._isRoon() && !this.zoneId) return;
         // Held, a reading would be read for nothing — the whole queue, on the box — and
         // thrown away: it is asked again once the hold is over.
@@ -719,7 +732,11 @@ export class AgLibraryQueue extends LitElement {
         // Label by what is actually playing (origin) rather than the MPD engine:
         // a radio stream queued from "Local Library" is still radio.
         const sourceLabel = queueSourceLabel(current?.origin, this.sourceId);
-        const ctxLabel    = this.zoneDisplayName ? `${sourceLabel} · ${this.zoneDisplayName}` : sourceLabel;
+        // A queue that plays elsewhere is that output's: named after it, read-only.
+        const elsewhere   = this._queue?.output ? this._queue : null;
+        const ctxLabel    = elsewhere
+            ? (elsewhere.output_name || 'the output')
+            : (this.zoneDisplayName ? `${sourceLabel} · ${this.zoneDisplayName}` : sourceLabel);
 
         return html`
             <div class="lib-queue-ctx">
@@ -739,7 +756,7 @@ export class AgLibraryQueue extends LitElement {
                             ></ag-library-cover>
                         </button>
                         <div class="lib-queue-now-col">
-                            <span class="lib-queue-now-t">${current.title}</span>
+                            <span class="lib-queue-now-t">${trackTitle(current)}</span>
                             <span class="lib-queue-now-a">${current.artist ?? ''}</span>
                             ${current.album ? html`<span class="lib-queue-now-meta">${current.album}</span>` : nothing}
                         </div>
@@ -758,7 +775,7 @@ export class AgLibraryQueue extends LitElement {
                     <button class="lib-queue-action"
                         aria-disabled=${this._refreshing ? 'true' : 'false'}
                         @click=${() => this._refresh()}>Refresh</button>
-                    ${others.length > 0 ? html`
+                    ${others.length > 0 && !elsewhere ? html`
                         <button
                             class="lib-queue-action ${this._isRoon() ? 'disabled' : ''}"
                             ?disabled=${this._isRoon()}
@@ -778,9 +795,13 @@ export class AgLibraryQueue extends LitElement {
                 </div>
             ` : nothing}
 
-            ${upNext.length === 0 && !current
-                ? html`<div class="lib-empty ag-hw-haunt">Queue is empty</div>`
-                : nothing
+            ${elsewhere && elsewhere.known === false
+                ? html`<div class="lib-empty">AG can only list the tracks it sent to
+                    ${elsewhere.output_name || 'this output'} itself, and it has none to
+                    show now.</div>`
+                : upNext.length === 0 && !current
+                    ? html`<div class="lib-empty ag-hw-haunt">Queue is empty</div>`
+                    : nothing
             }
             ${upNext.length > 0 && shownNext.length === 0
                 ? html`<div class="lib-empty ag-hw-haunt">No upcoming ${originLabel(activeFilter)} tracks</div>`

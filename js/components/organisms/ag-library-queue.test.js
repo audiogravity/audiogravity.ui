@@ -1158,3 +1158,85 @@ describe('ag-library-queue — the cover of the track playing opens the full-scr
         expect(cssRuleBody(sheet, '.lib-queue-now-cover')).toMatch(/display:\s*flex;[\s\S]*cursor:\s*pointer;/);
     });
 });
+
+describe('ag-library-queue — a queue that plays elsewhere (HQPlayer, a network speaker)', () => {
+    // The core answers the list AG sent there (`output`), read-only: no `queue_id`.
+    const sent = (over = {}) => ({
+        output: 'hqplayer', output_name: 'HQPlayer Embedded', known: true,
+        current_position: 0, total: 3,
+        items: [
+            { position: 0, id: 'hqplayer:0', queue_id: null, title: 'So What', origin: 'qobuz', is_current: true },
+            { position: 1, id: 'hqplayer:1', queue_id: null, title: 'Freddie Freeloader', origin: 'qobuz' },
+            { position: 2, id: 'hqplayer:2', queue_id: null, title: 'Blue in Green', origin: 'qobuz' },
+        ],
+        ...over,
+    });
+    const rows = (e) => flat(e.render()).split('<div class="ag-swipe-wrap">').slice(1);
+
+    it('is named after the output, and lists what follows the track playing', () => {
+        const e = el({ _queue: sent() });
+        const markup = flat(e.render());
+        expect(markup).toContain('HQPlayer Embedded');
+        expect(markup).toContain('So What');
+        expect(rows(e)).toHaveLength(2);
+        expect(rows(e)[0]).toContain('Freddie Freeloader');
+    });
+
+    it('is read-only: no handle, no removal, no tap to play, no Clear', () => {
+        const e = el({ _queue: sent() });
+        const markup = flat(e.render());
+        expect(markup).not.toContain('ICON-GRIP');
+        expect(markup).not.toContain('lib-queue-more');
+        expect(markup).not.toContain('>Clear<');
+        for (const row of rows(e)) expect(row).toContain('lib-queue-row--fixed');
+    });
+
+    it('says when it cannot list what the output holds, rather than "Queue is empty"', () => {
+        const e = el({ _queue: sent({ known: false, items: [], total: 0, current_position: null,
+            output: 'renderer', output_name: 'Living room' }) });
+        // As the browser lays it out: the template's line breaks are one space.
+        const markup = flat(e.render()).replace(/\s+/g, ' ');
+        expect(markup).toContain('AG can only list the tracks it sent to Living room itself, and it has none to show now.');
+        expect(markup).not.toContain('Queue is empty');
+    });
+
+    it('names a track the output lists with no title "Unknown track", never a blank line', () => {
+        // A speaker's entry built from a media server's item can come with no title.
+        const e = el({ _queue: sent({
+            output: 'renderer', output_name: 'Living room',
+            items: [
+                { position: 0, id: 'renderer:0', queue_id: null, title: '', origin: 'upnp', is_current: true },
+                { position: 1, id: 'renderer:1', queue_id: null, title: null, origin: 'upnp' },
+            ],
+        }) });
+        const markup = flat(e.render());
+        expect(markup).toContain('<span class="lib-queue-now-t">Unknown track</span>');
+        expect(rows(e)[0]).toContain('<span class="lib-queue-col-t">Unknown track</span>');
+    });
+
+    it('says "Queue is empty" for a list it knows to be empty', () => {
+        const e = el({ _queue: sent({ items: [], total: 0, current_position: null }) });
+        expect(flat(e.render())).toContain('Queue is empty');
+    });
+
+    it('turns its play/pause button on the output that holds it', () => {
+        const sources = [
+            { source_id: 'src_mpd', control_id: 'src_mpd', protocol: 'mpd', playing: false },
+            { source_id: 'src_hqplayer', control_id: 'src_hqplayer', protocol: 'hqplayer', playing: true },
+            { source_id: 'upnp_renderer', control_id: 'upnp_renderer', protocol: 'upnp', playing: true },
+        ];
+        const follow = { state: { sources }, changes: 1, follow: vi.fn() };
+        expect(el({ _follow: follow, _queue: sent() })._playerEntry().source_id).toBe('src_hqplayer');
+        expect(el({ _follow: follow, _queue: sent({ output: 'renderer' }) })._playerEntry().source_id)
+            .toBe('upnp_renderer');
+        expect(el({ _follow: follow, _queue: { items: [] } })._playerEntry().source_id).toBe('src_mpd');
+    });
+
+    it('reads HQPlayer\'s queue too when the library names HQPlayer\'s handle', async () => {
+        apiGetMock.mockResolvedValue(sent());
+        const e = el({ sourceId: 'src_hqplayer', requestUpdate: vi.fn() });
+        await e._load();
+        expect(apiGetMock).toHaveBeenCalled();
+        expect(apiGetMock.mock.calls[0][0]).toContain('source_id=src_hqplayer');
+    });
+});
