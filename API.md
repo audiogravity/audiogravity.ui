@@ -309,9 +309,11 @@ network and is unaffected.
 > second later. A timeout degrades to an empty list instead: a daemon that is listening
 > and not answering is a different failure.
 
-Roon is never diverted: a Roon zone is its own output chain. `action: "add"` appends —
-to MPD, or to HQPlayer's queue when it is the output — and never interrupts what plays;
-a network renderer has no persistent queue, so an `add` stays with MPD. A UPnP stream is
+Roon is never diverted: a Roon zone is its own output chain. `action: "add"` goes where
+a `play` goes and appends — to MPD, to HQPlayer's queue when it is the output, or to the
+end of the list AG plays on the selected network renderer — and never interrupts what
+plays. One exception: on a renderer that is not playing a list of AG's (nothing sent yet,
+or another app took it over), an `add` plays at once, as a `play` would. A UPnP stream is
 badged `origin: "upnp"`, a station `origin: "radio"`.
 
 **Starting playback on a network renderer stops the local output.** The renderer becomes
@@ -442,6 +444,16 @@ Qobuz/Tidal/HIGHRESAUDIO **and the radio** share the MPD engine, so asking with 
 `source_id` returns that shared queue. With no MPD engine the endpoint returns an empty queue (**200**), not
 an error. **`?limit=<n>`** returns the current track plus up to `n` following items —
 `position` stays the absolute queue position; omit it for the whole queue.
+**When the music goes out elsewhere** — HQPlayer as the output, or a network renderer
+selected — the same request (with any of those `source_id`, or `src_hqplayer`) returns
+**the list AG sent there** instead. **`output`** is then `hqplayer` or `renderer`, and
+**`output_name`** what to call it on screen. That list is read-only: its items carry no
+`queue_id` (`id` is `<output>:<position>`), so they cannot be moved, removed or played from
+the queue; the track playing is `is_current`. **`known: false`** means AG follows no list
+there — it sent none since it started, it let go of the one it sent, or another app changed
+it: the empty `items` then mean "cannot tell", not "nothing queued", and must not read
+"Queue is empty". `output` is `null`, and `known` `true`, for the box's own queue and for
+Roon's.
 **`pro`** is `true` on a track of a streaming service (Qobuz, Tidal, HIGHRESAUDIO), judged on
 its address — a station saved with a relay address included: a box without Pro refuses it and
 the player skips it, so show it locked while `/license/status` says `pro: false`
@@ -475,9 +487,8 @@ guest **403**. Not for Roon, whose queue is changed from the Roon app.
 **Playing a track of the queue** — `POST /library/queue/{queue_id}/play?source_id=…` plays
 the item keyed by its **`queue_id`**; the tracks before it stay in the queue, behind it.
 Answers `{ ok, played_id }`. Open to a guest, as next and previous are. Refused with
-**409** while the music goes out through HQPlayer or a network speaker — the queue this
-returns is the box's own, which they do not play: the detail says where the music goes
-out; **403** for a streaming service's track on a box without Pro, or while the box's own
+**409** while the music goes out through HQPlayer or a network speaker — a track of the
+box's own queue would not play there: the detail says where the music goes out; **403** for a streaming service's track on a box without Pro, or while the box's own
 HQPlayer holds its DAC on such a box; **503 carrying the reason** when MPD refuses (the id
 is not in the queue) or is unreachable; **400** for a `source_id` with no MPD engine.
 
@@ -627,7 +638,7 @@ on the DAC and off otherwise — another player holding the DAC included: the me
 | `played_on` | Where the audio comes out: `"local"` or a renderer UDN. Display only |
 | `outputs[]` | Runtime outputs: the local chain + the selected renderer |
 | `active_output_id` | Id of the entry in `outputs[]` carrying the audio |
-| `queue_next` | `{title, artist, album, cover_token, pro}` — upcoming track of a renderer cast; `pro` as on a `/library/queue` item |
+| `queue_next` | `{title, artist, album, cover_token, pro}` — upcoming track of a renderer cast, or of the list AG sent HQPlayer while it plays it (`null` on its last track, or when AG follows no list there); `pro` as on a `/library/queue` item |
 | `sources[].genre` | What the source plays, by genre. For a streaming track the box serves (Qobuz, Tidal, HIGHRESAUDIO), the genre in the box's common list — the one the listening history counts; when the service is asked once the track plays, it arrives a moment later, in a further `state` event. For anything else, the engine's own word: a file's Genre tag. `null` when there is none |
 | `sources[].selectable` | `false` on an entry that is a routing handle, not a source: listed so the player can render it, never offered as something to browse |
 | `sources[].kind` | What the source **is**: `library` \| `radio` \| `streaming` \| `roon` \| `input`. `protocol` cannot answer it — it mixes transport (`mpd`, `mpris`) with provider (`qobuz`) and grows by one value per provider, while this stays a closed vocabulary a client can branch on. `null` on a routing handle (see `selectable`). An `input` (AirPlay, the UPnP bridge) is a source — it does put out sound — but it **hides** the source behind it, so it holds no catalogue to browse |

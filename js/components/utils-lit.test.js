@@ -3,7 +3,7 @@
  */
 import { describe, it, expect , vi, afterEach} from 'vitest';
 import {
-    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatCpuFrequency, slowedBySupply, formatRate, fmtDuration, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate, pickPrimaryCoverToken, formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel, loadWithState } from './utils-lit.js';
+    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatCpuFrequency, slowedBySupply, formatRate, fmtDuration, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate, pickPrimaryCoverToken, formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel, loadWithState, trackTitle } from './utils-lit.js';
 
 /** A promise and the hands that settle it, for reads made to end in a chosen order. */
 function deferred() {
@@ -226,6 +226,17 @@ describe('fmtDuration', () => {
         expect(fmtDuration(null)).toBe('--:--');
         expect(fmtDuration(undefined)).toBe('--:--');
         expect(fmtDuration(NaN)).toBe('--:--');
+    });
+});
+
+describe('trackTitle', () => {
+    it('is the title the source declared', () => {
+        expect(trackTitle({ title: 'So What' })).toBe('So What');
+    });
+    it('is "Unknown track" when there is none: empty, null, missing, no track at all', () => {
+        for (const track of [{ title: '' }, { title: null }, {}, null, undefined]) {
+            expect(trackTitle(track)).toBe('Unknown track');
+        }
     });
 });
 

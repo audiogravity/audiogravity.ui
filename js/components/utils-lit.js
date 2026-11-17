@@ -237,6 +237,14 @@ export const fmtDuration = (secs) => {
 };
 
 /**
+ * A track's title for display — what a row shows when the source declared none
+ * (an empty or missing title), so the line never stands blank.
+ * @param {{title?: string|null}|null|undefined} track - A queue item, a listen…
+ * @returns {string}
+ */
+export const trackTitle = (track) => track?.title || 'Unknown track';
+
+/**
  * Format network or disk transfer rates
  * @param {number} rate - Rate in MB/s
  * @returns {string} Formatted string with unit
