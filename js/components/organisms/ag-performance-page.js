@@ -20,7 +20,6 @@ import {
     AppState,
     addToHistory,
     handleError,
-    getUserFriendlyError,
     EventEmitter
 } from '../../common.js';
 import { isGuest } from '../../auth.js';

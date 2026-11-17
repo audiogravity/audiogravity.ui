@@ -4,7 +4,7 @@ import { subscribePlayerState, getOfflinePlayerSnapshot } from '../../library-st
 import { coverUrl, pickPrimaryCoverToken } from '../utils-lit.js';
 import { originBadgeName } from '../library-constants.js';
 import { extractDominantColor, inTransition, showsVolumeControl, showsDsdLock, activeOutput, applyVolumeGuard, playPauseIntent, isLiveStream } from '../../player-utils.js';
-import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay, iconVolume } from '../../ag-icons.js';
+import { iconChevronUp, iconMusicNote, iconSkipBack, iconUpNext, iconPause, iconPlay } from '../../ag-icons.js';
 import '../molecules/ag-progress-bar.js';
 import '../atoms/ag-connector-badge.js';
 import '../atoms/ag-dsd-lock.js';

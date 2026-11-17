@@ -10,11 +10,9 @@
  * 
  * @dependency css/components/modal.css - Docs modal and viewer styles
  * 
- * @fires docs-close - Dispatched when the modal is closed
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { classMap } from 'lit/directives/class-map.js';
 
 export class AgDocsModal extends LitElement {
     static properties = {
@@ -70,7 +68,6 @@ export class AgDocsModal extends LitElement {
 
     close() {
         this.isOpen = false;
-        this.dispatchEvent(new CustomEvent('docs-close', { bubbles: true, composed: true }));
     }
 
     _handleKeyDown(e) {

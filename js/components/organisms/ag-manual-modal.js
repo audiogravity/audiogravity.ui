@@ -32,7 +32,6 @@
  * @dependency css/components/modal.css - .manual-modal styles
  * @dependency ag-back-to-top - the back-to-top button, last in the reading pane
  *
- * @fires manual-close - Dispatched when the modal is closed
  */
 import { LitElement, html, nothing, render } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
@@ -316,12 +315,10 @@ export class AgManualModal extends LitElement {
     }
 
     /**
-     * Close the manual and notify listeners.
-     * @fires manual-close
+     * Close the manual.
      */
     close() {
         this.isOpen = false;
-        this.dispatchEvent(new CustomEvent('manual-close', { bubbles: true, composed: true }));
     }
 
     _onKeyDown(e) {

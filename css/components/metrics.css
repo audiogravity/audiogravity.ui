@@ -74,7 +74,6 @@
    ALIASES & COMPATIBILITY
    ===================== */
 
-.stat-label,
 .version-label,
 .property-label {
     font-size: var(--font-size-xs);
@@ -109,7 +108,7 @@
    ===================== */
 
 @media (width <= 768px) {
-    .metric-label, .stat-label {
+    .metric-label {
         font-size: var(--font-size-xxs);
     }
 

@@ -17,8 +17,6 @@
  */
 
 import { LitElement, html } from 'lit';
-import { classMap } from 'lit/directives/class-map.js';
-import { repeat } from 'lit/directives/repeat.js';
 import { formatTimestamp } from '../utils-lit.js';
 import { iconTrash, iconCheck, iconClose } from '../../ag-icons.js';
 

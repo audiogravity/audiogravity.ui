@@ -141,7 +141,7 @@ describe('what stays open, and what never opens', () => {
     });
 
     it('renders covers as empty while locked, and never serialises null', async () => {
-        const { api, utils } = await freshWorld({ verdict: 'locked' });
+        const { utils } = await freshWorld({ verdict: 'locked' });
         expect(utils.coverUrl('mb:some-release')).toBe('');
         // And once open, the URL is built without the key rather than with "null".
         sessionStorage.setItem('ag-keyless-verdict', 'open');

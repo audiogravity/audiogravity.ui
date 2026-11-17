@@ -14,8 +14,8 @@
  */
 import { LitElement, html } from 'lit';
 import { apiGet, apiPost } from '../../api.js';
-import { showToast, showConfirm, handleError, getUserFriendlyError } from '../../ui-helpers.js';
-import { AppState, EventEmitter, AgTimerManager } from '../../common.js';
+import { showToast, showConfirm, handleError } from '../../ui-helpers.js';
+import { AppState, EventEmitter } from '../../common.js';
 import { addToHistory } from '../../history.js';
 import { getPushEndpoint } from '../../push-manager.js';
 import { FetchController } from '../../core/FetchController.js';

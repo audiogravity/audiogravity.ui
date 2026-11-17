@@ -85,7 +85,7 @@ Browser DOM (inherits global CSS tokens)
 
 ### Atoms — Base Elements
 Encapsulated, stateless. No data fetching.
-`ag-badge`, `ag-button`, `ag-sparkline`, `ag-stat-box`, `ag-status-indicator`, `ag-switch`, `ag-tooltip`, `ag-validation-badge`, `ag-audio-output`, `ag-pipeline-node`, `ag-pipeline-link`, `ag-source-badge`, `ag-health-bar`, `ag-dsd-lock`…
+`ag-badge`, `ag-button`, `ag-sparkline`, `ag-stat-box`, `ag-status-indicator`, `ag-switch`, `ag-tooltip`, `ag-audio-output`, `ag-pipeline-node`, `ag-pipeline-link`, `ag-source-badge`, `ag-health-bar`, `ag-dsd-lock`…
 
 ### Molecules — Contextual UI
 Combinations of atoms that handle a specific data chunk. May emit CustomEvents upward.

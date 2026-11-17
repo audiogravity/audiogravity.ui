@@ -81,10 +81,8 @@
     /* Component Colors */
     --topbar-bg: #FFFFFF;
     --topbar-shadow: 0 1px 0 #D0D0D0;
-    --tab-active: #000000;
     --tab-hover: #F0F0F0;
     --btn-primary: #000000;
-    --btn-secondary: #FFFFFF;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: #f97316;
 
@@ -214,8 +212,6 @@
     /* blue-700 with alpha */
 
     /* Button Hover States */
-    --btn-success-hover-bg: rgb(21 128 61 / 0.1);
-    --btn-success-hover-shadow: rgb(21 128 61 / 0.3);
     --btn-error-hover-bg: rgb(185 28 28 / 0.1);
     --btn-error-hover-shadow: rgb(185 28 28 / 0.3);
     --btn-warning-hover-bg: rgb(180 83 9 / 0.1);
@@ -236,12 +232,7 @@
 
     /* Component Speficic: Audio Pipeline */
     --pipeline-node-bg: #000000;
-    --pipeline-node-active: #F59E0B;
-    --pipeline-node-bitperfect: #22C55E;
     --pipeline-node-text: #FFFFFF;
-    --pipeline-link: #888888;
-    --pipeline-link-active: #F59E0B;
-    --pipeline-link-bitperfect: #22C55E;
 
     /* Text-safe variants of the semantic colours.
        --color-success and friends serve three jobs at once: a border (owes 3:1),
@@ -289,7 +280,6 @@
     --topbar-shadow: 0 1px 0 #2A2A2A;
     --tab-hover: #151515;
     --btn-primary: #FFFFFF;
-    --btn-secondary: #000000;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: #ea580c;
     --color-error: #f87171;
@@ -392,8 +382,6 @@
     /* blue-300 with alpha */
 
     /* Button Hover States — Dark Mode */
-    --btn-success-hover-bg: rgb(134 239 172 / 0.15);
-    --btn-success-hover-shadow: rgb(134 239 172 / 0.4);
     --btn-error-hover-bg: rgb(248 113 113 / 0.15);
     --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
     --btn-warning-hover-bg: rgb(252 211 77 / 0.15);
@@ -410,12 +398,7 @@
 
     /* Component Speficic: Audio Pipeline (Dark Mode) */
     --pipeline-node-bg: #FFFFFF;
-    --pipeline-node-active: #FBBF24;
-    --pipeline-node-bitperfect: #4ADE80;
     --pipeline-node-text: #000000;
-    --pipeline-link: #777777;
-    --pipeline-link-active: #FBBF24;
-    --pipeline-link-bitperfect: #4ADE80;
 
     /* Text-safe variants — see the note in the light block. */
     --color-success-text: #34D399;

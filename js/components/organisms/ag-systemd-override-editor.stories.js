@@ -37,8 +37,7 @@ const Template = (args) => html`
         ?is-open="${args.isOpen}"
         .service="${args.service}"
         ?is-saving="${args.isSaving}"
-        @save="${(e) => console.log('SAVE', e.detail)}"
-        @cancel="${() => console.log('CANCEL')}">
+        @save="${(e) => console.log('SAVE', e.detail)}">
     </ag-systemd-override-editor>
   </div>
 `;

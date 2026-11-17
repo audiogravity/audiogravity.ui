@@ -33,7 +33,6 @@ const TYPE_LABELS = {
  * @attr {boolean} show - Controls visibility
  *
  * @dependency css/components/toast.css - Classes .toast, .show, and variant types
- * @fires toast-close - Fired when toast is closed
  *
  * The countdown stops while a pointer or a finger rests on the toast, or the focus is in
  * it, and starts again from the full duration once neither does.
@@ -161,10 +160,6 @@ export class AgToastNotification extends LitElement {
         this._closing = true;
         this._clearAutoHide();
         this.show = false;
-        this.dispatchEvent(new CustomEvent('toast-close', {
-            bubbles: true,
-            composed: true
-        }));
 
         // Remove from DOM after animation
         setTimeout(() => {

@@ -154,10 +154,6 @@
     grid-column: span 2;
 }
 
-.system-tile.span-full {
-    grid-column: 1 / -1;
-}
-
 /* System Tile Content */
 .system-tile h3 {
     font-size: var(--font-size-sm);

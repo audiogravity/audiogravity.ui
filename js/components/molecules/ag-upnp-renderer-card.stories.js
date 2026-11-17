@@ -17,8 +17,6 @@ export default {
 const Template = () => {
     const el = document.createElement('ag-upnp-renderer-card');
     el.style.cssText = 'display:block;max-width:420px;padding:8px;';
-    el.addEventListener('renderer-connected',    () => console.log('renderer-connected'));
-    el.addEventListener('renderer-disconnected', () => console.log('renderer-disconnected'));
     return el;
 };
 

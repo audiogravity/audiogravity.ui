@@ -15,7 +15,7 @@
  * @dependency css/systemd.css - Systemd-specific styling
  * @dependency js/auth.js - isGuest() helper
  */
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { isGuest } from '../../auth.js';
 
 export class AgSystemdCard extends LitElement {

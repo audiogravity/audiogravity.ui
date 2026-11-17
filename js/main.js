@@ -64,7 +64,6 @@ import './components/atoms/ag-status-indicator.js';
 import './components/atoms/ag-sparkline.js';
 import './components/atoms/ag-switch.js';
 
-import './components/atoms/ag-validation-badge.js';
 import './components/atoms/ag-license-badge.js';
 import './components/atoms/ag-library-cover.js';
 import './components/atoms/ag-library-add-btn.js';
@@ -166,10 +165,10 @@ import './components/organisms/ag-json-config-modal.js';
 //   ag-config-editor                            → config tab
 //   ag-systemd-override-editor                  → systemd tab
 //   ag-system-dashboard                         → system tab
-import { AgHistoryPanel } from './components/organisms/ag-history-panel.js';
-import { AgTopBar } from './components/organisms/ag-top-bar.js';
-import { AgConfigPanel } from './components/organisms/ag-config-panel.js';
-import { AgFooter } from './components/organisms/ag-footer.js';
+import './components/organisms/ag-history-panel.js';
+import './components/organisms/ag-top-bar.js';
+import './components/organisms/ag-config-panel.js';
+import './components/organisms/ag-footer.js';
 import './components/organisms/ag-now-playing.js';
 import './components/organisms/ag-now-playing-fullscreen.js';
 import './components/organisms/ag-vu-showcase.js';

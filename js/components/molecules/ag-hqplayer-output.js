@@ -31,7 +31,7 @@
  */
 
 import { LitElement, html, nothing } from 'lit';
-import { apiGet, apiPut, apiPost, apiDelete } from '../../api.js';
+import { apiGet, apiPut, apiDelete } from '../../api.js';
 import { loadConnection } from '../utils-lit.js';
 import { showToast } from '../../ui-helpers.js';
 import { iconSliders, iconChevronDown, iconWifi, iconExternalLink } from '../../ag-icons.js';

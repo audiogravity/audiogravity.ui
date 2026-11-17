@@ -101,20 +101,6 @@ tabs.addEventListener('tab-changed', (e) => {
 
 ---
 
-### `<ag-toast-notification>`
-#### `toast-close`
-**Fired when**: The toast is closed (automatically or manually)  
-**Payload**: `{}`  
-**Source**: [ag-toast-notification.js:87](js/components/molecules/ag-toast-notification.js#L87)
-
-```javascript
-toast.addEventListener('toast-close', () => {
-    console.log('Toast closed');
-});
-```
-
----
-
 ### `<ag-service-card>`
 #### `toggle-service`
 **Fired when**: Start/Stop is triggered on a service  
@@ -315,11 +301,6 @@ dialog.addEventListener('dialog-cancel', () => console.log('Cancelled'));
 **Payload**: `{ payload: object, isEditing: boolean, originalUsername: string }`  
 **Source**: [ag-user-modal.js:105](js/components/organisms/ag-user-modal.js#L105)
 
-#### `cancel`
-**Fired when**: The form is cancelled without saving  
-**Payload**: `{}`  
-**Source**: [ag-user-modal.js:73](js/components/organisms/ag-user-modal.js#L73)
-
 #### `error`
 **Fired when**: Validation fails (username too short, password too short, etc.)  
 **Payload**: `string` (human-readable error message)  
@@ -348,14 +329,6 @@ userModal.addEventListener('error', (e) => {
 **Fired when**: An ongoing installation is cancelled  
 **Payload**: `{}`  
 **Source**: [ag-logs-modal.js:101](js/components/organisms/ag-logs-modal.js#L101)
-
----
-
-### `<ag-docs-modal>`
-#### `docs-close`
-**Fired when**: The documentation modal is closed  
-**Payload**: `{}`  
-**Source**: [ag-docs-modal.js:73](js/components/organisms/ag-docs-modal.js#L73)
 
 ---
 
@@ -397,34 +370,6 @@ configEditor.addEventListener('save', (e) => {
 **Fired when**: The systemd overrides are saved  
 **Payload**: `{ properties: object, apply_immediately: boolean, service: object }`  
 **Source**: [ag-systemd-override-editor.js:86](js/components/organisms/ag-systemd-override-editor.js#L86)
-
-#### `cancel`
-**Fired when**: The editor is cancelled without saving  
-**Payload**: `{}`  
-**Source**: [ag-systemd-override-editor.js:50](js/components/organisms/ag-systemd-override-editor.js#L50)
-
----
-
-### `<ag-log-viewer>`
-#### `filter-changed`
-**Fired when**: The active log level filters change  
-**Payload**: `{ levels: string[] }` — array of active levels (e.g. `['info', 'warning']`)  
-**Source**: [ag-log-viewer.js:195](js/components/organisms/ag-log-viewer.js#L195)
-
-#### `auto-refresh-toggled`
-**Fired when**: The auto-refresh (live mode) is toggled on or off  
-**Payload**: `{ enabled: boolean }`  
-**Source**: [ag-log-viewer.js:214](js/components/organisms/ag-log-viewer.js#L214)
-
-```javascript
-logViewer.addEventListener('filter-changed', (e) => {
-    console.log('Active levels:', e.detail.levels);
-});
-
-logViewer.addEventListener('auto-refresh-toggled', (e) => {
-    console.log('Live mode:', e.detail.enabled);
-});
-```
 
 ---
 

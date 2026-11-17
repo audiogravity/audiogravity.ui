@@ -128,7 +128,7 @@ describe('AgLibrarySourceCard — how "Off" is drawn', () => {
 
     it('draws an empty ring in the grey of the filled dot at rest', () => {
         const ring = cssRuleBody(dots, '.profile-status-dot.off');
-        const rest = cssRuleBody(dots, '.profile-status.inactive');
+        const rest = cssRuleBody(dots, '.profile-status-dot.down');
         expect(declared(ring, 'background')).toBe('transparent');
         expect(declared(ring, 'box-shadow')).toContain(declared(rest, 'background'));
     });

@@ -1,4 +1,3 @@
-import { html } from 'lit';
 import './ag-library-breadcrumbs.js';
 
 export default {

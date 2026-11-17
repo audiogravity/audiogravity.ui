@@ -11,8 +11,6 @@
 /* Margin utilities */
 .mt-xs { margin-top: var(--spacing-xs); }
 .mt-md { margin-top: var(--spacing-md); }
-
-.mb-sm { margin-bottom: var(--spacing-sm); }
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
 
@@ -22,10 +20,6 @@
 .mr-xxs { margin-right: 4px; }
 
 .mt-15 { margin-top: 1.5rem; }
-
-/* Padding utilities */
-
-.pl-20 { padding-left: 20px; }
 
 /* =====================
    TEXT UTILITIES
@@ -65,12 +59,6 @@
 
 /* Display: contents for web components */
 .display-contents { display: contents; }
-
-/* Line height */
-.lh-16 { line-height: 1.6; }
-
-/* List styles */
-.list-disc { list-style-type: disc; }
 
 /* =====================
    CHART CONTAINERS

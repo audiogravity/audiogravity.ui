@@ -1,5 +1,4 @@
 import { LitElement, html, nothing } from 'lit';
-import { classMap } from 'lit/directives/class-map.js';
 import { iconWifi, iconCpu, iconThermometer, iconMemory, iconHardDrive, iconConnection, iconClock } from '../../ag-icons.js';
 import '../atoms/ag-sparkline.js';
 import { formatWindowSpan, safeToFixed } from '../utils-lit.js';

@@ -274,7 +274,6 @@ Format: `.{property}-{value}` (Tailwind-like)
 ```css
 /* Spacing */
 .mt-md  { margin-top: var(--spacing-md); }
-.mb-sm  { margin-bottom: var(--spacing-sm); }
 .ml-auto { margin-left: auto; }
 .pt-md  { padding-top: var(--spacing-md); }
 
@@ -294,10 +293,6 @@ Format: `.{property}-{value}` (Tailwind-like)
 /* Sizing */
 .w-100 { width: 100%; }
 .h-24  { height: 24px; }
-
-/* Lists */
-.list-disc { list-style-type: disc; }
-.pl-20     { padding-left: 20px; }
 ```
 
 When to add a new utility class:
@@ -366,7 +361,6 @@ Level 4: Specialized Tokens (syntax highlighting, charts)
   --size-sm:  18px;  /* Compact buttons (btn-action) */
   --size-md:  20px;  /* Sparklines */
   --size-lg:  28px;  /* Burger menu */
-  --size-xl:  40px;  /* Input heights */
   --size-xxl: 60px;  /* Chart heights */
 
   /* Layout */

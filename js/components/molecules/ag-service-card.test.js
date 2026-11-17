@@ -26,7 +26,7 @@ vi.mock('../../ag-icons.js', () => ({
     __esModule: true,
     ...Object.fromEntries(
         ['iconPower', 'iconRefresh', 'iconTrash', 'iconArrowUp', 'iconArrowDown',
-         'iconFileText', 'iconPencil', 'iconPlay', 'iconStop', 'iconSettings',
+         'iconFileText', 'iconPencil', 'iconPlay', 'iconSettings',
          'iconInfo', 'iconCheck', 'iconAlert', 'iconClock', 'iconCpu',
          'iconActivity', 'iconChevronDown', 'iconChevronRight', 'iconLock',
          'iconExternalLink', 'iconZap', 'iconDatabase', 'iconServer',
@@ -36,7 +36,6 @@ vi.mock('../../ag-icons.js', () => ({
 vi.mock('../utils-lit.js', () => ({
     formatRate: (rate) => (typeof rate !== 'number' ? '0.0 MB/s' : `${rate.toFixed(1)} MB/s`),
     formatTimestamp: () => '',
-    getActivityLevel: () => 'low',
     getActivityLevelForCPU: () => 'low',
     getActivityLevelForMemory: () => 'low',
     getActivityLevelForRate: () => 'low',

@@ -10,7 +10,6 @@
  * @element ag-now-playing-fullscreen
  *
  * @listens window:np-expand — Opens the fullscreen player
- * @fires   window:np-collapse — Dispatched when the fullscreen closes
  *
  * @dependency css/components/now-playing-fullscreen.css
  * @dependency js/core/LicenseController.js - Keeps `_license` in step with the box's licence
@@ -276,7 +275,6 @@ export class AgNowPlayingFullscreen extends LitElement {
             this._coverSwapped = false;
             document.body.classList.remove('npfs-open');
             this._closeSse();
-            window.dispatchEvent(new CustomEvent('np-collapse'));
         }, 360);
     }
 

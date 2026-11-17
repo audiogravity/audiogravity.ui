@@ -2,7 +2,6 @@ import { LitElement, html } from 'lit';
 import { ContextConsumer } from '@lit/context';
 import { appContext } from '../../core/app-context.js';
 import { AppState, EventEmitter } from '../../common.js';
-import { classMap } from 'lit/directives/class-map.js';
 import { FetchController } from '../../core/FetchController.js';
 import { formatUptime } from '../../utils.js';
 import { formatMemory } from '../utils-lit.js';

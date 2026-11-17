@@ -23,7 +23,6 @@ const KEY_REGEX   = /^AG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
  * 3-step license activation molecule.
  *
  * @element ag-license-activation
- * @fires license-activated - Fired on successful activation, detail: ActivateResponse
  */
 export class AgLicenseActivation extends LitElement {
     static properties = {
@@ -142,7 +141,6 @@ export class AgLicenseActivation extends LitElement {
             // Listeners run outside the try: a fault in one used to be read as the licence
             // server being down, and the key was kept for a retry that would answer 409.
             queueMicrotask(() => {
-                this.dispatchEvent(new CustomEvent('license-activated', { detail: result, bubbles: true }));
                 window.dispatchEvent(new CustomEvent('ag:license-changed', { detail: { source: 'activation' } }));
                 showToast('success', 'License activated', 'Its details are shown below.');
             });

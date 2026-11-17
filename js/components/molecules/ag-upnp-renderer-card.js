@@ -15,8 +15,6 @@
  *
  * @element ag-upnp-renderer-card
  *
- * @fires renderer-connected    - Bubbles when a renderer becomes active.
- * @fires renderer-disconnected - Bubbles when the active renderer is disconnected.
  *
  * @dependency css/components/library-sources.css (lib-hqp-* and lib-rdr-* classes)
  */
@@ -143,7 +141,6 @@ class AgUpnpRendererCard extends LitElement {
             this._status = null;
             this._volume = null;
             await this._load();
-            this.dispatchEvent(new CustomEvent('renderer-disconnected', { bubbles: true }));
         } catch (e) {
             console.warn('[renderer] MPD output switch failed:', e.message);
         } finally {
@@ -163,7 +160,6 @@ class AgUpnpRendererCard extends LitElement {
             this._status = null;
             this._volume = null;
             await this._load();
-            this.dispatchEvent(new CustomEvent('renderer-disconnected', { bubbles: true }));
         } catch (e) {
             console.warn('[renderer] Disconnect failed:', e.message);
         } finally {
@@ -187,7 +183,6 @@ class AgUpnpRendererCard extends LitElement {
                 model_name:    renderer.model_name   ?? '',
             });
             await this._load();
-            this.dispatchEvent(new CustomEvent('renderer-connected', { bubbles: true }));
         } catch (e) {
             console.warn('[renderer] Switch failed:', e.message);
         } finally {
@@ -211,7 +206,6 @@ class AgUpnpRendererCard extends LitElement {
                 model_name:    renderer.model_name   ?? '',
             });
             await this._load();
-            this.dispatchEvent(new CustomEvent('renderer-connected', { bubbles: true }));
         } catch (e) {
             console.warn('[renderer] Connect failed:', e.message);
         } finally {
@@ -310,7 +304,7 @@ class AgUpnpRendererCard extends LitElement {
      * @param {{id:string, type:string, name:string, reachable:boolean, active:boolean, output_id:number}} output
      */
     _renderMpdRow(output) {
-        const { id, name, reachable, active, output_id } = output;
+        const { id, name, reachable, active } = output;
         const isSwitching = this._switching === id;
 
         return html`

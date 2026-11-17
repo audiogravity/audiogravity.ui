@@ -289,7 +289,6 @@ export class AgSparkline extends LitElement {
     _generateFillPath(points, linePath) {
         if (points.length === 0) return '';
         if (points.length === 1) {
-            const y = points[0].y;
             return `${linePath} L ${this.width},${this.height} L 0,${this.height} Z`;
         }
         const lastPoint = points[points.length - 1];

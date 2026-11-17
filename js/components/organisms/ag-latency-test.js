@@ -20,7 +20,7 @@
 
 import { LitElement, html } from 'lit';
 import Chart from 'chart.js/auto';
-import { apiGet, apiPost, AgTimerManager, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
+import { apiGet, apiPost, EventEmitter, showToast, handleError, addToHistory } from '../../common.js';
 import { saveLatencyResult, getTestHistory, clearTestHistory } from '../../test-history.js';
 import { fmtDateTime } from '../utils-lit.js';
 import { iconHistory } from '../../ag-icons.js';

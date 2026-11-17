@@ -35,7 +35,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { iconDownload } from '../../ag-icons.js';
-import { AgAudioOutput } from '../atoms/ag-audio-output.js';
+import '../atoms/ag-audio-output.js';
 import { isGuest } from '../../auth.js';
 import { downloadTextFile } from '../../ui-helpers.js';
 import { apiGet } from '../../api.js';

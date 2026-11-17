@@ -22,7 +22,6 @@
  */
 
 import { LitElement, html } from 'lit';
-import { classMap } from 'lit/directives/class-map.js';
 import { AppState, EventEmitter } from '../../common.js';
 import { getLastSystemMetrics } from '../../sse.js';
 import { safeToFixed, formatUptime } from '../utils-lit.js';

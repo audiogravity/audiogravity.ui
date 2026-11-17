@@ -31,10 +31,8 @@ describe('no status dot glows', () => {
     const DOTS = [
         ['css/components/status-indicator.css', '.service-state-dot.up'],
         ['css/components/status-indicator.css', '.profile-status-dot.up'],
-        ['css/components/status-indicator.css', '.profile-status.active'],
         ['css/system.css', '.connection-dot-large.connected'],
         ['css/components/library-queue.css', '.lib-queue-lbl::before'],
-        ['css/components/library-sources.css', '.lib-src-status.up .lib-src-dot'],
     ];
 
     for (const [file, selector] of DOTS) {

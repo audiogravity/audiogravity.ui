@@ -33,7 +33,7 @@
  * @dependency css/config.css - Editor layout and styling
  * @dependency js/core/CodeMirrorController.js - CodeMirror 5, the Expert editor, loaded on first use
  */
-import { LitElement, html, css } from 'lit';
+import { LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { autoExpandTextarea } from '../utils-lit.js';
 import { iconArrowLeft, iconCode, iconCheck, iconWarning, iconSave, iconSliders, iconClose, iconHistory, iconInfo } from '../../ag-icons.js';
