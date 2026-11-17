@@ -70,7 +70,7 @@ export const WithSparkline = (args) => {
             .state="${args.state}">
             <ag-sparkline 
                 slot="chart" 
-                .data="\${data}" 
+                .data=${data}
                 line-color="var(--chart-cpu)" 
                 line-width="1.5" 
                 auto-scale 
