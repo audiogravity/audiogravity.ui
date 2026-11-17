@@ -74,7 +74,6 @@
 .systemd-grid-container>ag-systemd-card>.systemd-tile,
 .profiles-grid-container>ag-profile-card>.profile-tile,
 .services-grid-container>ag-service-card>.service-tile,
-.software-grid-container>ag-package-card>.package-tile,
 .users-grid-container>ag-user-card>.tile,
 .governor-grid>ag-governor-card>.governor-tile {
     height: 100%;
@@ -97,14 +96,6 @@
 /* Column span utilities */
 .span-2 { grid-column: span 2; }
 
-/* Backward compatibility for previous utility names (aliased below) */
-
-.responsive-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--spacing-md);
-}
-
 /* =====================
    RESPONSIVE OVERRIDES
    ===================== */
@@ -119,8 +110,7 @@
     .config-selector-grid-container,
     .systemd-grid,
     .systemd-grid-container,
-    .governor-grid,
-    .responsive-grid {
+    .governor-grid {
         grid-template-columns: 1fr;
     }
 
@@ -176,7 +166,6 @@
 .services-zone .services-grid,
 .services-zone .services-grid-container,
 .software-zone .software-grid,
-.software-zone .software-grid-container,
-.responsive-grid {
+.software-zone .software-grid-container {
     gap: var(--spacing-sm);
 }

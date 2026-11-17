@@ -236,18 +236,6 @@ body.is-offline {
     --offline-banner-offset: var(--offline-banner-height);
 }
 
-/* Adjusted layout when offline banner is displayed.
-   This compensation used to live here ALONE, inside the desktop query — so the title of
-   the first section was cut in half by the banner on every phone, which is where the
-   offline state is seen most. The mobile layouts now read --offline-banner-offset in
-   their own padding.
-   BACKLOG: nothing sets .tabs--horizontal, so this never applies — see BACKLOG.md. */
-@media (width > 768px) {
-    body.is-offline:has(.tabs--horizontal) .main-content {
-        margin-top: var(--offline-banner-height);
-    }
-}
-
 .topbar .metric-value.activity-medium {
     background: var(--color-warning-bg);
 }
@@ -464,16 +452,6 @@ ag-tabs:not(:defined) {
 @media (hover: hover) {
     .tab-btn:hover .tab-icon {
         opacity: 1;
-    }
-}
-
-@keyframes streamingPulse {
-    0%, 100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.4;
     }
 }
 
@@ -725,23 +703,6 @@ body:has(.tabs--vertical.tabs--sidebar-hidden) .tab-sidebar-toggle {
    4 % of its side against the card's 22 %. Nothing else here: the icon is the only child
    of .footer-logo, so a margin would have separated it from nothing while widening the
    div that carries the click — 8px of empty footer that opens the preview. */
-
-/* Theme-based logo visibility */
-.logo-dark {
-    display: none;
-}
-
-.logo-light {
-    display: block;
-}
-
-body.dark-mode .logo-light {
-    display: none;
-}
-
-body.dark-mode .logo-dark {
-    display: block;
-}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar {

@@ -5,7 +5,7 @@
  * to window 'renderer-status-update'. The store now owns the single window
  * listener and multiplexes to registered callbacks.
  */
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Stub modules that library-store.js may import transitively.
 vi.mock('./api.js', () => ({ apiGet: vi.fn(), buildAuthedUrl: vi.fn((path) => path) }));

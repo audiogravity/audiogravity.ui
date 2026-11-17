@@ -16,8 +16,7 @@ const Template = (args) => html`
     <ag-docs-modal
         ?is-open="${args.show}"
         .title="${args.title}"
-        .src="${args.src}"
-        @docs-close="${() => console.log('Docs closed')}">
+        .src="${args.src}">
     </ag-docs-modal>
     <p style="color: var(--text-secondary)">This modal usually displays an iframe with documentation.</p>
   </div>

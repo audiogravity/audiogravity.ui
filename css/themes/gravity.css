@@ -74,10 +74,8 @@
     /* Component Colors */
     --topbar-bg: #ffffff;
     --topbar-shadow: 0 4px 12px rgb(0 0 0 / 0.03);
-    --tab-active: #6366f1;
     --tab-hover: #f1f5f9;
     --btn-primary: #0f172a;
-    --btn-secondary: #ffffff;
     --switch-active-bg: var(--accent-primary);
     --switch-notification-bg: var(--color-warning);
 
@@ -115,12 +113,7 @@
 
     /* Component Speficic: Audio Pipeline */
     --pipeline-node-bg: #0F172A; /* Slate-900 */
-    --pipeline-node-active: #F59E0B; /* Amber-500 */
-    --pipeline-node-bitperfect: #10B981; /* Emerald-500 */
     --pipeline-node-text: #FFFFFF;
-    --pipeline-link: #475569; /* Slate-600 */
-    --pipeline-link-active: #F59E0B; /* Amber-500 */
-    --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
 
     /* Text-safe variants of the semantic colours.
        --color-success and friends serve three jobs at once: a border (owes 3:1),
@@ -177,10 +170,8 @@
     --topbar-bg: #12141c; /* Changed to solid color for iOS Notch perfection */
     --topbar-blur: blur(12px);
     --topbar-shadow: 0 4px 20px rgb(0 0 0 / 0.6);
-    --tab-active: #4facfe;
     --tab-hover: #1a1d28;
     --btn-primary: #f8fafc;
-    --btn-secondary: #0a0b10;
     --switch-active-bg: var(--accent-primary);
     --switch-notification-bg: var(--color-warning);
 
@@ -230,12 +221,7 @@
 
     /* Component Speficic: Audio Pipeline (Dark Mode) */
     --pipeline-node-bg: #1A1D28;
-    --pipeline-node-active: #FFB703;
-    --pipeline-node-bitperfect: #00F5D4;
     --pipeline-node-text: #F8FAFC;
-    --pipeline-link: #475569;
-    --pipeline-link-active: #FFB703;
-    --pipeline-link-bitperfect: #00F5D4;
 
     /* Text-safe variants — see the note in the light block. */
     --color-success-text: #00f5d4;

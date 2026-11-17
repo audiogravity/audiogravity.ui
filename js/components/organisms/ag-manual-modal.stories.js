@@ -20,7 +20,7 @@ export const Default = () => html`
         >
             Open user manual
         </button>
-        <ag-manual-modal @manual-close=${() => console.log('manual closed')}></ag-manual-modal>
+        <ag-manual-modal></ag-manual-modal>
     </div>
 `;
 
@@ -37,6 +37,6 @@ export const CodeBlocks = () => html`
         >
             Open Troubleshooting
         </button>
-        <ag-manual-modal @manual-close=${() => console.log('manual closed')}></ag-manual-modal>
+        <ag-manual-modal></ag-manual-modal>
     </div>
 `;

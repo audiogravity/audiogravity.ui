@@ -1,16 +1,16 @@
 /**
  * @module Responsive
  * @description Centralized responsive breakpoints and mobile-first media queries.
- * All breakpoint values are defined in themes.css as CSS custom properties.
+ * Breakpoints are written in each query: @media cannot read a custom property.
  */
 
 /* =====================
    BREAKPOINT REFERENCE
    ===================== 
    
-   --breakpoint-sm:  480px  (Mobile)
-   --breakpoint-md:  768px  (Tablet)
-   --breakpoint-lg:  1200px (Desktop)
+   480px  (Mobile)
+   768px  (Tablet)
+   1200px (Desktop)
    
    Usage Pattern:
    - Mobile-first: Start with base styles, then add @media for larger screens
@@ -52,25 +52,11 @@
    SHARED RESPONSIVE UTILITIES
    ===================== */
 
-/* Mobile-only utilities */
-@media (width <= 767px) {
-    .mobile-only { display: block !important; }
-    .desktop-only { display: none !important; }
-}
-
-/* Desktop-only utilities */
-@media (width >= 768px) {
-    .mobile-only { display: none !important; }
-    .desktop-only { display: block !important; }
-}
-
 /* Print styles */
 
 /* Paper, not a screen: black on white whatever the theme, which is the one
    ground no palette describes (guidelines, rule 6 exception). */
 @media print {
-    .no-print { display: none !important; }
-    
     body {
         background: #ffffff;
         color: #000000;

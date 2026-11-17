@@ -789,11 +789,6 @@
     }
 }
 
-.config-service-card {
-    min-height: 100px;
-    padding: var(--spacing-md);
-}
-
 /* =====================
    BADGE HOVER OVERRIDE
    ===================== */

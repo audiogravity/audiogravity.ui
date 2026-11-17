@@ -1,4 +1,4 @@
-import { html, svg } from 'lit';
+import { html } from 'lit';
 import { renderPipelineNode } from './ag-pipeline-node.js';
 
 export default {

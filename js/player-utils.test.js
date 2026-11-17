@@ -1,7 +1,7 @@
 /**
  * Unit tests for player-utils.js — player helper functions.
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { TRANSITION_GUARD_MS, inTransition, isDsd, isSelfManagedDriver, volumeActsOnDsd, showsVolumeControl, showsDsdLock } from './player-utils.js';
 
 describe('TRANSITION_GUARD_MS', () => {

@@ -21,7 +21,7 @@
 
 import { LitElement, html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
-import { formatRate, formatTimestamp, getActivityLevel, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate } from '../utils-lit.js';
+import { formatRate, formatTimestamp, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate } from '../utils-lit.js';
 import { isGuest } from '../../auth.js';
 import { iconPower } from '../../ag-icons.js';
 import './ag-metric-detail.js';

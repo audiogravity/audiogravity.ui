@@ -112,10 +112,8 @@
     /* Component Colors */
     --topbar-bg: #FFFFFF;
     --topbar-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --tab-active: #0F172A;
     --tab-hover: #F1F5F9;
     --btn-primary: #0F172A;
-    --btn-secondary: #FFFFFF;
     --switch-active-bg: var(--text-primary);
     --switch-notification-bg: var(--color-warning);
 
@@ -175,12 +173,7 @@
 
     /* Component Speficic: Audio Pipeline */
     --pipeline-node-bg: #1E293B; /* Slate-800 */
-    --pipeline-node-active: #F59E0B; /* Amber-500 */
-    --pipeline-node-bitperfect: #10B981; /* Emerald-500 */
     --pipeline-node-text: #FFFFFF;
-    --pipeline-link: #94A3B8; /* Slate-400 */
-    --pipeline-link-active: #F59E0B; /* Amber-500 */
-    --pipeline-link-bitperfect: #10B981; /* Emerald-500 */
 
     /* Text-safe variants of the semantic colours.
        --color-success and friends serve three jobs at once: a border (owes 3:1),
@@ -242,7 +235,6 @@
     --topbar-shadow: 0 1px 0 #334155;
     --tab-hover: #334155;
     --btn-primary: #F1F5F9;
-    --btn-secondary: #1E293B;
     --switch-active-bg: var(--accent-primary);
     --switch-notification-bg: var(--color-warning);
 
@@ -329,12 +321,7 @@
 
     /* Component Speficic: Audio Pipeline (Dark Mode) */
     --pipeline-node-bg: #334155; /* Slate-700 */
-    --pipeline-node-active: #FBBF24; /* Amber-400 */
-    --pipeline-node-bitperfect: #34D399; /* Emerald-400 */
     --pipeline-node-text: #F1F5F9;
-    --pipeline-link: #64748B; /* Slate-500 */
-    --pipeline-link-active: #FBBF24; /* Amber-400 */
-    --pipeline-link-bitperfect: #34D399; /* Emerald-400 */
 
     /* Text-safe variants — see the note in the light block. */
     --color-success-text: #34D399;

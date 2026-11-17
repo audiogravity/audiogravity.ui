@@ -3,12 +3,7 @@
  */
 import { describe, it, expect , vi, afterEach} from 'vitest';
 import {
-    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatCpuFrequency, slowedBySupply, formatRate,
-    fmtDuration, getActivityLevel, getActivityLevelForCPU,
-    getActivityLevelForMemory, getActivityLevelForRate,
-    coverUrl, pickPrimaryCoverToken,
-    formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel,
-    loadWithState } from './utils-lit.js';
+    safeToFixed, formatMemory, formatUptime, formatWindowSpan, formatCpuFrequency, slowedBySupply, formatRate, fmtDuration, getActivityLevelForCPU, getActivityLevelForMemory, getActivityLevelForRate, pickPrimaryCoverToken, formatTimestamp, loadConnection, svgIcon, catalogueErrorMessage, fmtIsoDate, isPast, planLabel, loadWithState } from './utils-lit.js';
 
 /** A promise and the hands that settle it, for reads made to end in a chosen order. */
 function deferred() {
@@ -231,17 +226,6 @@ describe('fmtDuration', () => {
         expect(fmtDuration(null)).toBe('--:--');
         expect(fmtDuration(undefined)).toBe('--:--');
         expect(fmtDuration(NaN)).toBe('--:--');
-    });
-});
-
-describe('getActivityLevel', () => {
-    it('returns correct levels', () => {
-        expect(getActivityLevel(75)).toBe('high');
-        expect(getActivityLevel(25)).toBe('medium');
-        expect(getActivityLevel(5)).toBe('low');
-    });
-    it('handles non-number', () => {
-        expect(getActivityLevel('abc')).toBe('low');
     });
 });
 

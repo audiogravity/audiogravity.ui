@@ -245,13 +245,10 @@ describe('ag-manual-modal', () => {
         });
     });
 
-    it('close() hides the modal and emits manual-close', () => {
-        const onClose = vi.fn();
-        el.addEventListener('manual-close', onClose);
+    it('close() hides the modal', () => {
         el.isOpen = true;
         el.close();
         expect(el.isOpen).toBe(false);
-        expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('Escape closes an open modal but is ignored when closed', () => {

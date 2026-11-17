@@ -50,7 +50,7 @@
     border: 1px solid var(--border-color);
 }
 
-/* .stat-label and .stat-value are already defined in metrics.css */
+/* .stat-value is already defined in metrics.css */
 
 .timer-list {
     margin-top: var(--spacing-md);

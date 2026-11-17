@@ -14,7 +14,7 @@
  * @dependency css/components/library-sources.css (lib-qb-* classes)
  */
 
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html } from 'lit';
 import { apiGet, apiPost, apiDelete } from '../../api.js';
 import { failureReason } from '../../library-api.js';
 import { showToast } from '../../ui-helpers.js';

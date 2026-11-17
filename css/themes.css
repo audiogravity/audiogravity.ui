@@ -257,9 +257,6 @@
    /* Sparklines, small charts */
    --size-lg: 28px;
 
-   /* Burger menu mobile */
-   --size-xl: 40px;
-
    /* Input heights, icon buttons */
    --size-xxl: 60px;
 
@@ -278,12 +275,6 @@
 
    /* Chart heights */
 
-
-   /* Breakpoints */
-   --breakpoint-sm: 480px;
-   --breakpoint-md: 768px;
-   --breakpoint-lg: 1200px;
-
    /**
     * @group Semantic derivatives (shared defaults)
     * @description Validation borders, button hover washes and the chart grid
@@ -298,8 +289,6 @@
    --validation-error-border: rgb(239 68 68 / 0.3);
    --validation-warning-border: rgb(245 158 11 / 0.3);
    --validation-info-border: rgb(59 130 246 / 0.3);
-   --btn-success-hover-bg: rgb(16 185 129 / 0.1);
-   --btn-success-hover-shadow: rgb(16 185 129 / 0.3);
    --btn-error-hover-bg: rgb(239 68 68 / 0.1);
    --btn-error-hover-shadow: rgb(239 68 68 / 0.3);
    --btn-warning-hover-bg: rgb(245 158 11 / 0.1);
@@ -431,8 +420,6 @@ body {
 body.dark-mode {
     --btn-error-hover-bg: rgb(248 113 113 / 0.15);
     --btn-error-hover-shadow: rgb(248 113 113 / 0.4);
-    --btn-success-hover-bg: rgb(52 211 153 / 0.15);
-    --btn-success-hover-shadow: rgb(52 211 153 / 0.4);
     --btn-warning-hover-bg: rgb(251 191 36 / 0.15);
     --btn-warning-hover-shadow: rgb(251 191 36 / 0.4);
     --chart-cpu: #60A5FA;
@@ -496,7 +483,6 @@ body.dark-mode {
    /* Preserve critical status animations for visibility */
    .service-state-dot.up,
    .profile-status-dot.up,
-   .profile-status.active,
    .connection-dot-large.connected {
       animation-duration: 3s !important;
       animation-iteration-count: infinite !important;
@@ -522,9 +508,7 @@ body.dark-mode {
    .skeleton-text,
    .skeleton-line,
    .skeleton-title,
-   .skeleton-button,
-   .skeleton-tile,
-   .skeleton-metric {
+   .skeleton-button {
       animation-duration: 1.5s !important;
       animation-iteration-count: infinite !important;
    }
@@ -573,14 +557,11 @@ body.no-animations .config-modal.active {
 @media (prefers-reduced-motion: reduce) {
    body.no-animations .service-state-dot.up,
    body.no-animations .profile-status-dot.up,
-   body.no-animations .profile-status.active,
    body.no-animations .connection-dot-large.connected,
    body.no-animations .skeleton-text,
    body.no-animations .skeleton-line,
    body.no-animations .skeleton-title,
-   body.no-animations .skeleton-button,
-   body.no-animations .skeleton-tile,
-   body.no-animations .skeleton-metric {
+   body.no-animations .skeleton-button {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
    }
@@ -612,7 +593,6 @@ body.no-animations .icon-btn:active {
 /* Remove glow on status bullets/dots and high activity metrics */
 body.no-animations .service-state-dot,
 body.no-animations .profile-status-dot,
-body.no-animations .profile-status,
 body.no-animations .connection-dot-large,
 body.no-animations .metric-value.activity-high {
    box-shadow: none !important;
@@ -622,11 +602,7 @@ body.no-animations .metric-value.activity-high {
 /* Global animation kill for specific utility classes */
 body.no-animations .animate-pulse,
 body.no-animations .animate-stagger,
-body.no-animations .animate-fade-in,
-body.no-animations .animate-glow,
-body.no-animations .animate-shimmer,
-body.no-animations .fade-in,
-body.no-animations .blink-slow {
+body.no-animations .animate-fade-in {
    animation: none !important;
 }
 
@@ -636,17 +612,6 @@ body.no-animations .btn-link:active {
    transform: none !important;
 }
 
-@media (hover: hover) {
-    body.no-animations .software-action-btn:hover,
-    body.no-animations .software-action-btn.install:hover,
-    body.no-animations .software-action-btn.update:hover,
-    body.no-animations .software-action-btn.uninstall:hover {
-       transform: none !important;
-    }
-}
-
-body.no-animations .install-progress-fill,
-body.no-animations .progress-fill,
 body.no-animations .premium-progress-fill,
 body.no-animations .premium-progress-fill::after {
    animation: none !important;

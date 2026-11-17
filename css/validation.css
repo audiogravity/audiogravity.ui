@@ -214,43 +214,6 @@
 }
 
 /* =====================
-   VALIDATION BADGES
-   ===================== */
-
-.validation-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    white-space: nowrap;
-
-    /* A tag: no frame (components/badge.css). */
-    border: 1px solid transparent;
-}
-
-.validation-badge.success {
-    background: var(--color-success-bg);
-    color: var(--color-success-text);
-}
-
-.validation-badge.warning {
-    background: var(--color-warning-bg);
-    color: var(--color-warning-text);
-}
-
-.validation-badge.error {
-    background: var(--color-error-bg);
-    color: var(--color-error-text);
-}
-
-.validation-badge [class^="icon-"] {
-    font-size: var(--font-size-lg);
-}
-
-/* =====================
    VALIDATION QUESTION (in modals)
    ===================== */
 
@@ -261,39 +224,6 @@
     text-align: center;
     font-weight: 600;
     color: var(--text-primary);
-}
-
-/* =====================
-   INLINE VALIDATION INDICATOR
-   ===================== */
-
-.validation-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-md);
-}
-
-.validation-indicator.checking {
-    background: var(--color-info-bg);
-    color: var(--color-info-text);
-}
-
-.validation-indicator.valid {
-    background: var(--color-success-bg);
-    color: var(--color-success-text);
-}
-
-.validation-indicator.invalid {
-    background: var(--color-error-bg);
-    color: var(--color-error-text);
-}
-
-.validation-indicator .spinner {
-    width: 1rem;
-    height: 1rem;
 }
 
 /* =====================

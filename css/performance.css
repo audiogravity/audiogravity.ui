@@ -113,28 +113,6 @@
     white-space: nowrap;
 }
 
-.governor-cpu {
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.governor-current {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-primary);
-    border: 1px solid var(--text-primary);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.governor-available {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-}
-
 .governor-select {
     width: 100%;
     padding: var(--spacing-sm);

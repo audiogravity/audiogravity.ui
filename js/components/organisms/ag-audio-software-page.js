@@ -24,7 +24,6 @@ import {
     showConfirm,
     handleError,
     AppState,
-    AgTimerManager,
     EventEmitter,
     addToHistory,
 } from '../../common.js';

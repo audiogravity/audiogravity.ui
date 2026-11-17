@@ -20,8 +20,7 @@
  * @description The status indicator circle.
  */
 .service-state-dot,
-.profile-status-dot,
-.profile-status {
+.profile-status-dot {
     display: inline-block;
     width: var(--size-xxs);
     height: var(--size-xxs);
@@ -29,21 +28,11 @@
     flex-shrink: 0;
 }
 
-
-/* Profile Status (alternative) */
-.profile-status {
-    width: var(--size-xs);
-    height: var(--size-xs);
-    background: var(--border-color);
-    transition: background var(--transition-fast);
-}
-
 /* UP State (Green, slow blink). No glow — no status dot has one, green or orange:
    a flat disc, here and on every other "up / online / active" dot (system.css,
-   library-queue.css, library-sources.css, the pipeline's node panel). */
+   library-queue.css, the pipeline's node panel). */
 .service-state-dot.up,
-.profile-status-dot.up,
-.profile-status.active {
+.profile-status-dot.up {
     background: var(--color-success);
     animation: blinkSlow 3s infinite ease-in-out;
 }
@@ -63,8 +52,7 @@
 
 /* DOWN State (Gray) */
 .service-state-dot.down,
-.profile-status-dot.down,
-.profile-status.inactive {
+.profile-status-dot.down {
     background: var(--text-tertiary);
 }
 

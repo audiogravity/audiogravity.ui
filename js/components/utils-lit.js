@@ -250,19 +250,6 @@ export const formatRate = (rate) => {
 };
 
 /**
- * Determine activity level based on percentage or value
- * Generic thresholds for system-wide metrics
- * @param {number} value - Value to check
- * @returns {string} 'high', 'medium', or 'low'
- */
-export const getActivityLevel = (value) => {
-    if (typeof value !== 'number') return 'low';
-    if (value > 50) return 'high';
-    if (value > 10) return 'medium';
-    return 'low';
-};
-
-/**
  * Determine activity level for CPU usage of a single service (%)
  * Adapted for individual audio service context
  * @param {number} cpu - CPU usage percentage

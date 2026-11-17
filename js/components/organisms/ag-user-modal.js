@@ -14,7 +14,6 @@
  * @dependency css/components/forms.css, css/components/modal.css - Form and modal styles
  * 
  * @fires save - Dispatched when SAVE is clicked, with {payload, isEditing, originalUsername}
- * @fires cancel - Dispatched when model requests to close
  * @fires error - Dispatched when client-side validation fails
  */
 
@@ -92,7 +91,6 @@ export class AgUserModal extends LitElement {
     _handleClose() {
         if (this.isSaving) return;
         this.isOpen = false;
-        this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }));
     }
 
     _handleSave() {

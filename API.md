@@ -45,8 +45,7 @@ checks its session again every 15 s and closes with code **4001** once it has en
 
 **Guests** (role `guest`) read everything but `/auth/users*`, the logs and the admin
 routes, and control what is playing: `/player/control`, `/player/source`,
-`/player/sleep-timer`, `/hqplayer/stop`, `/hqplayer/volume`, and the transport and volume
-routes of `/upnp-renderer/{udn}/*` (`next`, `prev`, `stop`, `pause`, `seek`, `volume`).
+`/player/sleep-timer`, `/hqplayer/volume` and `/upnp-renderer/{udn}/volume`.
 Every other write route answers **403** to a guest token.
 
 ---
@@ -77,7 +76,6 @@ Every other write route answers **403** to a guest token.
 
 | GET | `/audio_pipeline/topology/view` | Read `audio-topology.json` (user-declared hi-fi chain) |
 | POST | `/audio_pipeline/topology/save` | Write `audio-topology.json` (auto-backup + hot-reload) |
-| GET | `/audio_pipeline/now-playing` | Every active playback source |
 | GET | `/audio_pipeline/album-tracks` | Tracklist of the album being played — each track once, in disc then track order |
 | GET | `/audio_pipeline/cover` | Resolve cover art for a now-playing item |
 | POST | `/audio_pipeline/control` | Transport command — body `{ source_id, control_id?, action, volume?/seek_position? }`. The returned `success` reflects **MPD's verdict for every action**: `false` means **no change was confirmed** — the device refused (a live radio stream, a Tidal first listen still downloading, a mixerless output) or the exchange timed out before a verdict. A client that flipped its UI optimistically should flip it back; the state published on the SSE bus right after **every** control is the reference to converge on. **On the HQPlayer path a timed-out verdict is now rarer, not impossible**: HQPlayer answers the first command of a connection after a delay of its own (2.37–4.55 s measured across the LAN on a *stopped* instance), and the wait for a command is 8 s — so `false` still means "not confirmed", never "not done". The SSE state remains the reference |
@@ -149,9 +147,8 @@ Every other write route answers **403** to a guest token.
 | GET | `/library/qobuz-genres` | Qobuz genres with their sub-genres, alphabetical at both levels — `[{title, path, subgenres}]`. **`path` is opaque**: Qobuz's is a numeric id, HRA's a title path. Round-trip it, display `title`, never parse it — four genre names carry a `/` of their own (*Pop/Rock*, *Soul/Funk/R&B*, *Hip-Hop/Rap*, *Blues/Country/Folk*). Two genres publish one sub-genre or none |
 | GET | `/library/qobuz-genre?genre=<path>` | Album grid of a Qobuz genre or sub-genre. Browses the Selection shelf: Qobuz has no albums-of-a-genre endpoint, and Selection is the only shelf where a sub-genre answers at all. An unknown path yields `[]` |
 | GET | `/library/qobuz-purchases` | Albums the account bought. Unlike HRA's Vault the ids carry **no marker** — a purchased album reads and plays through the ordinary Qobuz path |
-| GET | `/library/qobuz-playlists?type=editorial\|mine&tag=&genre=` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `qobuz-playlist-tracks` on its own. In `mine`, a playlist the account owns comes back as `mine:<id>` — the id `/library/playlists*` edit it by — and one it only follows keeps its bare id; every route that reads a playlist takes either form. `type` defaults to `editorial`; any other value is **422**. `tag` narrows `editorial` to one category — a `title` from `qobuz-playlist-tags`; `genre` to one genre — a **top-level** `path` from `qobuz-genres` (a sub-genre almost never holds a selection). The two combine; an unknown value of either answers `[]`; both are ignored for `mine`. **Covers**: `editorial` carries Qobuz's landscape artwork (800 × 380 or 400 × 190) — draw it 2:1, like HRA's selections; `mine` carries square album covers |
+| GET | `/library/qobuz-playlists?type=editorial\|mine&tag=&genre=` | One of the two Qobuz playlist trees, as albums. Both trees share one id space, so an id goes to `/library/playlist-tracks` on its own. In `mine`, a playlist the account owns comes back as `mine:<id>` — the id `/library/playlists*` edit it by — and one it only follows keeps its bare id; every route that reads a playlist takes either form. `type` defaults to `editorial`; any other value is **422**. `tag` narrows `editorial` to one category — a `title` from `qobuz-playlist-tags`; `genre` to one genre — a **top-level** `path` from `qobuz-genres` (a sub-genre almost never holds a selection). The two combine; an unknown value of either answers `[]`; both are ignored for `mine`. **Covers**: `editorial` carries Qobuz's landscape artwork (800 × 380 or 400 × 190) — draw it 2:1, like HRA's selections; `mine` carries square album covers |
 | GET | `/library/qobuz-playlist-tags` | The categories Qobuz files its editorial playlists under — `[{title, label, holds}]`, in **Qobuz's own order**. `title` (Qobuz's slug, e.g. `hi-res`) is what `qobuz-playlists` takes as `tag`; `label` is the English name to display; `holds` is `playlists`. A filter, not a partition: one playlist can sit in several categories |
-| GET | `/library/qobuz-playlist-tracks?playlist_id=` | Tracks of a Qobuz playlist, of either tree — `playlist_id` bare or `mine:<id>`. Every track, however long the playlist; each keeps its number in its album (`/library/playlist-tracks` numbers them by their place). **400** for a playlist that does not exist or no longer does |
 | GET | `/library/tidal-shelves` | Tidal catalogue shelves — `[{title, label, holds}]`, same shape as `qobuz-shelves`. Shelves that hold nothing are left out: Tidal's own `hasAlbums` flag is **not** trusted (one shelf sets it and answers 404, another clears it and holds 281 playlists), so the core asks. **Read `holds`** — a shelf serves albums *or* playlists, *Exclusif* is 281 playlists and no album, and both arrive in the album model |
 | GET | `/library/tidal-genres` | Tidal genres — `[{title, path, subgenres}]`, alphabetical **by displayed label**. `subgenres` is always `[]`: Tidal publishes none, so the strip never drills. **`path` is opaque** — Tidal's slug differs from its name (`Hiphop` displays as *Hip Hop / Rap*, `Film` as *Bandes originales*) |
 | GET | `/library/tidal-moods` | Tidal moods — same shape as `tidal-shelves`. They hold playlists, never albums |
@@ -159,14 +156,11 @@ Every other write route answers **403** to a guest token.
 | GET | `/library/tidal-explore` | The entries of Tidal's own Explore tree — its genres, moods and activities, decades, and New / Top / Videos / HiRes / Clean Content, flattened into one strip in Tidal's order. Each `title` is a page path for `tidal-page` |
 | GET | `/library/tidal-page?path=<pages/…>` | One Explore page: `{title, links, sections}`. It holds **either** `links` to further pages (*Record Labels* is 52 of them) **or** `sections` of content — drill the links in place, show the sections as a strip. A section's `title` is the opaque key for `tidal-section`, and its `holds` says whether the grid will be albums or playlists. A `path` not shaped like one of Tidal's is **400**: it reaches a URL on the box's authenticated session |
 | GET | `/library/tidal-section?key=<pages/data/…>` | The grid of one section — albums, or playlists mapped to the album model. Pages properly; the key is the section's own handle, the only one Tidal offers, since it reorders the modules between calls. A malformed `key` is **400** |
-| GET | `/library/tidal-featured` | Tidal editorial discovery |
 | GET | `/library/tidal-charts` | Tidal's chart playlists, from its own Top page. Tidal exposes **no** chart endpoint (`charts`, `charts/albums`, `pages/charts` all 404). Nothing keys on a heading: the previous reading kept modules whose *title* held `chart`, Tidal renamed that row, and this answered empty for everyone |
 | GET | `/library/tidal-editorial` | The playlists Tidal's editors put on its home page, **minus** the chart ones — those have a shelf of their own and were appearing under both. Still answers (un-deduplicated) if the chart page cannot be read |
 | GET | `/library/tidal-playlists` | Tidal user playlists |
-| GET | `/library/tidal-playlist-tracks` | Tracks of a Tidal playlist |
 | GET | `/library/highresaudio-categories` | HRA shop categories — `[{title, label}]`, in the order HRA publishes them |
 | GET | `/library/highresaudio-category?category=<title>` | HRA shop category album grid (e.g. `Editors Choice`, `Bestsellers`) |
-| GET | `/library/highresaudio-discover` | HRA curated album grid — a shortcut for the "High-Res Essentials" category |
 | GET | `/library/highresaudio-genres` | HRA genres with their sub-genres — `[{title, path, subgenres}]`, **alphabetical at both levels** |
 | GET | `/library/highresaudio-genre?genre=<path>` | Album grid of a genre or sub-genre (`Jazz`, `Jazz/Bebop`) |
 | GET | `/library/highresaudio-search-filters` | What an HRA search can be narrowed and ordered by: `{formats, moods, sorts}` |
@@ -176,7 +170,6 @@ Every other write route answers **403** to a guest token.
 | GET | `/library/highresaudio-charts` | HRA's chart — the albums their own front page ranks. Paged with `offset`/`limit`; publishes no total |
 | GET | `/library/highresaudio-playlist-groups?type=genre\|theme` | The genres or the themes HRA files its editorial playlists under — `[{title, label}]`, **alphabetical** |
 | GET | `/library/highresaudio-playlists?type=editorial\|mine[&category=…\|&group_type=genre\|theme&group=…]` | HRA playlists: the selections HRA publishes, or the account's own. Mapped to the album model, like the Qobuz/Tidal twins. `category` narrows the editorial tree to one shelf; `group_type`+`group` browse it by one of HRA's groupings instead — see below |
-| GET | `/library/highresaudio-playlist-tracks?playlist_id=…&type=editorial\|mine` | Tracks of an HRA playlist — the same read as `GET /library/playlist-tracks`, which works for every source that has one. **400** for an account playlist that does not exist or no longer does |
 | GET | `/library/highresaudio-vault` | The albums the account purchased (HRA's VirtualVault), paged with `offset`/`limit`. Ids carry a `vault:` prefix — see below. Playable without a subscription; an account that bought nothing answers `200 []` |
 
 > **`source_id` — an unknown id is an error, a source with no local catalogue is not.**
@@ -212,9 +205,9 @@ Every other write route answers **403** to a guest token.
 
 > **HRA playlists — the id names its own family.** The two trees have independent id
 > sequences, so a listing returns `editorial:1845` / `mine:5549` rather than a bare number:
-> the id you were given travels back untouched to `/library/highresaudio-playlist-tracks`
+> the id you were given travels back untouched to `GET /library/playlist-tracks`
 > and to `POST /library/queue`, and no caller ever has to guess which tree it came from.
-> `type` still exists on both routes and stays authoritative when the prefix is absent.
+> `GET /library/playlist-tracks` reads a bare id, without its prefix, as an editorial one.
 > An account with no playlist of its own answers `200 []`, not an error.
 
 > **HRA playlist groupings — a filter over the editorial tree, not a third tree.** `genre`
@@ -508,13 +501,7 @@ Routes are UDN-scoped: `{udn}` is the renderer's Unique Device Name (e.g. `uuid:
 | PUT | `/upnp-renderer/{udn}/connection` | Connect to renderer `{udn}` (persisted as active output). Returns **400** for a co-located (`is_local`) renderer — it receives external casts and duplicates the Local DAC, so it cannot be selected as an output |
 | DELETE | `/upnp-renderer/{udn}/connection` | Disconnect renderer `{udn}` — switches back to Local DAC |
 | GET | `/upnp-renderer/{udn}/status` | Live playback state — `transport_state`, `title`, `artist`, `album`, `position`, `duration`, `volume`, `renderer_name`, **`reachable`**, **`queue_position`**, **`queue_total`**, **`queue_next_title`**, **`queue_next_artist`**, **`queue_next_album`**, **`queue_next_cover_token`**, **`queue_next_pro`** (the next track is a streaming service's — see `pro` on `/library/queue`) |
-| POST | `/upnp-renderer/{udn}/play` | Load URI and start playback |
-| POST | `/upnp-renderer/{udn}/stop` | Stop |
-| POST | `/upnp-renderer/{udn}/pause` | Pause |
-| POST | `/upnp-renderer/{udn}/seek` | Seek to position |
 | PUT | `/upnp-renderer/{udn}/volume` | Set volume 0–100 |
-| POST | `/upnp-renderer/{udn}/next` | Skip to next track in the renderer queue — 409 if no queue, at last track, or transition in progress |
-| POST | `/upnp-renderer/{udn}/prev` | Go back to previous track in the renderer queue — 409 if no queue, at first track, or transition in progress |
 | NOTIFY / POST | `/upnp-renderer/{udn}/notify` | UPnP GENA SUBSCRIBE/NOTIFY callback (public, no auth; sender IP must match the renderer's own IP) |
 
 ### Player — `/player/*`
@@ -701,7 +688,6 @@ Qobuz / Tidal / HIGHRESAUDIO. Those URLs carry **no `api_key`** by design (the s
 renderer-facing URLs do not), so they must stay in the public-path allow-list. Qobuz and HRA
 are pushed with `?mode=redirect`, which 302s HQPlayer to the CDN so the box relays nothing;
 Tidal has no CDN URL to give and is passed through.
-| POST | `/hqplayer/stop` | Stop playback |
 
 **`use-as-output`** is server-side and persisted, so every client agrees on where
 library playback goes. Enabling answers **503** when no HQPlayer is configured or its
@@ -794,12 +780,10 @@ ends. Never present it as what will be heard.
 ### Services — `/services/*`
 | Method | Path | Description |
 |---|---|---|
-| GET | `/services` | List all managed systemd services |
 | GET | `/services/{name}` | Service details + metrics |
 | POST | `/services/{name}/start` | Start |
 | POST | `/services/{name}/stop` | Stop |
 | POST | `/services/{name}/restart` | Restart |
-| POST | `/services/{name}/reload` | Reload the unit's config |
 | POST | `/services/{name}/properties/validate` | Check an override without applying it → `{ valid, errors, warnings, properties_preview }`; `errors` names the values a service cannot start with (see **Saving settings**); `warnings` include one when a real-time policy at or above `own_sound_rt_priority` would rank the program's other work ahead of its sound |
 | POST | `/services/{name}/properties/restore` | Put back the override that the last change which stayed replaced (`has_backup` in `GET /services/{name}/properties`) — applied as a save is, see **Putting settings back** |
 | DELETE | `/services/{name}/properties/override` | Drop the override, back to unit defaults — applied as a save is, see **Putting settings back** |
@@ -856,12 +840,9 @@ these today**; see `/docs` for their request/response shape (on a core that serv
 | Method | Path | Description |
 |---|---|---|
 | POST | `/performance/latency/test/start` | Start a latency test (`cyclictest`) |
-| GET | `/performance/latency/test/{test_id}/status` | Progress |
 | GET | `/performance/latency/test/{test_id}/result` | Result |
 | POST | `/performance/latency/test/{test_id}/cancel` | Cancel |
 | POST | `/performance/network/test/start` | Start a network stability test (`iperf3`) |
-| GET | `/performance/network/test/{test_id}/status` | Progress |
-| GET | `/performance/network/test/{test_id}/result` | Result |
 | POST | `/performance/network/test/{test_id}/cancel` | Cancel |
 
 For an iperf3 test, `iperf3_config.server` is an address or a host name, followed by `:port`
@@ -894,8 +875,6 @@ no server — an empty field, a port that is not a number or outside 1–65535 �
 | WS | `/sysinfo/terminal/ws` | Interactive PTY shell (WebSocket) |
 | GET | `/sysinfo/status` | Aggregated health of the box |
 | GET | `/sysinfo/cpu` | CPU model, cores, frequencies |
-| POST | `/sysinfo/monitoring/start` | Start pushing metrics on SSE |
-| POST | `/sysinfo/monitoring/stop` | Stop pushing them |
 | POST | `/sysinfo/logs/stream/start` | Start streaming a unit's journal on SSE |
 | POST | `/sysinfo/logs/stream/stop` | Stop streaming it |
 | POST | `/sysinfo/actions/reboot` | Reboot the machine |
@@ -1265,8 +1244,8 @@ The core publishes the rule; a client reads it and keeps no list of its own:
 On a box without Pro the core answers **403** — `detail`: `Full license required. …`, or
 `This license ended on … Renew it to use this feature.` — to:
 
-- every route of `/hqplayer/*` and `/performance/*`; `/audio_pipeline/*` but `now-playing`,
-  `cover` and `library-cover`; `/services/{name}/properties*`; `/listening/summary`; `/player/levels`;
+- every route of `/hqplayer/*` and `/performance/*`; `/audio_pipeline/*` but `cover` and
+  `library-cover`; `/services/{name}/properties*`; `/listening/summary`; `/player/levels`;
   `/library/{roon,qobuz,tidal,highresaudio,upnp}-*`, and `POST /{qobuz,tidal,highresaudio}/connection`
   (with `/tidal/connection/submit` and `/qobuz/oauth/callback`);
 - the `/library/*` routes given a Pro `source_id` (albums, search, queue, favourites,
@@ -1274,7 +1253,7 @@ On a box without Pro the core answers **403** — `detail`: `Full license requir
   and `/player/source` for one. A source id is read with or without its `src_` prefix;
 - `/player/control` when the command reaches Roon or HQPlayer;
 - an address of a streaming service's track handed over as one — `/library/queue` (a "file"
-  for the box's own queue), `/radio/play` (a station saved with it), `/upnp-renderer/{udn}/play`;
+  for the box's own queue), `/radio/play` (a station saved with it);
 - `/steering/switch-output` for `hqplayer`, `hqplayerd`, `naa`, `roonbridge` and `roon`;
   `/audio_app_config/{hqplayerd,naa}/*` and `/audio-stack/output` for `hqplayerd`;
 - the relays `/{qobuz,tidal,highresaudio}/stream/{id}` and `/library/remote-flac/*`: a player

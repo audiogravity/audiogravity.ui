@@ -99,11 +99,6 @@
     border-left-color: var(--color-error);
 }
 
-.software-card.not-supported {
-    opacity: 0.6;
-    border-left-color: var(--text-tertiary);
-}
-
 /* Card header */
 .software-header {
     display: flex;
@@ -144,10 +139,6 @@
 
 .software-status-indicator.error {
     color: var(--color-error-text);
-}
-
-.software-status-indicator.not-supported {
-    color: var(--text-tertiary);
 }
 
 /* Description */
@@ -407,20 +398,6 @@
 
 .btn-link:active {
     transform: scale(0.95);
-}
-
-.btn-link .icon-spinner9.pulse {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 /* Reuse log styles from system.css (.log-container, .log-entry, etc.) */

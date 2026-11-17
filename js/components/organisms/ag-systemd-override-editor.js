@@ -14,7 +14,6 @@
  * @dependency css/components/forms.css, css/components/modal.css
  *
  * @fires save - Dispatched after diff confirmation, with {properties, apply_immediately, service} detail
- * @fires cancel - Dispatched when modal requests to close
  */
 
 import { LitElement, html, nothing } from 'lit';
@@ -140,7 +139,6 @@ export class AgSystemdOverrideEditor extends LitElement {
     _handleClose() {
         if (this.isSaving) return;
         this.isOpen = false;
-        this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }));
     }
 
     /**

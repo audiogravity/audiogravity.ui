@@ -1,5 +1,5 @@
 import { apiGet, buildAuthedUrl } from './api.js';
-import { throttle, AppState, EventEmitter, AgTimerManager } from './common.js';
+import { throttle, AppState, EventEmitter } from './common.js';
 import { showUsbDriveNotice } from './core/usb-drive-notice.js';
 
 // =====================
@@ -228,13 +228,6 @@ export function initVisibilityManager() {
                 closeSSE();
                 AppState.connected = false;
                 updateConnectionStatus(false);
-            }
-            // Stop uptime timer (Phase 1 optimization)
-            // AgTimerManager handles this automatically now, but we keep this event for other components
-
-            // Emit event to stop tab-specific polling
-            if (window.EventEmitter || EventEmitter) {
-                (window.EventEmitter || EventEmitter).emit('app-hidden');
             }
         } else {
             console.log('App visible: restarting SSE');

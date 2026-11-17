@@ -145,9 +145,6 @@ export const iconPause = svg`
     <rect x="14" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>
     <rect x="5" y="3" width="5" height="18" rx="1" fill="currentColor" stroke="none"/>`;
 
-/** Stop button — filled square. (Lucide: square) */
-export const iconStop = svg`<rect width="18" height="18" x="3" y="3" rx="2" fill="currentColor" stroke="none"/>`;
-
 /** USB-A pictogram — outer rect + three pin dots. (custom) */
 export const iconConnectorUsbA = svg`
     <rect x="3.5" y="7" width="17" height="10" rx="1.2"/>
@@ -753,12 +750,6 @@ export const iconBarChart = svg`
     <path d="M7 16h6"/>
     <path d="M7 11h9"/>
     <path d="M7 6h3"/>`;
-
-/** Open left panel — toggle the mobile vertical navigation sidebar. (Lucide: panel-left-open) */
-export const iconPanelLeftOpen = svg`
-    <rect width="18" height="18" x="3" y="3" rx="2"/>
-    <path d="M9 3v18"/>
-    <path d="m14 9 3 3-3 3"/>`;
 
 /** Bell — notification. (Lucide: bell) */
 export const iconBell = svg`

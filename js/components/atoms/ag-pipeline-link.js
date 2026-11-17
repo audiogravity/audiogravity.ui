@@ -28,7 +28,7 @@ import { bufferBand, latencyBand } from '../../core/link-bands.js';
  * @returns {import('lit').TemplateResult} SVG fragment representing the link.
  */
 export const renderPipelineLink = (link, sourceNode) => {
-    const { sourceX, sourceY, targetX, targetY, active, bitPerfect, link_type, connector, flow_color, service_name, latency_us, buffer_fill_percent, showLatency = true, showBuffer = true, showBitrate = true, showBitPerfect = true, animationsEnabled = true, link_id } = link;
+    const { sourceX, sourceY, targetX, targetY, active, bitPerfect, link_type, connector, flow_color, latency_us, buffer_fill_percent, showLatency = true, showBuffer = true, showBitrate = true, showBitPerfect = true, animationsEnabled = true, link_id } = link;
     const sampleRate = sourceNode?.format?.sample_rate;
     const sampleBits = sourceNode?.format?.sample_bits;
 

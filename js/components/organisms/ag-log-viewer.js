@@ -18,13 +18,10 @@
  * @dependency ag-badge
  * @dependency css/components/badge.css, css/components/forms.css - Log entry, level and control styles
  * 
- * @fires filter-changed - Dispatched when log level filters change
- * @fires auto-refresh-toggled - Dispatched when auto-refresh state changes
  */
 
 import { LitElement, html } from 'lit';
-import { classMap } from 'lit/directives/class-map.js';
-import { apiGet, apiPost, showToast, AgTimerManager } from '../../common.js';
+import { apiGet, apiPost } from '../../common.js';
 import { FetchController } from '../../core/FetchController.js';
 import { logger } from '../../utils.js';
 import '../atoms/ag-badge.js';
@@ -209,11 +206,6 @@ export class AgLogViewer extends LitElement {
         } else {
             this.activeLevels = [...this.activeLevels, level];
         }
-        this.dispatchEvent(new CustomEvent('filter-changed', {
-            detail: { levels: this.activeLevels },
-            bubbles: true,
-            composed: true
-        }));
     }
 
     _handleLinesChange(e) {
@@ -223,11 +215,6 @@ export class AgLogViewer extends LitElement {
 
     _toggleAutoRefresh() {
         this.autoRefresh = !this.autoRefresh;
-        this.dispatchEvent(new CustomEvent('auto-refresh-toggled', {
-            detail: { enabled: this.autoRefresh },
-            bubbles: true,
-            composed: true
-        }));
         if (this.autoRefresh) {
             this.loadLogs();
             this._startStream();

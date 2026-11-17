@@ -14,7 +14,6 @@ window.sessionStorage.setItem('jwt_user', JSON.stringify({ username: 'storybook-
 window.sessionStorage.setItem('jwt_expiry', new Date(Date.now() + 3600000).toISOString());
 
 // --- GLOBAL FETCH MOCK FOR TESTS ---
-const originalFetch = window.fetch;
 window.fetch = (url, options) => {
     const urlStr = url.toString();
     console.warn(`[Storybook Mock Fetch] ${urlStr}`);

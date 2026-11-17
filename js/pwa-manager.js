@@ -80,12 +80,6 @@ export const PWAManager = {
         } else {
             document.body.classList.remove('is-offline');
         }
-        
-        // Notify the app
-        if (window.EventEmitter || EventEmitter) {
-            const bus = window.EventEmitter || EventEmitter;
-            bus.emit('connectivity-changed', { online: !this._isOffline });
-        }
     },
 
     _setupSnapshotListeners() {

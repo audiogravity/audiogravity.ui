@@ -42,7 +42,7 @@ export async function validateTopologyConfig(topology) {
  * @param {Function} onContinue - Callback if user wants to continue despite warnings
  */
 export function showValidationModal(validationResult, onContinue = null) {
-    const { valid, errors = [], warnings = [] } = validationResult;
+    const { valid, warnings = [] } = validationResult;
 
     const title = valid ? 'Configuration Validation' : 'Invalid Configuration';
     const content = html`<ag-validation-results .result=${validationResult}></ag-validation-results>`;
