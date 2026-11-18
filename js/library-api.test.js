@@ -16,6 +16,7 @@ import {
     queueItem, upnpPlay, playWithFeedback,
     PLAYLISTS_CHANGED_EVENT, failureReason, fetchPlaylistTracks, createPlaylist,
     addToPlaylist, removeFromPlaylist, renamePlaylist, deletePlaylist, moveQueueItem, playQueueItem,
+    playOutputQueueItem,
 } from './library-api.js';
 import { apiGet, apiPost, apiPut, apiDelete } from './api.js';
 import { showToast } from './ui-helpers.js';
@@ -476,5 +477,19 @@ describe('playQueueItem', () => {
     it('plays the track by its song id, for the source browsed', async () => {
         await playQueueItem('src_mpd', '42');
         expect(apiPost).toHaveBeenCalledWith('/library/queue/42/play?source_id=src_mpd');
+    });
+});
+
+describe('playOutputQueueItem', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('plays the track by its place in the list, naming the output it was read from', async () => {
+        await playOutputQueueItem('src_qobuz', 'hqplayer', 3);
+        expect(apiPost).toHaveBeenCalledWith('/library/queue/output/3/play?source_id=src_qobuz&output=hqplayer');
+    });
+
+    it('escapes the source in the address', async () => {
+        await playOutputQueueItem('src a&b', 'renderer', 0);
+        expect(apiPost.mock.calls[0][0]).toBe('/library/queue/output/0/play?source_id=src%20a%26b&output=renderer');
     });
 });

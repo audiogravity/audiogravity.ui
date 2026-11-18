@@ -18,8 +18,9 @@ import { injectLibStyles } from './ag-library-page.js';
  * (`repeat`), where they follow, in the order they will play again.
  *
  * With HQPlayer as the output or a network speaker selected, the queue is theirs
- * (`output` on the answer): the list AG sent them, read-only — no handle, no removal, no
- * Clear —, and a sentence instead of "Queue is empty" when AG does not know that list.
+ * (`output` on the answer): the list AG sent them, whose tracks play at a tap but neither
+ * move nor go — no handle, no removal, no Clear —, and a sentence instead of "Queue is
+ * empty" when AG does not know that list.
  */
 
 export default {
@@ -155,7 +156,10 @@ export const Repeat = {
  */
 export const AfterTheTrial = { render: () => mount(MIXED_ITEMS, STARTER) };
 
-/** HQPlayer as the output: the list AG sent it, read-only — no handle, no removal, no Clear. */
+/**
+ * HQPlayer as the output: the list AG sent it. A tap on a track plays it there; no
+ * handle, no removal, no Clear.
+ */
 export const OnHQPlayer = {
     render: () => mount(
         SINGLE_ITEMS.map(i => ({ ...i, queue_id: null, origin: 'qobuz' })),

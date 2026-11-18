@@ -24,11 +24,12 @@
  *
  * While the music goes out through HQPlayer or a network speaker, the queue shown is
  * theirs (`output` on the answer): the list AG sent them, with the track playing marked.
- * Read-only — its rows carry no `queue_id`, so no handle, no removal, no tap to play, and
- * no Clear. BACKLOG: a tap to play there — audiogravity.ops/BACKLOG.md, « Toucher un
- * titre de la file pour le jouer ». AG cannot ask either what it holds, so when it follows no list there
- * (`known` false: nothing sent since that output started, or its list changed from
- * elsewhere) the view says so rather than "Queue is empty".
+ * A tap on a track plays it there, via POST /api/library/queue/output/{position}/play;
+ * nothing else changes that list — its rows carry no `queue_id`, so no handle, no
+ * removal, and no Clear. AG cannot ask either what it holds, so when it follows no list
+ * there (`known` false: nothing sent since that output started, or its list changed from
+ * elsewhere) the view says so rather than "Queue is empty". A tap refused because the
+ * list shown is no longer what plays (409) reads the queue again.
  *
  * The list stays on screen while it is read again: a removed track leaves it at once,
  * before the box answers, and a moved one takes its place at the release; the rows
@@ -60,7 +61,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { apiGet, apiPost } from '../../api.js';
 import { coverUrl, fmtDuration, loadWithState, trackTitle } from '../utils-lit.js';
 import { queueSourceLabel, originLabel } from '../library-constants.js';
-import { moveQueueItem, playQueueItem, removeQueueItem } from '../../library-api.js';
+import { moveQueueItem, playOutputQueueItem, playQueueItem, removeQueueItem } from '../../library-api.js';
 import { showToast } from '../../ui-helpers.js';
 import { iconPause, iconPlay, iconArrowLeft, iconDragHandle } from '../../ag-icons.js';
 import { SwipeToDismissController, swipeRow } from '../../core/SwipeToDismissController.js';
@@ -163,6 +164,8 @@ export class AgLibraryQueue extends LitElement {
         this._queueOf        = null;
         /** A play/pause sent and not answered yet. */
         this._toggling       = false;
+        /** A tap on a track sent and not answered yet: the next tap waits for it. */
+        this._tapping        = false;
         /** What a play/pause tap showed ahead of the box: `{playing, changes}`, or null. */
         this._playPending    = null;
         /** A reading asked by the Refresh button and not answered yet. */
@@ -334,14 +337,14 @@ export class AgLibraryQueue extends LitElement {
     }
 
     /**
-     * A row's cover and words. On a row of the box's own queue, a real button — the
-     * keyboard's way to play the track, its click heard by the row (_onRowClick) —, from
-     * which a slide is still the row's swipe: `data-swipe-through`
-     * (SwipeToDismissController). A Roon row's are words only: its queue is played from
-     * the Roon app.
+     * A row's cover and words. On a row a tap plays — the box's own queue's, or the list
+     * AG sent to HQPlayer or a speaker —, a real button — the keyboard's way to play the
+     * track, its click heard by the row (_onRowClick) —, from which a slide is still the
+     * row's swipe: `data-swipe-through` (SwipeToDismissController). A Roon row's are words
+     * only: its queue is played from the Roon app.
      * @param {object} item - Queue item.
      * @param {boolean} mixed - Whether the queue mixes sources: each row then says its own.
-     * @param {boolean} playable - Whether the row is the box's own queue's.
+     * @param {boolean} playable - Whether a tap on the row plays its track.
      * @returns {import('lit').TemplateResult}
      */
     _renderTrack(item, mixed, playable) {
@@ -365,7 +368,7 @@ export class AgLibraryQueue extends LitElement {
     }
 
     /**
-     * A click on a row of the box's own queue: the tap that plays its track. Heard on the
+     * A click on a row whose track a tap plays (see _renderTrack). Heard on the
      * row, not on the track's button: a press there is also where the row's swipe starts,
      * and the swipe holds the pointer from the press on (SwipeToDismissController) — a
      * mouse's click then lands on the row, never on the button (measured in Chromium on
@@ -382,35 +385,47 @@ export class AgLibraryQueue extends LitElement {
     }
 
     /**
-     * A tap on a track of the box's own queue: it plays, and the tracks above it in the
-     * list are skipped — they join the played ones, out of the list. The tap that ends a
-     * swipe plays nothing; a locked track leads to the licence panel, as its padlock does,
-     * rather than to a play the box would refuse.
-     * @param {{queue_id: string, pro?: boolean}} item - Queue item.
+     * A tap on a track of the queue: it plays, and the tracks above it in Up next are
+     * skipped — they join the played ones, still in the queue behind it, out of Up next.
+     * The tap that ends a swipe plays nothing, and so does one made while the previous
+     * tap is on its way (a double tap: HQPlayer would get two selections); a locked
+     * track leads to the licence panel, as its padlock does, rather than to a play the
+     * box would refuse.
+     * @param {{queue_id: ?string, position: number, pro?: boolean}} item - Queue item.
      */
     _onTrackTap(item) {
-        if (this._swipe.swiping) return;
+        if (this._swipe.swiping || this._tapping) return;
         if (this._isLocked(item)) {
             openLicensePanel(this._license);
             return;
         }
-        this._playTrack(item.queue_id);
+        this._playTrack(item);
     }
 
     /**
-     * Play a track of the queue (POST /library/queue/{queue_id}/play), then read the
-     * queue: the track is the current one now. A refusal says why — the music going out
-     * through HQPlayer or a network speaker, the licence, MPD's reason.
-     * @param {string} queueId - The track's song id.
+     * Play a track of the queue, then read the queue: the track is the current one now.
+     * A track of the box's own queue by its song id (POST /library/queue/{queue_id}/play);
+     * one of the list AG sent to HQPlayer or a speaker by its place in that list, naming
+     * the output it was read from (POST /library/queue/output/{position}/play). A refusal
+     * says why — the music going out elsewhere, the licence, the device's reason —, and
+     * reads the queue again unless it was the licence: the list shown may no longer be
+     * what plays (409), and a device that refused the track (503) may have refused it
+     * because its list changed — HQPlayer's, from its own remote.
+     * @param {{queue_id: ?string, position: number}} item - Queue item.
      * @returns {Promise<void>}
      */
-    async _playTrack(queueId) {
+    async _playTrack(item) {
+        this._tapping = true;
         try {
-            await playQueueItem(this.sourceId, queueId);
+            if (item.queue_id != null) await playQueueItem(this.sourceId, item.queue_id);
+            else await playOutputQueueItem(this.sourceId, this._queue?.output, item.position);
         } catch (e) {
             showToast('error', e?.status === 403 ? 'Playback blocked' : 'Not played',
                 e?.detail || e?.message || 'Could not play the track');
+            if (e?.status !== 403) await this._load();
             return;
+        } finally {
+            this._tapping = false;
         }
         await this._load();
     }
@@ -732,7 +747,8 @@ export class AgLibraryQueue extends LitElement {
         // Label by what is actually playing (origin) rather than the MPD engine:
         // a radio stream queued from "Local Library" is still radio.
         const sourceLabel = queueSourceLabel(current?.origin, this.sourceId);
-        // A queue that plays elsewhere is that output's: named after it, read-only.
+        // A queue that plays elsewhere is that output's: named after it; a tap plays one
+        // of its tracks there, nothing moves or removes one.
         const elsewhere   = this._queue?.output ? this._queue : null;
         const ctxLabel    = elsewhere
             ? (elsewhere.output_name || 'the output')
@@ -814,17 +830,19 @@ export class AgLibraryQueue extends LitElement {
                 // as they are, and a row being swiped stays the same row when the list
                 // is read again under the finger. A Roon row has no id: its position.
                 // Roon queues can't be edited; and removal needs the stable song id,
-                // so a row without queue_id is not swipeable/removable — nor movable,
-                // nor played from here.
+                // so a row without queue_id is not swipeable/removable — nor movable.
+                // A row of the list sent to HQPlayer or a speaker still plays at a tap,
+                // by its position; a Roon row is played from the Roon app.
                 const swipeable = !this._isRoon() && item.queue_id != null;
+                const playable = swipeable || elsewhere != null;
                 const locked = this._isLocked(item);
                 return html`
                 <div class="ag-swipe-wrap">
                     ${swipeable ? html`<div class="ag-swipe-reveal" aria-hidden="true">Remove</div>` : nothing}
-                    <div class="lib-queue-row ${locked ? 'lib-queue-row--locked' : ''} ${swipeable ? '' : 'lib-queue-row--fixed'}" ${swipeRow(this._swipe, item.queue_id, swipeable)}
-                        @click=${swipeable ? (e) => this._onRowClick(e, item) : nothing}>
+                    <div class="lib-queue-row ${locked ? 'lib-queue-row--locked' : ''} ${swipeable ? '' : 'lib-queue-row--fixed'} ${playable ? 'lib-queue-row--plays' : ''}" ${swipeRow(this._swipe, item.queue_id, swipeable)}
+                        @click=${playable ? (e) => this._onRowClick(e, item) : nothing}>
                         ${swipeable ? this._renderHandle(item, shuffle) : nothing}
-                        ${this._renderTrack(item, mixed, swipeable)}
+                        ${this._renderTrack(item, mixed, playable)}
                         ${locked
                             ? this._renderLock()
                             : html`<span class="lib-queue-dur">${fmtDuration(item.duration)}</span>`}

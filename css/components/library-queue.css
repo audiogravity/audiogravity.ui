@@ -225,21 +225,20 @@
     background: var(--bg-primary);
 }
 
-/* A row of the box's own queue plays its track at a tap, anywhere but on its own
-   buttons (ag-library-queue, _onRowClick). */
-.lib-queue-row:not(.lib-queue-row--fixed) {
+/* A row that plays its track at a tap, anywhere but on its own buttons — the box's own
+   queue's, and the list sent to HQPlayer or a speaker (ag-library-queue, _onRowClick). */
+.lib-queue-row.lib-queue-row--plays {
     cursor: pointer;
 }
 
-/* A row that does not move — a Roon queue's, changed from the Roon app: no handle,
-   and the cover takes its column. */
+/* A row that does not move — a Roon queue's, changed from the Roon app, or one of the
+   list sent to HQPlayer or a speaker: no handle, and the cover takes its column. */
 .lib-queue-row.lib-queue-row--fixed {
     grid-template-columns: 36px 1fr auto auto;
 }
 
-/* The cover and the words of a track of the box's own queue, one real button: the
-   keyboard's way to play the track. Laid out as the fixed row lays them, a column
-   for each. */
+/* The cover and the words of a track a tap plays, one real button: the keyboard's way
+   to play the track. Laid out as the fixed row lays them, a column for each. */
 .lib-queue-play {
     display: grid;
     grid-template-columns: 36px 1fr;
@@ -249,6 +248,14 @@
     min-width: 0;
     text-align: start;
     cursor: pointer;
+}
+
+/* In a row without a handle — the list sent to HQPlayer or a speaker — the button takes
+   the two columns the cover and the words take in a Roon row. In one column, the 36px
+   one, the cover filled it, the words had no width left and the length slid beside the
+   cover. */
+.lib-queue-row--fixed > .lib-queue-play {
+    grid-column: span 2;
 }
 
 /* The handle a track moves by (DragToReorderController). Held, it takes the gesture

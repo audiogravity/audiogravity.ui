@@ -99,6 +99,22 @@ export function playQueueItem(sourceId, queueId) {
 }
 
 /**
+ * Play a track of the list AG sent to HQPlayer or a network speaker — the queue while
+ * the music goes out there (QueueState.output) —, by its place in that list; the tracks
+ * before it stay in the list, behind it. Refused (409) when that list is no longer what
+ * plays — the music came back to the box or went elsewhere, the list changed or ended —,
+ * (403) for a streaming track without Pro, (503) when the output did not take it.
+ * @param {string} sourceId - Active source (required).
+ * @param {'hqplayer'|'renderer'} output - The output the list was read from (QueueState.output).
+ * @param {number} position - The item's position (QueueItem.position).
+ * @returns {Promise<{success: boolean}>}
+ */
+export function playOutputQueueItem(sourceId, output, position) {
+    return apiPost(`/library/queue/output/${position}/play?source_id=${encodeURIComponent(sourceId)}`
+        + `&output=${encodeURIComponent(output)}`);
+}
+
+/**
  * Ids of the user's favorited items on a streaming source (v1: albums). Used to
  * render the accurate favorite (★) state on browse/search grids.
  * @param {string} sourceId - Streaming source (src_qobuz / src_tidal / src_highresaudio).
