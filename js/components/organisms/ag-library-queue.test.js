@@ -44,10 +44,12 @@ vi.mock('../library-constants.js', () => ({
 const removeQueueItemMock = vi.fn();
 const moveQueueItemMock = vi.fn();
 const playQueueItemMock = vi.fn();
+const playOutputQueueItemMock = vi.fn();
 vi.mock('../../library-api.js', () => ({
     removeQueueItem: (...a) => removeQueueItemMock(...a),
     moveQueueItem: (...a) => moveQueueItemMock(...a),
     playQueueItem: (...a) => playQueueItemMock(...a),
+    playOutputQueueItem: (...a) => playOutputQueueItemMock(...a),
 }));
 const showToastMock = vi.fn();
 vi.mock('../../ui-helpers.js', () => ({ showToast: (...a) => showToastMock(...a) }));
@@ -77,7 +79,8 @@ const el = (overrides = {}) =>
         _swipe: { swiping: false },
         // …and the player follower: no state known yet, nothing changed.
         _follow: { state: null, changes: 0, follow: vi.fn() },
-        _removing: new Set(), _queueOf: null, _toggling: false, _playPending: null, _refreshing: false,
+        _removing: new Set(), _queueOf: null, _toggling: false, _tapping: false, _playPending: null,
+        _refreshing: false,
         // …and the drag controller: no row held, no move on its way.
         _drag: { dragging: false }, _moving: 0, _readAgain: false,
         _originFilter: 'all', sourceId: 'src_mpd', zoneId: '', ...overrides,
@@ -100,6 +103,7 @@ beforeEach(() => {
     removeQueueItemMock.mockReset().mockResolvedValue(undefined);
     moveQueueItemMock.mockReset().mockResolvedValue({ ok: true });
     playQueueItemMock.mockReset().mockResolvedValue({ ok: true });
+    playOutputQueueItemMock.mockReset().mockResolvedValue({ success: true });
     showToastMock.mockReset();
     openLicensePanelMock.mockReset();
 });
@@ -657,8 +661,12 @@ describe('ag-library-queue — moving a track by its handle', () => {
         expect(cssRuleBody(sheet, '.lib-queue-play')).toMatch(/grid-template-columns:\s*36px 1fr;/);
         expect(cssRuleBody(sheet, '.lib-queue-play')).toMatch(/gap:\s*var\(--spacing-md\);/);
         // The whole row plays its track: a mouse sees it.
-        expect(cssRuleBody(sheet, '.lib-queue-row:not(.lib-queue-row--fixed)')).toMatch(/cursor:\s*pointer;/);
+        expect(cssRuleBody(sheet, '.lib-queue-row.lib-queue-row--plays')).toMatch(/cursor:\s*pointer;/);
         expect(cssRuleBody(sheet, '.lib-queue-row.lib-queue-row--fixed')).toMatch(/grid-template-columns:\s*36px 1fr auto auto;/);
+        // A row without a handle that plays (HQPlayer's list, a speaker's): its one button
+        // holds the cover and the words, so it takes both columns — in the 36px one alone
+        // the titles had no width.
+        expect(cssRuleBody(sheet, '.lib-queue-row--fixed > .lib-queue-play')).toMatch(/grid-column:\s*span 2;/);
         expect(cssRuleBody(sheet, '.lib-queue-grip')).toMatch(/position:\s*relative;[\s\S]*width:\s*24px;[\s\S]*height:\s*36px;/);
         expect(cssRuleBody(sheet, '.lib-queue-grip::before')).toMatch(/inset:\s*-4px -10px;/);
         // Its dots stroked as the removal arrow is: the two read alike, in the same colour.
@@ -860,6 +868,7 @@ describe('ag-library-queue — a tap on a track plays it', () => {
         const [row] = rows(el({ _queue: { items: [track('5', 0)] } }));
         expect(row).toMatch(/<button class="plain-btn lib-queue-play" data-swipe-through aria-label=Play t5/);
         expect(row).toMatch(/lib-queue-play"[\s\S]*<ag-library-cover[\s\S]*lib-queue-col-t">t5</);
+        expect(row).toContain('lib-queue-row--plays');
     });
 
     it('hears the click on the row: a mouse\'s, which the row\'s swipe sends to the row', async () => {
@@ -892,6 +901,7 @@ describe('ag-library-queue — a tap on a track plays it', () => {
             { origin: 'roon', position: 0, queue_id: null, title: 'r', is_current: false }] } });
         const [row] = rows(e);
         expect(row).not.toContain('lib-queue-play');
+        expect(row).not.toContain('lib-queue-row--plays');
         expect(row).toContain('lib-queue-col-t">r<');
         expect(rowClick(e)).toBeNull();
     });
@@ -919,23 +929,25 @@ describe('ag-library-queue — a tap on a track plays it', () => {
         expect(playQueueItemMock).not.toHaveBeenCalled();
     });
 
-    it('says why it was not played — where the music goes out, the box\'s reason', async () => {
+    it('says why it was not played, and reads again a queue that is no longer what plays', async () => {
         playQueueItemMock.mockRejectedValue(Object.assign(new Error('409'), {
             status: 409, detail: "The music goes out through HQPlayer: the queue shown is the box's own" }));
         const e = el();
         e._load = vi.fn();
-        await e._playTrack('5');
+        await e._playTrack({ queue_id: '5', position: 0 });
         expect(showToastMock).toHaveBeenCalledWith('error', 'Not played',
             "The music goes out through HQPlayer: the queue shown is the box's own");
-        expect(e._load).not.toHaveBeenCalled();
+        // 409: the list shown is not the one that plays — the one that does is read.
+        expect(e._load).toHaveBeenCalledTimes(1);
     });
 
-    it('says a play refused for want of Pro as the players do', async () => {
+    it('says a play refused for want of Pro as the players do, the list left as it is', async () => {
         playQueueItemMock.mockRejectedValue(Object.assign(new Error('403'), { status: 403, detail: 'Pro edition needed' }));
         const e = el();
         e._load = vi.fn();
-        await e._playTrack('5');
+        await e._playTrack({ queue_id: '5', position: 0 });
         expect(showToastMock).toHaveBeenCalledWith('error', 'Playback blocked', 'Pro edition needed');
+        expect(e._load).not.toHaveBeenCalled();
     });
 });
 
@@ -1182,13 +1194,100 @@ describe('ag-library-queue — a queue that plays elsewhere (HQPlayer, a network
         expect(rows(e)[0]).toContain('Freddie Freeloader');
     });
 
-    it('is read-only: no handle, no removal, no tap to play, no Clear', () => {
+    it('changes nothing but what plays: no handle, no removal, no Clear', () => {
         const e = el({ _queue: sent() });
         const markup = flat(e.render());
         expect(markup).not.toContain('ICON-GRIP');
         expect(markup).not.toContain('lib-queue-more');
+        expect(markup).not.toContain('Remove');
         expect(markup).not.toContain('>Clear<');
         for (const row of rows(e)) expect(row).toContain('lib-queue-row--fixed');
+    });
+
+    describe('a tap on a track plays it there', () => {
+        /** What the i-th row shown does on a click: its bound handler, or null. */
+        const rowClick = (e, i = 0) =>
+            e.render().values.find(Array.isArray)[i].values.find(v => typeof v === 'function') ?? null;
+        const ON_ROW = { closest: () => null };
+
+        it('makes each row\'s cover and words the button that plays it', () => {
+            for (const row of rows(el({ _queue: sent() }))) {
+                expect(row).toMatch(/<button class="plain-btn lib-queue-play" data-swipe-through aria-label=Play /);
+                expect(row).toContain('lib-queue-row--plays');
+            }
+        });
+
+        it('plays it by its place in the list, naming the output, then reads the queue', async () => {
+            const e = el({ _queue: sent() });
+            e._load = vi.fn();
+            rowClick(e, 1)({ target: ON_ROW });             // "Blue in Green", position 2
+            await vi.waitFor(() => expect(e._load).toHaveBeenCalledTimes(1));
+            expect(playOutputQueueItemMock).toHaveBeenCalledWith('src_mpd', 'hqplayer', 2);
+            expect(playQueueItemMock).not.toHaveBeenCalled();
+        });
+
+        it('on a speaker too', async () => {
+            const e = el({ _queue: sent({ output: 'renderer', output_name: 'Living room' }) });
+            e._load = vi.fn();
+            rowClick(e, 0)({ target: ON_ROW });
+            await vi.waitFor(() => expect(e._load).toHaveBeenCalledTimes(1));
+            expect(playOutputQueueItemMock).toHaveBeenCalledWith('src_mpd', 'renderer', 1);
+        });
+
+        it('leads a locked track to the licence panel, as on the box\'s queue', () => {
+            const STARTER = { status: 'starter', pro: false };
+            const e = el({ _license: STARTER, _queue: sent({ output: 'renderer' }) });
+            e._onRowClick({ target: ON_ROW },
+                { position: 1, queue_id: null, origin: 'qobuz', pro: true, title: 'x' });
+            expect(openLicensePanelMock).toHaveBeenCalledWith(STARTER);
+            expect(playOutputQueueItemMock).not.toHaveBeenCalled();
+        });
+
+        it('reads the queue again when the list shown is no longer what plays', async () => {
+            playOutputQueueItemMock.mockRejectedValue(Object.assign(new Error('409'), {
+                status: 409, detail: 'That track is no longer in the list AG sent to HQPlayer Embedded.' }));
+            const e = el({ _queue: sent() });
+            e._load = vi.fn();
+            await e._playTrack({ position: 2, queue_id: null });
+            expect(showToastMock).toHaveBeenCalledWith('error', 'Not played',
+                'That track is no longer in the list AG sent to HQPlayer Embedded.');
+            expect(e._load).toHaveBeenCalledTimes(1);
+        });
+
+        it('says the output\'s reason when it did not take the track, and reads the queue again', async () => {
+            // HQPlayer refuses an entry gone from its list — changed from its own remote.
+            playOutputQueueItemMock.mockRejectedValue(Object.assign(new Error('503'), {
+                status: 503, detail: 'SelectTrack failed' }));
+            const e = el({ _queue: sent() });
+            e._load = vi.fn();
+            await e._playTrack({ position: 2, queue_id: null });
+            expect(showToastMock).toHaveBeenCalledWith('error', 'Not played', 'SelectTrack failed');
+            expect(e._load).toHaveBeenCalledTimes(1);
+        });
+
+        it('plays nothing at a tap made while the previous one is on its way', async () => {
+            const answer = deferred();
+            playOutputQueueItemMock.mockReturnValueOnce(answer.promise);
+            const e = el({ _queue: sent() });
+            e._load = vi.fn();
+            rowClick(e, 0)({ target: ON_ROW });
+            rowClick(e, 1)({ target: ON_ROW });             // a double tap, or the next row
+            expect(playOutputQueueItemMock).toHaveBeenCalledTimes(1);
+            answer.resolve({ success: true });
+            await vi.waitFor(() => expect(e._load).toHaveBeenCalledTimes(1));
+            rowClick(e, 1)({ target: ON_ROW });             // answered: the next tap plays
+            expect(playOutputQueueItemMock).toHaveBeenCalledTimes(2);
+            expect(playOutputQueueItemMock).toHaveBeenLastCalledWith('src_mpd', 'hqplayer', 2);
+        });
+
+        it('takes taps again after a refusal', async () => {
+            playOutputQueueItemMock.mockRejectedValueOnce(Object.assign(new Error('503'), { status: 503 }));
+            const e = el({ _queue: sent() });
+            e._load = vi.fn();
+            await e._playTrack({ position: 2, queue_id: null });
+            rowClick(e, 0)({ target: ON_ROW });
+            expect(playOutputQueueItemMock).toHaveBeenCalledTimes(2);
+        });
     });
 
     it('says when it cannot list what the output holds, rather than "Queue is empty"', () => {

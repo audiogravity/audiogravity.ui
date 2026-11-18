@@ -118,6 +118,7 @@ Every other write route answers **403** to a guest token.
 | DELETE | `/library/queue/{queue_id}` | Remove one track — `?source_id=` |
 | POST | `/library/queue/{queue_id}/move` | Move one track beside another — `?source_id=`, body `{ before }` or `{ after }` |
 | POST | `/library/queue/{queue_id}/play` | Play one track of the queue — `?source_id=` |
+| POST | `/library/queue/output/{position}/play` | Play one track of the list AG sent to HQPlayer or a network speaker — `?source_id=&output=` |
 | GET | `/library/favorite-ids?source_id=&item_type=album` | Favorited item ids on a streaming source (Qobuz/Tidal/HRA) → `{ ids: [...] }`. Used to render the accurate ★ state on browse/search grids |
 | POST | `/library/favorite` | Add an item to a streaming source's favorites — body `FavoriteRequest { source_id, item_id, item_type: "album" }` |
 | DELETE | `/library/favorite?source_id=&item_id=&item_type=album` | Remove an item from a streaming source's favorites |
@@ -447,9 +448,9 @@ an error. **`?limit=<n>`** returns the current track plus up to `n` following it
 **When the music goes out elsewhere** — HQPlayer as the output, or a network renderer
 selected — the same request (with any of those `source_id`, or `src_hqplayer`) returns
 **the list AG sent there** instead. **`output`** is then `hqplayer` or `renderer`, and
-**`output_name`** what to call it on screen. That list is read-only: its items carry no
-`queue_id` (`id` is `<output>:<position>`), so they cannot be moved, removed or played from
-the queue; the track playing is `is_current`. **`known: false`** means AG follows no list
+**`output_name`** what to call it on screen. Its items carry no `queue_id` (`id` is
+`<output>:<position>`), so they cannot be moved or removed; one is played by its
+`position` (*Playing a track of the queue*, below); the track playing is `is_current`. **`known: false`** means AG follows no list
 there — it sent none since it started, it let go of the one it sent, or another app changed
 it: the empty `items` then mean "cannot tell", not "nothing queued", and must not read
 "Queue is empty". `output` is `null`, and `known` `true`, for the box's own queue and for
@@ -491,6 +492,18 @@ Answers `{ ok, played_id }`. Open to a guest, as next and previous are. Refused 
 box's own queue would not play there: the detail says where the music goes out; **403** for a streaming service's track on a box without Pro, or while the box's own
 HQPlayer holds its DAC on such a box; **503 carrying the reason** when MPD refuses (the id
 is not in the queue) or is unreachable; **400** for a `source_id` with no MPD engine.
+
+While the music goes out through HQPlayer or a network speaker, a track of the list AG sent
+there is played with `POST /library/queue/output/{position}/play?source_id=…&output=…`:
+**`position`** is the item's, **`output`** the queue's (`hqplayer` or `renderer`) — the
+output the list was read from. The tracks before it stay in the list, behind it. Answers
+`{ success: true }`. Open to a guest, as next and previous are. Refused with **409** when
+that list is no longer what plays — the music came back to the box or went to another
+output, or the list changed or ended: read the queue again; **403** for a streaming
+service's track on a box without Pro; **503 carrying the reason** when HQPlayer or the
+speaker did not take it — busy with the previous tap, unreachable, or the entry refused
+(HQPlayer's list changed from its own remote: read the queue again); **422** for an
+`output` other than those two.
 
 **Queue writes report MPD's verdict** — a refused add or play behind
 `POST /library/queue`, `/library/upnp-play` or `POST /radio/play` answers **503 with
