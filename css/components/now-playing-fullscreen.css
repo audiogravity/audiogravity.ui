@@ -451,6 +451,17 @@ html.ag-halloween .npfs-cover {
     font-size: var(--font-size-sm);
 }
 
+/* A hop over the local network: the network's drawing in the arrow's place, sized
+   by the arrow's font (the SVG is 1em), centred on the line, and as tall as the
+   arrow's line (1lh) — without it, a path whose only hop is this one stood 1.5 px
+   lower than one with an arrow (measured in Chromium). Safari before 16.4 ignores
+   lh: the drawing stays centred, the line those 1.5 px shorter. */
+.npfs-sp-arrow--network {
+    display: inline-flex;
+    align-items: center;
+    height: 1lh;
+}
+
 /* ── Controls ── */
 .npfs-controls-row {
     position: relative;
