@@ -1889,3 +1889,81 @@ describe('AgNowPlayingFullscreen — HQPlayer\'s "Up next" (real _applyState)', 
         expect(el._nextTrack).toBeNull();
     });
 });
+
+describe('AgNowPlayingFullscreen — a hop over the network in the signal path (issue #17)', () => {
+    /** Render the whole player for a signal path and return its path line. */
+    function pathLine(signalPath) {
+        const el = Object.create(AgNowPlayingFullscreen.prototype);
+        for (const [name, value] of Object.entries({
+            _open: true,
+            _state: { source_id: 'upnp_renderer', playing: true, title: 'Blue in Green',
+                signal_path: signalPath, output_label: signalPath.at(-1)?.label ?? null },
+            _rendererActive: false, _nextTrack: null, _sources: [],
+        })) {
+            Object.defineProperty(el, name, { value, writable: true, configurable: true });
+        }
+        const host = document.createElement('div');
+        litRender(el.render(), host);
+        return host.querySelector('.npfs-signal-path');
+    }
+
+    /** What sits between the steps: '→', or 'network' for the network's drawing. */
+    const hops = (line) => [...line.querySelectorAll('.npfs-sp-arrow')].map((a) => (
+        a.classList.contains('npfs-sp-arrow--network') ? 'network' : a.textContent.trim()));
+
+    it('draws the network before a speaker the box relays to', () => {
+        const line = pathLine([
+            { label: 'Qobuz' }, { label: 'Music Streamer' },
+            { label: 'Marantz SR8015', link: 'network' }]);
+        expect([...line.querySelectorAll('.npfs-sp-step')].map((s) => s.textContent.trim()))
+            .toEqual(['Qobuz', 'Music Streamer', 'Marantz SR8015']);
+        expect(hops(line)).toEqual(['→', 'network']);
+    });
+
+    it('draws it straight after a media server the speaker reads itself', () => {
+        const line = pathLine([{ label: 'MinimServer' }, { label: 'Marantz SR8015', link: 'network' }]);
+        expect(hops(line)).toEqual(['network']);
+    });
+
+    it('draws it between another computer\'s HQPlayer and the box\'s NAA', () => {
+        const line = pathLine([
+            { label: 'HQPlayer Desktop' }, { label: 'HQPlayer NAA', link: 'network' },
+            { label: 'Heed Abacus' }]);
+        expect(hops(line)).toEqual(['network', '→']);
+    });
+
+    it('says what the drawing means to a screen reader, once, and shows no tooltip', () => {
+        const mark = pathLine([{ label: 'Qobuz' }, { label: 'Marantz SR8015', link: 'network' }])
+            .querySelector('.npfs-sp-arrow--network');
+        expect(mark.getAttribute('role')).toBe('img');
+        expect(mark.getAttribute('aria-label')).toBe('over the network');
+        // No tooltip in the interface; beside the label, Chromium read the words twice.
+        expect(mark.hasAttribute('title')).toBe(false);
+        expect(mark.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+        expect(mark.querySelectorAll('svg rect')).toHaveLength(3);
+    });
+
+    it('draws nothing before a first step, even one reached over the network', () => {
+        // Another app plays on the speaker: the speaker is the path alone.
+        const line = pathLine([{ label: 'Marantz SR8015', link: 'network' }]);
+        expect(hops(line)).toEqual([]);
+    });
+
+    it('keeps the arrows of a path with no network in it', () => {
+        const line = pathLine([{ label: 'Qobuz' }, { label: 'MPD' }, { label: 'USB' }, { label: 'Heed Abacus' }]);
+        expect(hops(line)).toEqual(['→', '→', '→']);
+    });
+
+    it('centres the drawing on the line, sized by the arrow it replaces', () => {
+        const css = readStylesheet('css', 'components', 'now-playing-fullscreen.css');
+        const rule = cssRuleBody(css, '.npfs-sp-arrow--network');
+        expect(rule).toMatch(/display:\s*inline-flex/);
+        expect(rule).toMatch(/align-items:\s*center/);
+        // As tall as the arrow's line: a path whose only hop is the network's kept its height.
+        expect(rule).toMatch(/height:\s*1lh/);
+        expect(rule).not.toMatch(/font-size/);
+        const svg = pathLine([{ label: 'Qobuz' }, { label: 'Marantz SR8015', link: 'network' }])
+            .querySelector('.npfs-sp-arrow--network svg');
+        expect([svg.getAttribute('width'), svg.getAttribute('height')]).toEqual(['1em', '1em']);
+    });
+});

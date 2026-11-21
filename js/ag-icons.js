@@ -174,6 +174,17 @@ export const iconWifi = svg`
     <path d="M5 12.859a10 10 0 0 1 14 0"/>
     <path d="M8.5 16.429a5 5 0 0 1 7 0"/>`;
 
+/**
+ * Three linked boxes — a hop of the signal path that crosses the local network
+ * (`SignalPathStep.link === 'network'`). (Lucide: network)
+ */
+export const iconNetwork = svg`
+    <rect x="16" y="16" width="6" height="6" rx="1"/>
+    <rect x="2" y="16" width="6" height="6" rx="1"/>
+    <rect x="9" y="2" width="6" height="6" rx="1"/>
+    <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/>
+    <path d="M12 12V8"/>`;
+
 /** Magnifier — search. (Lucide: search) */
 export const iconSearch = svg`
     <path d="m21 21-4.34-4.34"/>

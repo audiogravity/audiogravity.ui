@@ -36,7 +36,7 @@ import { subscribePlayerState } from '../../library-store.js';
 import { coverUrl, fmtDuration, pickPrimaryCoverToken } from '../utils-lit.js';
 import { extractDominantColor, inTransition, showsVolumeControl, showsDsdLock, activeOutput, outputLabel, isOutputStopped, isOutputUnreachable, activeOutputError, outputErrorLabel, applySeekGuard, applyVolumeGuard, seekRefusalRollback, toggleRefusalRollback, playPauseIntent, isLiveStream, hiResLabel } from '../../player-utils.js';
 import { getSleepTimer, setSleepTimer, cancelSleepTimer } from '../../player-api.js';
-import { iconChevronDoubleDown, iconQueuePlay, iconOutput, iconMusicNote, iconGauge } from '../../ag-icons.js';
+import { iconChevronDoubleDown, iconQueuePlay, iconOutput, iconMusicNote, iconGauge, iconNetwork } from '../../ag-icons.js';
 import { canAddToPlaylist, originBadge, originBadgeName } from '../library-constants.js';
 import { GESTURE_SLOP_PX } from '../../core/gesture-constants.js';
 import { isLicensed, isLockedSource, openLicensePanel, proState } from '../../license-tiers.js';
@@ -1086,7 +1086,7 @@ export class AgNowPlayingFullscreen extends LitElement {
                             <span class="npfs-sp-dot"></span>
                             ${step.label}
                         </span>
-                        ${i < steps.length - 1 ? html`<span class="npfs-sp-arrow">→</span>` : nothing}
+                        ${i < steps.length - 1 ? this._renderHop(steps[i + 1]) : nothing}
                     `)}
                 </div>
             `;
@@ -1103,6 +1103,29 @@ export class AgNowPlayingFullscreen extends LitElement {
             `;
         }
         return nothing;
+    }
+
+    /**
+     * The mark between two steps of the signal path: an arrow, or the network's drawing
+     * when the sound reaches the next step over the local network — a network speaker,
+     * the box's NAA from another computer's HQPlayer (`SignalPathStep.link`).
+     *
+     * Named by its `aria-label` alone, as every icon on its own: the interface shows no
+     * tooltip (js/no-tooltips.test.js), and a `title` beside the label had Chromium
+     * expose the same words as name AND description, read twice (measured).
+     * @param {{link?: string|null}} next - The step the hop leads to.
+     */
+    _renderHop(next) {
+        if (next?.link === 'network') {
+            return html`
+                <span class="npfs-sp-arrow npfs-sp-arrow--network" role="img"
+                      aria-label="over the network">
+                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true">${iconNetwork}</svg>
+                </span>`;
+        }
+        return html`<span class="npfs-sp-arrow">→</span>`;
     }
 
     _renderProgress(s) {
