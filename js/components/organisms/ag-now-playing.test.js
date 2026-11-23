@@ -319,8 +319,9 @@ describe('AgNowPlaying — control body routing handle', () => {
 // applied on behalf of a stale command, and one mutating an item object that
 // _onState had already replaced.
 
-import { render as litRender } from 'lit';
+import { render as litRender, html } from 'lit';
 import { AgNowPlaying } from './ag-now-playing.js';
+import '../molecules/ag-playback-controls.js';
 import { apiPost } from '../../api.js';
 
 vi.mock('../../api.js', () => ({
@@ -501,9 +502,10 @@ describe('the playback bar leaves the playback modes to the fullscreen player', 
  *
  * On an iPhone the title and the artist shared one line, in the 115px the four
  * buttons left, and had to scroll to be read. On a bar under 480px — the bar's own
- * width, a container query, so a tablet keeps everything — Previous leaves (the
- * fullscreen player keeps it) and title and artist take a line each. Volume stays:
- * asked for explicitly. Pinned from the source, as above: the component is not mounted.
+ * width, a container query, so a tablet keeps everything — title and artist take a
+ * line each. Previous left that bar from 2026-10-04 and came back on 2026-11-23, at
+ * the user's request; the volume always stayed, asked for explicitly. Pinned from the
+ * source, as above: the component is not mounted.
  */
 describe('a narrow bar gives the title its room', () => {
     /**
@@ -514,15 +516,10 @@ describe('a narrow bar gives the title its room', () => {
     const narrowBlock = () => mediaBlock(readStylesheet('css', 'components', 'now-playing.css'),
         /@container\s*\(width\s*<\s*480px\)/);
 
-    it('marks Previous so the narrow bar can let it go', () => {
-        const source = readFileSync(
-            path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing.js'), 'utf8');
-        expect(source).toMatch(/class="np-btn np-btn--prev"\s+aria-label="Previous"/);
-    });
-
-    it('lets Previous go, and keeps the volume', () => {
+    it('keeps every transport button, Previous included, and the volume', () => {
         const block = narrowBlock();
-        expect(cssRuleBody(block, '.np-btn--prev')).toMatch(/display:\s*none/);
+        expect(block).not.toMatch(/\.np-btn[^{]*\{[^}]*display:\s*none/);
+        expect(block).not.toMatch(/\.np-controls[^{]*\{[^}]*display:\s*none/);
         expect(block).not.toMatch(/ag-volume-popover|avp-/);
     });
 
@@ -623,6 +620,31 @@ describe('the bar greys Previous / Next rather than dropping them', () => {
     it('lights Next on a station another entry follows', () => {
         expect(transport({ origin: 'radio', duration: null, can_prev: false, can_next: true }))
             .toEqual([['Previous', true], ['Pause', false], ['Next', false]]);
+    });
+
+    // The full player's buttons (ag-playback-controls, fed the same can_prev / can_next
+    // by ag-now-playing-fullscreen.js) are the reference the bar follows: the same flags
+    // grey the same buttons, live station or not.
+    it.each([
+        ['a track in the middle of an album', { duration: 545, can_prev: true, can_next: true }],
+        ['the last track of an album', { duration: 545, can_prev: true, can_next: false }],
+        ['a station played alone', { origin: 'radio', live: true, can_prev: false, can_next: false }],
+        ['a station another entry follows', { origin: 'radio', live: true, can_prev: false, can_next: true }],
+        ['a station after another one', { origin: 'radio', live: true, can_prev: true, can_next: false }],
+    ])('greys Previous / Next as the full player does, on %s', async (_name, item) => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        try {
+            litRender(html`<ag-playback-controls playing ?can-prev=${item.can_prev}
+                ?can-next=${item.can_next} ?live=${!!item.live}></ag-playback-controls>`, host);
+            const full = host.querySelector('ag-playback-controls');
+            await full.updateComplete;
+            const greyed = (label) => full.querySelector(`button[aria-label="${label}"]`).disabled;
+            const bar = Object.fromEntries(transport(item));
+            expect([bar.Previous, bar.Next]).toEqual([greyed('Previous'), greyed('Next')]);
+        } finally {
+            host.remove();
+        }
     });
 
     it.each([
