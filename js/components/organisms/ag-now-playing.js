@@ -764,14 +764,13 @@ export class AgNowPlaying extends LitElement {
                         .delivery=${item.dsd_delivery ?? null}></ag-dsd-delivery></span>` : nothing}
                 </div>
 
-                <!-- Transport controls. Previous / Next are greyed when they would go
-                     nowhere, never removed: removed, Play slid into the place of a Next
-                     that went away under the finger (the last track of an album). -->
+                <!-- Transport controls, on every width. Previous / Next are greyed when
+                     they would go nowhere — read from the same can_prev / can_next as the
+                     full player's — never removed: removed, Play slid into the place of a
+                     Next that went away under the finger (the last track of an album). -->
                 <div class="np-controls ${this._isLocked(item) ? 'pro-locked' : ''}">
-                    <!-- Not on a phone (now-playing.css): the title needs the room,
-                         and Previous is one tap away in the full player. -->
                     <button
-                        class="np-btn np-btn--prev"
+                        class="np-btn"
                         aria-label="Previous"
                         ?disabled=${!item.can_prev}
                         @click="${() => this._sendControl(item.source_id, 'prev', null, item)}"
