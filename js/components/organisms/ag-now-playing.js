@@ -98,7 +98,7 @@ export class AgNowPlaying extends LitElement {
         this._touchStartX = 0;
         this._touchStartY = 0;
         this._touchIgnored = false;
-        this._gestureType = null; // null | 'dismiss' | 'switch' | 'ignore'
+        this._gestureType = null; // null | 'dismiss' | 'switch' | 'open-player' | 'ignore'
         this._barEl = null;
         this._rafId = null;
         this._pendingTouchY = 0;
@@ -115,6 +115,7 @@ export class AgNowPlaying extends LitElement {
         this._boundTouchStart = this._handleTouchStart.bind(this);
         this._boundTouchMove = this._handleTouchMove.bind(this);
         this._boundTouchEnd = this._handleTouchEnd.bind(this);
+        this._boundTouchCancel = this._handleTouchCancel.bind(this);
 
         this._boundRestore   = () => { this._dismissed = false; this._reportHeight(); };
         this._unsubscribeRenderer = null;
@@ -134,6 +135,7 @@ export class AgNowPlaying extends LitElement {
         this.addEventListener('touchstart', this._boundTouchStart, { passive: false });
         this.addEventListener('touchmove', this._boundTouchMove, { passive: false });
         this.addEventListener('touchend', this._boundTouchEnd, { passive: true });
+        this.addEventListener('touchcancel', this._boundTouchCancel, { passive: true });
 
         document.addEventListener('ag-np-restore', this._boundRestore);
         // Renderer routing now comes from PlayerState.outputs[] (single source
@@ -167,6 +169,7 @@ export class AgNowPlaying extends LitElement {
         this.removeEventListener('touchstart', this._boundTouchStart, { passive: false });
         this.removeEventListener('touchmove', this._boundTouchMove, { passive: false });
         this.removeEventListener('touchend', this._boundTouchEnd, { passive: true });
+        this.removeEventListener('touchcancel', this._boundTouchCancel, { passive: true });
 
         document.removeEventListener('ag-np-restore', this._boundRestore);
     }
@@ -522,6 +525,11 @@ export class AgNowPlaying extends LitElement {
         if (this._gestureType === null || this._gestureType === 'ignore') return;
 
         e.preventDefault();
+        // Upward: the bar stays where it is, and the release opens the full-screen player
+        // (_handleTouchEnd). It used to follow the finger at 30 %, which lifted it off the
+        // bottom of the screen and left a strip of page under it (user's iPhone capture,
+        // 2026-11-23: bar raised 14pt, everything else in place).
+        if (this._gestureType === 'open-player') return;
         this._pendingTouchY = e.touches[0].clientY;
         this._pendingTouchX = e.touches[0].clientX;
         if (this._rafId) return;
@@ -539,11 +547,6 @@ export class AgNowPlaying extends LitElement {
                 const dy = this._pendingTouchY - this._touchStartY;
                 if (dy > 0) {
                     this._barEl.style.setProperty('transform', `translate3d(0, ${dy}px, 0)`, 'important');
-                }
-            } else if (this._gestureType === 'open-player') {
-                const dy = this._pendingTouchY - this._touchStartY;
-                if (dy < 0) {
-                    this._barEl.style.setProperty('transform', `translate3d(0, ${dy * 0.3}px, 0)`, 'important');
                 }
             } else if (this._gestureType === 'switch') {
                 const dx = this._pendingTouchX - this._touchStartX;
@@ -569,11 +572,8 @@ export class AgNowPlaying extends LitElement {
         const isOpenPlayer = gesture === 'open-player' && deltaY < -Math.abs(deltaX) &&
             (velocityY < -0.3 || deltaY < -40);
         if (isOpenPlayer) {
-            if (barEl) {
-                barEl.style.willChange = '';
-                barEl.style.transition = 'transform 0.2s ease';
-                barEl.style.removeProperty('transform');
-            }
+            // The bar has not moved (_handleTouchMove): this only hands its style back.
+            this._snapBarBack(barEl);
             window.dispatchEvent(new CustomEvent('np-expand', {
                 detail: {
                     source_id: this._items[this._activeSourceIdx]?.source_id,
@@ -616,13 +616,34 @@ export class AgNowPlaying extends LitElement {
                 }, { once: true });
             }
         } else {
-            // Snap back to original position
-            if (barEl) {
-                barEl.style.transition = '';
-                barEl.style.removeProperty('transform');
-                barEl.style.willChange = '';
-            }
+            this._snapBarBack(barEl);
         }
+    }
+
+    /**
+     * The system took the touch over — the swipe home, which starts from the bottom edge
+     * where the bar sits, a call, Control Center: no touchend follows, and the bar stayed
+     * where the finger had dragged it, down or sideways. Put it back; a cancelled swipe
+     * folds nothing, switches nothing and opens nothing, however far it went.
+     */
+    _handleTouchCancel() {
+        if (!this._hasItems || this._dismissed) return;
+        if (this._touchIgnored) { this._touchIgnored = false; return; }
+        if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+        this._gestureType = null;
+        this._snapBarBack(this.querySelector('.now-playing-bar') || this._barEl);
+    }
+
+    /**
+     * Let the bar slide back to its place (the stylesheet's own transition) from a swipe
+     * that did not go far enough, or that the system cancelled.
+     * @param {HTMLElement|null} barEl
+     */
+    _snapBarBack(barEl) {
+        if (!barEl) return;
+        barEl.style.transition = '';
+        barEl.style.removeProperty('transform');
+        barEl.style.willChange = '';
     }
 
     // ------------------------------------------------------------------

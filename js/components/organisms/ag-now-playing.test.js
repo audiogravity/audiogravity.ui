@@ -858,6 +858,141 @@ describe('the bar shows the position, and moving in the track is the full player
     });
 });
 
+/** A second source playing, so that a sideways swipe has somewhere to go. */
+const OTHER = { source_id: 'src_airplay', playback_status: 'Playing', title: 'Blue in Green' };
+
+/**
+ * Drive the real touch handlers of a shell on a real bar: a finger put down, moved in six
+ * steps with each animation frame run, then lifted (`touchend`) or taken over by the
+ * system (`touchcancel`). Timers are run to the end, so a fold has had its delay.
+ *
+ * @returns {{ transforms: string[], after: string, expanded: number, el: object, bar: HTMLElement }}
+ *   the bar's transform after each step, and once the touch is over; the bar itself
+ */
+function swipeBar({ from, to, end = 'touchend', items = [SEEKABLE] }) {
+    const bar = document.createElement('div');
+    bar.className = 'now-playing-bar';
+    const el = npShell({ _items: items, _activeSourceIdx: 0, _userSourceOverride: false });
+    el.querySelector = () => bar;
+    const frames = [];
+    vi.stubGlobal('requestAnimationFrame', (cb) => frames.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const expand = vi.fn();
+    window.addEventListener('np-expand', expand);
+    const transforms = [];
+    try {
+        const at = ([x, y]) => [{ clientX: x, clientY: y }];
+        el._handleTouchStart({ touches: at(from), target: bar, preventDefault() {} });
+        for (let i = 1; i <= 6; i++) {
+            const point = [0, 1].map((k) => from[k] + ((to[k] - from[k]) * i) / 6);
+            el._handleTouchMove({ touches: at(point), preventDefault() {} });
+            frames.splice(0).forEach((f) => f());
+            transforms.push(bar.style.transform);
+        }
+        if (end === 'touchend') el._handleTouchEnd({ changedTouches: at(to) });
+        else el._handleTouchCancel({ changedTouches: at(to) });
+        vi.runAllTimers();
+    } finally {
+        window.removeEventListener('np-expand', expand);
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+        // A fold publishes the bar's height on the page (_reportHeight): not this test's to keep.
+        document.documentElement.style.removeProperty('--now-playing-height');
+    }
+    return { transforms, after: bar.style.transform, expanded: expand.mock.calls.length, el, bar };
+}
+
+/**
+ * Swiping the bar up opens the full-screen player on release. The bar used to follow the
+ * finger upward at 30 % meanwhile, lifting off the bottom of the screen and leaving a strip
+ * of page under it (user's iPhone capture, 2026-11-23: bar raised 14pt, nothing else moved).
+ * It stays anchored now. Swiping it down to fold it still carries it with the finger: that
+ * is the control case, proving the harness sees a moved bar.
+ */
+describe('the bar stays at the bottom while it is swiped up to open the full player', () => {
+    const swipe = (fromY, toY) => swipeBar({ from: [200, fromY], to: [200, toY] });
+
+    it('never moves the bar during an upward swipe, and opens the full player on release', () => {
+        const { transforms, expanded } = swipe(790, 730);
+        expect(transforms).toEqual(['', '', '', '', '', '']);
+        expect(expanded).toBe(1);
+    });
+
+    it('hands the bar its stylesheet back once the full player opens', () => {
+        // The touch froze the bar's transition and flagged a transform to come; neither
+        // may outlive the swipe as an inline style.
+        const { bar } = swipe(790, 730);
+        expect([bar.style.transform, bar.style.transition, bar.style.willChange]).toEqual(['', '', '']);
+    });
+
+    it('still carries the bar down with the finger when it is swiped down to fold it', () => {
+        const { transforms, expanded } = swipe(760, 820);
+        expect(transforms.at(-1)).toBe('translate3d(0, 60px, 0)');
+        expect(expanded).toBe(0);
+    });
+});
+
+/**
+ * The bar sits on the bottom edge of a phone, where the swipe home starts: the system can
+ * take a touch over mid-swipe (also a call, Control Center), and then no touchend comes.
+ * Nothing handled that, so the bar stayed where the finger had dragged it — down, or
+ * sideways (read in the code, 2026-11-23; not seen on a phone). What the handler does is
+ * put the bar back (`after`) and forget the gesture (`_gestureType`). The other checks
+ * guard against a cancel taken for a release: each cancelled swipe is paired with the
+ * same swipe lifted, which does fold or switch — so a cancel handled as a touchend would
+ * fold or switch too, and fail here.
+ */
+describe('a swipe the system cancels puts the bar back and does nothing', () => {
+    const DOWN = { from: [200, 760], to: [200, 820] };
+    const LEFT = { from: [300, 780], to: [180, 780], items: [SEEKABLE, OTHER] };
+
+    it('folds the bar when a downward swipe is lifted', () => {
+        expect(swipeBar(DOWN).el._dismissed).toBe(true);
+    });
+
+    it('puts the bar back from a cancelled downward swipe, and does not fold it', () => {
+        const { transforms, after, expanded, el } = swipeBar({ ...DOWN, end: 'touchcancel' });
+        expect(transforms.at(-1)).toBe('translate3d(0, 60px, 0)');
+        expect(after).toBe('');
+        expect(el._dismissed).toBe(false);
+        expect(el._gestureType).toBeNull();
+        expect(expanded).toBe(0);
+    });
+
+    it('switches source when a sideways swipe is lifted', () => {
+        expect(swipeBar(LEFT).el._activeSourceIdx).toBe(1);
+    });
+
+    it('puts the bar back from a cancelled sideways swipe, and keeps the source', () => {
+        const { transforms, after, el } = swipeBar({ ...LEFT, end: 'touchcancel' });
+        expect(transforms.at(-1)).toBe('translate3d(-120px, 0, 0)');
+        expect(after).toBe('');
+        expect(el._gestureType).toBeNull();
+        expect(el._activeSourceIdx).toBe(0);
+        expect(el._userSourceOverride).toBe(false);
+    });
+
+    it('opens nothing from a cancelled upward swipe', () => {
+        const { expanded, el } = swipeBar({ from: [200, 790], to: [200, 730], end: 'touchcancel' });
+        expect(expanded).toBe(0);
+        expect(el._gestureType).toBeNull();
+    });
+
+    it('listens for the cancel as long as it listens for the touch', () => {
+        const SOURCE = readFileSync(
+            path.join(path.dirname(fileURLToPath(import.meta.url)), 'ag-now-playing.js'),
+            'utf8',
+        );
+        const body = (name) => SOURCE.match(new RegExp(`\\n    ${name}\\(\\) \\{[\\s\\S]*?\\n    \\}`))[0];
+        expect(body('connectedCallback'))
+            .toContain("this.addEventListener('touchcancel', this._boundTouchCancel, { passive: true });");
+        expect(body('disconnectedCallback'))
+            .toContain("this.removeEventListener('touchcancel', this._boundTouchCancel, { passive: true });");
+        expect(SOURCE).toContain('this._boundTouchCancel = this._handleTouchCancel.bind(this);');
+    });
+});
+
 /**
  * A button shrinks and fades under the finger (css/components/press.css). The album-details
  * bubble used to be drawn inside the cover, and shrank and faded with it at every tap: it
